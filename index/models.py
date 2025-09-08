@@ -1,0 +1,753 @@
+'''
+Models
+
+Overview:
+- Provides a unified Subject table (SSOT) as the central point for all items, supporting multiple media types (anime, galgame, manga, game, novel, music, other).
+- Implements a flexible model inheritance structure using Django abstract base classes.
+- Captures entity relationships, staff/cast/character information, genres, and episode data.
+- Tracks the source and status of all imported or crawled data, recording logs and warnings/errors for auditing and data quality.
+- Enables extensible subject-to-subject relationships, staff/character role mapping, and scheduled update/pending task management.
+- Employs best practices for constraints, uniqueness, DB indexing, and model documentation.
+- All major models include creation and modification timestamps for operational traceability.
+
+Key Concepts:
+- Subject: The root entity for all catalog items, containing shared attributes and providing a single source of truth.
+- Anime/Galgame/Other: Specialized models related via one-to-one or foreign key to Subject.
+- Relation Models: Define semantic and directed relationships between subjects and their properties.
+- Source Tracking: All important models inherit source information and timestamps for provenance.
+- PendingUpdate: Tracks pending synchronization tasks for subjects, aiding incremental data refresh.
+
+'''
+
+import uuid
+from django.db import models
+from django.contrib.postgres.fields import ArrayField
+from django.contrib.postgres.indexes import GinIndex
+
+
+class Source(models.Model):
+    '''
+    Source Model
+    - Abstract base class for models with timestamp and source fields.
+
+    Fields & Properties:
+    | Name          | Type          | Description   |
+    | ------------- | ------------- | ------------- |
+    | info_source   | CharField     |               |
+    | id_source     | CharField     |               |
+    | created_at    | DateTimeField |               |
+    | updated_at    | DateTimeField |               |
+    '''
+
+    info_source = models.CharField(max_length=64)
+    id_source   = models.CharField(max_length=64)
+
+    created_at  = models.DateTimeField(auto_now_add=True)
+    updated_at  = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+        ordering = ['info_source', 'id_source']
+
+
+class Subject(Source):
+    '''
+    Subject Model
+    - The top-level entity and SSOT for all sub-entities in the catalog.
+    - Holds only the parent-level attributes that are common to all subject types.
+    - Shares its primary key with child tables (via one-to-one relations), keeping the entire catalog unified.
+
+    Fields & Properties:
+    | Name              | Type                      | Description                       |
+    | ----------------- | ------------------------- | --------------------------------- |
+    | id                | UUIDField                 |                                   |
+    | subject_type      | CharField                 |                                   |
+    | title             | CharField                 |                                   |
+    | date              | DateField                 |                                   |
+    | ambiguous_date    | DateField                 | Only if "date" is not available.  |
+    | description       | TextField                 |                                   |
+    | image_original    | URLField                  |                                   |
+    | image_thumbnail   | URLField                  |                                   |
+    | infobox           | JSONField                 |                                   |
+    | tags              | JSONField                 |                                   |
+    | nsfw              | BooleanField              |                                   |
+    | status            | CharField                 |                                   |
+    | log               | TextField                 |                                   |
+    | info_source       | CharField (Inherited)     |                                   |
+    | id_source         | CharField (Inherited)     |                                   |
+    | created_at        | DateTimeField (Inherited) |                                   |
+    | updated_at        | DateTimeField (Inherited) |                                   |
+    '''
+    
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+
+    SUBJECT_TYPES = [
+        ('anime',   'Anime'),
+        ('galgame', 'Galgame'),
+        ('manga',   'Manga'),
+        ('game',    'Game'),
+        ('novel',   'Novel'),
+        ('music',   'Music'),
+        ('other',   'Other'),
+    ]
+
+    subject_type    = models.CharField(max_length=64, choices=SUBJECT_TYPES)
+    title           = models.CharField(max_length=256, blank=True)
+    date            = models.DateField(blank=True, null=True)
+    ambiguous_date  = models.DateField(blank=True, null=True)
+    description     = models.TextField(blank=True)
+    image_original  = models.URLField(max_length=1024, blank=True)
+    image_thumbnail = models.URLField(max_length=1024, blank=True)
+    infobox         = models.JSONField(default=list, blank=True)
+    tags            = models.JSONField(default=list, blank=True)
+    nsfw            = models.BooleanField(default=False)
+
+    SUBJECT_STATUS = [
+        ('main_error',      'Main Error'),
+        ('sub_error',       'Sub Error'),
+        ('main_warning',    'Main Warning'),
+        ('sub_warning',     'Sub Warning'),
+        ('ok',              'OK'),
+        ('ignored',         'Ignored')
+        ('locked',          'Locked'),
+    ]
+
+    status  = models.CharField(max_length=64, choices=SUBJECT_STATUS, default='ok', db_index=True)
+    log     = models.TextField(blank=True)
+
+    class Meta:
+        db_table = 'subject'
+        ordering = ['-date', 'title']
+        constraints = [
+            models.UniqueConstraint(fields=['info_source', 'id_source'], name='uq_subject_source')
+        ]
+        indexes = [
+            models.Index(fields=['id_source'], name='idx_subject_source'),
+            models.Index(fields=['title'], name='idx_subject_title')
+        ]
+
+    def __str__(self):
+        return f'[{self.type}] {self.title or "Untitled"} ({self.date or self.ambiguous_date or "Unknown"})'
+
+
+class SubjectRelationType(models.Model):
+    '''
+    SubjectRelationType Model
+    - Stores the types of relationships between different Subject entities.
+
+    | Name  | Type      | Description   |
+    | ----- | --------- | ------------- |
+    | code  | CharField |               |
+    | name  | CharField |               |
+    '''
+
+    code = models.CharField(max_length=256, unique=True)
+    name = models.CharField(max_length=256, blank=True)
+
+    class Meta:
+        db_table = 'subject_relation_type'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name or self.code
+
+
+class SubjectRelation(models.Model):
+    '''
+    SubjectRelation Model
+    - Defines a directed relationship between two Subject entities.
+
+    | Name      | Type          | Description   |
+    | --------- | ------------- | ------------- |
+    | source    | ForeignKey    |               |
+    | target    | ForeignKey    |               |
+    | type      | ForeignKey    |               |
+    '''
+
+    source  = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='outgoing_relations')
+    target  = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='incoming_relations')
+    type    = models.ForeignKey(SubjectRelationType, on_delete=models.PROTECT)
+
+    class Meta:
+        db_table = 'subject_relation'
+
+    def __str__(self):
+        return f'{self.source} -> {self.target}'
+
+
+class AnimeStaff(Source):
+    '''
+    AnimeStaff Model
+    - Stores comprehensive information about anime staff.
+
+    Fields & Properties:
+    | Name          | Type                      | Description   |
+    | ------------- | ------------------------- | ------------- |
+    | name          | CharField                 |               |
+    | description   | TextField                 |               |
+    | birth         | JSONField                 |               |
+    | gender        | CharField                 |               |
+    | infobox       | JSONField                 |               |
+    | career        | JSONField                 |               |
+    | info_source   | CharField (Inherited)     |               |
+    | id_source     | CharField (Inherited)     |               |
+    | created_at    | DateTimeField (Inherited) |               |
+    | updated_at    | DateTimeField (Inherited) |               |
+    | characters    | ManyToManyField (Reverse) |               |
+    | animes        | ManyToManyField (Reverse) |               |
+    '''
+
+    name        = models.CharField(max_length=256, blank=True)
+    description = models.TextField(blank=True)
+    birth       = models.JSONField(default=dict, blank=True)
+    gender      = models.CharField(max_length=64, blank=True)
+    infobox     = models.JSONField(default=list, blank=True)
+    career      = models.JSONField(default=list, blank=True)
+
+    class Meta:
+        db_table = 'anime_staff'
+        ordering = ['name']
+        constraints = [
+            models.UniqueConstraint(fields=['info_source', 'id_source'], name='uq_anime_staff_source')
+        ]
+        indexes = [
+            models.Index(fields=['id_source'], name='idx_anime_staff_source'),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+class AnimeCharacter(Source):
+    '''
+    AnimeCharacter Model
+    - Stores comprehensive information about anime characters.
+
+    Fields & Properties:
+    | Name              | Type                      | Description   |
+    | ----------------- | ------------------------- | ------------- |
+    | name              | CharField                 |               |
+    | description       | TextField                 |               |
+    | birth             | JSONField                 |               |
+    | gender            | CharField                 |               |
+    | image_original    | URLField                  |               |
+    | image_thumbnail   | URLField                  |               |
+    | infobox           | JSONField                 |               |
+    | actors            | ManyToManyField           |               |
+    | info_source       | CharField (Inherited)     |               |
+    | id_source         | CharField (Inherited)     |               |
+    | created_at        | DateTimeField (Inherited) |               |
+    | updated_at        | DateTimeField (Inherited) |               |
+    | animes            | ManyToManyField (Reverse) |               |
+    '''
+
+    name            = models.CharField(max_length=256, blank=True)
+    description     = models.TextField(blank=True)
+    birth           = models.JSONField(default=dict, blank=True)
+    gender          = models.CharField(max_length=64, blank=True)
+    image_original  = models.URLField(max_length=1024, blank=True)
+    image_thumbnail = models.URLField(max_length=1024, blank=True)
+    infobox         = models.JSONField(default=list, blank=True)
+    actors          = models.ManyToManyField('AnimeStaff', related_name='characters', blank=True)
+
+    class Meta:
+        db_table = 'anime_character'
+        ordering = ['name']
+        constraints = [
+            models.UniqueConstraint(fields=['info_source', 'id_source'], name='uq_anime_character_source')
+        ]
+        indexes = [
+            models.Index(fields=['id_source'], name='idx_anime_character_source'),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+class AnimeGenre(models.Model):
+    '''
+    AnimeGenre Model
+    - Stores genres for Anime.
+    - Provides a mapping from original genre names to standardized role names.
+
+    Fields & Properties:
+    | Name      | Type                      | Description   |
+    | --------- | ------------------------- | ------------- |
+    | code      | CharField                 |               |
+    | name      | CharField                 |               |
+    | animes    | ManyToManyField (Reverse) |               |
+    '''
+
+    code = models.CharField(max_length=256, unique=True)
+    name = models.CharField(max_length=256, blank=True)
+
+    class Meta:
+        db_table = 'anime_genre'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name or self.code
+
+
+class AnimeEpisode(Source):
+    '''
+    AnimeEpisode Model
+    - Stores episode information for Anime.
+    - Each episode belongs to exactly one Anime
+
+    Fields & Properties:
+    | Name          | Type                      | Description   |
+    | ------------- | ------------------------- | ------------- |
+    | title         | CharField                 |               |
+    | type          | CharField                 |               |
+    | ep_num        | IntegerField              |               |
+    | duration      | DurationField             |               |
+    | airdate       | DateField                 |               |
+    | description   | TextField                 |               |
+    | anime         | ForeignKey                |               |
+    | info_source   | CharField (Inherited)     |               |
+    | id_source     | CharField (Inherited)     |               |
+    | created_at    | DateTimeField (Inherited) |               |
+    | updated_at    | DateTimeField (Inherited) |               |
+    '''
+
+    title       = models.CharField(max_length=256, blank=True)
+    type        = models.CharField(max_length=64, blank=True)
+    ep_num      = models.IntegerField(blank=True, null=True)
+    duration    = models.DurationField(blank=True, null=True)
+    airdate     = models.DateField(blank=True, null=True)
+    description = models.TextField(blank=True)
+    anime       = models.ForeignKey('Anime', on_delete=models.CASCADE, related_name='episodes')
+
+    class Meta:
+        db_table = 'anime_episode'
+        ordering = ['anime', 'type', 'ep_num']
+        constraints = [
+            models.UniqueConstraint(fields=['info_source', 'id_source'], name='uq_anime_episode_source')
+        ]
+        indexes = [
+            models.Index(fields=['id_source'], name='idx_anime_episode_source'),
+        ]
+
+    def __str__(self):
+        return self.title
+
+
+class Anime(Source):
+    '''
+    Anime Model
+    - Stores detailed information related to `Subject` entries of type "anime".
+
+    Fields & Properties:
+    | Name              | Type                      | Description                   |
+    | ----------------- | ------------------------- | ----------------------------- |
+    | subject           | OneToOneField             |                               |
+    | aliases           | JSONField                 |                               |
+    | start_date        | DateField                 |                               |
+    | end_date          | DateField                 |                               |
+    | anime_type        | CharField                 | (e.g., "TV", "OVA")           |
+    | anime_source      | CharField                 | (e.g., "Manga", "Original")   |
+    | official_websites | JSONField                 |                               |
+    | description       | TextField                 |                               |
+    | image_original    | URLField                  |                               |
+    | image_thumbnail   | URLField                  |                               |
+    | image_extra       | JSONField                 |                               |
+    | anime_status      | CharField                 |                               |
+    | ep_total          | IntegerField              |                               |
+    | broadcast         | JSONField                 |                               |
+    | broadcast_season  | JSONField                 |                               |
+    | external_links    | JSONField                 |                               |
+    | staff             | ManyToManyField           |                               |
+    | characters        | ManyToManyField           |                               |
+    | genres            | ManyToManyField           |                               |
+    | info_source       | CharField (Inherited)     |                               |
+    | id_source         | CharField (Inherited)     |                               |
+    | created_at        | DateTimeField (Inherited) |                               |
+    | updated_at        | DateTimeField (Inherited) |                               |
+    | episodes          | ForeignKey (Reverse)      |                               |
+    '''
+
+    subject = models.OneToOneField(
+        Subject,
+        on_delete=models.CASCADE,
+        primary_key=True,
+        related_name='anime'
+    )
+
+    aliases             = ArrayField(models.CharField(max_length=256), default=list, blank=True)
+    titles              = models.JSONField(default=dict, blank=True)
+    start_date          = models.DateField(blank=True, null=True)
+    end_date            = models.DateField(blank=True, null=True)
+    anime_type          = models.CharField(max_length=64, blank=True)
+    anime_source        = models.CharField(max_length=64, blank=True)
+    official_websites   = models.JSONField(default=list, blank=True)
+    description         = models.TextField(blank=True)
+    image_original      = models.URLField(max_length=1024, blank=True)
+    image_thumbnail     = models.URLField(max_length=1024, blank=True)
+    image_extra         = models.JSONField(default=list, blank=True)
+    anime_status        = models.CharField(max_length=256, blank=True)
+    ep_total            = models.IntegerField(blank=True, null=True)
+    broadcast           = models.JSONField(default=dict, blank=True)
+    broadcast_season    = models.JSONField(default=dict, blank=True)
+    external_links      = models.JSONField(default=dict, blank=True)
+    staff               = models.ManyToManyField('AnimeStaff', through='AnimeStaffRelation', related_name='animes', blank=True)
+    characters          = models.ManyToManyField('AnimeCharacter', through='AnimeCharacterRelation', related_name='animes', blank=True)
+    genres              = models.ManyToManyField('AnimeGenre', related_name='animes', blank=True)
+
+    class Meta:
+        db_table = 'anime'
+        ordering = ['-subject__date', 'subject__title']
+        constraints = [
+            models.UniqueConstraint(fields=['info_source', 'id_source'], name='uq_anime_source')
+        ]
+        indexes = [
+            models.Index(fields=['id_source'], name='idx_anime_source'),
+            GinIndex(fields=['aliases'], name='idx_anime_aliases')
+        ]
+
+    def __str__(self):
+        return self.subject.title
+
+
+class AnimeStaffRelationRole(models.Model):
+    '''
+    AnimeStaffRelationRole Model
+    - Stores roles for AnimeStaff related to Anime.
+
+    Fields & Properties:
+    | Name  | Type      | Description   |
+    | ----- | --------- | ------------- |
+    | code  | CharField |               |
+    | name  | CharField |               |
+    '''
+
+    code = models.CharField(max_length=256, unique=True)
+    name = models.CharField(max_length=256, blank=True)
+
+    class Meta:
+        db_table = 'anime_staff_relation_role'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name or self.code
+
+
+class AnimeStaffRelation(models.Model):
+    '''
+    AnimeStaffRelation Model
+    - Represents the relationship between Anime and AnimeStaff.
+
+    Fields & Properties:
+    | Name          | Type          | Description   |
+    | ------------- | ------------- | ------------- |
+    | anime         | ForeignKey    |               |
+    | staff         | ForeignKey    |               |
+    | role          | ForeignKey    |               |
+    | description   | TextField     |               |
+    '''
+
+    anime       = models.ForeignKey(Anime, on_delete=models.CASCADE)
+    staff       = models.ForeignKey(AnimeStaff, on_delete=models.CASCADE)
+    role        = models.ForeignKey(AnimeStaffRelationRole, on_delete=models.PROTECT)
+    description = models.TextField(blank=True)
+
+    class Meta:
+        db_table = 'anime_staff_relation'
+        ordering = ['anime', 'staff']
+        constraints = [
+            models.UniqueConstraint(fields=['anime', 'staff', 'role'], name='uq_anime_staff_role')
+        ]
+
+    def __str__(self):
+        return f'{self.anime} - {self.staff} ({self.role})'
+
+
+class AnimeCharacterRelationRole(models.Model):
+    '''
+    AnimeCharacterRelationRole Model
+    - Stores roles for AnimeCharacter related to Anime.
+
+    Fields & Properties:
+    | Name  | Type      | Description   |
+    | ----- | --------- | ------------- |
+    | code  | CharField |               |
+    | name  | CharField |               |
+    '''
+
+    code = models.CharField(max_length=256, unique=True)
+    name = models.CharField(max_length=256, blank=True)
+
+    class Meta:
+        db_table = 'anime_character_relation_role'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name or self.code
+
+
+class AnimeCharacterRelation(models.Model):
+    '''
+    AnimeCharacterRelation Model
+    - Represents the ralationship between Anime and AnimeCharacter.
+
+    Fields & Properties:
+    | Name      | Type          | Description   |
+    | --------- | ------------- | ------------- |
+    | anime     | ForeignKey    |               |
+    | character | ForeignKey    |               |
+    | role      | ForeignKey    |               |
+    '''
+
+    anime       = models.ForeignKey(Anime, on_delete=models.CASCADE)
+    character   = models.ForeignKey(AnimeCharacter, on_delete=models.CASCADE)
+    role        = models.ForeignKey(AnimeCharacterRelationRole, on_delete=models.PROTECT)
+
+    class Meta:
+        db_table = 'anime_character_relation'
+        ordering = ['anime', 'character']
+        constraints = [
+            models.UniqueConstraint(fields=['anime', 'character', 'role'], name='uq_anime_character_role')
+        ]
+
+    def __str__(self):
+        return f'{self.anime} - {self.character} ({self.role})'
+
+
+class GalgameProducer(Source):
+    '''
+    GalgameProducer Model
+    - 
+
+    Fields & Properties
+    | Name  | Type  | Description   |
+    | ----- | ----- | ------------- |
+    '''
+
+    name            = models.CharField(max_length=256, blank=True)
+    aliases         = models.JSONField(default=list, blank=True)
+    type            = models.CharField(max_length=64, blank=True)
+    description     = models.TextField(blank=True)
+    external_link   = models.JSONField(default=dict, blank=True)
+    
+    class Meta:
+        db_table = 'galgame_producer'
+        ordering = ['name']
+        constraints = [
+            models.UniqueConstraint(fields=['info_source', 'id_source'], name='uq_galgame_producer_source')
+        ]
+        indexes = [
+            models.Index(fields=['id_source'], name='idx_galgame_producer_source'),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+class GalgameStaff(Source):
+    '''
+    GalgameStaff Model
+    - 
+
+    Fields & Properties
+    | Name  | Type  | Description   |
+    | ----- | ----- | ------------- |
+    '''
+
+    name            = models.CharField(max_length=256, blank=True)
+    aliases         = models.JSONField(default=list, blank=True)
+    gender          = models.CharField(max_length=64, blank=True)
+    description     = models.TextField(blank=True)
+    external_link   = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        db_table = 'galgame_staff'
+        ordering = ['name']
+        constraints = [
+            models.UniqueConstraint(fields=['info_source', 'id_source'], name='uq_galgame_staff_source')
+        ]
+        indexes = [
+            models.Index(fields=['id_source'], name='idx_galgame_staff_source'),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+class GalgameCharacterTrait(models.Model):
+    '''
+    GalgameCharacterTrait Model
+    - 
+
+    Fields & Properties:
+    | Name  | Type  | Description   |
+    | ----- | ----- | ------------- |
+    '''
+    
+    class Meta:
+        db_table = 'galgame_character_trait'
+
+
+class GalgameCharacter(Source):
+    '''
+    GalgameCharacter Model
+    - 
+
+    Fields & Properties:
+    | Name  | Type  | Description   |
+    | ----- | ----- | ------------- |
+    '''
+
+    class Meta:
+        db_table = 'galgame_character'
+
+
+class GalgameGenre(models.Model):
+    '''
+    GalgameGenre Model
+    - 
+
+    Fields & Properties:
+    | Name  | Type  | Description   |
+    | ----- | ----- | ------------- |
+    '''
+
+
+class Galgame(Source):
+    '''
+    Galgame Model
+    - 
+
+    Fields & Properties:
+    | Name  | Type  | Description   |
+    | ----- | ----- | ------------- |
+    '''
+
+    subject = models.OneToOneField(
+        Subject,
+        on_delete=models.CASCADE,
+        primary_key=True,
+        related_name='galgame'
+    )
+
+    aliases = ArrayField(models.CharField(max_length=256), default=list, blank=True)
+    titles = models.JSONField(default=dict, blank=True)
+    released_date = models.DateField(blank=True, null=True)
+    description = models.TextField(blank=True)
+    image_original = models.URLField(max_length=1024, blank=True)
+    image_thumbnail = models.URLField(max_length=1024, blank=True)
+    screenshots = models.URLField(max_length=1024, blank=True)
+    platforms = models.JSONField(default=list, blank=True)
+    galgame_status = models.CharField(max_length=64, blank=True)
+    external_links = models.JSONField(default=list, blank=True)
+
+    class Meta:
+        db_table = 'galgame'
+        ordering = ['-subject__date', 'subject__title']
+        constraints = [
+            models.UniqueConstraint(fields=['info_source', 'id_source'], name='uq_galgame_source')
+        ]
+        indexes = [
+            models.Index(fields=['id_source'], name='idx_galgame_staff_source'),
+            GinIndex(fields=['aliases'], name='idx_galgame_aliases')
+        ]
+
+    def __str__(self):
+        return self.subject.title
+
+
+class GalgameStaffRelationRole:
+    '''
+    GalgameStaffRelationRole Model
+    - 
+
+    Fields & Properties:
+    | Name  | Type  | Description   |
+    | ----- | ----- | ------------- |
+    '''
+
+    class Meta:
+        db_table = 'galgame_staff_relation_role'
+
+
+class GalgameStaffRelation:
+    '''
+    GalgameStaffRelation Model
+    - 
+
+    Fields & Properties:
+    | Name  | Type  | Description   |
+    | ----- | ----- | ------------- |
+    '''
+
+    class Meta:
+        db_table = 'galgame_staff_relation'
+
+
+class GalgameCharacterRelationRole:
+    '''
+    GalgameCharacterRelationRole Model
+    - 
+
+    Fields & Properties:
+    | Name  | Type  | Description   |
+    | ----- | ----- | ------------- |
+    '''
+
+    class Meta:
+        db_table = 'galgame_character_relation_role'
+
+
+class GalgameCharacterRelation:
+    '''
+    GalgameCharacterRelation Model
+    - 
+
+    Fields & Properties:
+    | Name  | Type  | Description   |
+    | ----- | ----- | ------------- |
+    '''
+
+    class Meta:
+        db_table = 'galgame_character_relation'
+
+
+class PendingUpdate(models.Model):
+    '''
+    PendingUpdate Model
+    - Represents a scheduled update or synchronization task for a Subject entity.
+
+    Fields & Properties:
+    | Name              | Type          | Description   |
+    | ----------------- | ------------- | ------------- |
+    | subject           | ForeignKey    |               |
+    | next_update_time  | DateTimeField |               |
+    | task_type         | CharField     |               |
+    | attempt_count     | IntegerField  |               |
+    | latest_log        | TextField     |               |
+    | created_at        | DateTimeField |               |
+    | updated_at        | DateTimeField |               |
+    '''
+
+    subject             = models.ForeignKey(Subject, on_delete=models.CASCADE)
+    next_update_time    = models.DateTimeField()
+    task_type           = models.CharField(max_length=64)
+    attempt_count       = models.IntegerField(default=0)
+    latest_log          = models.TextField(blank=True)
+    created_at          = models.DateTimeField(auto_now_add=True)
+    updated_at          = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'pending_update'
+        constraints = [
+            models.UniqueConstraint(fields=['subject'], name='uq_pending_update_subject')
+        ]
+        indexes = [
+            models.Index(fields=['next_update_time'])
+        ]
+    
+    def __str__(self):
+        return f'{self.subject.title} - {self.task_type} - {self.next_update_time}'
