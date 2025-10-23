@@ -174,7 +174,7 @@ class SubjectStatus(models.Model):
         ('error',   'Error'),
     ]
 
-    subject     = models.OneToOneField("Subject", on_delete=models.CASCADE, related_name="status")
+    subject     = models.OneToOneField('Subject', on_delete=models.CASCADE, related_name="status")
     severity    = models.CharField(max_length=64, choices=SEVERITY_CHOICES)
     headline    = models.CharField(max_length=256, blank=True)
     detail      = models.TextField(blank=True)
@@ -295,9 +295,9 @@ class SubjectRelation(models.Model):
     | type      | ForeignKey    |               |
     '''
 
-    source  = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='outgoing_relations')
-    target  = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='incoming_relations')
-    type    = models.ForeignKey(SubjectRelationType, on_delete=models.PROTECT)
+    source  = models.ForeignKey('Subject', on_delete=models.CASCADE, related_name='outgoing_relations')
+    target  = models.ForeignKey('Subject', on_delete=models.CASCADE, related_name='incoming_relations')
+    type    = models.ForeignKey('SubjectRelationType', on_delete=models.PROTECT)
 
     class Meta:
         db_table = 'subject_relation'
@@ -474,7 +474,7 @@ class Anime(Source):
     '''
 
     subject = models.OneToOneField(
-        Subject,
+        'Subject',
         on_delete=models.CASCADE,
         primary_key=True,
         related_name='anime'
@@ -548,9 +548,9 @@ class AnimeStaffRelation(models.Model):
     | description   | TextField     |               |
     '''
 
-    anime       = models.ForeignKey(Anime, on_delete=models.CASCADE)
-    staff       = models.ForeignKey(AnimeStaff, on_delete=models.CASCADE)
-    role        = models.ForeignKey(AnimeStaffRelationRole, on_delete=models.PROTECT)
+    anime       = models.ForeignKey('Anime', on_delete=models.CASCADE)
+    staff       = models.ForeignKey('AnimeStaff', on_delete=models.CASCADE)
+    role        = models.ForeignKey('AnimeStaffRelationRole', on_delete=models.PROTECT)
     description = models.TextField(blank=True)
 
     class Meta:
@@ -601,9 +601,9 @@ class AnimeCharacterRelation(models.Model):
     | description   | TextField     |               |
     '''
 
-    anime       = models.ForeignKey(Anime, on_delete=models.CASCADE)
-    character   = models.ForeignKey(AnimeCharacter, on_delete=models.CASCADE)
-    role        = models.ForeignKey(AnimeCharacterRelationRole, on_delete=models.PROTECT)
+    anime       = models.ForeignKey('Anime', on_delete=models.CASCADE)
+    character   = models.ForeignKey('AnimeCharacter', on_delete=models.CASCADE)
+    role        = models.ForeignKey('AnimeCharacterRelationRole', on_delete=models.PROTECT)
     description = models.TextField(blank=True)
 
     class Meta:
@@ -615,6 +615,37 @@ class AnimeCharacterRelation(models.Model):
 
     def __str__(self):
         return f'{self.anime} - {self.character} ({self.role})'
+
+
+class SeasonalAnime(models.Model):
+    '''
+    SeasonalAnime Model
+    - Represents an anime that is part of a specific season.
+    
+    Fields & Properties:
+    | Name              | Type          | Description   |
+    | ----------------- | ------------- | ------------- |
+    | anime             | OneToOneField |               |
+    | episodes          | CharField     |               |
+    | external_links    | JSONField     |               |
+    | is_web            | BooleanField  |               |
+    | broadcast_weekday | IntegerField  |               |
+    | broadcast_time    | TimeField     |               |
+    '''
+
+    anime = models.OneToOneField('Anime', on_delete=models.CASCADE)
+    episodes = models.CharField(max_length=256, blank=True)
+    external_links = models.JSONField(default=dict, blank=True)
+    is_web = models.BooleanField(default=False)
+    broadcast_weekday = models.IntegerField(blank=True, null=True)
+    broadcast_time = models.TimeField(blank=True, null=True)
+
+    class Meta:
+        db_table = 'seasonal_anime'
+        ordering = ["broadcast_weekday", "anime__subject__title"]
+
+    def __str__(self):
+        return f'{self.anime.subject.title} (Seasonal)'
 
 
 class GalgameProducer(Source):
@@ -797,7 +828,7 @@ class Galgame(Source):
     '''
 
     subject = models.OneToOneField(
-        Subject,
+        'Subject',
         on_delete=models.CASCADE,
         primary_key=True,
         related_name='galgame'
@@ -866,9 +897,9 @@ class GalgameStaffRelation(models.Model):
     | ----- | ----- | ------------- |
     '''
 
-    galgame     = models.ForeignKey(Galgame, on_delete=models.CASCADE)
-    staff       = models.ForeignKey(GalgameStaff, on_delete=models.CASCADE)
-    role        = models.ForeignKey(GalgameStaffRelationRole, on_delete=models.PROTECT)
+    galgame     = models.ForeignKey('Galgame', on_delete=models.CASCADE)
+    staff       = models.ForeignKey('GalgameStaff', on_delete=models.CASCADE)
+    role        = models.ForeignKey('GalgameStaffRelationRole', on_delete=models.PROTECT)
     description = models.TextField(blank=True)
 
     class Meta:
@@ -892,8 +923,8 @@ class GalgameCharacterRelation(models.Model):
     | ----- | ----- | ------------- |
     '''
 
-    galgame     = models.ForeignKey(Galgame, on_delete=models.CASCADE)
-    character   = models.ForeignKey(GalgameCharacter, on_delete=models.CASCADE)
+    galgame     = models.ForeignKey('Galgame', on_delete=models.CASCADE)
+    character   = models.ForeignKey('GalgameCharacter', on_delete=models.CASCADE)
     description = models.TextField(blank=True)
 
     class Meta:
@@ -924,7 +955,7 @@ class PendingUpdate(models.Model):
     | updated_at        | DateTimeField |               |
     '''
 
-    subject             = models.ForeignKey(Subject, on_delete=models.CASCADE)
+    subject             = models.ForeignKey('Subject', on_delete=models.CASCADE)
     next_update_time    = models.DateTimeField()
     task_type           = models.CharField(max_length=64)
     attempt_count       = models.IntegerField(default=0)

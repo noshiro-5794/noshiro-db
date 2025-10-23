@@ -1,2 +1,2 @@
-# noshiro_db_backend
+# noshiro-db-backend
 The backend of Noshiro‘s Database and Wiki
