@@ -36,7 +36,7 @@ INSTALLED_APPS = [
 
     "users",
     "index",
-    "wiki",
+    "sync",
 ]
 
 MIDDLEWARE = [
