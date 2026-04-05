@@ -133,7 +133,7 @@ class Subject(Source):
         ]
 
     def __str__(self):
-        return f'[{self.subject_type}] {self.title or "Untitled"} ({self.date or self.ambiguous_date or "Unknown"})'
+        return f'[{self.subject_type}] {self.title or "Untitled"} ({self.date or "Unknown"})'
 
 
 class SubjectStaffRelation(models.Model):
@@ -144,6 +144,15 @@ class SubjectStaffRelation(models.Model):
 
     class Meta:
         db_table = 'subject_staff_relation'
+        constraints = [
+            models.UniqueConstraint(
+                fields=["subject", "staff", "role"],
+                name="uq_subject_staff_role"
+            )
+        ]
+        indexes = [
+            models.Index(fields=["subject", "role"], name="idx_subj_stf_sr"),
+        ]
 
     def __str__(self):
         return f'{self.subject} - {self.staff} ({self.role})'
@@ -157,6 +166,15 @@ class SubjectCharacterRelation(models.Model):
 
     class Meta:
         db_table = 'subject_character_relation'
+        constraints = [
+            models.UniqueConstraint(
+                fields=["subject", "character", "role"],
+                name="uq_subject_character_role"
+            )
+        ]
+        indexes = [
+            models.Index(fields=["subject", "role"], name="idx_subj_char_sr"),
+        ]
 
     def __str__(self):
         return f'{self.subject} - {self.character} ({self.role})'
@@ -176,6 +194,13 @@ class SubjectCharacterActorRelation(models.Model):
                 name="uq_subject_character_actor"
             )
         ]
+        indexes = [
+            models.Index(fields=["subject", "character"], name="idx_subj_char_act_sc"),
+            models.Index(fields=["character", "actor"], name="idx_subj_char_act_ca"),
+        ]
+
+    def __str__(self):
+        return f'{self.subject} - {self.character} ({self.actor})'
 
 
 class SubjectSubjectRelation(models.Model):
@@ -193,8 +218,8 @@ class SubjectSubjectRelation(models.Model):
             )
         ]
         indexes = [
-            models.Index(fields=['source'], name='idx_subject_subject_relation_source'),
-            models.Index(fields=['target'], name='idx_subject_subject_relation_target'),
+            models.Index(fields=["source", "relation"], name="idx_subj_subj_sr"),
+            models.Index(fields=["target"], name="idx_subj_subj_t"),
         ]
 
     def __str__(self):
@@ -298,3 +323,6 @@ class GalgameGenreRelation(models.Model):
     class Meta:
         db_table = "galgame_genre_relation"
         unique_together = ("galgame", "genre")
+
+    def __str__(self):
+        return self.genre

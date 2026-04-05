@@ -7,7 +7,7 @@ class NameMapping(models.Model):
     internal_name   = models.CharField(max_length=256)
 
     class Meta:
-        db_table = 'name_mapping'
+        db_table = "name_mapping"
         constraints = [
             models.UniqueConstraint(fields=["external_name"], name="uq_name_mapping"),
         ]
@@ -21,58 +21,43 @@ class NameMapping(models.Model):
 
 class SyncState(models.Model):
 
-    SOURCE_CHOICES = [
-        ("bangumi", "Bangumi"),
-        ("mal",     "MyAnimeList"),
-        ("vndb",    "VNDB"),
-    ]
-
-    STATUS_CHOICES = [
-        ("pending", "Pending"),
-        ("success", "Success"),
-        ("failed",  "Failed"),
-    ]
-
-    source = models.CharField(max_length=64, choices=SOURCE_CHOICES)
-    entity_type = models.CharField(max_length=64)
-    external_id = models.CharField(max_length=64)
-    status = models.CharField(max_length=64, choices=STATUS_CHOICES, default="pending")
-    last_synced = models.DateTimeField(null=True, blank=True)
-    error_message = models.TextField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    task_name   = models.CharField(max_length=256)
+    shard       = models.CharField(max_length=256)
+    current_id  = models.IntegerField(default=0)
+    end_id      = models.IntegerField()
+    status      = models.CharField(max_length=256, default="running")
+    fail_count  = models.IntegerField(default=0)
+    updated_at  = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'sync_state'
-        indexes = [
-            models.Index(fields=["source", "entity_type"]),
-            models.Index(fields=["status"]),
-            models.Index(fields=["updated_at"]),
-        ]
-
-    def __str__(self):
-        return f"{self.source}:{self.entity_type}:{self.external_id} [{self.status}]"
-
-class GenreMapping(models.Model):
-
-    SOURCE_CHOICES = [
-        ("bangumi", "Bangumi"),
-        ("mal", "MyAnimeList"),
-        ("vndb", "VNDB"),
-    ]
-
-    source = models.CharField(max_length=64, choices=SOURCE_CHOICES)
-    external_genre = models.CharField(max_length=256)
-    internal_genre = models.CharField(max_length=256)
-
-    class Meta:
-        db_table = 'genre_mapping'
+        db_table = "sync_state"
         constraints = [
-            models.UniqueConstraint(fields=["source", "external_genre"], name="uq_genre_mapping_external"),
+            models.UniqueConstraint(fields=["task_name", "shard"], name="uq_name_shard")
         ]
         indexes = [
-            models.Index(fields=["source", "external_genre"], name="idx_genre_mapping_external"),
+            models.Index(fields=["task_name", "shard"], name="idx_name_shard")
         ]
 
     def __str__(self):
-        return f"{self.source}: {self.external_genre} -> {self.internal_genre}"
+        return f"{self.task_name}:{self.current_id} [{self.status}]"
+
+
+class SyncError(models.Model):
+
+    task_name           = models.CharField(max_length=256)
+    entity_id           = models.IntegerField()
+    retry_count         = models.IntegerField(default=1)
+    first_occurred_at   = models.DateTimeField(auto_now_add=True)
+    last_occurred_at    = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "sync_error"
+        constraints = [
+            models.UniqueConstraint(fields=["task_name", "entity_id"], name="uq_name_id")
+        ]
+        indexes = [
+            models.Index(fields=["task_name", "entity_id"], name="idx_name_id"),
+        ]
+
+    def __str__(self):
+        return f"{self.task_name}:{self.entity_id}"

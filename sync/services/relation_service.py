@@ -26,12 +26,23 @@ class RelationService:
     CHARACTER_SOURCE_INFO = "bangumi_character"
     EPISODE_SOURCE_INFO = "bangumi_episode"
 
-    def upsert_subject_relation(self, bangumi_id: int) -> None:
+    def sync_all_relations(self, bangumi_id: int) -> dict:
+        subject_ids = self.upsert_subject_relation(bangumi_id)
+        staff_ids = self.upsert_staff_relation(bangumi_id)
+        char_data = self.upsert_character_relation(bangumi_id)
+
+        return {
+            "subjects": subject_ids,
+            "staffs": staff_ids.union(char_data["actors"]),
+            "characters": char_data["characters"],
+        }
+
+    def upsert_subject_relation(self, bangumi_id: int) -> set[str]:
         data = bangumi_client.fetch_subject_subjects(bangumi_id)
         if not isinstance(data, list):
-            return
+            return set()
 
-        source = subject_service.provide_subject(str(bangumi_id))
+        source = subject_service.provide_subject(bangumi_id)
         target_ids = {
             str(item.get("id"))
             for item in data
@@ -76,12 +87,14 @@ class RelationService:
                     q |= Q(target_id=target_id, relation=relation)
                 SubjectSubjectRelation.objects.filter(source=source).filter(q).delete()
 
-    def upsert_staff_relation(self, bangumi_id: int) -> None:
+        return target_ids
+
+    def upsert_staff_relation(self, bangumi_id: int) -> set[str]:
         data = bangumi_client.fetch_subject_persons(bangumi_id)
         if not isinstance(data, list):
-            return
+            return set()
 
-        subject = subject_service.provide_subject(str(bangumi_id))
+        subject = subject_service.provide_subject(bangumi_id)
         staff_ids = {
             str(item.get("id"))
             for item in data
@@ -129,12 +142,14 @@ class RelationService:
                     q |= Q(staff_id=staff_id, role=role)
                 SubjectStaffRelation.objects.filter(subject=subject).filter(q).delete()
 
-    def upsert_character_relation(self, bangumi_id: int):
+        return staff_ids
+
+    def upsert_character_relation(self, bangumi_id: int) -> dict:
         data = bangumi_client.fetch_subject_characters(bangumi_id)
         if not isinstance(data, list):
-            return
+            return dict()
 
-        subject = subject_service.provide_subject(str(bangumi_id))
+        subject = subject_service.provide_subject(bangumi_id)
         character_ids = {
             str(item.get("id"))
             for item in data
@@ -218,9 +233,11 @@ class RelationService:
                 SubjectCharacterActorRelation.objects.bulk_create(
                     [
                         SubjectCharacterActorRelation(
-                            subject=subject, character_id=character_id, actor_id=actor_id
+                            subject=subject,
+                            character_id=character_id,
+                            actor_id=actor_id,
                         )
-                        for char_id, actor_id in to_create_actor
+                        for character_id, actor_id in to_create_actor
                     ],
                     ignore_conflicts=True,
                 )
@@ -228,7 +245,11 @@ class RelationService:
                 q = Q()
                 for character_id, actor_id in to_delete_actor:
                     q |= Q(character_id=character_id, actor_id=actor_id)
-                SubjectCharacterActorRelation.objects.filter(subject=subject).filter(q).delete()
+                SubjectCharacterActorRelation.objects.filter(subject=subject).filter(
+                    q
+                ).delete()
+
+        return {"characters": character_ids, "actors": actor_ids}
 
     def _map_subjects(self, ids: set[str]) -> dict[str, Subject]:
         if not ids:
