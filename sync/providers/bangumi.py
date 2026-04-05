@@ -15,10 +15,11 @@ class BangumiClient:
         self.client = httpx.Client(
             headers={
                 "Accept": "application/json",
-                "Authorization": f"Bearer {os.getenv('BGM_API_TOKEN')}",
+                "Authorization": f"Bearer {os.getenv('BGM_API_KEY')}",
                 "User-Agent": "Noshiro_5794/noshiro_db (https://github.com/LHYHENRY/noshiro_db_backend)",
             },
             timeout=30.0,
+            follow_redirects=True,
         )
 
     def fetch_calendar(self) -> dict:

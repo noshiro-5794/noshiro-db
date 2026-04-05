@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 from django.db import transaction, IntegrityError
 
 from index.models import Subject
@@ -100,7 +100,7 @@ class SubjectService:
         title_cn = data.get("name_cn")
         return title_cn.strip() if isinstance(title_cn, str) else ""
 
-    def _parse_subject_date(self, data: dict) -> datetime.date | None:
+    def _parse_subject_date(self, data: dict) -> date | None:
         fmt = "%Y-%m-%d"
         value = data.get("date")
         if not isinstance(value, str):
