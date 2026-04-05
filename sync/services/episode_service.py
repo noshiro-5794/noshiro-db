@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta
 from django.db import transaction
 
 from index.models import Subject, Episode
@@ -11,7 +11,7 @@ class EpisodeService:
     INFO_SOURCE = "bangumi_episode"
 
     def sync_subject_episodes(self, bangumi_id: int) -> None:
-        subject = subject_service.provide_subject(str(bangumi_id))
+        subject = subject_service.provide_subject(bangumi_id)
         limit = 100
         offset = 0
         while True:
@@ -136,7 +136,7 @@ class EpisodeService:
             return None
         return timedelta(seconds=duration)
 
-    def _parse_episode_air_date(self, data: dict) -> datetime.date | None:
+    def _parse_episode_air_date(self, data: dict) -> date | None:
         fmt = "%Y-%m-%d"
         value = data.get("airdate")
         if not isinstance(value, str):
