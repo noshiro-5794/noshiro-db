@@ -1,16 +1,10 @@
-import os
+from typing import Any
+
 import httpx
-
-from dotenv import load_dotenv
-
-
-load_dotenv()
+from django.conf import settings
 
 
 class AIClient:
-
-    BASE_URL = "https://api.siliconflow.cn/v1/chat/completions"
-    MODEL = "Pro/zai-org/GLM-4.7"
 
     NAME_SYSTEM_PROMPT = """
 You are an anime metadata normalization system.
@@ -44,23 +38,38 @@ director -> 監督
 
 seiyuu -> 声優
 voice actor -> 声優
-"""
+""".strip()
 
     def __init__(self) -> None:
+        if not settings.AI_AGENT_API_KEY:
+            raise RuntimeError("AI_AGENT_API_KEY is not configured.")
         self.client = httpx.Client(
             headers={
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {os.getenv('SILICONFLOW_API_KEY')}",
+                "Authorization": f"Bearer {settings.AI_AGENT_API_KEY}",
             },
-            timeout=30.0,
+            timeout=settings.AI_AGENT_TIMEOUT,
         )
 
-    def _request(self, messages) -> str:
-        payload = {"model": self.MODEL, "messages": messages}
-        resp = self.client.post(self.BASE_URL, json=payload)
-        resp.raise_for_status()
-        data = resp.json()
-        result = data["choices"][0]["message"]["content"]
+    def _request(self, messages: list[dict[str, str]]) -> str:
+        payload: dict[str, Any] = {
+            "model": settings.AI_AGENT_MODEL,
+            "messages": messages,
+        }
+        try:
+            response = self.client.post(settings.AI_AGENT_API_BASE_URL, json=payload)
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            raise RuntimeError(
+                f"AI Agent API returned {exc.response.status_code}: {exc.response.text}"
+            ) from exc
+        except httpx.RequestError as exc:
+            raise RuntimeError(f"AI Agent API request failed: {exc}") from exc
+        data = response.json()
+        try:
+            result = data["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, TypeError) as exc:
+            raise RuntimeError(f"Invalid AI Agent API response: {data}") from exc
         return result.strip() if isinstance(result, str) else ""
 
     def normalize_name(self, name: str) -> str:
@@ -69,6 +78,9 @@ voice actor -> 声優
             {"role": "user", "content": name},
         ]
         return self._request(messages)
+
+    def close(self) -> None:
+        self.client.close()
 
 
 ai_client = AIClient()

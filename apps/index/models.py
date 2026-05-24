@@ -87,24 +87,18 @@ class Episode(Source):
 
 class Subject(Source):
 
-    id = models.UUIDField(
-        primary_key=True,
-        default=uuid.uuid4,
-        editable=False
-    )
+    class SubjectType(models.TextChoices):
+        ANIME   = "anime", "Anime"
+        GALGAME = "galgame", "Galgame"
+        GAME    = "game", "Game"
+        MANGA   = "manga", "Manga"
+        NOVEL   = "novel", "Novel"
+        BOOK    = "book", "Book"
+        MUSIC   = "music", "Music"
+        OTHER   = "other", "Other"
 
-    SUBJECT_TYPES = [
-        ('anime',   'Anime'),
-        ('galgame', 'Galgame'),
-        ('game',    'Game'),
-        ('manga',   'Manga'),
-        ('novel',   'Novel'),
-        ('book',    'Book'),
-        ('music',   'Music'),
-        ('other',   'Other'),
-    ]
-
-    subject_type    = models.CharField(max_length=64, choices=SUBJECT_TYPES, blank=True)
+    id              = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    subject_type    = models.CharField(max_length=64, choices=SubjectType.choices, blank=True)
     title           = models.CharField(max_length=256, blank=True)
     title_cn        = models.CharField(max_length=256, blank=True)
     date            = models.DateField(blank=True, null=True)
@@ -138,9 +132,13 @@ class Subject(Source):
 
 class SubjectStaffRelation(models.Model):
 
-    subject     = models.ForeignKey('Subject', on_delete=models.CASCADE, related_name='staff_relations')
-    staff       = models.ForeignKey('Staff', on_delete=models.CASCADE, related_name='subject_relations')
-    role        = models.CharField(max_length=256, blank=True)
+    subject = models.ForeignKey(
+        "Subject", on_delete=models.CASCADE, related_name="staff_relations"
+    )
+    staff = models.ForeignKey(
+        "Staff", on_delete=models.CASCADE, related_name="subject_relations"
+    )
+    role = models.CharField(max_length=256, blank=True)
 
     class Meta:
         db_table = 'subject_staff_relation'
@@ -160,9 +158,13 @@ class SubjectStaffRelation(models.Model):
 
 class SubjectCharacterRelation(models.Model):
 
-    subject     = models.ForeignKey('Subject', on_delete=models.CASCADE, related_name='character_relations')
-    character   = models.ForeignKey('Character', on_delete=models.CASCADE, related_name='subject_relations')
-    role        = models.CharField(max_length=256, blank=True)
+    subject = models.ForeignKey(
+        "Subject", on_delete=models.CASCADE, related_name="character_relations"
+    )
+    character = models.ForeignKey(
+        "Character", on_delete=models.CASCADE, related_name="subject_relations"
+    )
+    role = models.CharField(max_length=256, blank=True)
 
     class Meta:
         db_table = 'subject_character_relation'
@@ -182,9 +184,15 @@ class SubjectCharacterRelation(models.Model):
 
 class SubjectCharacterActorRelation(models.Model):
 
-    subject     = models.ForeignKey('Subject', on_delete=models.CASCADE, related_name='character_actor_relations')
-    character   = models.ForeignKey('Character', on_delete=models.CASCADE, related_name='actor_relations')
-    actor       = models.ForeignKey('Staff', on_delete=models.CASCADE, related_name='voice_roles')
+    subject = models.ForeignKey(
+        "Subject", on_delete=models.CASCADE, related_name="character_actor_relations"
+    )
+    character = models.ForeignKey(
+        "Character", on_delete=models.CASCADE, related_name="actor_relations"
+    )
+    actor = models.ForeignKey(
+        "Staff", on_delete=models.CASCADE, related_name="voice_roles"
+    )
 
     class Meta:
         db_table = "subject_character_actor_relation"
@@ -205,9 +213,13 @@ class SubjectCharacterActorRelation(models.Model):
 
 class SubjectSubjectRelation(models.Model):
 
-    source      = models.ForeignKey('Subject', on_delete=models.CASCADE, related_name='outgoing_relations')
-    target      = models.ForeignKey('Subject', on_delete=models.CASCADE, related_name='incoming_relations')
-    relation    = models.CharField(max_length=256, blank=True)
+    source = models.ForeignKey(
+        "Subject", on_delete=models.CASCADE, related_name="outgoing_relations"
+    )
+    target = models.ForeignKey(
+        "Subject", on_delete=models.CASCADE, related_name="incoming_relations"
+    )
+    relation = models.CharField(max_length=256, blank=True)
 
     class Meta:
         db_table = 'subject_subject_relation'
@@ -240,10 +252,7 @@ class Genre(models.Model):
 class Anime(Source):
 
     subject = models.OneToOneField(
-        'Subject',
-        on_delete=models.CASCADE,
-        primary_key=True,
-        related_name='anime'
+        "Subject", on_delete=models.CASCADE, primary_key=True, related_name="anime"
     )
 
     aliases             = ArrayField(models.CharField(max_length=256), default=list, blank=True)
@@ -276,8 +285,12 @@ class Anime(Source):
 
 class AnimeGenreRelation(models.Model):
 
-    anime   = models.ForeignKey("Anime", on_delete=models.CASCADE, related_name="genre_relations")
-    genre   = models.ForeignKey("Genre", on_delete=models.CASCADE,related_name="anime_relations")
+    anime = models.ForeignKey(
+        "Anime", on_delete=models.CASCADE, related_name="genre_relations"
+    )
+    genre = models.ForeignKey(
+        "Genre", on_delete=models.CASCADE, related_name="anime_relations"
+    )
 
     class Meta:
         db_table = "anime_genre_relation"
@@ -287,10 +300,7 @@ class AnimeGenreRelation(models.Model):
 class Galgame(Source):
 
     subject = models.OneToOneField(
-        'Subject',
-        on_delete=models.CASCADE,
-        primary_key=True,
-        related_name='galgame'
+        "Subject", on_delete=models.CASCADE, primary_key=True, related_name="galgame"
     )
 
     aliases         = ArrayField(models.CharField(max_length=256), default=list, blank=True)
@@ -317,8 +327,12 @@ class Galgame(Source):
 
 class GalgameGenreRelation(models.Model):
 
-    galgame = models.ForeignKey("Galgame", on_delete=models.CASCADE, related_name="genre_relations")
-    genre   = models.ForeignKey("Genre", on_delete=models.CASCADE, related_name="galgame_relations")
+    galgame = models.ForeignKey(
+        "Galgame", on_delete=models.CASCADE, related_name="genre_relations"
+    )
+    genre = models.ForeignKey(
+        "Genre", on_delete=models.CASCADE, related_name="galgame_relations"
+    )
 
     class Meta:
         db_table = "galgame_genre_relation"
