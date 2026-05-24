@@ -41,3 +41,69 @@ class UserNotFound(UserException):
 
     default_code = 11201
     default_detail = "user not found"
+
+
+class CannotFollowSelf(UserException):
+
+    default_code = 11202
+    default_detail = "can not follow yourself"
+
+
+class FollowRelationNotFound(UserException):
+
+    default_code = 11203
+    default_detail = "follow relation not found"
+
+
+class AvatarUploadFailed(UserException):
+
+    default_code = 12000
+    default_detail = "avatar upload failed"
+
+
+class UserSubjectNotFound(UserException):
+
+    default_code = 12100
+    default_detail = "user subject not found"
+
+
+class TagNotFound(UserException):
+
+    default_code = 12200
+    default_detail = "tag not found"
+
+
+class TagAlreadyExists(UserException):
+
+    default_code = 12201
+    default_detail = "tag already exists"
+
+
+class InvalidTagIds(UserException):
+
+    default_code = 12202
+    default_detail = "invalid tag ids"
+
+
+class ReviewNotFound(UserException):
+
+    default_code = 12300
+    default_detail = "review not found"
+
+
+class CollectionNotFound(UserException):
+
+    default_code = 12400
+    default_detail = "collection not found"
+
+
+class CollectionItemNotFound(UserException):
+
+    default_code = 12401
+    default_detail = "collection item not found"
+
+
+class InvalidUserSubjectIds(UserException):
+
+    default_code = 12402
+    default_detail = "invalid user subject ids"

@@ -17,6 +17,7 @@ class VerificationService:
 
     CODE_EXPIRE_SECONDS = 300
     SEND_INTERVAL_SECONDS = 60
+    MAX_VERIFY_ATTEMPTS = 5
 
     @staticmethod
     def _generate_code() -> str:
@@ -62,9 +63,11 @@ class VerificationService:
         return verification
 
     @classmethod
+    @transaction.atomic
     def verify_code(cls, *, email: str, purpose: str, code: str) -> EmailVerification:
         verification = (
-            EmailVerification.objects.filter(
+            EmailVerification.objects.select_for_update()
+            .filter(
                 email=email, purpose=purpose, is_used=False
             )
             .order_by("-created_at")
@@ -72,9 +75,13 @@ class VerificationService:
         )
         if not verification:
             raise InvalidVerifyCode()
+        if verification.attempts >= cls.MAX_VERIFY_ATTEMPTS:
+            raise InvalidVerifyCode()
         if verification.expire_at < timezone.now():
             raise VerifyCodeExpired()
         if verification.code != code:
+            verification.attempts += 1
+            verification.save(update_fields=["attempts"])
             raise InvalidVerifyCode()
         return verification
 
