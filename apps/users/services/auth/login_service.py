@@ -1,4 +1,5 @@
 from django.contrib.auth import authenticate
+from django.db import transaction
 
 from apps.users.models import User, EmailVerification
 from apps.users.exceptions import InvalidEmailOrPassword, UserNotFound
@@ -15,6 +16,7 @@ class LoginService:
         return user
 
     @classmethod
+    @transaction.atomic
     def code_login(cls, *, email: str, code: str) -> User:
         verification = VerificationService.verify_code(
             email=email, purpose=EmailVerification.Purpose.LOGIN, code=code

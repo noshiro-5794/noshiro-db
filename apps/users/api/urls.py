@@ -1,19 +1,267 @@
 from django.urls import path
-from rest_framework_simplejwt.views import TokenRefreshView
 
-from apps.users.api.views import (
-    SendCodeView,
-    RegisterView,
-    PasswordLoginView,
+from apps.users.api.views.auth_view import (
     CodeLoginView,
+    CookieTokenRefreshView,
+    LogoutView,
+    PasswordLoginView,
+    RegisterView,
     ResetPasswordView,
+    SendCodeView,
+)
+from apps.users.api.views.profile_view import (
+    MyAvatarUploadView,
+    MyProfileView,
+)
+from apps.users.api.views.subject_view import (
+    MySubjectContextView,
+    MyUserSubjectDetailView,
+    MyUserSubjectListCreateView,
+)
+from apps.users.api.views.progress_view import (
+    MySubjectEpisodeProgressView,
+    MySubjectEpisodeProgressItemView,
+)
+from apps.users.api.views.tag_view import (
+    MySubjectTagView,
+    MyUserTagListCreateView,
+    MyUserTagDetailView,
+    MyUserSubjectTagView,
+)
+from apps.users.api.views.rating_detail_view import (
+    MySubjectRatingDetailView,
+    MyUserSubjectRatingDetailView,
+)
+from apps.users.api.views.review_view import (
+    MyReviewListView,
+    MySubjectReviewListCreateView,
+    MyUserSubjectReviewCreateView,
+    MyReviewDetailView,
+)
+from apps.users.api.views.collection_view import (
+    MyCollectionListCreateView,
+    MyCollectionDetailView,
+    MyCollectionItemListCreateReplaceView,
+    MyCollectionItemDetailView,
+)
+from apps.users.api.views.follow_view import (
+    MyFollowToggleView,
+    MyFollowingListView,
+    MyFollowerListView,
+    UserFollowingListView,
+    UserFollowerListView,
+)
+from apps.users.api.views.public_profile_view import (
+    PublicUserProfileView,
+    PublicUserSubjectListView,
+    PublicUserReviewListView,
+    PublicUserCollectionListView,
+)
+from apps.users.api.views.activity_view import (
+    MyActivityListView,
+    PublicUserActivityListView,
+    MyFeedView,
 )
 
 urlpatterns = [
-    path("send-code/", SendCodeView.as_view(), name="send-code"),
-    path("register/", RegisterView.as_view(), name="register"),
-    path("login/password/", PasswordLoginView.as_view(), name="password-login"),
-    path("login/code/", CodeLoginView.as_view(), name="code-login"),
-    path("password/reset/", ResetPasswordView.as_view(), name="reset-password"),
-    path("token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
+    path(
+        "send-code/",
+        SendCodeView.as_view(),
+        name="send-code",
+    ),
+    path(
+        "register/",
+        RegisterView.as_view(),
+        name="register",
+    ),
+    path(
+        "login/password/",
+        PasswordLoginView.as_view(),
+        name="password-login",
+    ),
+    path(
+        "login/code/",
+        CodeLoginView.as_view(),
+        name="code-login",
+    ),
+    path(
+        "password/reset/",
+        ResetPasswordView.as_view(),
+        name="reset-password",
+    ),
+    path(
+        "token/refresh/",
+        CookieTokenRefreshView.as_view(),
+        name="token-refresh",
+    ),
+    path(
+        "logout/",
+        LogoutView.as_view(),
+        name="logout",
+    ),
+    path(
+        "me/profile/",
+        MyProfileView.as_view(),
+        name="my-profile",
+    ),
+    path(
+        "me/avatar/",
+        MyAvatarUploadView.as_view(),
+        name="my-avatar-upload",
+    ),
+    path(
+        "me/subjects/",
+        MyUserSubjectListCreateView.as_view(),
+        name="my-subject-list-create",
+    ),
+    path(
+        "me/subjects/<int:user_subject_id>/",
+        MyUserSubjectDetailView.as_view(),
+        name="my-subject-detail",
+    ),
+    path(
+        "me/subjects/<uuid:subject_id>/context/",
+        MySubjectContextView.as_view(),
+        name="my-subject-context",
+    ),
+    path(
+        "me/subjects/<uuid:subject_id>/episodes/progress/",
+        MySubjectEpisodeProgressView.as_view(),
+        name="my-subject-episode-progress",
+    ),
+    path(
+        "me/subjects/<uuid:subject_id>/episodes/<int:episode_id>/progress/",
+        MySubjectEpisodeProgressItemView.as_view(),
+        name="my-subject-episode-progress-item",
+    ),
+    path(
+        "me/tags/",
+        MyUserTagListCreateView.as_view(),
+        name="my-tag-list-create",
+    ),
+    path(
+        "me/tags/<int:tag_id>/",
+        MyUserTagDetailView.as_view(),
+        name="my-tag-detail",
+    ),
+    path(
+        "me/subjects/<int:user_subject_id>/tags/",
+        MyUserSubjectTagView.as_view(),
+        name="my-user-subject-tags",
+    ),
+    path(
+        "me/subjects/<uuid:subject_id>/tags/",
+        MySubjectTagView.as_view(),
+        name="my-subject-tags",
+    ),
+    path(
+        "me/subjects/<int:user_subject_id>/rating-details/",
+        MyUserSubjectRatingDetailView.as_view(),
+        name="my-user-subject-rating-details",
+    ),
+    path(
+        "me/subjects/<uuid:subject_id>/rating-details/",
+        MySubjectRatingDetailView.as_view(),
+        name="my-subject-rating-details",
+    ),
+    path(
+        "me/reviews/",
+        MyReviewListView.as_view(),
+        name="my-review-list",
+    ),
+    path(
+        "me/subjects/<int:user_subject_id>/reviews/",
+        MyUserSubjectReviewCreateView.as_view(),
+        name="my-user-subject-review-create",
+    ),
+    path(
+        "me/subjects/<uuid:subject_id>/reviews/",
+        MySubjectReviewListCreateView.as_view(),
+        name="my-subject-review-list-create",
+    ),
+    path(
+        "me/reviews/<int:review_id>/",
+        MyReviewDetailView.as_view(),
+        name="my-review-detail",
+    ),
+    path(
+        "me/collections/",
+        MyCollectionListCreateView.as_view(),
+        name="my-collection-list-create",
+    ),
+    path(
+        "me/collections/<int:collection_id>/",
+        MyCollectionDetailView.as_view(),
+        name="my-collection-detail",
+    ),
+    path(
+        "me/collections/<int:collection_id>/items/",
+        MyCollectionItemListCreateReplaceView.as_view(),
+        name="my-collection-item-list-create-replace",
+    ),
+    path(
+        "me/collections/<int:collection_id>/items/<int:item_id>/",
+        MyCollectionItemDetailView.as_view(),
+        name="my-collection-item-detail",
+    ),
+    path(
+        "me/following/<int:target_user_id>/",
+        MyFollowToggleView.as_view(),
+        name="my-follow-toggle",
+    ),
+    path(
+        "me/following/",
+        MyFollowingListView.as_view(),
+        name="my-following-list",
+    ),
+    path(
+        "me/followers/",
+        MyFollowerListView.as_view(),
+        name="my-follower-list",
+    ),
+    path(
+        "<int:user_id>/following/",
+        UserFollowingListView.as_view(),
+        name="user-following-list",
+    ),
+    path(
+        "<int:user_id>/followers/",
+        UserFollowerListView.as_view(),
+        name="user-follower-list",
+    ),
+    path(
+        "<int:user_id>/profile/",
+        PublicUserProfileView.as_view(),
+        name="public-user-profile",
+    ),
+    path(
+        "<int:user_id>/subjects/",
+        PublicUserSubjectListView.as_view(),
+        name="public-user-subject-list",
+    ),
+    path(
+        "<int:user_id>/reviews/",
+        PublicUserReviewListView.as_view(),
+        name="public-user-review-list",
+    ),
+    path(
+        "<int:user_id>/collections/",
+        PublicUserCollectionListView.as_view(),
+        name="public-user-collection-list",
+    ),
+    path(
+        "me/activities/",
+        MyActivityListView.as_view(),
+        name="my-activity-list",
+    ),
+    path(
+        "me/feed/",
+        MyFeedView.as_view(),
+        name="my-feed",
+    ),
+    path(
+        "<int:user_id>/activities/",
+        PublicUserActivityListView.as_view(),
+        name="public-user-activity-list",
+    ),
 ]
