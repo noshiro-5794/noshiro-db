@@ -29,10 +29,10 @@ class UserManager(BaseUserManager):
 
 class User(AbstractUser):
 
-    username            = None
-    email               = models.EmailField(unique=True)
-    is_email_verified   = models.BooleanField(default=False)
-    created_at          = models.DateTimeField(auto_now_add=True)
+    username = None
+    email = models.EmailField(unique=True)
+    is_email_verified = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
@@ -51,10 +51,12 @@ class User(AbstractUser):
 
 class UserProfile(models.Model):
 
-    user        = models.OneToOneField("users.User", on_delete=models.CASCADE, related_name="profile")
-    nickname    = models.CharField(max_length=256, unique=True)
-    avatar      = models.URLField(max_length=1024, blank=True)
-    bio         = models.TextField(blank=True)
+    user = models.OneToOneField(
+        "users.User", on_delete=models.CASCADE, related_name="profile"
+    )
+    nickname = models.CharField(max_length=256, unique=True)
+    avatar = models.URLField(max_length=1024, blank=True)
+    bio = models.TextField(blank=True)
     theme_color = models.CharField(max_length=16, blank=True)
 
     class Meta:
@@ -69,23 +71,30 @@ class UserProfile(models.Model):
 
 class UserFollow(models.Model):
 
-    follower    = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="following_relations")
-    following   = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="follower_relations")
+    follower = models.ForeignKey(
+        "users.User", on_delete=models.CASCADE, related_name="following_relations"
+    )
+    following = models.ForeignKey(
+        "users.User", on_delete=models.CASCADE, related_name="follower_relations"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = "user_follow"
         constraints = [
-            models.UniqueConstraint(
-                fields=["follower", "following"], name="uq_follow"
-            ),
+            models.UniqueConstraint(fields=["follower", "following"], name="uq_follow"),
             models.CheckConstraint(
                 condition=~Q(follower=models.F("following")),
                 name="ck_no_self_follow",
             ),
         ]
         indexes = [
-            models.Index(fields=["follower"], name="idx_user_follower"),
-            models.Index(fields=["following"], name="idx_user_following"),
+            models.Index(
+                fields=["follower", "-created_at"], name="idx_uf_follower_created"
+            ),
+            models.Index(
+                fields=["following", "-created_at"], name="idx_uf_following_created"
+            ),
         ]
 
     def __str__(self):
@@ -95,17 +104,17 @@ class UserFollow(models.Model):
 class EmailVerification(models.Model):
 
     class Purpose(models.TextChoices):
-        REGISTER        = "register", "Register"
-        LOGIN           = "login", "Login"
-        RESET_PASSWORD  = "reset_password", "Reset Password"
+        REGISTER = "register", "Register"
+        LOGIN = "login", "Login"
+        RESET_PASSWORD = "reset_password", "Reset Password"
 
-    email       = models.EmailField()
-    code        = models.CharField(max_length=6)
-    purpose     = models.CharField(max_length=16, choices=Purpose.choices)
-    is_used     = models.BooleanField(default=False)
-    attempts    = models.IntegerField(default=0)
-    expire_at   = models.DateTimeField()
-    created_at  = models.DateTimeField(auto_now_add=True)
+    email = models.EmailField()
+    code = models.CharField(max_length=6)
+    purpose = models.CharField(max_length=16, choices=Purpose.choices)
+    is_used = models.BooleanField(default=False)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    expire_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = "email_verification"
@@ -118,36 +127,40 @@ class EmailVerification(models.Model):
 class UserSubject(models.Model):
 
     class Status(models.TextChoices):
-        DOING   = "doing", "Doing"
-        WISH    = "wish", "Wish"
-        DONE    = "done", "Done"
+        DOING = "doing", "Doing"
+        WISH = "wish", "Wish"
+        DONE = "done", "Done"
         ON_HOLD = "on_hold", "On Hold"
-        DROP    = "drop", "Drop"
+        DROP = "drop", "Drop"
 
-    user                = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="subjects")
-    subject             = models.ForeignKey("index.Subject", on_delete=models.CASCADE, related_name="users")
-    status              = models.CharField(max_length=16, choices=Status.choices)
-    simple_rating       = models.PositiveSmallIntegerField(null=True, blank=True)
-    rating              = models.DecimalField(max_digits=3, decimal_places=1, null=True, blank=True)
-    comment             = models.TextField(blank=True)
-    watch_start_date    = models.CharField(max_length=16, blank=True)
-    watch_end_date      = models.CharField(max_length=16, blank=True)
-    is_public           = models.BooleanField(default=True)
-    created_at          = models.DateTimeField(auto_now_add=True)
-    updated_at          = models.DateTimeField(auto_now=True)
+    user = models.ForeignKey(
+        "users.User", on_delete=models.CASCADE, related_name="subjects"
+    )
+    subject = models.ForeignKey(
+        "index.Subject", on_delete=models.CASCADE, related_name="users"
+    )
+    status = models.CharField(max_length=16, choices=Status.choices)
+    simple_rating = models.PositiveSmallIntegerField(null=True, blank=True)
+    rating = models.DecimalField(max_digits=3, decimal_places=1, null=True, blank=True)
+    comment = models.TextField(blank=True)
+    watch_start_date = models.CharField(max_length=16, blank=True)
+    watch_end_date = models.CharField(max_length=16, blank=True)
+    is_public = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = "user_subject"
         constraints = [
-            models.UniqueConstraint(
-                fields=["user", "subject"], name="uq_user_subject"
-            ),
+            models.UniqueConstraint(fields=["user", "subject"], name="uq_user_subject"),
             models.CheckConstraint(
-                condition=Q(simple_rating__gte=1) & Q(simple_rating__lte=5),
+                condition=Q(simple_rating__isnull=True)
+                | (Q(simple_rating__gte=1) & Q(simple_rating__lte=5)),
                 name="ck_simple_rating",
             ),
             models.CheckConstraint(
-                condition=Q(rating__gte=0) & Q(rating__lte=10),
+                condition=Q(rating__isnull=True)
+                | (Q(rating__gte=0) & Q(rating__lte=10)),
                 name="ck_rating",
             ),
         ]
@@ -155,38 +168,32 @@ class UserSubject(models.Model):
             models.Index(
                 fields=["user", "status", "-updated_at"], name="idx_user_status_updated"
             ),
-            models.Index(
-                fields=["user", "-updated_at"], name="idx_user_updated"
-            ),
+            models.Index(fields=["user", "-updated_at"], name="idx_user_updated"),
             models.Index(
                 fields=["user", "-simple_rating"], name="idx_user_simple_rating"
             ),
-            models.Index(
-                fields=["user", "-rating"], name="idx_user_rating"
-            ),
+            models.Index(fields=["user", "-rating"], name="idx_user_rating"),
             models.Index(
                 fields=["user", "watch_end_date"], name="idx_user_watch_end_date"
             ),
-            models.Index(
-                fields=["subject"], name="idx_subject"
-            ),
+            models.Index(fields=["subject"], name="idx_subject"),
             models.Index(
                 fields=["subject", "-simple_rating"], name="idx_subject_simple_rating"
             ),
-            models.Index(
-                fields=["status"], name="idx_status"
-            ),
+            models.Index(fields=["status"], name="idx_status"),
         ]
 
     def __str__(self):
-        return f"{self.user.nickname} - {self.subject.title} ({self.status})"
+        return f"{self.user.profile.nickname} - {self.subject.title} ({self.status})"
 
 
 class UserSubjectRatingDetail(models.Model):
 
-    user_subject    = models.OneToOneField("UserSubject", on_delete=models.CASCADE, related_name="rating_detail")
-    key             = models.CharField(max_length=256)
-    value           = models.DecimalField(max_digits=3, decimal_places=1)
+    user_subject = models.ForeignKey(
+        "UserSubject", on_delete=models.CASCADE, related_name="rating_details"
+    )
+    key = models.CharField(max_length=256)
+    value = models.DecimalField(max_digits=3, decimal_places=1)
 
     class Meta:
         db_table = "user_subject_rating_detail"
@@ -206,15 +213,15 @@ class UserSubjectRatingDetail(models.Model):
 
 class UserTag(models.Model):
 
-    user    = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="tags")
-    name    = models.CharField(max_length=64)
+    user = models.ForeignKey(
+        "users.User", on_delete=models.CASCADE, related_name="tags"
+    )
+    name = models.CharField(max_length=64)
 
     class Meta:
         db_table = "user_tag"
         constraints = [
-            models.UniqueConstraint(
-                fields=["user", "name"], name="uq_user_tag"
-            ),
+            models.UniqueConstraint(fields=["user", "name"], name="uq_user_tag"),
         ]
         indexes = [
             models.Index(fields=["user"], name="idx_user_tag_user"),
@@ -222,13 +229,17 @@ class UserTag(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.user.nickname} - {self.name}"
+        return f"{self.user.profile.nickname} - {self.name}"
 
 
 class UserSubjectTag(models.Model):
 
-    user_subject    = models.ForeignKey("UserSubject", on_delete=models.CASCADE, related_name="tag_relations")
-    tag             = models.ForeignKey("UserTag", on_delete=models.CASCADE, related_name="subject_relations")
+    user_subject = models.ForeignKey(
+        "UserSubject", on_delete=models.CASCADE, related_name="tag_relations"
+    )
+    tag = models.ForeignKey(
+        "UserTag", on_delete=models.CASCADE, related_name="subject_relations"
+    )
 
     class Meta:
         db_table = "user_subject_tag"
@@ -244,9 +255,13 @@ class UserSubjectTag(models.Model):
 
 class UserEpisodeProgress(models.Model):
 
-    user_subject    = models.ForeignKey("UserSubject", on_delete=models.CASCADE, related_name="episode_progress")
-    episode         = models.ForeignKey("index.Episode", on_delete=models.CASCADE, related_name="users_progress")
-    is_finished     = models.BooleanField(default=False)
+    user_subject = models.ForeignKey(
+        "UserSubject", on_delete=models.CASCADE, related_name="episode_progress"
+    )
+    episode = models.ForeignKey(
+        "index.Episode", on_delete=models.CASCADE, related_name="users_progress"
+    )
+    is_finished = models.BooleanField(default=False)
 
     class Meta:
         db_table = "user_episode_progress"
@@ -257,16 +272,19 @@ class UserEpisodeProgress(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.user_subject} - {self.episode.name}"
+        return f"{self.user_subject} - {self.episode.title}"
 
 
 class Review(models.Model):
 
-    user_subject    = models.ForeignKey("UserSubject", on_delete=models.CASCADE, related_name="reviews")
-    title           = models.TextField()
-    content         = models.TextField()
-    is_spoiler      = models.BooleanField(default=False)
-    created_at      = models.DateTimeField(auto_now_add=True)
+    user_subject = models.ForeignKey(
+        "UserSubject", on_delete=models.CASCADE, related_name="reviews"
+    )
+    title = models.CharField(max_length=256)
+    content = models.TextField()
+    is_public = models.BooleanField(default=True)
+    is_spoiler = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = "review"
@@ -280,33 +298,42 @@ class Review(models.Model):
 
 class Collection(models.Model):
 
-    user            = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="collections")
-    name            = models.CharField(max_length=256)
-    simple_rating   = models.PositiveSmallIntegerField(null=True, blank=True)
-    note            = models.TextField(blank=True)
+    user = models.ForeignKey(
+        "users.User", on_delete=models.CASCADE, related_name="collections"
+    )
+    name = models.CharField(max_length=256)
+    simple_rating = models.PositiveSmallIntegerField(null=True, blank=True)
+    note = models.TextField(blank=True)
+    is_public = models.BooleanField(default=True)
 
     class Meta:
         db_table = "collection"
         constraints = [
             models.CheckConstraint(
-                condition=Q(simple_rating__gte=1) & Q(simple_rating__lte=5),
+                condition=Q(simple_rating__isnull=True)
+                | (Q(simple_rating__gte=1) & Q(simple_rating__lte=5)),
                 name="ck_collection_simple_rating",
             ),
         ]
         indexes = [
             models.Index(fields=["user"], name="idx_collection_user"),
+            models.Index(fields=["user", "is_public"], name="idx_collection_public"),
         ]
 
     def __str__(self):
-        return f"{self.user.nickname} - {self.name}"
+        return f"{self.user.profile.nickname} - {self.name}"
 
 
 class CollectionItem(models.Model):
 
-    collection      = models.ForeignKey("Collection", on_delete=models.CASCADE, related_name="items")
-    user_subject    = models.ForeignKey("UserSubject", on_delete=models.CASCADE, related_name="collection_items")
-    order           = models.IntegerField(default=0)
-    relation        = models.CharField(max_length=256, blank=True)
+    collection = models.ForeignKey(
+        "Collection", on_delete=models.CASCADE, related_name="items"
+    )
+    user_subject = models.ForeignKey(
+        "UserSubject", on_delete=models.CASCADE, related_name="collection_items"
+    )
+    order = models.IntegerField(default=0)
+    relation = models.CharField(max_length=256, blank=True)
 
     class Meta:
         db_table = "collection_item"
@@ -321,4 +348,86 @@ class CollectionItem(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.collection} - {self.user_subject.subject.title} ({self.relation})"
+        return (
+            f"{self.collection} - {self.user_subject.subject.title} ({self.relation})"
+        )
+
+
+class Activity(models.Model):
+
+    class ActivityType(models.TextChoices):
+        USER_SUBJECT_CREATED    = "user_subject_created", "User subject created"
+        USER_SUBJECT_UPDATED    = "user_subject_updated", "User subject updated"
+        REVIEW_CREATED          = "review_created", "Review created"
+        COLLECTION_CREATED      = "collection_created", "Collection created"
+        COLLECTION_ITEM_ADDED   = "collection_item_added", "Collection item added"
+        USER_FOLLOWED           = "user_followed", "User followed"
+
+    user = models.ForeignKey(
+        "users.User",
+        on_delete=models.CASCADE,
+        related_name="activities",
+    )
+
+    user_subject = models.ForeignKey(
+        "users.UserSubject",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="activities",
+    )
+
+    review = models.ForeignKey(
+        "users.Review",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="activities",
+    )
+
+    collection = models.ForeignKey(
+        "users.Collection",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="activities",
+    )
+
+    collection_item = models.ForeignKey(
+        "users.CollectionItem",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="activities",
+    )
+
+    target_user = models.ForeignKey(
+        "users.User",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="targeted_activities",
+    )
+
+    activity_type = models.CharField(max_length=64, choices=ActivityType.choices)
+    message = models.CharField(max_length=1024, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    is_public = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "activity"
+        indexes = [
+            models.Index(
+                fields=["user", "-created_at"], name="idx_activity_user_created"
+            ),
+            models.Index(
+                fields=["activity_type", "-created_at"], name="idx_activity_type_created"
+            ),
+            models.Index(
+                fields=["is_public", "-created_at"], name="idx_activity_public_created"
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.user_id} - {self.activity_type}"

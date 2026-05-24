@@ -14,10 +14,10 @@ class RegisterSerializer(serializers.Serializer):
 
     email       = serializers.EmailField()
     password    = serializers.CharField(min_length=8, write_only=True, trim_whitespace=False)
-    code        = serializers.RegexField(regex=r"^\d{6}$")
+    code        = serializers.RegexField(regex=r"^\d{6}$", write_only=True)
     nickname    = serializers.CharField(min_length=2, max_length=32)
 
-    def velidate_password(self, value):
+    def validate_password(self, value):
         validate_password(value)
         return value
 
@@ -30,14 +30,14 @@ class PasswordLoginSerializer(serializers.Serializer):
 
 class CodeLoginSerializer(serializers.Serializer):
 
-    email = serializers.EmailField()
-    code = serializers.RegexField(regex=r"^\d{6}$")
+    email   = serializers.EmailField()
+    code    = serializers.RegexField(regex=r"^\d{6}$", write_only=True)
 
 
 class ResetPasswordSerializer(serializers.Serializer):
 
     email           = serializers.EmailField()
-    code            = serializers.RegexField(regex=r"^\d{6}$")
+    code            = serializers.RegexField(regex=r"^\d{6}$", write_only=True)
     new_password    = serializers.CharField(min_length=8, write_only=True, trim_whitespace=False)
 
     def validate_new_password(self, value):

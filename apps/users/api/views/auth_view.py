@@ -7,7 +7,7 @@ from apps.users.services.auth.token_service import TokenService
 from apps.users.services.auth.password_service import PasswordService
 from apps.users.services.auth.register_service import RegisterService
 from apps.users.services.auth.verification_service import VerificationService
-from apps.users.api.serializers import (
+from apps.users.api.serializers.auth_serializer import (
     SendCodeSerializer,
     RegisterSerializer,
     PasswordLoginSerializer,
@@ -44,7 +44,12 @@ class RegisterView(APIView):
             code=serializer.validated_data["code"],
         )
         tokens = TokenService.create_tokens(user)
-        return success_response(data=tokens, message="register success")
+        response = success_response(
+            data={"access": tokens["access"]},
+            message="register success",
+        )
+        TokenService.set_refresh_cookie(response, tokens["refresh"])
+        return response
 
 
 class PasswordLoginView(APIView):
@@ -59,7 +64,12 @@ class PasswordLoginView(APIView):
             password=serializer.validated_data["password"],
         )
         tokens = TokenService.create_tokens(user)
-        return success_response(data=tokens, message="login success")
+        response = success_response(
+            data={"access": tokens["access"]},
+            message="login success",
+        )
+        TokenService.set_refresh_cookie(response, tokens["refresh"])
+        return response
 
 
 class CodeLoginView(APIView):
@@ -74,7 +84,38 @@ class CodeLoginView(APIView):
             code=serializer.validated_data["code"],
         )
         tokens = TokenService.create_tokens(user)
-        return success_response(data=tokens, message="login success")
+        response = success_response(
+            data={"access": tokens["access"]},
+            message="login success",
+        )
+        TokenService.set_refresh_cookie(response, tokens["refresh"])
+        return response
+
+
+class CookieTokenRefreshView(APIView):
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        refresh = TokenService.get_refresh_token_from_cookie(request)
+        tokens = TokenService.rotate_refresh_token(refresh)
+        response = success_response(data={"access": tokens["access"]})
+        if "refresh" in tokens:
+            TokenService.set_refresh_cookie(response, tokens["refresh"])
+        return response
+
+
+class LogoutView(APIView):
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        refresh = TokenService.get_optional_refresh_token_from_cookie(request)
+        if refresh:
+            TokenService.blacklist_refresh_token(refresh)
+        response = success_response(message="logout success")
+        TokenService.clear_refresh_cookie(response)
+        return response
 
 
 class ResetPasswordView(APIView):
