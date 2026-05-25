@@ -6,7 +6,7 @@ from apps.sync.services.character_service import character_service
 from apps.sync.services.episode_service import episode_service
 from apps.sync.services.relation_service import relation_service
 
-from apps.sync.tasks.rate_limiter import rate_limiter
+from apps.sync.services.rate_limiter import rate_limiter
 
 from apps.index.models import Subject
 

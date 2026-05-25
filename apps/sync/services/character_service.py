@@ -101,7 +101,7 @@ class CharacterService:
             3: "AB",
             4: "O",
         }
-        blood_type = data.get("type")
+        blood_type = data.get("blood_type")
         if not isinstance(blood_type, int):
             return ""
         return (

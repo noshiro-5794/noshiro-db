@@ -1,4 +1,4 @@
-from django.db import transaction
+from django.db import IntegrityError, transaction
 
 from apps.users.models import User, UserProfile
 from apps.users.exceptions import AvatarUploadFailed
@@ -8,9 +8,31 @@ from apps.users.storage.minio_client import minio_client
 class ProfileService:
 
     @classmethod
+    def get_or_create_profile(cls, *, user: User) -> UserProfile:
+        try:
+            return user.profile
+        except UserProfile.DoesNotExist:
+            return cls._create_default_profile(user=user)
+
+    @staticmethod
+    def _create_default_profile(*, user: User) -> UserProfile:
+        base_nickname = f"user_{user.id}"
+        for index in range(20):
+            nickname = base_nickname if index == 0 else f"{base_nickname}_{index}"
+            try:
+                with transaction.atomic():
+                    return UserProfile.objects.create(user=user, nickname=nickname)
+            except IntegrityError:
+                try:
+                    return user.profile
+                except UserProfile.DoesNotExist:
+                    continue
+        raise IntegrityError("Could not create a unique default profile nickname.")
+
+    @classmethod
     @transaction.atomic
     def upload_avatar(cls, *, user: User, file_obj) -> str:
-        profile = user.profile
+        profile = cls.get_or_create_profile(user=user)
         try:
             url = minio_client.upload_file(
                 file_obj,
@@ -32,7 +54,7 @@ class ProfileService:
         bio: str = None,
         theme_color: str = None,
     ) -> UserProfile:
-        profile = user.profile
+        profile = cls.get_or_create_profile(user=user)
         changed_fields = []
         if nickname is not None:
             profile.nickname = nickname

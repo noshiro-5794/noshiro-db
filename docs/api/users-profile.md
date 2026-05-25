@@ -1,6 +1,6 @@
 # Profile API
 
-Run the common setup in [README](./README.md), then login with [Auth](./auth.md) to set `ACCESS_TOKEN`.
+Run the common setup in [README](./README.md), then login with [Auth](./users-auth.md) to set `ACCESS_TOKEN`.
 
 ## Get My Profile
 
@@ -16,6 +16,8 @@ Authenticated request:
 curl -s -X GET "$BASE_URL/api/users/me/profile/" \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq
 ```
+
+The response includes `is_staff` and `is_superuser`, which the frontend can use to hide admin-only actions such as manual sync.
 
 ## Update My Profile
 

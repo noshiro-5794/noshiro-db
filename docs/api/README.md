@@ -1,6 +1,7 @@
 # API Documentation
 
 Frontend-facing API command documentation lives in this directory.
+For page-level integration guidance, see [Frontend Integration Guide](../frontend-integration.md).
 
 ## Common Setup
 
@@ -70,7 +71,11 @@ page_size=16
 
 ### Index
 
-- [Index Subjects](./index-subjects.md): public subject search, filtering, and detail.
+- [Index Subjects](./index.md): public subject search, filtering, and detail.
+
+### Sync
+
+- [Sync](./sync.md): staff-only calendar sync, incremental sync, and manual subject resync.
 
 ## Frontend Auth Notes
 
