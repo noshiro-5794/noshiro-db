@@ -60,12 +60,19 @@ class UserProfileResponseSerializer(serializers.ModelSerializer):
 
     user_id = serializers.IntegerField(source="user.id", read_only=True)
     email   = serializers.EmailField(source="user.email", read_only=True)
+    is_staff = serializers.BooleanField(source="user.is_staff", read_only=True)
+    is_superuser = serializers.BooleanField(
+        source="user.is_superuser",
+        read_only=True,
+    )
 
     class Meta:
         model = UserProfile
         fields = [
             "user_id",
             "email",
+            "is_staff",
+            "is_superuser",
             "nickname",
             "bio",
             "avatar",

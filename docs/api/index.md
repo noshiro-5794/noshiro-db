@@ -190,3 +190,17 @@ On a subject detail page:
 3. In parallel or lazily, call episodes, staff, characters, and relations APIs for the visible sections.
 4. When switching an episodes/staff/characters page, refresh only that section API, not the whole subject detail.
 5. If logged in and the subject is anime/galgame, call `GET /api/users/me/subjects/{subject_id}/context/` to render the current user's mark, tags, progress, rating details, and reviews.
+
+## Anime Calendar
+
+Returns active Bangumi daily broadcast calendar entries grouped by weekday.
+
+```bash
+curl -s -X GET "$BASE_URL/api/index/calendar/" | jq
+```
+
+Filter one weekday:
+
+```bash
+curl -s -X GET "$BASE_URL/api/index/calendar/?weekday_en=Mon" | jq
+```

@@ -1,5 +1,6 @@
 from django.urls import path
 
+from apps.index.api.views.calendar_view import CalendarView
 from apps.index.api.views.subject_section_view import (
     SubjectCharacterListView,
     SubjectEpisodeListView,
@@ -13,6 +14,11 @@ from apps.index.api.views.subject_view import (
 
 
 urlpatterns = [
+    path(
+        "calendar/",
+        CalendarView.as_view(),
+        name="calendar",
+    ),
     path(
         "subjects/",
         SubjectListView.as_view(),

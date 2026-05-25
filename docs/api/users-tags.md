@@ -1,6 +1,6 @@
 # Tags API
 
-Run the common setup in [README](./README.md), then login with [Auth](./auth.md) to set `ACCESS_TOKEN`.
+Run the common setup in [README](./README.md), then login with [Auth](./users-auth.md) to set `ACCESS_TOKEN`.
 
 ## Setup
 
