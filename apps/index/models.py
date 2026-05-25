@@ -135,6 +135,23 @@ class Subject(Source):
         return f'[{self.subject_type}] {self.title or "Untitled"} ({self.date or "Unknown"})'
 
 
+class CalendarSubject(models.Model):
+
+    subject = models.OneToOneField(
+        "Subject", on_delete=models.CASCADE, related_name="calendar_entry"
+    )
+    weekday_en = models.CharField(max_length=16, blank=True)
+
+    class Meta:
+        db_table = "calendar_subject"
+        indexes = [
+            models.Index(fields=["weekday_en"], name="idx_cal_weekday_en"),
+        ]
+
+    def __str__(self):
+        return f"{self.weekday_en}: {self.subject}"
+
+
 class SubjectStaffRelation(models.Model):
 
     subject = models.ForeignKey(
