@@ -2,6 +2,7 @@ from django.db.models import Q, Value, FloatField
 from django.db.models.functions import Coalesce, Greatest
 from django.contrib.postgres.search import TrigramSimilarity
 
+from apps.index.constants import PRIMARY_SUBJECT_TYPES
 from apps.users.models import (
     Review,
     UserEpisodeProgress,
@@ -22,7 +23,11 @@ class SubjectSelector:
 
     @classmethod
     def get_user_subject(cls, *, user, user_subject_id: int) -> UserSubject:
-        return cls.base_queryset().get(id=user_subject_id, user=user)
+        return cls.base_queryset().get(
+            id=user_subject_id,
+            user=user,
+            subject__subject_type__in=PRIMARY_SUBJECT_TYPES,
+        )
 
     @classmethod
     def get_user_subject_or_raise(cls, *, user, user_subject_id: int) -> UserSubject:
@@ -44,7 +49,10 @@ class SubjectSelector:
         keyword=None,
         ordering="-created_at",
     ):
-        qs = cls.base_queryset().filter(user=user)
+        qs = cls.base_queryset().filter(
+            user=user,
+            subject__subject_type__in=PRIMARY_SUBJECT_TYPES,
+        )
         if status:
             qs = qs.filter(status=status)
         if subject_type:
@@ -100,6 +108,7 @@ class SubjectSelector:
             .filter(
                 user=user,
                 subject_id=subject_id,
+                subject__subject_type__in=PRIMARY_SUBJECT_TYPES,
             )
             .first()
         )

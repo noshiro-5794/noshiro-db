@@ -13,6 +13,12 @@ class SubjectNotFound(IndexException):
     default_detail = "subject not found"
 
 
+class SubjectTypeNotSupported(IndexException):
+
+    default_code = 21001
+    default_detail = "subject type not supported"
+
+
 class InvalidEpisodeIds(IndexException):
 
     default_code = 21100

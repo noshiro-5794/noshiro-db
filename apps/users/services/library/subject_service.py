@@ -1,8 +1,9 @@
 from django.db import transaction
 
+from apps.index.constants import PRIMARY_SUBJECT_TYPES
+from apps.index.exceptions import SubjectNotFound, SubjectTypeNotSupported
 from apps.index.models import Subject
 from apps.users.models import UserSubject
-from apps.index.exceptions import SubjectNotFound
 from apps.users.exceptions import UserSubjectNotFound
 from apps.users.selectors.subject_selector import SubjectSelector
 from apps.users.services.social.activity_service import ActivityService
@@ -28,6 +29,10 @@ class UserSubjectService:
             subject = Subject.objects.get(id=subject_id)
         except Subject.DoesNotExist:
             raise SubjectNotFound()
+
+        if subject.subject_type not in PRIMARY_SUBJECT_TYPES:
+            raise SubjectTypeNotSupported()
+
         user_subject, created = UserSubject.objects.update_or_create(
             user=user,
             subject=subject,
