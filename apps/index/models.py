@@ -123,6 +123,11 @@ class Subject(Source):
                 name="idx_subject_title",
                 fields=["title"],
                 opclasses=["gin_trgm_ops"]
+            ),
+            GinIndex(
+                name="idx_subject_title_cn",
+                fields=["title_cn"],
+                opclasses=["gin_trgm_ops"]
             )
         ]
 

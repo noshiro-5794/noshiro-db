@@ -1,6 +1,8 @@
 # User Subjects API
 
-Run the common setup in [README](./README.md), then login with [Auth](./auth.md) to set `ACCESS_TOKEN`.
+Run the common setup in [README](./README.md), then login with [Auth](./users-auth.md) to set `ACCESS_TOKEN`.
+
+Only `anime` and `galgame` subjects can be marked. Other subject types may exist in the database and may appear as related subjects on index detail pages, but they are not user-markable in this product.
 
 ## List My Subjects
 
@@ -40,6 +42,30 @@ curl -s -X POST "$BASE_URL/api/users/me/subjects/" \
     "watch_end_date": "2024-01-10",
     "is_public": true
   }' | jq
+```
+
+Unsupported subject type, expected to fail. Replace this value with an existing non-anime/non-galgame subject ID:
+
+```bash
+NON_PRIMARY_SUBJECT_ID="00000000-0000-0000-0000-000000000000"
+
+curl -s -X POST "$BASE_URL/api/users/me/subjects/" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"subject_id\": \"$NON_PRIMARY_SUBJECT_ID\",
+    \"status\": \"done\"
+  }" | jq
+```
+
+Expected business error for an existing non-anime/non-galgame subject:
+
+```json
+{
+  "code": 21001,
+  "message": "subject type not supported",
+  "data": null
+}
 ```
 
 ## Get My Subject
