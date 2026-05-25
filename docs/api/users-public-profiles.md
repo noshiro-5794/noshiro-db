@@ -1,6 +1,6 @@
 # Public User Profiles API
 
-Run the common setup in [README](./README.md). Login with [Auth](./auth.md) only when testing `is_following`.
+Run the common setup in [README](./README.md). Login with [Auth](./users-auth.md) only when testing `is_following`.
 
 ## Setup
 
@@ -220,4 +220,4 @@ On a public user page:
 1. Load profile summary from `GET /api/users/{user_id}/profile/`.
 2. Load tab content from `subjects`, `reviews`, `collections`, `following`, or `followers` endpoints only when that tab is opened.
 3. If the viewer is logged in, call the profile endpoint with `Authorization` so `is_following` reflects the current user.
-4. Use the follow APIs from [Follows](./follows.md) to toggle follow state.
+4. Use the follow APIs from [Follows](./users-follows.md) to toggle follow state.

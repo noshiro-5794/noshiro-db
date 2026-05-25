@@ -1,22 +1,27 @@
-from apps.sync.services.subject_service import subject_service
-from apps.sync.services.staff_service import staff_service
-from apps.sync.services.character_service import character_service
-from apps.sync.services.episode_service import episode_service
-from apps.sync.services.relation_service import relation_service
+from celery import shared_task
+
+from apps.sync.services.manual_sync_service import manual_subject_sync_service
 
 
 class ManualSyncTask:
 
     @staticmethod
     def sync_subject(bangumi_id: int):
-        subject_service.upsert_subject(bangumi_id)
-        episode_service.sync_subject_episodes(bangumi_id)
-        relations = relation_service.sync_all_relations(bangumi_id)
-        ManualSyncTask._hydrate(relations)
+        return manual_subject_sync_service.sync_by_bangumi_id(
+            bangumi_id=bangumi_id,
+        )
 
     @staticmethod
-    def _hydrate(relations: dict):
-        for cid in relations["characters"]:
-            character_service.upsert_character(int(cid))
-        for sid in relations["staffs"]:
-            staff_service.upsert_staff(int(sid))
+    def sync_subject_by_uuid(subject_id: str):
+        return manual_subject_sync_service.sync_by_uuid(
+            subject_id=subject_id,
+        )
+
+
+@shared_task(
+    bind=True,
+    soft_time_limit=300,
+    time_limit=360,
+)
+def sync_subject_by_uuid_task(self, subject_id: str):
+    return ManualSyncTask.sync_subject_by_uuid(subject_id)

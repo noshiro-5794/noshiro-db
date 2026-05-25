@@ -22,7 +22,7 @@ from apps.sync.services.character_service import character_service
 class RelationService:
 
     SUBJECT_SOURCE_INFO = "bangumi_subject"
-    STAFF_SOURCE_INFO = "bangumi_staff"
+    STAFF_SOURCE_INFO = "bangumi_persons"
     CHARACTER_SOURCE_INFO = "bangumi_character"
     EPISODE_SOURCE_INFO = "bangumi_episode"
 
@@ -147,7 +147,7 @@ class RelationService:
     def upsert_character_relation(self, bangumi_id: int) -> dict:
         data = bangumi_client.fetch_subject_characters(bangumi_id)
         if not isinstance(data, list):
-            return dict()
+            return {"characters": set(), "actors": set()}
 
         subject = subject_service.provide_subject(bangumi_id)
         character_ids = {
