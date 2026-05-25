@@ -129,6 +129,7 @@ __pypackages__/
 
 # Celery stuff
 celerybeat-schedule
+celerybeat-schedule.*
 celerybeat.pid
 
 # SageMath parsed files
@@ -205,3 +206,12 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Project local test artifacts
+cookies.txt
+*_cookies.txt
+avatar.jpg
+avatar.jpeg
+avatar.png
+avatar.webp
+tmp/

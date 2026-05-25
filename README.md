@@ -285,3 +285,7 @@ Then run the key smoke tests in:
 ```text
 docs/api/README.md
 ```
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](./LICENSE).
