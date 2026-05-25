@@ -54,19 +54,23 @@ page_size=16
 
 ## Modules
 
-- [Auth](./auth.md): register, login, refresh, logout, reset password.
-- [Profile](./profile.md): profile read/update and avatar upload.
-- [User Subjects](./subjects.md): list, create, update, delete user subject records.
-- [Episode Progress](./progress.md): read and update per-episode watch progress.
-- [Tags](./tags.md): manage user tags and bind tags to marked subjects.
-- [Rating Details](./rating-details.md): replace and read detailed rating dimensions.
-- [Reviews](./reviews.md): create, list, update, and delete user reviews.
-- [Collections](./collections.md): create collections and manage marked subject items.
-- [Follows](./follows.md): follow users and list following/follower relations.
-- [Public User Profiles](./public-profiles.md): public profile, subjects, reviews, and collections.
-- [Activities And Feed](./activities.md): user activities, public activities, and following feed.
+### Users
 
-All current users API groups are covered here.
+- [Auth](./users-auth.md): register, login, refresh, logout, reset password.
+- [Profile](./users-profile.md): profile read/update and avatar upload.
+- [User Subjects](./users-subjects.md): list, create, update, delete user subject records.
+- [Episode Progress](./users-progress.md): read and update per-episode watch progress.
+- [Tags](./users-tags.md): manage user tags and bind tags to marked subjects.
+- [Rating Details](./users-rating-details.md): replace and read detailed rating dimensions.
+- [Reviews](./users-reviews.md): create, list, update, and delete user reviews.
+- [Collections](./users-collections.md): create collections and manage marked subject items.
+- [Follows](./users-follows.md): follow users and list following/follower relations.
+- [Public User Profiles](./users-public-profiles.md): public profile, subjects, reviews, and collections.
+- [Activities And Feed](./users-activities.md): user activities, public activities, and following feed.
+
+### Index
+
+- [Index Subjects](./index-subjects.md): public subject search, filtering, and detail.
 
 ## Frontend Auth Notes
 
