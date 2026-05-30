@@ -4,6 +4,10 @@ from apps.index.constants import PRIMARY_SUBJECT_TYPES
 from apps.index.models import Subject
 
 
+class OptionalBooleanField(serializers.BooleanField):
+    default_empty_html = serializers.empty
+
+
 class SubjectListQuerySerializer(serializers.Serializer):
     keyword = serializers.CharField(
         required=False,
@@ -17,7 +21,7 @@ class SubjectListQuerySerializer(serializers.Serializer):
             for subject_type in PRIMARY_SUBJECT_TYPES
         ],
     )
-    nsfw = serializers.BooleanField(required=False)
+    nsfw = OptionalBooleanField(required=False)
     ordering = serializers.ChoiceField(
         required=False,
         choices=[

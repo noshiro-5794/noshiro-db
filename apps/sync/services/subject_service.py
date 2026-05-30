@@ -9,6 +9,7 @@ from apps.sync.services.name_normalizer import name_normalizer
 class SubjectService:
 
     INFO_SOURCE = "bangumi_subject"
+    GALGAME_META_TAG = "galgame"
 
     def upsert_subject(self, bangumi_id: int) -> Subject | None:
         data = bangumi_client.fetch_subject(bangumi_id)
@@ -85,11 +86,9 @@ class SubjectService:
         return "book"
 
     def _parse_subject_type_game(self, data: dict) -> str:
-        metatag = data.get("metatag")
-        if isinstance(metatag, list):
-            for tag in metatag:
-                if isinstance(tag, str) and tag.lower() == "galgame":
-                    return "galgame"
+        for tag in self._parse_subject_meta_tags(data):
+            if tag.lower() == self.GALGAME_META_TAG:
+                return "galgame"
         return "game"
 
     def _parse_subject_title(self, data: dict) -> str:
@@ -195,16 +194,25 @@ class SubjectService:
         return []
 
     def _parse_subject_tags(self, data: dict) -> list:
+        result = []
+        for tag in self._parse_subject_meta_tags(data):
+            normalized = name_normalizer.normalize_name(tag)
+            if normalized:
+                result.append(normalized)
+        return result
+
+    def _parse_subject_meta_tags(self, data: dict) -> list[str]:
         tags = data.get("meta_tags")
+        if tags is None:
+            tags = data.get("metatag")
         if not isinstance(tags, list):
             return []
-        result = []
-        for tag in tags:
-            if isinstance(tag, str):
-                normalized = name_normalizer.normalize_name(tag.strip())
-                if normalized:
-                    result.append(normalized)
-        return result
+
+        return [
+            tag.strip()
+            for tag in tags
+            if isinstance(tag, str) and tag.strip()
+        ]
 
 
 subject_service = SubjectService()
