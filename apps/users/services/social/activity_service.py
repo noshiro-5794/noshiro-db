@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.db import transaction
 
 from apps.users.models import Activity
@@ -6,13 +8,30 @@ from apps.users.models import Activity
 class ActivityService:
 
     @staticmethod
+    def _metadata_value(value):
+        if value is None or isinstance(value, (str, int, float, bool)):
+            return value
+        if isinstance(value, Decimal):
+            return str(value)
+        if hasattr(value, "isoformat"):
+            return value.isoformat()
+        if isinstance(value, dict):
+            return {
+                key: ActivityService._metadata_value(item)
+                for key, item in value.items()
+            }
+        if isinstance(value, (list, tuple)):
+            return [ActivityService._metadata_value(item) for item in value]
+        return str(value)
+
+    @staticmethod
     def _subject_snapshot_from_user_subject(user_subject):
         if not user_subject:
             return {}
 
         subject = user_subject.subject
 
-        return {
+        return ActivityService._metadata_value({
             "subject": {
                 "id": str(subject.id),
                 "subject_type": subject.subject_type,
@@ -31,7 +50,7 @@ class ActivityService:
                 "comment": user_subject.comment,
                 "is_public": user_subject.is_public,
             },
-        }
+        })
 
     @staticmethod
     @transaction.atomic

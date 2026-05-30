@@ -62,7 +62,13 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-Configure `.env`. The project reads `.env` directly; there is intentionally no committed env example in this repo.
+Create your local environment file:
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` with your local PostgreSQL, Redis, MinIO, Bangumi, email, and production domain settings.
 
 Run migrations:
 
@@ -92,11 +98,7 @@ DJANGO_SECRET_KEY
 DJANGO_DEBUG
 DJANGO_ALLOWED_HOSTS
 
-DATABASE_NAME
-DATABASE_USER
-DATABASE_PASSWORD
-DATABASE_HOST
-DATABASE_PORT
+DATABASE_URL
 
 CORS_ALLOWED_ORIGINS
 CORS_ALLOW_CREDENTIALS
@@ -116,8 +118,17 @@ BANGUMI_API_KEY
 BANGUMI_USER_AGENT
 BANGUMI_TIMEOUT
 
+SYNC_INCREMENTAL_SUBJECT_BATCH_SIZE
+SYNC_CALENDAR_CRON_HOUR
+SYNC_CALENDAR_CRON_MINUTE
+SYNC_INCREMENTAL_CRON_HOUR
+SYNC_INCREMENTAL_CRON_MINUTE
+
 CELERY_BROKER_URL
 CELERY_RESULT_BACKEND
+
+RESEND_API_KEY
+EMAIL_FROM
 ```
 
 Production notes:
