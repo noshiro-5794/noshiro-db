@@ -12,6 +12,14 @@ from apps.users.services.social.activity_service import ActivityService
 class UserSubjectService:
 
     @staticmethod
+    def _normalize_watch_date(value) -> str:
+        if not value:
+            return ""
+        if hasattr(value, "isoformat"):
+            return value.isoformat()
+        return str(value)
+
+    @staticmethod
     @transaction.atomic
     def add_subject(
         *,
@@ -21,8 +29,8 @@ class UserSubjectService:
         simple_rating=None,
         rating=None,
         comment="",
-        watch_start_date=None,
-        watch_end_date=None,
+        watch_start_date="",
+        watch_end_date="",
         is_public=True,
     ) -> UserSubject:
         try:
@@ -32,6 +40,9 @@ class UserSubjectService:
 
         if subject.subject_type not in PRIMARY_SUBJECT_TYPES:
             raise SubjectTypeNotSupported()
+
+        watch_start_date = UserSubjectService._normalize_watch_date(watch_start_date)
+        watch_end_date = UserSubjectService._normalize_watch_date(watch_end_date)
 
         user_subject, created = UserSubject.objects.update_or_create(
             user=user,
@@ -82,6 +93,8 @@ class UserSubjectService:
 
         for key, value in fields.items():
             if key in allowed_fields:
+                if key in {"watch_start_date", "watch_end_date"}:
+                    value = UserSubjectService._normalize_watch_date(value)
                 setattr(user_subject, key, value)
                 update_fields.append(key)
         if update_fields:
