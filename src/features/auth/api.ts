@@ -2,7 +2,7 @@ import { api } from '@/lib/api/client';
 import type { AccessTokenPayload, CurrentUserProfile, SendCodePurpose } from '@/lib/api/types';
 
 export const authApi = {
-  sendCode: (body: { email: string; purpose: SendCodePurpose }) =>
+  sendCode: (body: { email: string; purpose: SendCodePurpose; hcaptcha_token?: string }) =>
     api.post<unknown, typeof body>('/api/users/send-code/', body, { skipAuth: true }),
 
   register: (body: { email: string; password: string; nickname: string; code: string }) =>
@@ -31,6 +31,6 @@ export const profileApi = {
   uploadAvatar: (avatar: File) => {
     const body = new FormData();
     body.set('avatar', avatar);
-    return api.post<CurrentUserProfile, FormData>('/api/users/me/avatar/', body);
+    return api.post<{ avatar: string }, FormData>('/api/users/me/avatar/', body);
   },
 };

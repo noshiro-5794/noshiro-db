@@ -66,12 +66,33 @@ export type SubjectSummary = {
   id: UUID;
   title: string;
   title_cn: string | null;
+  title_original?: string;
+  title_localized?: string | null;
+  display_title?: string;
+  display_meta?: string[];
+  display_subtitle?: string;
   subject_type: SubjectType;
   date: DateString | null;
+  year?: number | null;
   platform: string | null;
   nsfw: boolean;
-  image: string | null;
-  image_thumbnail: string | null;
+  image?: string | null;
+  image_thumbnail?: string | null;
+  images?: {
+    poster?: string | null;
+    thumbnail?: string | null;
+    original?: string | null;
+  };
+  description_excerpt?: string;
+  source?: {
+    provider?: string;
+    id?: string;
+  };
+  content?: {
+    series?: boolean;
+    episodes?: number | null;
+    volumes?: number | null;
+  };
   updated_at?: ISODateString;
   created_at?: ISODateString;
 } & Record<string, unknown>;
@@ -110,15 +131,39 @@ export type SubjectCharacter = {
 } & Record<string, unknown>;
 
 export type SubjectRelation = {
+  direction?: 'outgoing' | 'incoming' | string;
   relation: string;
   subject: SubjectSummary;
 } & Record<string, unknown>;
 
-export type CalendarEntry = {
+export type SubjectRelationList = {
+  outgoing: SubjectRelation[];
+  incoming: SubjectRelation[];
+};
+
+export type CalendarSubjectItem = {
+  subject_id: UUID;
+  subject_type: SubjectType;
+  title: string;
+  title_cn: string | null;
+  display_title?: string;
+  display_meta?: string[];
+  display_subtitle?: string;
+  date?: DateString | null;
+  image_thumbnail: string | null;
+  platform: string | null;
+  nsfw: boolean;
   weekday_en: WeekdayEn;
-  weekday_cn?: string;
-  subject: SubjectSummary;
-} & Record<string, unknown>;
+  doing: number;
+};
+
+export type CalendarGroup = {
+  weekday: {
+    id: number | null;
+    en: WeekdayEn;
+  };
+  items: CalendarSubjectItem[];
+};
 
 export type UserSubject = {
   id: number;
