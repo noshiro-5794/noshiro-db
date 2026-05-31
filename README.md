@@ -1,42 +1,80 @@
-# noshiro-db-frontend
+# Noshiro DB Frontend
 
-The React + TypeScript + Vite frontend for Noshiro DB.
+Modern React frontend for **Noshiro DB**, a personal anime and galgame database for discovery, tracking, library management, reviews, collections, and activity.
 
-## Stack
+## Tech Stack
 
-- React
+- React 19
 - TypeScript
 - Vite
 - React Router
-- ESLint
+- TanStack Query
+- Tailwind CSS
+- Radix UI primitives
+- hCaptcha protected email-code flows
 
-## Local Development
+## Features
 
-Configure the local API base in `.env`:
+- Public home page, search, calendar, subject detail, and docs
+- Password login and email-code login
+- Registration with hCaptcha-protected verification code sending
+- Authenticated workspace shell
+- Profile editing, avatar upload, and user accent color
+- Library, collections, reviews, and tag-based library filtering
+- Subject detail actions for marking, rating, comments, deletion, progress, relations, and reviews
+- Markdown review rendering foundation
+
+## Getting Started
+
+```bash
+npm install
+cp .env.example .env
+npm run dev
+```
+
+Default local API base:
 
 ```text
 VITE_API_BASE_URL=http://127.0.0.1:8008
 ```
 
-Install dependencies:
+If hCaptcha is enabled in the backend, set:
 
-```bash
-npm install
+```text
+VITE_HCAPTCHA_SITE_KEY=your-site-key
 ```
 
-Start the frontend:
+## Scripts
 
 ```bash
 npm run dev
+npm run typecheck
+npm run lint
+npm run build
+npm run preview
 ```
 
-Default backend API base:
+## Project Structure
 
 ```text
-http://127.0.0.1:8008
+src/app/       application shell and top-level providers
+src/config/    environment configuration
+src/features/  domain features, API wrappers, query options, and feature components
+src/lib/       API client, query client, and framework-agnostic utilities
+src/pages/     route pages
+src/routes/    route table and path helpers
+src/shared/    shared UI primitives
+src/styles/    global styles, theme tokens, and Tailwind utilities
 ```
 
-## Checks
+See also:
+
+- [Development](docs/development.md)
+- [Architecture](docs/architecture.md)
+
+## Quality Checks
+
+Run before committing:
 
 ```bash
 npm run typecheck
@@ -44,15 +82,6 @@ npm run lint
 npm run build
 ```
 
-## Source Layout
+## Related Repository
 
-```text
-src/app/       application shell and top-level providers
-src/config/    environment configuration
-src/features/  business features, feature APIs, query options, and UI modules
-src/lib/       framework-agnostic infrastructure such as the API client and query client
-src/pages/     route pages
-src/routes/    route table and path helpers
-src/shared/    shared UI components
-src/styles/    global styles
-```
+Backend API: `noshiro-db-backend`

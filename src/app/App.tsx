@@ -1,10 +1,13 @@
 import { AppRoutes } from '@/routes/AppRoutes';
+import { AppErrorBoundary } from '@/shared/ui/AppErrorBoundary';
 import { AppShell } from './AppShell';
 
 export function App() {
   return (
     <AppShell>
-      <AppRoutes />
+      <AppErrorBoundary>
+        <AppRoutes />
+      </AppErrorBoundary>
     </AppShell>
   );
 }
