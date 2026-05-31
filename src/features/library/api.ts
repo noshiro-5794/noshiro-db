@@ -20,6 +20,7 @@ export type UserSubjectListQuery = PageQuery & {
   status?: UserSubjectStatus;
   subject_type?: PrimarySubjectType;
   keyword?: string;
+  tag_id?: number;
   ordering?: string;
 };
 
