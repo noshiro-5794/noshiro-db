@@ -11,7 +11,7 @@ import {
   type ReviewListQuery,
   type UserSubjectListQuery,
 } from '@/features/library/api';
-import type { RatingDetail, Review, UUID, UserSubject } from '@/lib/api/types';
+import type { PageQuery, RatingDetail, Review, UUID, UserSubject } from '@/lib/api/types';
 
 export const libraryQueryKeys = {
   all: ['library'] as const,
@@ -27,11 +27,13 @@ export const libraryQueryKeys = {
   reviews: () => [...libraryQueryKeys.all, 'reviews'] as const,
   reviewList: (query: ReviewListQuery = {}) => [...libraryQueryKeys.reviews(), 'list', query] as const,
   subjectReviews: (subjectId: UUID) => [...libraryQueryKeys.reviews(), 'subject', subjectId] as const,
+  publicSubjectReviews: (subjectId: UUID, query: ReviewListQuery = {}) => [...libraryQueryKeys.reviews(), 'subject-public', subjectId, query] as const,
   reviewDetail: (reviewId: number) => [...libraryQueryKeys.reviews(), 'detail', reviewId] as const,
+  publicReviewDetail: (reviewId: number) => [...libraryQueryKeys.reviews(), 'public-detail', reviewId] as const,
   collections: () => [...libraryQueryKeys.all, 'collections'] as const,
   collectionList: (query: CollectionListQuery = {}) => [...libraryQueryKeys.collections(), 'list', query] as const,
   collectionDetail: (collectionId: number) => [...libraryQueryKeys.collections(), 'detail', collectionId] as const,
-  collectionItems: (collectionId: number) => [...libraryQueryKeys.collections(), 'items', collectionId] as const,
+  collectionItems: (collectionId: number, query: PageQuery = {}) => [...libraryQueryKeys.collections(), 'items', collectionId, query] as const,
 };
 
 export const libraryQueries = {
@@ -89,10 +91,22 @@ export const libraryQueries = {
       queryFn: () => reviewsApi.listForSubject(subjectId),
     }),
 
+  publicSubjectReviews: (subjectId: UUID, query: ReviewListQuery = {}) =>
+    queryOptions({
+      queryKey: libraryQueryKeys.publicSubjectReviews(subjectId, query),
+      queryFn: () => reviewsApi.listPublicForSubject(subjectId, query),
+    }),
+
   review: (reviewId: number) =>
     queryOptions({
       queryKey: libraryQueryKeys.reviewDetail(reviewId),
       queryFn: () => reviewsApi.getMine(reviewId),
+    }),
+
+  publicReview: (reviewId: number) =>
+    queryOptions({
+      queryKey: libraryQueryKeys.publicReviewDetail(reviewId),
+      queryFn: () => reviewsApi.getPublic(reviewId),
     }),
 
   collections: (query: CollectionListQuery = {}) =>
@@ -107,10 +121,10 @@ export const libraryQueries = {
       queryFn: () => collectionsApi.getMine(collectionId),
     }),
 
-  collectionItems: (collectionId: number) =>
+  collectionItems: (collectionId: number, query: PageQuery = {}) =>
     queryOptions({
-      queryKey: libraryQueryKeys.collectionItems(collectionId),
-      queryFn: () => collectionsApi.listItems(collectionId),
+      queryKey: libraryQueryKeys.collectionItems(collectionId, query),
+      queryFn: () => collectionsApi.listItems(collectionId, query),
     }),
 };
 
@@ -149,6 +163,11 @@ export const libraryMutations = {
         tagsApi.replaceForSubject(subjectId, { tag_names: tagNames }),
     }),
 
+  deleteTag: () =>
+    mutationOptions({
+      mutationFn: (tagId: number) => tagsApi.delete(tagId),
+    }),
+
   replaceRatingDetails: () =>
     mutationOptions({
       mutationFn: ({ subjectId, details }: { subjectId: UUID; details: RatingDetail[] }) =>
@@ -170,5 +189,40 @@ export const libraryMutations = {
   deleteReview: () =>
     mutationOptions({
       mutationFn: (reviewId: number) => reviewsApi.deleteMine(reviewId),
+    }),
+
+  createCollection: () =>
+    mutationOptions({
+      mutationFn: (body: { name: string; simple_rating?: number; note?: string; is_public?: boolean }) =>
+        collectionsApi.createMine(body),
+    }),
+
+  updateCollection: () =>
+    mutationOptions({
+      mutationFn: ({ collectionId, body }: { collectionId: number; body: Partial<{ name: string; simple_rating: number; note: string; is_public: boolean }> }) =>
+        collectionsApi.updateMine(collectionId, body),
+    }),
+
+  deleteCollection: () =>
+    mutationOptions({
+      mutationFn: (collectionId: number) => collectionsApi.deleteMine(collectionId),
+    }),
+
+  deleteCollectionItem: () =>
+    mutationOptions({
+      mutationFn: ({ collectionId, itemId }: { collectionId: number; itemId: number }) =>
+        collectionsApi.deleteItem(collectionId, itemId),
+    }),
+
+  addCollectionItem: () =>
+    mutationOptions({
+      mutationFn: ({ collectionId, body }: { collectionId: number; body: { subject_id?: UUID; user_subject_id?: number; order?: number; relation?: string } }) =>
+        collectionsApi.addItem(collectionId, body),
+    }),
+
+  updateCollectionItems: () =>
+    mutationOptions({
+      mutationFn: ({ collectionId, items }: { collectionId: number; items: Array<{ id: number; order?: number; relation?: string }> }) =>
+        collectionsApi.updateItems(collectionId, items),
     }),
 };

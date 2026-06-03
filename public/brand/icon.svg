@@ -1,6 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
-  <title id="title">Noshiro DB icon</title>
-  <rect width="64" height="64" rx="16" fill="#17171c"/>
-  <path d="M18 46V18h7.2l16.9 20.2V18H48v28h-7.2L23.9 25.8V46H18Z" fill="#f7f7fa"/>
-  <path d="M18 46h30v4H18z" fill="#7F6FB0"/>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect x="128" y="128" width="768" height="768" rx="96" fill="#0B0B0F"/>
+<path d="M789.129 352V672L512 832L234.872 672V352L512 192L789.129 352ZM270.872 651.215L494 780.038V522.393L270.872 393.569V651.215ZM530 780.038L735.128 661.607L530 543.177V780.038ZM548 512L753.129 630.43V393.569L548 512ZM288.872 362.392L494 480.822V243.961L288.872 362.392ZM530 480.822L735.128 362.392L530 243.961V480.822Z" fill="white"/>
+<path d="M789.129 651.215V671.998L789.127 672L771.128 682.393L234.872 372.784V352L252.872 341.607L789.129 651.215Z" fill="#7F6FB0"/>
 </svg>

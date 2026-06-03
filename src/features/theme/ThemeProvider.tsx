@@ -1,10 +1,12 @@
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ThemeContext, type ThemeMode } from './theme-context-value';
+import { ThemeContext, type ThemeMode, type ThemePreference } from './theme-context-value';
 
 const accentStorageKey = 'noshiro.theme.accent';
+const modeStorageKey = 'noshiro.theme.mode';
 const defaultAccentColor = '#7F6FB0';
 const defaultMode: ThemeMode = 'light';
+const defaultPreference: ThemePreference = 'auto';
 const hexColorPattern = /^#?[0-9a-f]{6}$/iu;
 
 function normalizeHexColor(color: string) {
@@ -50,9 +52,29 @@ function readStoredAccentColor() {
   return window.localStorage.getItem(accentStorageKey) ?? defaultAccentColor;
 }
 
+function readStoredPreference(): ThemePreference {
+  if (typeof window === 'undefined') {
+    return defaultPreference;
+  }
+
+  const storedValue = window.localStorage.getItem(modeStorageKey);
+  return storedValue === 'light' || storedValue === 'dark' || storedValue === 'auto' ? storedValue : defaultPreference;
+}
+
+function getEffectiveMode(preference: ThemePreference) {
+  return preference === 'auto' ? detectSystemMode() : preference;
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [mode, setMode] = useState<ThemeMode>(detectSystemMode);
+  const [preference, setPreference] = useState<ThemePreference>(readStoredPreference);
+  const [mode, setEffectiveMode] = useState<ThemeMode>(() => getEffectiveMode(readStoredPreference()));
   const [accentColor, setAccentColor] = useState(readStoredAccentColor);
+
+  const setMode = useCallback((nextPreference: ThemePreference) => {
+    setPreference(nextPreference);
+    setEffectiveMode(getEffectiveMode(nextPreference));
+    window.localStorage.setItem(modeStorageKey, nextPreference);
+  }, []);
 
   useEffect(() => {
     document.documentElement.dataset.themeMode = mode;
@@ -62,12 +84,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
     function handleSystemModeChange(event: MediaQueryListEvent) {
-      setMode(event.matches ? 'dark' : 'light');
+      setEffectiveMode((currentMode) => {
+        if (preference !== 'auto') {
+          return currentMode;
+        }
+        return event.matches ? 'dark' : 'light';
+      });
     }
 
     mediaQuery.addEventListener('change', handleSystemModeChange);
     return () => mediaQuery.removeEventListener('change', handleSystemModeChange);
-  }, []);
+  }, [preference]);
 
   useEffect(() => {
     const normalizedAccentColor = normalizeHexColor(accentColor);
@@ -78,18 +105,19 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [accentColor]);
 
   const toggleMode = useCallback(() => {
-    setMode((currentMode) => (currentMode === 'light' ? 'dark' : 'light'));
-  }, []);
+    setMode(mode === 'light' ? 'dark' : 'light');
+  }, [mode, setMode]);
 
   const value = useMemo(
     () => ({
       accentColor,
       setAccentColor,
       mode,
+      preference,
       setMode,
       toggleMode,
     }),
-    [accentColor, mode, toggleMode],
+    [accentColor, mode, preference, setMode, toggleMode],
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

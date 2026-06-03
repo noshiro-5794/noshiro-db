@@ -26,6 +26,11 @@ export const syncMutations = {
       mutationFn: (body: { run_async?: boolean; sync_subject_details?: boolean } = {}) => syncApi.runCalendar(body),
     }),
 
+  syncBangumiSubject: () =>
+    mutationOptions({
+      mutationFn: (body: { bangumi_id: number; run_async?: boolean }) => syncApi.syncBangumiSubject(body),
+    }),
+
   resyncSubject: () =>
     mutationOptions({
       mutationFn: ({ subjectId, body = {} }: { subjectId: UUID; body?: { run_async?: boolean } }) => syncApi.resyncSubject(subjectId, body),
