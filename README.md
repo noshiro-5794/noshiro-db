@@ -73,6 +73,7 @@ src/styles/    global styles, theme tokens, and Tailwind utilities
 
 - [Architecture](docs/architecture.md)
 - [Development](docs/development.md)
+- [Deployment](docs/deployment.md)
 
 ## Quality Gates
 
