@@ -7,6 +7,7 @@ const PopoverTrigger = PopoverPrimitive.Trigger;
 
 function PopoverContent({
   align = 'center',
+  children,
   className,
   sideOffset = 8,
   ...props
@@ -21,7 +22,10 @@ function PopoverContent({
         )}
         sideOffset={sideOffset}
         {...props}
-      />
+      >
+        {children}
+        <PopoverPrimitive.Arrow className="fill-white dark:fill-neutral-950" height={8} width={14} />
+      </PopoverPrimitive.Content>
     </PopoverPrimitive.Portal>
   );
 }

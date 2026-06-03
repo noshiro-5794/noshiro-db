@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { BookOpen, CalendarDays, FileText, Home, Layers3, Library, Search, UserRound } from 'lucide-react';
+import { Bell, Bookmark, BookOpen, CalendarDays, FileText, Home, Layers3, Library, MessageSquare, Search, Settings, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/features/auth/use-auth';
 import { useI18n } from '@/features/i18n/use-i18n';
 import { routes } from '@/routes/paths';
@@ -17,6 +17,8 @@ type NavItem = {
   end?: boolean;
 };
 
+const NotificationBell = lazy(() => import('@/features/community/components/NotificationBell').then((module) => ({ default: module.NotificationBell })));
+
 export function AppShell({ children }: AppShellProps) {
   const { t } = useI18n();
   const { role, profile, status } = useAuth();
@@ -30,35 +32,38 @@ export function AppShell({ children }: AppShellProps) {
   ];
   const appNavGroups: Array<{ title: string; items: NavItem[] }> = [
     {
-      title: t('nav.groupHome'),
+      title: t('nav.groupWorkspace'),
       items: [
         { to: routes.home, label: t('nav.home'), icon: <Home className="size-4" />, end: true },
-        { to: routes.me, label: t('nav.me'), icon: <UserRound className="size-4" /> },
+        { to: routes.communityPosts, label: t('nav.posts'), icon: <MessageSquare className="size-4" /> },
       ],
     },
     {
-      title: t('nav.groupDiscover'),
+      title: t('nav.groupExplore'),
       items: [
         { to: routes.search, label: t('nav.search'), icon: <Search className="size-4" /> },
         { to: routes.calendar, label: t('nav.calendar'), icon: <CalendarDays className="size-4" /> },
       ],
     },
     {
-      title: t('nav.groupMarked'),
+      title: t('nav.groupLibrary'),
       items: [
         { to: routes.library, label: t('nav.library'), icon: <Library className="size-4" /> },
         { to: routes.collections, label: t('nav.collections'), icon: <Layers3 className="size-4" /> },
         { to: routes.reviews, label: t('nav.reviews'), icon: <FileText className="size-4" /> },
+        { to: routes.bookmarks, label: t('nav.bookmarks'), icon: <Bookmark className="size-4" /> },
       ],
     },
     {
-      title: t('nav.groupOther'),
+      title: t('nav.groupResources'),
       items: [
+        ...(role === 'admin' ? [{ to: routes.admin, label: t('nav.admin'), icon: <ShieldCheck className="size-4" /> }] : []),
         { to: routes.docsIntroduction, label: t('nav.docs'), icon: <BookOpen className="size-4" /> },
       ],
     },
   ];
-  const isAuthPage = location.pathname === routes.login || location.pathname === routes.register;
+
+  const isAuthPage = location.pathname === routes.login || location.pathname === routes.register || location.pathname === routes.resetPassword;
   if (isAuthPage) {
     return children;
   }
@@ -70,7 +75,7 @@ export function AppShell({ children }: AppShellProps) {
           <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-5">
             <NavLink className="flex min-w-0 items-center gap-2" to={routes.home} aria-label="Noshiro DB">
               <img
-                className="size-8 rounded-lg ring-1 ring-neutral-200 dark:ring-neutral-800"
+                className="size-8 rounded-lg"
                 src="/brand/icon.svg"
                 alt=""
                 aria-hidden="true"
@@ -121,21 +126,20 @@ export function AppShell({ children }: AppShellProps) {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-100 text-neutral-950 dark:bg-neutral-950 dark:text-neutral-50 lg:grid lg:h-screen lg:grid-cols-[264px_minmax(0,1fr)] lg:overflow-hidden">
-      <aside className="flex border-b border-neutral-200 bg-white/80 px-3 py-3 backdrop-blur-xl dark:border-neutral-800 dark:bg-neutral-950/80 lg:h-screen lg:flex-col lg:border-b-0 lg:border-r">
+    <div className="workspace-shell">
+      <aside className="workspace-sidebar">
         <NavLink
-          className="flex min-w-0 items-center gap-2 rounded-xl px-2 py-1.5 transition hover:bg-neutral-100 dark:hover:bg-neutral-900"
+          className="flex min-w-0 shrink-0 items-center gap-2 rounded-xl px-2 py-1.5 transition hover:bg-neutral-100 dark:hover:bg-neutral-900"
           to={routes.home}
           aria-label="Noshiro DB"
         >
-          <img className="size-8 rounded-lg ring-1 ring-neutral-200 dark:ring-neutral-800" src="/brand/icon.svg" alt="" aria-hidden="true" />
+          <img className="size-8 rounded-lg" src="/brand/icon.svg" alt="" aria-hidden="true" />
           <span className="grid min-w-0">
             <span className="truncate text-sm font-semibold">Noshiro DB</span>
-            <span className="truncate text-xs text-neutral-500 dark:text-neutral-400">{t('nav.workspace')}</span>
           </span>
         </NavLink>
 
-        <nav className="ml-3 flex min-w-0 flex-1 gap-1 overflow-x-auto lg:ml-0 lg:mt-6 lg:flex-none lg:flex-col lg:gap-5 lg:overflow-visible">
+        <nav className="workspace-nav">
           {appNavGroups.map((group) => (
             <section className="flex gap-1 lg:grid" key={group.title}>
               <h2 className="hidden px-3 text-[11px] font-semibold uppercase text-neutral-400 dark:text-neutral-500 lg:block">
@@ -156,8 +160,10 @@ export function AppShell({ children }: AppShellProps) {
                     }
                     end={item.end}
                   >
-                    {item.icon}
-                    {item.label}
+                    <span className="inline-flex min-w-0 items-center gap-2">
+                      {item.icon}
+                      <span className="truncate">{item.label}</span>
+                    </span>
                   </NavLink>
                 ))}
               </div>
@@ -165,17 +171,38 @@ export function AppShell({ children }: AppShellProps) {
           ))}
         </nav>
 
-        <div className="ml-auto flex items-center gap-2 lg:ml-0 lg:mt-auto lg:grid">
-          <span className="hidden min-h-10 items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-3 text-sm text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900/70 dark:text-neutral-400 lg:flex">
+        <div className="ml-auto flex shrink-0 items-center gap-2 lg:ml-0 lg:mt-4 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_auto]">
+          <NavLink className="hidden min-h-10 items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-3 text-sm text-neutral-500 transition hover:border-[var(--color-accent-border)] hover:text-neutral-950 dark:border-neutral-800 dark:bg-neutral-900/70 dark:text-neutral-400 dark:hover:text-white lg:flex" to={routes.me}>
             <img className="size-6 rounded-lg object-cover" src={profile?.avatar || '/assets/placeholders/avatar.png'} alt="" />
             <span className="min-w-0 truncate">{status === 'checking' ? t('auth.checking') : profile?.nickname || t(`auth.${role}`)}</span>
-          </span>
+          </NavLink>
+          <Suspense
+            fallback={(
+              <button
+                aria-label={t('nav.notifications')}
+                className="grid size-10 place-items-center rounded-xl border border-neutral-200 bg-neutral-50 text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900/70 dark:text-neutral-400"
+                type="button"
+              >
+                <Bell className="size-4" />
+              </button>
+            )}
+          >
+            <NotificationBell />
+          </Suspense>
+          <NavLink
+            aria-label={t('settings.title')}
+            className="grid size-10 place-items-center rounded-xl border border-neutral-200 bg-neutral-50 text-neutral-500 transition hover:border-[var(--color-accent-border)] hover:text-neutral-950 dark:border-neutral-800 dark:bg-neutral-900/70 dark:text-neutral-400 dark:hover:text-white"
+            to={routes.settings}
+          >
+            <Settings className="size-4" />
+          </NavLink>
         </div>
       </aside>
-      <main className="min-h-[calc(100vh-65px)] bg-neutral-100 p-3 dark:bg-neutral-950 lg:h-screen lg:min-h-0 lg:overflow-y-auto lg:p-4">
-        <div className="min-h-full overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
-          {children}
-          <PublicFooter />
+      <main className="workspace-main">
+        <div className="workspace-frame">
+          <div className="workspace-frame-content">
+            {children}
+          </div>
         </div>
       </main>
     </div>
