@@ -1,5 +1,5 @@
 import { type FormEvent, useCallback, useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { KeyRound, LockKeyhole, Mail, UserRound } from 'lucide-react';
 import { env } from '@/config/env';
 import { authApi } from '@/features/auth/api';
@@ -10,14 +10,16 @@ import { useI18n } from '@/features/i18n/use-i18n';
 import { routes } from '@/routes/paths';
 import { Button } from '@/shared/ui/Button';
 
-function getErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : 'Request failed';
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
 }
 
 export function RegisterPage() {
   const { t } = useI18n();
   const auth = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnTo = typeof location.state?.returnTo === 'string' && location.state.returnTo.startsWith('/') ? location.state.returnTo : routes.home;
   const [email, setEmail] = useState('');
   const [captchaToken, setCaptchaToken] = useState('');
   const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
@@ -27,7 +29,7 @@ export function RegisterPage() {
   const handleCaptchaChange = useCallback((token: string) => setCaptchaToken(token), []);
 
   if (auth.isAuthenticated) {
-    return <Navigate replace to={routes.me} />;
+    return <Navigate replace to={returnTo} />;
   }
 
   async function handleSendCode() {
@@ -53,7 +55,7 @@ export function RegisterPage() {
       setNoticeMessage(t('auth.codeSent'));
       setCaptchaResetSignal((value) => value + 1);
     } catch (error) {
-      setErrorMessage(getErrorMessage(error));
+      setErrorMessage(getErrorMessage(error, t('common.requestFailed')));
     } finally {
       setIsSendingCode(false);
     }
@@ -72,9 +74,9 @@ export function RegisterPage() {
     setErrorMessage('');
     try {
       await auth.register(input);
-      navigate(routes.me, { replace: true });
+      navigate(returnTo, { replace: true });
     } catch (error) {
-      setErrorMessage(getErrorMessage(error));
+      setErrorMessage(getErrorMessage(error, t('common.requestFailed')));
     }
   }
 
@@ -86,7 +88,7 @@ export function RegisterPage() {
       >
         <div className="motion-rise grid justify-items-center text-center">
           <img
-            className="size-12 rounded-2xl ring-1 ring-neutral-200 dark:ring-neutral-800"
+            className="size-12 rounded-2xl"
             src="/brand/icon.svg"
             alt=""
             aria-hidden="true"
@@ -111,7 +113,7 @@ export function RegisterPage() {
             icon={<UserRound className="size-4" />}
             label={t('auth.nickname')}
             name="nickname"
-            placeholder="Display name"
+            placeholder={t('auth.displayName')}
             required
             type="text"
           />
@@ -145,7 +147,7 @@ export function RegisterPage() {
             icon={<LockKeyhole className="size-4" />}
             label={t('auth.password')}
             name="password"
-            placeholder="Password"
+            placeholder={t('auth.password')}
             required
             type="password"
           />
@@ -168,7 +170,7 @@ export function RegisterPage() {
 
         <p className="motion-rise motion-delay-3 text-center text-sm text-neutral-500 dark:text-neutral-400">
           {t('register.switchText')}{' '}
-          <Link className="font-semibold text-neutral-950 hover:text-[var(--color-accent-strong)] dark:text-white" to={routes.login}>
+          <Link className="font-semibold text-neutral-950 hover:text-[var(--color-accent-strong)] dark:text-white" state={{ returnTo }} to={routes.login}>
             {t('auth.login')}
           </Link>
         </p>

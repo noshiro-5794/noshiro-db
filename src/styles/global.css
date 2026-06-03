@@ -58,6 +58,48 @@
 }
 
 @layer components {
+  .workspace-shell {
+    @apply min-h-screen text-neutral-950 dark:text-neutral-50 lg:grid lg:h-screen lg:grid-cols-[244px_minmax(0,1fr)] lg:overflow-hidden;
+    background: var(--color-bg);
+  }
+
+  .dark .workspace-shell {
+    background: var(--color-bg);
+  }
+
+  .workspace-sidebar {
+    @apply flex min-h-0 px-3 py-3 backdrop-blur-xl lg:h-screen lg:flex-col;
+    background: color-mix(in srgb, var(--color-bg) 88%, transparent);
+  }
+
+  .dark .workspace-sidebar {
+    background: color-mix(in srgb, var(--color-bg) 88%, transparent);
+  }
+
+  .workspace-nav {
+    @apply ml-3 flex min-w-0 flex-1 gap-1 overflow-x-auto lg:ml-0 lg:mt-6 lg:min-h-0 lg:flex-col lg:gap-5 lg:overflow-y-auto lg:overflow-x-hidden lg:pr-1;
+    scrollbar-width: thin;
+  }
+
+  .workspace-main {
+    @apply min-h-[calc(100vh-65px)] p-2 lg:h-screen lg:min-h-0 lg:overflow-hidden;
+    background: transparent;
+  }
+
+  .dark .workspace-main {
+    background: transparent;
+  }
+
+  .workspace-frame {
+    @apply flex min-h-full flex-col overflow-hidden rounded-xl border shadow-sm lg:h-full;
+    border-color: color-mix(in srgb, var(--color-border) 78%, transparent);
+    background: var(--color-surface);
+  }
+
+  .workspace-frame-content {
+    @apply min-h-0 flex-1 overflow-y-auto;
+  }
+
   .app-shell {
     @apply min-h-screen;
     background: var(--color-bg);
@@ -127,16 +169,22 @@
     @apply px-7 pb-7 pt-9 max-sm:px-4 max-sm:pt-6;
   }
 
-  .page {
-    @apply mx-auto grid max-w-[1180px] gap-7;
+  .page-shell {
+    @apply flex min-h-full flex-col;
   }
 
   .page-header {
-    @apply flex min-h-24 items-end justify-between gap-5 pb-2 max-sm:min-h-0 max-sm:flex-col max-sm:items-start;
+    @apply border-b;
+    border-color: color-mix(in srgb, var(--color-border) 76%, transparent);
+    background: color-mix(in srgb, var(--color-surface) 94%, transparent);
+  }
+
+  .page-header-inner {
+    @apply mx-auto grid min-h-20 w-full max-w-[1240px] gap-4 px-6 py-4 max-sm:min-h-0 max-sm:px-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center;
   }
 
   .page-heading {
-    @apply grid min-w-0 gap-1.5;
+    @apply grid min-w-0 gap-2;
   }
 
   .page-eyebrow,
@@ -145,27 +193,27 @@
     color: var(--color-accent-strong);
   }
 
-  .page h1 {
-    @apply m-0 text-[clamp(2rem,3vw,3.35rem)] leading-none tracking-normal max-sm:text-[2.1rem];
+  .page-title {
+    @apply m-0 max-w-[900px] text-[clamp(1.35rem,1.7vw,1.8rem)] font-semibold leading-tight tracking-normal;
+    color: var(--color-text);
   }
 
-  .page h2,
-  .panel h2 {
-    @apply m-0 tracking-normal;
-  }
-
-  .page p {
-    @apply m-0;
+  .page-description {
+    @apply m-0 max-w-[760px] text-sm leading-6;
     color: var(--color-text-muted);
-  }
-
-  .page-heading p {
-    @apply max-w-[720px] text-[0.98rem];
   }
 
   .page-actions,
   .button-row {
-    @apply flex flex-shrink-0 flex-wrap items-center gap-2;
+    @apply flex flex-shrink-0 flex-wrap items-center gap-2 md:justify-end;
+  }
+
+  .page-content {
+    @apply mx-auto w-full max-w-[1240px] flex-1 px-6 py-5 max-sm:px-4 max-sm:py-5;
+  }
+
+  .panel h2 {
+    @apply m-0 tracking-normal;
   }
 
   .button,
@@ -230,6 +278,7 @@
   .feature-tile,
   .calendar-column,
   .empty-state,
+  .error-state,
   .loading-state {
     @apply min-w-0 rounded-lg border;
     border-color: color-mix(in srgb, var(--color-border) 86%, transparent);
@@ -347,27 +396,38 @@
     @apply min-h-44;
   }
 
-  .empty-state {
-    @apply grid gap-1.5 border-dashed p-8;
+  .empty-state,
+  .loading-state,
+  .error-state {
+    @apply grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3 p-4.5;
     color: var(--color-text-muted);
+    border-color: color-mix(in srgb, var(--color-border) 82%, transparent);
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--color-accent-soft) 35%, transparent), transparent 62%),
+      var(--color-surface);
   }
 
   .empty-state strong,
-  .loading-state strong {
+  .loading-state strong,
+  .error-state strong {
+    @apply block;
     color: var(--color-text);
   }
 
-  .error-state {
-    @apply border-solid border-l-4 border-l-orange-700;
+  .feedback-state-icon {
+    @apply grid size-9 place-items-center rounded-full;
+    color: var(--color-accent-strong);
+    background: var(--color-accent-soft);
+  }
+
+  .empty-state span:not(.feedback-state-icon),
+  .loading-state span:not(.feedback-state-icon),
+  .error-state span:not(.feedback-state-icon) {
+    @apply mt-1 block text-sm leading-6;
   }
 
   .loading-state {
-    @apply grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-1 p-4.5;
-    color: var(--color-text-muted);
-  }
-
-  .loading-state span:last-child {
-    @apply col-start-2;
+    @apply items-center;
   }
 
   .loading-indicator {
@@ -545,7 +605,244 @@
   }
 
   .relation-list strong {
+    color: var(--color-text);
+  }
+
+  .mark-empty-panel {
+    @apply flex items-center gap-2 rounded-xl border px-3 py-3 text-sm font-medium;
     color: var(--color-text-muted);
+    border-color: color-mix(in srgb, var(--color-border) 82%, transparent);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--color-accent-soft) 34%, transparent), transparent 70%), var(--color-surface-muted);
+  }
+
+  .mark-empty-panel svg {
+    @apply shrink-0;
+    color: var(--color-accent-strong);
+  }
+
+  .mark-primary-action {
+    @apply h-11 w-full justify-center rounded-xl;
+    border-color: var(--color-accent-border);
+    color: var(--color-accent-strong);
+    background: color-mix(in srgb, var(--color-accent-soft) 46%, var(--color-surface));
+    box-shadow: none;
+  }
+
+  .mark-primary-action:hover {
+    border-color: var(--color-accent-border);
+    background: color-mix(in srgb, var(--color-accent-soft) 64%, var(--color-surface));
+  }
+
+  .mark-status-option {
+    @apply flex min-h-16 items-center gap-2 rounded-xl border p-3 text-left text-sm font-semibold transition;
+    border-color: var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text);
+  }
+
+  .mark-status-option:hover,
+  .mark-status-option.is-selected {
+    border-color: var(--color-accent-border);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .mark-status-option.is-selected {
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--status-tone, var(--color-accent-soft)) 50%, transparent), transparent 74%),
+      var(--color-surface);
+  }
+
+  .mark-status-icon {
+    @apply grid size-8 place-items-center rounded-full;
+    color: var(--status-ink, var(--color-accent-strong));
+    background: color-mix(in srgb, var(--status-tone, var(--color-accent-soft)) 75%, transparent);
+  }
+
+  .mark-status-description {
+    @apply mt-1 line-clamp-2 text-xs font-normal leading-5;
+    color: var(--color-text-muted);
+  }
+
+  .status-wish {
+    --status-ink: #b45374;
+    --status-tone: #fce7f3;
+  }
+
+  .status-doing {
+    --status-ink: #5b5f9f;
+    --status-tone: #ecebff;
+  }
+
+  .status-done {
+    --status-ink: #15803d;
+    --status-tone: #dcfce7;
+  }
+
+  .status-hold {
+    --status-ink: #a16207;
+    --status-tone: #fef3c7;
+  }
+
+  .status-drop {
+    --status-ink: #737373;
+    --status-tone: #f5f5f5;
+  }
+
+  .dark .status-wish {
+    --status-ink: #f0abcc;
+    --status-tone: #4a1830;
+  }
+
+  .dark .status-doing {
+    --status-ink: #c4b5fd;
+    --status-tone: #2e245f;
+  }
+
+  .dark .status-done {
+    --status-ink: #86efac;
+    --status-tone: #12351f;
+  }
+
+  .dark .status-hold {
+    --status-ink: #fde68a;
+    --status-tone: #3f2f0b;
+  }
+
+  .dark .status-drop {
+    --status-ink: #d4d4d4;
+    --status-tone: #262626;
+  }
+
+  .mark-visibility-toggle {
+    @apply flex items-center justify-between gap-4 rounded-xl border p-3 text-sm;
+    border-color: var(--color-border);
+    background: var(--color-surface-muted);
+  }
+
+  .mark-switch {
+    @apply relative h-7 w-12 shrink-0 rounded-full p-0.5 transition;
+    background: color-mix(in srgb, var(--color-text-muted) 24%, transparent);
+  }
+
+  .mark-switch span {
+    @apply block size-6 rounded-full bg-white shadow-sm transition;
+  }
+
+  .mark-switch.is-on {
+    background: var(--color-accent);
+  }
+
+  .mark-switch.is-on span {
+    transform: translateX(1.25rem);
+  }
+
+  .mark-dialog-footer {
+    @apply grid gap-2 rounded-xl p-2 sm:grid-cols-[minmax(0,1fr)_auto];
+    background: var(--color-surface-muted);
+  }
+
+  .mark-dialog-footer.is-single {
+    @apply sm:grid-cols-1;
+  }
+
+  .mark-dialog-submit {
+    @apply h-11 w-full rounded-xl;
+  }
+
+  .mark-dialog-delete {
+    @apply h-11 rounded-xl px-4;
+  }
+
+  .episode-tile {
+    @apply grid min-h-24 cursor-pointer grid-rows-[auto_1fr_auto] gap-2 rounded-xl border px-3 py-3 text-left transition;
+    border-color: var(--color-border);
+    background: var(--color-surface);
+  }
+
+  .episode-tile:hover,
+  .episode-tile.is-finished {
+    border-color: var(--color-accent-border);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .episode-tile.is-finished {
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--color-accent-soft) 58%, transparent), transparent 72%),
+      var(--color-surface);
+  }
+
+  .episode-tile-topline {
+    @apply flex items-center justify-between gap-2;
+  }
+
+  .episode-tile-label {
+    @apply min-w-0 truncate text-xs font-semibold uppercase;
+    color: var(--color-text-muted);
+  }
+
+  .episode-tile-title {
+    @apply line-clamp-2 text-sm font-semibold leading-5;
+    color: var(--color-text);
+  }
+
+  .episode-tile-meta {
+    @apply flex items-center justify-between gap-2 text-xs;
+    color: var(--color-text-muted);
+  }
+
+  .episode-progress-button {
+    @apply inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold transition;
+    background: var(--color-surface-muted);
+    color: var(--color-text-muted);
+  }
+
+  .episode-progress-button:hover,
+  .episode-progress-button.is-finished {
+    background: var(--color-accent);
+    color: var(--color-accent-contrast);
+  }
+
+  .other-chapter-tile {
+    @apply grid grid-cols-[56px_minmax(0,1fr)] items-center gap-3 rounded-xl border p-3 text-left text-sm transition;
+    border-color: var(--color-border);
+    background: var(--color-surface);
+  }
+
+  .other-chapter-tile:hover {
+    border-color: var(--color-accent-border);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .other-chapter-type {
+    @apply rounded-full px-2 py-1 text-center text-xs font-semibold uppercase;
+    background: var(--color-surface-muted);
+    color: var(--color-text-muted);
+  }
+
+  .other-chapter-title {
+    @apply block truncate font-semibold;
+    color: var(--color-text);
+  }
+
+  .other-chapter-meta {
+    @apply mt-0.5 block truncate text-xs;
+    color: var(--color-text-muted);
+  }
+
+  .relation-card {
+    @apply grid min-h-40 grid-cols-[96px_minmax(0,1fr)] gap-4 rounded-xl border p-3 transition;
+    border-color: var(--color-border);
+    background: var(--color-surface);
+  }
+
+  .relation-card:hover {
+    border-color: var(--color-accent-border);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .relation-card-cover {
+    @apply h-36 w-24 rounded-lg object-cover;
+    background: var(--color-surface-muted);
   }
 
   .markdown-body {
@@ -620,6 +917,521 @@
     border-color: var(--color-border);
   }
 
+  .review-editor-page {
+    @apply grid gap-4;
+  }
+
+  .review-editor-document {
+    @apply grid gap-4 border-b px-1 pb-4 lg:grid-cols-[minmax(0,1fr)_auto];
+    border-color: color-mix(in srgb, var(--color-border) 72%, transparent);
+  }
+
+  .review-editor-flags {
+    @apply flex flex-wrap items-start gap-2 lg:justify-end;
+  }
+
+  .review-editor-flags button {
+    @apply inline-flex h-10 items-center gap-2 rounded-full border px-3 text-sm font-semibold transition;
+    color: var(--color-text-muted);
+    border-color: var(--color-border);
+    background: var(--color-surface);
+  }
+
+  .review-editor-flags button.is-active {
+    color: var(--color-accent-strong);
+    border-color: var(--color-accent-border);
+    background: var(--color-accent-soft);
+  }
+
+  .review-workbench {
+    @apply grid items-start gap-4;
+  }
+
+  .review-editor {
+    @apply overflow-hidden rounded-lg border;
+    border-color: color-mix(in srgb, var(--color-border) 78%, transparent);
+    background: var(--color-surface);
+    box-shadow: 0 1px 2px rgb(17 17 24 / 4%);
+  }
+
+  .review-editor-toolbar {
+    @apply sticky top-0 z-10 flex items-center justify-between gap-3 border-b px-3 py-2 max-md:flex-col max-md:items-stretch;
+    border-color: var(--color-border);
+    background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+    backdrop-filter: blur(16px);
+  }
+
+  .review-editor-toolgroups {
+    @apply flex min-w-0 items-center gap-2 overflow-x-auto;
+  }
+
+  .review-editor-toolgroup,
+  .review-editor-mode {
+    @apply flex items-center gap-1 rounded-lg border p-1;
+    border-color: color-mix(in srgb, var(--color-border) 82%, transparent);
+    background: var(--color-surface-muted);
+  }
+
+  .review-editor-mode {
+    @apply flex-shrink-0 max-md:w-fit;
+  }
+
+  .review-editor-actions {
+    @apply flex flex-shrink-0 items-center gap-2 max-md:justify-between;
+  }
+
+  .review-editor-status {
+    @apply flex items-center gap-2 rounded-lg border px-2.5 py-2 text-xs font-semibold max-sm:hidden;
+    color: var(--color-text-muted);
+    border-color: color-mix(in srgb, var(--color-border) 82%, transparent);
+    background: var(--color-surface-muted);
+  }
+
+  .review-editor-status span + span {
+    @apply border-l pl-2;
+    border-color: var(--color-border);
+  }
+
+  .review-editor-outlinebar {
+    @apply flex items-center gap-3 border-b px-4 py-2 max-md:flex-col max-md:items-start;
+    border-color: color-mix(in srgb, var(--color-border) 72%, transparent);
+    background: color-mix(in srgb, var(--color-surface-muted) 38%, transparent);
+  }
+
+  .review-editor-outlinebar > span {
+    @apply flex-shrink-0 text-xs font-bold uppercase;
+    color: var(--color-text-muted);
+  }
+
+  .review-editor-outlinebar > div {
+    @apply flex min-w-0 flex-1 items-center gap-1 overflow-x-auto;
+  }
+
+  .review-editor-outlinebar button {
+    @apply max-w-52 flex-shrink-0 truncate rounded-md px-2.5 py-1 text-xs font-semibold transition;
+    color: var(--color-text-muted);
+  }
+
+  .review-editor-outlinebar button:hover {
+    color: var(--color-accent-strong);
+    background: var(--color-accent-soft);
+  }
+
+  .review-editor-outlinebar button[data-depth='2'] {
+    @apply opacity-85;
+  }
+
+  .review-editor-outlinebar button[data-depth='3'] {
+    @apply opacity-70;
+  }
+
+  .review-editor-grid {
+    @apply grid min-h-[68vh] lg:grid-cols-2;
+  }
+
+  .review-editor-grid.is-write,
+  .review-editor-grid.is-preview {
+    @apply lg:grid-cols-1;
+  }
+
+  .review-editor-grid.is-write .review-editor-preview,
+  .review-editor-grid.is-preview .review-editor-write {
+    @apply hidden;
+  }
+
+  .review-editor-pane {
+    @apply grid min-h-[68vh] grid-rows-[auto_1fr] overflow-hidden;
+  }
+
+  .review-editor-write {
+    @apply border-r;
+    border-color: var(--color-border);
+  }
+
+  .review-editor-grid.is-write .review-editor-write,
+  .review-editor-grid.is-preview .review-editor-write {
+    @apply border-r-0;
+  }
+
+  .review-editor-pane-header {
+    @apply flex h-10 items-center justify-between gap-3 border-b px-4 text-xs font-semibold uppercase;
+    color: var(--color-text-muted);
+    border-color: color-mix(in srgb, var(--color-border) 72%, transparent);
+    background: color-mix(in srgb, var(--color-surface-muted) 72%, transparent);
+  }
+
+  .review-editor-pane-header span {
+    @apply inline-flex min-w-0 items-center gap-2 truncate;
+  }
+
+  .review-editor-textarea {
+    @apply min-h-full resize-none border-0 bg-transparent p-5 text-[0.96rem] leading-7 outline-none;
+    color: var(--color-text);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+  }
+
+  .review-editor-textarea::placeholder {
+    color: var(--color-text-muted);
+  }
+
+  .review-editor-preview-body {
+    @apply overflow-auto p-5;
+  }
+
+  .review-reader {
+    @apply mx-auto grid max-w-3xl gap-6 rounded-lg border p-5;
+    border-color: color-mix(in srgb, var(--color-border) 82%, transparent);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .review-reader-header {
+    @apply flex items-start justify-between gap-4 border-b pb-4 max-sm:flex-col;
+    border-color: var(--color-border);
+  }
+
+  .review-reader-content {
+    @apply min-w-0;
+  }
+
+  .review-reader-content.is-spoiler {
+    @apply rounded-lg border p-4;
+    border-color: var(--color-accent-border);
+    background: var(--color-accent-soft);
+  }
+
+  .reviews-toolbar {
+    @apply grid gap-3 rounded-lg border p-3;
+    border-color: color-mix(in srgb, var(--color-border) 82%, transparent);
+    background: var(--color-surface);
+    box-shadow: 0 1px 2px rgb(17 17 24 / 4%);
+  }
+
+  .review-list {
+    @apply grid gap-3;
+  }
+
+  .community-content-card {
+    @apply grid gap-4 rounded-lg border p-4 transition sm:grid-cols-[72px_minmax(0,1fr)];
+    border-color: color-mix(in srgb, var(--color-border) 82%, transparent);
+    background: var(--color-surface);
+    box-shadow: 0 1px 2px rgb(17 17 24 / 4%);
+  }
+
+  .community-content-card:hover {
+    border-color: var(--color-accent-border);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .community-content-media {
+    @apply hidden overflow-hidden rounded-md bg-neutral-100 transition sm:grid dark:bg-neutral-900;
+    aspect-ratio: 3 / 4;
+  }
+
+  .community-content-media img {
+    @apply size-full object-cover transition duration-300;
+  }
+
+  .community-content-media span {
+    @apply grid size-full place-items-center text-[var(--color-accent-strong)];
+    background: var(--color-accent-soft);
+  }
+
+  .community-content-card:hover .community-content-media img {
+    transform: scale(1.035);
+  }
+
+  .community-content-main {
+    @apply grid min-w-0 content-start gap-2;
+  }
+
+  .community-content-meta {
+    @apply flex flex-wrap items-center gap-x-3 gap-y-1 text-xs;
+    color: color-mix(in srgb, var(--color-text-muted) 84%, transparent);
+  }
+
+  .community-content-meta a {
+    @apply line-clamp-1 font-medium transition;
+    color: var(--color-text-muted);
+  }
+
+  .community-content-meta a:hover {
+    color: var(--color-accent-strong);
+  }
+
+  .community-content-title {
+    @apply line-clamp-2 text-lg font-semibold tracking-tight transition;
+    color: var(--color-text);
+  }
+
+  .community-content-title:hover {
+    color: var(--color-accent-strong);
+  }
+
+  .community-content-body {
+    @apply line-clamp-3 text-sm leading-6;
+    color: var(--color-text-muted);
+  }
+
+  .community-content-body.is-spoiler {
+    @apply rounded-md px-3 py-2 blur-[2px] transition;
+    background: color-mix(in srgb, var(--color-accent-soft) 50%, transparent);
+  }
+
+  .community-content-body.is-spoiler:hover {
+    filter: blur(0);
+  }
+
+  .community-content-footer {
+    @apply mt-1 flex flex-wrap items-center justify-between gap-3;
+  }
+
+  .community-content-author {
+    @apply min-h-8;
+  }
+
+  .community-content-author a {
+    @apply inline-flex items-center gap-2 text-xs font-semibold transition;
+    color: var(--color-text-muted);
+  }
+
+  .community-content-author a:hover {
+    color: var(--color-accent-strong);
+  }
+
+  .community-content-author img {
+    @apply size-6 rounded-full bg-neutral-100 object-cover dark:bg-neutral-900;
+  }
+
+  .community-content-actions {
+    @apply flex flex-wrap items-center gap-1;
+  }
+
+  .community-list {
+    @apply grid overflow-hidden rounded-lg border;
+    border-color: color-mix(in srgb, var(--color-border) 82%, transparent);
+    background: var(--color-surface);
+  }
+
+  .community-list:empty {
+    @apply hidden;
+  }
+
+  .community-list-item {
+    @apply border-b p-4 transition last:border-b-0;
+    border-color: color-mix(in srgb, var(--color-border) 76%, transparent);
+  }
+
+  .community-list-item:hover {
+    background: color-mix(in srgb, var(--color-surface-muted) 52%, transparent);
+  }
+
+  .community-list-item.is-unread {
+    background:
+      linear-gradient(90deg, color-mix(in srgb, var(--color-accent-soft) 58%, transparent), transparent 44%),
+      var(--color-surface);
+  }
+
+  .community-post-reader {
+    @apply rounded-lg border p-4;
+    border-color: color-mix(in srgb, var(--color-border) 82%, transparent);
+    background: var(--color-surface);
+    box-shadow: 0 1px 2px rgb(17 17 24 / 4%);
+  }
+
+  .community-comment-list {
+    @apply grid overflow-hidden rounded-lg border;
+    border-color: color-mix(in srgb, var(--color-border) 82%, transparent);
+    background: var(--color-surface);
+  }
+
+  .community-comment-list:empty {
+    @apply hidden;
+  }
+
+  .community-comment-item {
+    @apply grid grid-cols-[36px_minmax(0,1fr)] gap-3 p-4;
+  }
+
+  .community-comment-item.is-highlighted {
+    background:
+      linear-gradient(90deg, color-mix(in srgb, var(--color-accent-soft) 72%, transparent), transparent 70%),
+      var(--color-surface);
+    box-shadow: inset 3px 0 0 var(--color-accent);
+  }
+
+  .community-bookmark-list {
+    @apply grid gap-3;
+  }
+
+  .collection-pack-card {
+    @apply grid min-w-0 gap-3 rounded-lg border p-3;
+    color: var(--color-text);
+    border-color: color-mix(in srgb, var(--color-border) 86%, transparent);
+    background: var(--color-surface);
+    box-shadow: 0 1px 2px rgb(17 17 24 / 4%);
+  }
+
+  .collection-pack-card:hover,
+  .collection-pack-card.is-selected {
+    border-color: var(--color-accent-border);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .collection-pack-card.is-selected {
+    background: color-mix(in srgb, var(--color-accent-soft) 42%, var(--color-surface));
+  }
+
+  .collection-pack-cover {
+    @apply relative h-24 min-w-0 overflow-hidden rounded-lg;
+  }
+
+  .collection-pack-layer {
+    @apply absolute bottom-2 top-2 w-16 overflow-hidden rounded-lg border;
+    border-color: color-mix(in srgb, var(--color-border) 84%, transparent);
+    background: linear-gradient(135deg, var(--color-surface-muted), var(--color-accent-soft));
+    box-shadow: 0 12px 24px rgb(17 17 24 / 14%);
+  }
+
+  .collection-pack-layer[data-slot='0'] {
+    @apply left-[0.5rem] rotate-[-7deg];
+  }
+
+  .collection-pack-layer[data-slot='1'] {
+    @apply left-[3.5rem] rotate-[-2deg];
+  }
+
+  .collection-pack-layer[data-slot='2'] {
+    @apply left-[6.5rem] rotate-[3deg];
+  }
+
+  .collection-pack-layer[data-slot='3'] {
+    @apply left-[9.5rem] rotate-[8deg];
+  }
+
+  .collection-pack-layer img {
+    @apply size-full object-cover;
+  }
+
+  .collection-rail {
+    @apply flex max-w-full gap-5 overflow-x-auto px-6 py-5;
+    min-width: 0;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 1.5rem;
+    scrollbar-width: thin;
+  }
+
+  .collection-rail-card {
+    @apply relative grid w-[210px] flex-[0_0_210px] cursor-grab gap-3 rounded-lg p-2 transition active:cursor-grabbing;
+    scroll-snap-align: start;
+    background: transparent;
+  }
+
+  .collection-rail-card:hover {
+    background: color-mix(in srgb, var(--color-surface-muted) 58%, transparent);
+  }
+
+  .collection-rail-card.is-dragging {
+    @apply opacity-60;
+    background: var(--color-surface-muted);
+  }
+
+  .collection-rail-card.is-drop-before::before,
+  .collection-rail-card.is-drop-after::after {
+    content: '';
+    @apply pointer-events-none absolute bottom-2 top-2 w-1 rounded-full;
+    background: var(--color-accent);
+    box-shadow: 0 0 0 4px var(--color-accent-soft);
+  }
+
+  .collection-rail-card.is-drop-before::before {
+    @apply -left-2;
+  }
+
+  .collection-rail-card.is-drop-after::after {
+    @apply -right-2;
+  }
+
+  .collection-rail-card-top {
+    @apply flex items-center justify-between text-xs font-semibold;
+    color: var(--color-text-muted);
+  }
+
+  .collection-rail-poster {
+    @apply block overflow-hidden rounded-lg border;
+    aspect-ratio: 2 / 3;
+    border-color: color-mix(in srgb, var(--color-border) 76%, transparent);
+    background: var(--color-surface-muted);
+    box-shadow: 0 1px 2px rgb(17 17 24 / 8%);
+  }
+
+  .collection-rail-poster img,
+  .collection-rail-poster span {
+    @apply size-full object-cover;
+  }
+
+  .collection-rail-body {
+    @apply grid min-w-0 gap-2;
+  }
+
+  .collection-rail-title {
+    @apply line-clamp-2 text-sm font-semibold leading-5 transition;
+    color: var(--color-text);
+  }
+
+  .collection-rail-title:hover {
+    color: var(--color-accent-strong);
+  }
+
+  .collection-rail-body > p {
+    @apply line-clamp-2 text-xs leading-5;
+    color: var(--color-text-muted);
+  }
+
+  .collection-rail-badges {
+    @apply flex flex-wrap gap-1.5;
+  }
+
+  .collection-rail-comment {
+    @apply line-clamp-3 border-l-2 pl-2 text-xs leading-5;
+    border-color: var(--color-accent-border);
+  }
+
+  .collection-rail-actions {
+    @apply mt-auto flex items-center justify-between gap-2;
+  }
+
+  @media (width < 640px) {
+    .collection-rail-card {
+      @apply w-[190px] flex-[0_0_190px];
+    }
+  }
+
+  .collection-library-results {
+    @apply grid gap-2;
+  }
+
+  .collection-library-item {
+    @apply grid grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border p-2;
+    border-color: color-mix(in srgb, var(--color-border) 82%, transparent);
+    background: var(--color-surface);
+  }
+
+  .collection-library-item img {
+    @apply h-16 w-12 rounded-md object-cover;
+    background: var(--color-surface-muted);
+  }
+
+  .collection-library-item h3 {
+    @apply line-clamp-1 text-sm font-semibold;
+    color: var(--color-text);
+  }
+
+  .collection-library-item p {
+    @apply line-clamp-1 text-xs;
+    color: var(--color-text-muted);
+  }
+
   .profile-card {
     @apply justify-items-start;
   }
@@ -667,6 +1479,373 @@
     @apply flex justify-between gap-3;
     color: var(--color-text-muted);
   }
+
+  .graph-entry-button {
+    --graph-entry-glow: color-mix(in srgb, var(--color-accent) 34%, transparent);
+    isolation: isolate;
+    position: relative;
+    overflow: hidden;
+    transform: translateZ(0);
+    border-color: color-mix(in srgb, var(--color-accent) 34%, var(--color-border));
+    background:
+      radial-gradient(circle at 30% 22%, rgb(255 255 255 / 0.72), transparent 20%),
+      radial-gradient(circle at 70% 72%, color-mix(in srgb, var(--color-accent) 30%, transparent), transparent 38%),
+      linear-gradient(145deg, color-mix(in srgb, var(--color-accent) 16%, var(--color-surface)), var(--color-surface) 58%),
+      var(--color-surface);
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--color-accent) 16%, transparent),
+      0 10px 26px color-mix(in srgb, var(--color-accent) 14%, transparent),
+      inset 0 1px 0 rgb(255 255 255 / 0.32);
+    transition:
+      transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+      border-color 220ms ease,
+      box-shadow 220ms ease;
+  }
+
+  .graph-entry-button::before {
+    content: '';
+    position: absolute;
+    inset: -48%;
+    z-index: 0;
+    background:
+      conic-gradient(from 0deg, transparent 0 24%, var(--graph-entry-glow) 32%, transparent 42% 72%, color-mix(in srgb, #38bdf8 28%, transparent) 82%, transparent 92% 100%);
+    animation: graph-entry-orbit 4.2s linear infinite;
+    opacity: 0.78;
+  }
+
+  .graph-entry-button::after {
+    content: '';
+    position: absolute;
+    inset: 5px;
+    z-index: 1;
+    border-radius: inherit;
+    border: 1px solid color-mix(in srgb, var(--color-accent) 28%, transparent);
+    background: radial-gradient(circle, transparent 46%, color-mix(in srgb, var(--color-accent) 13%, transparent) 48%, transparent 64%);
+    opacity: 0.62;
+    transform: scale(0.86);
+    transition:
+      opacity 220ms ease,
+      transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .graph-entry-button:hover {
+    transform: translateY(-1px) scale(1.04);
+    border-color: color-mix(in srgb, var(--color-accent) 58%, var(--color-border));
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--color-accent) 28%, transparent),
+      0 16px 38px color-mix(in srgb, var(--color-accent) 26%, transparent),
+      0 0 30px color-mix(in srgb, #38bdf8 12%, transparent),
+      inset 0 1px 0 rgb(255 255 255 / 0.42);
+  }
+
+  .graph-entry-button:hover::after {
+    opacity: 0.92;
+    transform: scale(1);
+  }
+
+  .graph-entry-button > * {
+    position: relative;
+    z-index: 2;
+    filter: drop-shadow(0 0 8px color-mix(in srgb, var(--color-accent) 40%, transparent));
+  }
+
+  .graph-fullscreen {
+    @apply fixed inset-0 z-[80] min-h-screen overflow-hidden rounded-none;
+    background: #08080a;
+  }
+
+  .graph-back {
+    @apply absolute left-4 top-4 z-20;
+  }
+
+  .graph-back .inline-flex {
+    @apply size-10 shadow-2xl backdrop-blur-xl;
+    color: rgb(255 255 255 / 0.92) !important;
+    border-color: rgb(255 255 255 / 0.1) !important;
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.09), rgb(255 255 255 / 0.035)),
+      rgb(8 8 12 / 0.82) !important;
+    box-shadow:
+      0 12px 34px rgb(0 0 0 / 0.34),
+      inset 0 1px 0 rgb(255 255 255 / 0.08);
+  }
+
+  .graph-back .inline-flex:hover {
+    color: white !important;
+    border-color: rgb(255 255 255 / 0.22) !important;
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.13), rgb(255 255 255 / 0.055)),
+      color-mix(in srgb, var(--color-accent) 18%, rgb(8 8 12 / 0.88)) !important;
+  }
+
+  .graph-state {
+    @apply grid min-h-screen place-items-center p-6;
+    background: #08080a;
+  }
+
+  .graph-stage {
+    @apply relative h-screen min-h-screen overflow-hidden rounded-none border-0 shadow-none;
+    background:
+      radial-gradient(circle at 18% 12%, rgb(127 111 176 / 0.14), transparent 32%),
+      radial-gradient(circle at 82% 74%, rgb(56 189 248 / 0.07), transparent 34%),
+      linear-gradient(135deg, #121216 0%, #09090b 48%, #14121c 100%);
+  }
+
+  .graph-stage::after {
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border-radius: inherit;
+    box-shadow:
+      inset 0 0 0 1px rgb(255 255 255 / 0.08),
+      inset 0 0 120px rgb(0 0 0 / 0.28);
+  }
+
+  .graph-stage canvas {
+    position: relative;
+    z-index: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .graph-stage canvas:active {
+    cursor: grabbing;
+  }
+
+  .graph-tooltip {
+    @apply pointer-events-none absolute left-4 top-4 grid max-w-72 gap-1 rounded-xl border px-3 py-2 text-sm shadow-2xl backdrop-blur-xl;
+    border-color: rgb(255 255 255 / 0.14);
+    background: rgb(10 10 12 / 0.74);
+    color: white;
+  }
+
+  .graph-tooltip strong {
+    @apply line-clamp-2 font-semibold;
+  }
+
+  .graph-tooltip span {
+    @apply line-clamp-2 text-xs;
+    color: rgb(255 255 255 / 0.68);
+  }
+
+  .graph-side-panel {
+    @apply rounded-xl border p-4;
+    border-color: var(--color-border);
+    background: var(--color-surface);
+  }
+
+  .graph-side-panel h2 {
+    @apply text-sm font-semibold tracking-tight;
+    color: var(--color-text);
+  }
+
+  .graph-side-panel p {
+    @apply mt-2 text-sm leading-6;
+    color: var(--color-text-muted);
+  }
+
+  .graph-side-panel strong {
+    @apply block text-2xl font-semibold tracking-tight;
+    color: var(--color-text);
+  }
+
+  .graph-side-panel span {
+    @apply text-sm;
+    color: var(--color-text-muted);
+  }
+
+  .graph-inspector {
+    @apply absolute bottom-5 right-5 z-10 grid w-[min(460px,calc(100%-2.5rem))] grid-cols-[92px_minmax(0,1fr)] items-start gap-4 rounded-[18px] border p-3 shadow-2xl backdrop-blur-2xl;
+    border-color: rgb(255 255 255 / 0.12);
+    background:
+      linear-gradient(135deg, rgb(127 111 176 / 0.14), transparent 42%),
+      linear-gradient(180deg, rgb(255 255 255 / 0.07), rgb(255 255 255 / 0.025)),
+      rgb(8 8 12 / 0.88);
+    color: white;
+    animation: graph-inspector-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .graph-inspector::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    z-index: -1;
+    border-radius: inherit;
+    background: linear-gradient(120deg, color-mix(in srgb, var(--color-accent) 34%, transparent), rgb(56 189 248 / 0.16), transparent 70%);
+    opacity: 0.62;
+  }
+
+  .graph-inspector-media {
+    @apply grid aspect-[3/4] w-full overflow-hidden rounded-[14px] border;
+    border-color: rgb(255 255 255 / 0.1);
+    background: rgb(255 255 255 / 0.045);
+    box-shadow: 0 16px 38px rgb(0 0 0 / 0.3);
+  }
+
+  .graph-inspector-media img {
+    @apply size-full object-cover;
+  }
+
+  .graph-inspector-orb {
+    @apply m-auto size-10 rounded-full;
+    box-shadow: 0 0 24px currentColor, inset 0 1px 0 rgb(255 255 255 / 0.5);
+  }
+
+  .graph-inspector-main {
+    @apply grid min-w-0 gap-1.5 pt-1;
+  }
+
+  .graph-inspector span {
+    @apply text-[0.68rem] font-black uppercase tracking-[0.18em];
+    color: rgb(255 255 255 / 0.52);
+  }
+
+  .graph-inspector strong {
+    @apply line-clamp-2 text-[0.98rem] font-semibold leading-snug;
+  }
+
+  .graph-inspector p {
+    @apply m-0 line-clamp-2 text-xs leading-5;
+    color: rgb(255 255 255 / 0.64);
+  }
+
+  .graph-inspector-details {
+    @apply mt-1 flex flex-wrap gap-1.5;
+  }
+
+  .graph-inspector-details small {
+    @apply max-w-full rounded-full border px-2 py-1 text-[0.68rem] font-semibold leading-none;
+    border-color: rgb(255 255 255 / 0.09);
+    background: rgb(255 255 255 / 0.055);
+    color: rgb(255 255 255 / 0.68);
+  }
+
+  .graph-inspector-action {
+    @apply col-span-2 justify-self-start border-white/10 bg-white/[0.07] text-white shadow-none hover:border-white/25 hover:bg-white/[0.12];
+  }
+
+  .graph-toolbar {
+    @apply absolute bottom-5 left-5 z-10 flex items-center gap-1 rounded-[18px] border p-1.5 shadow-2xl backdrop-blur-2xl;
+    border-color: rgb(255 255 255 / 0.1);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.075), rgb(255 255 255 / 0.028)),
+      rgb(8 8 12 / 0.78);
+    color: white;
+  }
+
+  .graph-toolbar span {
+    @apply min-w-12 px-2 text-center text-xs font-bold tabular-nums;
+    color: rgb(255 255 255 / 0.72);
+  }
+
+  .graph-toolbar .inline-flex {
+    @apply size-9 rounded-xl shadow-none;
+    color: rgb(255 255 255 / 0.88) !important;
+    border-color: rgb(255 255 255 / 0.09) !important;
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.075), rgb(255 255 255 / 0.025)),
+      rgb(9 9 14 / 0.74) !important;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06);
+  }
+
+  .graph-toolbar .inline-flex:hover {
+    color: white !important;
+    border-color: color-mix(in srgb, var(--color-accent) 38%, rgb(255 255 255 / 0.16)) !important;
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.12), rgb(255 255 255 / 0.04)),
+      color-mix(in srgb, var(--color-accent) 16%, rgb(9 9 14 / 0.86)) !important;
+  }
+
+  .graph-data-controls {
+    @apply absolute right-4 top-4 z-20 grid w-[min(310px,calc(100%-5.5rem))] grid-cols-1 items-stretch gap-3 rounded-[18px] border p-3 shadow-2xl backdrop-blur-2xl;
+    border-color: rgb(255 255 255 / 0.1);
+    background:
+      linear-gradient(135deg, rgb(127 111 176 / 0.1), transparent 36%),
+      linear-gradient(180deg, rgb(255 255 255 / 0.075), rgb(255 255 255 / 0.028)),
+      rgb(8 8 12 / 0.8);
+    color: white;
+  }
+
+  .graph-control-block {
+    @apply grid gap-1.5;
+  }
+
+  .graph-control-block-wide {
+    @apply min-w-0;
+  }
+
+  .graph-control-label {
+    @apply px-1 text-[0.62rem] font-black uppercase tracking-[0.18em];
+    color: rgb(255 255 255 / 0.42);
+  }
+
+  .graph-mode-switch {
+    @apply grid grid-cols-2 rounded-xl border p-1;
+    border-color: rgb(255 255 255 / 0.08);
+    background: rgb(255 255 255 / 0.035);
+  }
+
+  .graph-mode-switch button {
+    @apply h-8 rounded-lg px-3 text-xs font-bold transition;
+    color: rgb(255 255 255 / 0.54);
+  }
+
+  .graph-mode-switch button:hover,
+  .graph-mode-switch button.is-active {
+    background: color-mix(in srgb, var(--color-accent) 18%, rgb(255 255 255 / 0.08));
+    color: white;
+  }
+
+  .graph-section-toggles {
+    @apply grid grid-cols-2 gap-1;
+  }
+
+  .graph-section-toggles button {
+    @apply inline-flex h-8 min-w-0 items-center justify-between gap-2 rounded-xl border pl-3 pr-1.5 text-xs font-bold transition;
+    border-color: rgb(255 255 255 / 0.08);
+    background: rgb(255 255 255 / 0.045);
+    color: rgb(255 255 255 / 0.54);
+  }
+
+  .graph-section-toggles button:hover,
+  .graph-section-toggles button.is-active {
+    border-color: color-mix(in srgb, var(--color-accent) 42%, rgb(255 255 255 / 0.14));
+    background: color-mix(in srgb, var(--color-accent) 18%, rgb(255 255 255 / 0.07));
+    color: white;
+  }
+
+  .graph-section-toggles small {
+    @apply min-w-6 rounded-full px-1.5 py-0.5 text-center text-[0.62rem] font-black tabular-nums;
+    background: rgb(255 255 255 / 0.1);
+    color: rgb(255 255 255 / 0.62);
+  }
+
+  .graph-section-toggles button.is-active small {
+    background: rgb(255 255 255 / 0.18);
+    color: white;
+  }
+
+  .graph-control-stats {
+    @apply grid grid-cols-[auto_auto_auto_auto] items-baseline justify-between gap-x-2 rounded-xl border px-3 py-2;
+    border-color: rgb(255 255 255 / 0.1);
+    background: rgb(255 255 255 / 0.05);
+  }
+
+  .graph-control-stats strong {
+    @apply text-right text-sm font-black tabular-nums;
+    color: white;
+  }
+
+  .graph-control-stats span {
+    @apply text-[0.66rem] font-bold uppercase tracking-[0.12em];
+    color: rgb(255 255 255 / 0.42);
+  }
 }
 
 @keyframes motion-rise {
@@ -678,6 +1857,25 @@
   to {
     opacity: 1;
     transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes graph-entry-orbit {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@keyframes graph-inspector-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
     filter: blur(0);
   }
 }

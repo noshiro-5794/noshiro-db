@@ -39,3 +39,25 @@ npm run dev -- --host 0.0.0.0
 ```
 
 If the backend runs on a different port, forward both the frontend and backend ports through your SSH tunnel.
+
+## Quality Gates
+
+Run these commands before committing:
+
+```bash
+npm run typecheck
+npm run lint
+npm run build
+```
+
+## Git Hygiene
+
+Do not commit generated artifacts or machine-local configuration:
+
+- `dist/`
+- `node_modules/`
+- `*.tsbuildinfo`
+- `.env`
+- local agent/tooling directories such as `.agents/` and `.codex/`
+
+Keep `.env.example`, `README.md`, `docs/`, and public static assets in the repository.

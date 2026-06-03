@@ -1,14 +1,15 @@
 import type { ReactNode } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/features/auth/use-auth';
 import { useI18n } from '@/features/i18n/use-i18n';
 import { routes } from '@/routes/paths';
 import { LoadingState } from '@/shared/ui/FeedbackState';
 import { Page } from '@/shared/ui/Page';
 
-export function RequireAuth({ children }: { children: ReactNode }) {
+export function RequireAuth({ adminOnly = false, children }: { adminOnly?: boolean; children: ReactNode }) {
   const auth = useAuth();
   const { t } = useI18n();
+  const location = useLocation();
 
   if (auth.status === 'checking') {
     return (
@@ -19,7 +20,11 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   }
 
   if (!auth.isAuthenticated) {
-    return <Navigate replace to={routes.login} />;
+    return <Navigate replace state={{ returnTo: `${location.pathname}${location.search}${location.hash}` }} to={routes.login} />;
+  }
+
+  if (adminOnly && auth.role !== 'admin') {
+    return <Navigate replace to={routes.home} />;
   }
 
   return children;

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { AlertTriangle, Inbox, LoaderCircle } from 'lucide-react';
 
 type FeedbackStateProps = {
   title: string;
@@ -9,9 +10,14 @@ type FeedbackStateProps = {
 export function EmptyState({ title, description, action }: FeedbackStateProps) {
   return (
     <div className="empty-state">
-      <strong>{title}</strong>
-      {description ? <span>{description}</span> : null}
-      {action ? <div className="feedback-action">{action}</div> : null}
+      <span className="feedback-state-icon" aria-hidden="true">
+        <Inbox className="size-4" />
+      </span>
+      <div className="min-w-0">
+        <strong>{title}</strong>
+        {description ? <span>{description}</span> : null}
+        {action ? <div className="feedback-action">{action}</div> : null}
+      </div>
     </div>
   );
 }
@@ -19,19 +25,28 @@ export function EmptyState({ title, description, action }: FeedbackStateProps) {
 export function LoadingState({ title, description }: FeedbackStateProps) {
   return (
     <div className="loading-state">
-      <span className="loading-indicator" aria-hidden="true" />
-      <strong>{title}</strong>
-      {description ? <span>{description}</span> : null}
+      <span className="feedback-state-icon" aria-hidden="true">
+        <LoaderCircle className="size-4 animate-spin" />
+      </span>
+      <div className="min-w-0">
+        <strong>{title}</strong>
+        {description ? <span>{description}</span> : null}
+      </div>
     </div>
   );
 }
 
 export function ErrorState({ title, description, action }: FeedbackStateProps) {
   return (
-    <div className="empty-state error-state">
-      <strong>{title}</strong>
-      {description ? <span>{description}</span> : null}
-      {action ? <div className="feedback-action">{action}</div> : null}
+    <div className="error-state">
+      <span className="feedback-state-icon" aria-hidden="true">
+        <AlertTriangle className="size-4" />
+      </span>
+      <div className="min-w-0">
+        <strong>{title}</strong>
+        {description ? <span>{description}</span> : null}
+        {action ? <div className="feedback-action">{action}</div> : null}
+      </div>
     </div>
   );
 }
