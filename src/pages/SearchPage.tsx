@@ -25,6 +25,7 @@ import { FilterCombobox } from '@/shared/ui/FilterCombobox';
 import { FilterMenu } from '@/shared/ui/FilterMenu';
 import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
+import { Page } from '@/shared/ui/Page';
 
 const coverPlaceholder = '/assets/placeholders/subject-cover.png';
 const pageSize = 30;
@@ -309,25 +310,17 @@ export function SearchPage() {
   }, [t]);
 
   return (
-    <div className="bg-neutral-50 pb-14 dark:bg-neutral-950">
-      <section className="border-b border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
-        <div className="mx-auto grid max-w-6xl gap-5 px-5 py-8">
-          <div className="max-w-3xl">
-            <p className="text-xs font-semibold uppercase tracking-normal text-[var(--color-accent-strong)]">
-              {shouldUseSubjectSearch ? t('search.results') : t('search.catalog')}
-            </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-neutral-950 dark:text-white sm:text-4xl">
-              {t('search.title')}
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-neutral-500 dark:text-neutral-400">
-              {t('public.searchBody')}
-            </p>
-          </div>
-
-          <form
-            className="grid gap-3 rounded-2xl bg-neutral-100 p-3 dark:bg-neutral-900/80"
-            onSubmit={handleSubmit}
-          >
+    <Page
+      title={t('search.title')}
+      eyebrow={t('nav.groupDiscover')}
+      description={t('public.searchBody')}
+      actions={<span className="text-sm text-neutral-500 dark:text-neutral-400">{typeof resultCount === 'number' ? `${resultCount} ${t('search.results')}` : t('search.ready')}</span>}
+    >
+      <div className="grid gap-6 pb-8">
+        <form
+          className="grid gap-3 rounded-xl border border-neutral-200 p-3 dark:border-neutral-800"
+          onSubmit={handleSubmit}
+        >
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
               <label className="grid gap-1.5">
                 <span className="sr-only">{t('search.keyword')}</span>
@@ -435,14 +428,10 @@ export function SearchPage() {
             </div>
           </form>
 
-          <div className="flex justify-between gap-3 text-sm text-neutral-500 dark:text-neutral-400">
-            <span>{typeof resultCount === 'number' ? `${resultCount} ${t('search.results')}` : t('search.ready')}</span>
+          <div className="flex justify-end gap-3 text-sm text-neutral-500 dark:text-neutral-400">
             {isFetching ? <span>{t('search.loading')}</span> : null}
           </div>
-        </div>
-      </section>
 
-      <section className="mx-auto grid max-w-6xl gap-6 px-5 py-8">
         {isError ? <ErrorState title={t('search.errorTitle')} description={t('search.errorBody')} /> : null}
 
         {!isError && !isFetching && isEmpty ? (
@@ -531,7 +520,7 @@ export function SearchPage() {
             </form>
           </div>
         ) : null}
-      </section>
-    </div>
+      </div>
+    </Page>
   );
 }

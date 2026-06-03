@@ -27,7 +27,21 @@ Feature APIs live next to their domain:
 - `features/auth/api.ts`
 - `features/subjects/api.ts`
 - `features/library/api.ts`
+- `features/community/api.ts`
 - `features/social/api.ts`
 - `features/sync/api.ts`
 
 React Query options are defined per feature so pages can stay focused on composition and user flow.
+
+## Route Pages
+
+Route pages live in `src/pages` and compose feature modules into user-facing flows. Public pages include Home, Search, Calendar, Subject, Subject Graph, and Docs. Authenticated pages include Home workspace, Me, Settings, Library, Collections, Reviews, Bookmarks, Notifications, community pages, and admin tools.
+
+## Static Assets
+
+Production static files live under `public/`:
+
+- `brand/icon.svg`
+- favicon and Apple touch icon files
+- PWA icons and `site.webmanifest`
+- placeholder images used by cards and avatars

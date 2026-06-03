@@ -17,7 +17,7 @@ function DropdownMenuContent({
       <DropdownMenuPrimitive.Content
         align={align}
         className={cn(
-          'z-50 min-w-44 overflow-hidden rounded-xl border border-neutral-200 bg-white p-1.5 text-neutral-950 shadow-xl outline-none dark:border-neutral-800 dark:bg-neutral-950 dark:text-white',
+          'z-[120] min-w-44 overflow-hidden rounded-xl border border-neutral-200 bg-white p-1.5 text-neutral-950 shadow-xl outline-none dark:border-neutral-800 dark:bg-neutral-950 dark:text-white',
           className,
         )}
         sideOffset={sideOffset}

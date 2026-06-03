@@ -1,12 +1,14 @@
 import { createContext } from 'react';
 
 export type ThemeMode = 'light' | 'dark';
+export type ThemePreference = 'auto' | ThemeMode;
 
 export type ThemeState = {
   accentColor: string;
   setAccentColor: (color: string) => void;
   mode: ThemeMode;
-  setMode: (mode: ThemeMode) => void;
+  preference: ThemePreference;
+  setMode: (mode: ThemePreference) => void;
   toggleMode: () => void;
 };
 

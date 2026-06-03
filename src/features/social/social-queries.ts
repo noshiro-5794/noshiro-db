@@ -4,6 +4,7 @@ import {
   followsApi,
   publicUsersApi,
   type ActivityListQuery,
+  type FollowListQuery,
 } from '@/features/social/api';
 import type { CollectionListQuery, ReviewListQuery, UserSubjectListQuery } from '@/features/library/api';
 
@@ -16,11 +17,15 @@ export const socialQueryKeys = {
   publicReviews: (userId: number, query: ReviewListQuery = {}) => [...socialQueryKeys.publicUsers(), userId, 'reviews', query] as const,
   publicCollections: (userId: number, query: CollectionListQuery = {}) =>
     [...socialQueryKeys.publicUsers(), userId, 'collections', query] as const,
+  publicCollection: (userId: number, collectionId: number) =>
+    [...socialQueryKeys.publicUsers(), userId, 'collections', collectionId] as const,
+  publicCollectionItems: (userId: number, collectionId: number, query: FollowListQuery = {}) =>
+    [...socialQueryKeys.publicUsers(), userId, 'collections', collectionId, 'items', query] as const,
   follows: () => [...socialQueryKeys.all, 'follows'] as const,
-  myFollowing: () => [...socialQueryKeys.follows(), 'my-following'] as const,
-  myFollowers: () => [...socialQueryKeys.follows(), 'my-followers'] as const,
-  publicFollowing: (userId: number) => [...socialQueryKeys.follows(), userId, 'following'] as const,
-  publicFollowers: (userId: number) => [...socialQueryKeys.follows(), userId, 'followers'] as const,
+  myFollowing: (query: FollowListQuery = {}) => [...socialQueryKeys.follows(), 'my-following', query] as const,
+  myFollowers: (query: FollowListQuery = {}) => [...socialQueryKeys.follows(), 'my-followers', query] as const,
+  publicFollowing: (userId: number, query: FollowListQuery = {}) => [...socialQueryKeys.follows(), userId, 'following', query] as const,
+  publicFollowers: (userId: number, query: FollowListQuery = {}) => [...socialQueryKeys.follows(), userId, 'followers', query] as const,
   activities: () => [...socialQueryKeys.all, 'activities'] as const,
   myActivities: (query: ActivityListQuery = {}) => [...socialQueryKeys.activities(), 'mine', query] as const,
   publicActivities: (userId: number, query: ActivityListQuery = {}) => [...socialQueryKeys.activities(), 'public', userId, query] as const,
@@ -52,28 +57,40 @@ export const socialQueries = {
       queryFn: () => publicUsersApi.listCollections(userId, query),
     }),
 
-  myFollowing: () =>
+  publicCollection: (userId: number, collectionId: number) =>
     queryOptions({
-      queryKey: socialQueryKeys.myFollowing(),
-      queryFn: () => followsApi.listMyFollowing(),
+      queryKey: socialQueryKeys.publicCollection(userId, collectionId),
+      queryFn: () => publicUsersApi.getCollection(userId, collectionId),
     }),
 
-  myFollowers: () =>
+  publicCollectionItems: (userId: number, collectionId: number, query: FollowListQuery = {}) =>
     queryOptions({
-      queryKey: socialQueryKeys.myFollowers(),
-      queryFn: () => followsApi.listMyFollowers(),
+      queryKey: socialQueryKeys.publicCollectionItems(userId, collectionId, query),
+      queryFn: () => publicUsersApi.listCollectionItems(userId, collectionId, query),
     }),
 
-  publicFollowing: (userId: number) =>
+  myFollowing: (query: FollowListQuery = {}) =>
     queryOptions({
-      queryKey: socialQueryKeys.publicFollowing(userId),
-      queryFn: () => followsApi.listPublicFollowing(userId),
+      queryKey: socialQueryKeys.myFollowing(query),
+      queryFn: () => followsApi.listMyFollowing(query),
     }),
 
-  publicFollowers: (userId: number) =>
+  myFollowers: (query: FollowListQuery = {}) =>
     queryOptions({
-      queryKey: socialQueryKeys.publicFollowers(userId),
-      queryFn: () => followsApi.listPublicFollowers(userId),
+      queryKey: socialQueryKeys.myFollowers(query),
+      queryFn: () => followsApi.listMyFollowers(query),
+    }),
+
+  publicFollowing: (userId: number, query: FollowListQuery = {}) =>
+    queryOptions({
+      queryKey: socialQueryKeys.publicFollowing(userId, query),
+      queryFn: () => followsApi.listPublicFollowing(userId, query),
+    }),
+
+  publicFollowers: (userId: number, query: FollowListQuery = {}) =>
+    queryOptions({
+      queryKey: socialQueryKeys.publicFollowers(userId, query),
+      queryFn: () => followsApi.listPublicFollowers(userId, query),
     }),
 
   myActivities: (query: ActivityListQuery = {}) =>

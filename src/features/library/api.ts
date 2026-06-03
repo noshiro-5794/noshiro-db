@@ -108,10 +108,15 @@ export const reviewsApi = {
 
   listForSubject: (subjectId: UUID) => api.get<Review[]>(`/api/users/me/subjects/${encodePath(subjectId)}/reviews/`),
 
+  listPublicForSubject: (subjectId: UUID, query: ReviewListQuery = {}) =>
+    api.get<ApiPage<Review>>(`/api/users/subjects/${encodePath(subjectId)}/reviews/`, { query, skipAuth: true }),
+
   createForSubject: (subjectId: UUID, body: { title: string; content: string; is_public?: boolean; is_spoiler?: boolean }) =>
     api.post<Review, typeof body>(`/api/users/me/subjects/${encodePath(subjectId)}/reviews/`, body),
 
   getMine: (reviewId: number) => api.get<Review>(`/api/users/me/reviews/${encodePath(reviewId)}/`),
+
+  getPublic: (reviewId: number) => api.get<Review>(`/api/users/reviews/${encodePath(reviewId)}/`, { skipAuth: true }),
 
   updateMine: (reviewId: number, body: Partial<Pick<Review, 'title' | 'content' | 'is_public' | 'is_spoiler'>>) =>
     api.patch<Review, typeof body>(`/api/users/me/reviews/${encodePath(reviewId)}/`, body),
@@ -140,6 +145,11 @@ export const collectionsApi = {
     collectionId: number,
     items: Array<{ subject_id?: UUID; user_subject_id?: number; order?: number; relation?: string }>,
   ) => api.put<CollectionItem[], { items: typeof items }>(`/api/users/me/collections/${encodePath(collectionId)}/items/`, { items }),
+
+  updateItems: (
+    collectionId: number,
+    items: Array<{ id: number; order?: number; relation?: string }>,
+  ) => api.patch<CollectionItem[], { items: typeof items }>(`/api/users/me/collections/${encodePath(collectionId)}/items/`, { items }),
 
   deleteItem: (collectionId: number, itemId: number) =>
     api.delete<unknown>(`/api/users/me/collections/${encodePath(collectionId)}/items/${encodePath(itemId)}/`),

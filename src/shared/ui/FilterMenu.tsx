@@ -14,7 +14,7 @@ export type FilterMenuOption<TValue extends string> = {
 
 type FilterMenuProps<TValue extends string> = {
   label: string;
-  options: Array<FilterMenuOption<TValue>>;
+  options: ReadonlyArray<FilterMenuOption<TValue>>;
   value: TValue;
   onChange: (value: TValue) => void;
 };

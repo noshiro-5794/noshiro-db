@@ -1,5 +1,8 @@
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useI18n } from '@/features/i18n/use-i18n';
+import type { Locale } from '@/features/i18n/messages';
+import { useTheme } from '@/features/theme/use-theme';
 import { setAccessToken, setAccessTokenRefresher, setSessionExpiredHandler } from '@/lib/api/client';
 import {
   fetchCurrentUserProfile,
@@ -16,6 +19,8 @@ import {
 import { AuthContext, type AuthState, type AuthStatus } from './auth-context-value';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { setLocale } = useI18n();
+  const { setAccentColor, setMode } = useTheme();
   const [profile, setProfile] = useState<CurrentUserProfile | null>(null);
   const [status, setStatus] = useState<AuthStatus>('checking');
   const [loading, setLoading] = useState(false);
@@ -28,9 +33,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const completeAuthenticatedSession = useCallback(async (access: string) => {
     setAccessToken(access);
-    setProfile(await fetchCurrentUserProfile());
+    const nextProfile = await fetchCurrentUserProfile();
+    setProfile(nextProfile);
+    setMode(nextProfile.appearance ?? 'auto');
+    setAccentColor(nextProfile.theme_color || '#7F6FB0');
+    if (nextProfile.language && nextProfile.language !== 'auto') {
+      setLocale(nextProfile.language as Locale);
+    }
     setStatus('authenticated');
-  }, []);
+  }, [setAccentColor, setLocale, setMode]);
 
   const refreshSession = useCallback(async () => {
     setLoading(true);

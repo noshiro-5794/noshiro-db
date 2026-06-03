@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 64" role="img" aria-labelledby="title">
-  <title id="title">Noshiro DB wordmark</title>
-  <rect width="64" height="64" rx="16" fill="#17171c"/>
-  <path d="M18 46V18h7.2l16.9 20.2V18H48v28h-7.2L23.9 25.8V46H18Z" fill="#f7f7fa"/>
-  <path d="M18 46h30v4H18z" fill="#7F6FB0"/>
-  <text x="80" y="39" fill="#17171c" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="24" font-weight="700">
-    Noshiro DB
-  </text>
-</svg>

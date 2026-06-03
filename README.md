@@ -1,28 +1,30 @@
 # Noshiro DB Frontend
 
-Modern React frontend for **Noshiro DB**, a personal anime and galgame database for discovery, tracking, library management, reviews, collections, and activity.
+Modern React frontend for **Noshiro DB**, a personal anime and galgame database with discovery, tracking, reviews, collections, community activity, and subject knowledge graphs.
 
-## Tech Stack
+## Stack
 
 - React 19
 - TypeScript
 - Vite
 - React Router
 - TanStack Query
-- Tailwind CSS
+- Tailwind CSS v4
 - Radix UI primitives
 - hCaptcha protected email-code flows
 
 ## Features
 
-- Public home page, search, calendar, subject detail, and docs
-- Password login and email-code login
-- Registration with hCaptcha-protected verification code sending
-- Authenticated workspace shell
-- Profile editing, avatar upload, and user accent color
-- Library, collections, reviews, and tag-based library filtering
-- Subject detail actions for marking, rating, comments, deletion, progress, relations, and reviews
-- Markdown review rendering foundation
+- Public Home, Search, Calendar, Subject, Subject Graph, and Docs pages
+- Password login, email-code login, registration, and password reset flows
+- Authenticated workspace shell with profile, settings, notifications, bookmarks, and community pages
+- Library management with status, ratings, tags, progress, filtering, sorting, and pagination
+- Collections with cover presentation, Library-based item adding, horizontal item ordering, and drag sorting
+- Subject detail pages with staff, episodes, characters, relations, Bangumi links, public reviews, and personal marks
+- Markdown review editor and viewer with GFM rendering and sanitized output
+- Lightweight community features around posts, comments, reactions, follows, notifications, bookmarks, reviews, and collections
+- Admin panel for backend sync and index maintenance
+- Three-language UI foundation: Chinese, English, and Japanese
 
 ## Getting Started
 
@@ -54,7 +56,7 @@ npm run build
 npm run preview
 ```
 
-## Project Structure
+## Structure
 
 ```text
 src/app/       application shell and top-level providers
@@ -67,12 +69,12 @@ src/shared/    shared UI primitives
 src/styles/    global styles, theme tokens, and Tailwind utilities
 ```
 
-See also:
+## Documentation
 
-- [Development](docs/development.md)
 - [Architecture](docs/architecture.md)
+- [Development](docs/development.md)
 
-## Quality Checks
+## Quality Gates
 
 Run before committing:
 

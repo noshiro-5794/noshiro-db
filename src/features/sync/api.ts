@@ -11,6 +11,9 @@ export const syncApi = {
   runCalendar: (body: { run_async?: boolean; sync_subject_details?: boolean } = {}) =>
     api.post<QueuedTask | Record<string, unknown>, typeof body>('/api/sync/calendar/run/', body),
 
+  syncBangumiSubject: (body: { bangumi_id: number; run_async?: boolean }) =>
+    api.post<(QueuedTask & { bangumi_id: number }) | SubjectResyncResult, typeof body>('/api/sync/subjects/bangumi/', body),
+
   resyncSubject: (subjectId: UUID, body: { run_async?: boolean } = {}) =>
     api.post<(QueuedTask & { subject_id: UUID }) | SubjectResyncResult, typeof body>(
       `/api/sync/subjects/${encodePath(subjectId)}/resync/`,

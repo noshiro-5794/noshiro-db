@@ -8,6 +8,7 @@ import { subjectQueries } from '@/features/subjects/subject-queries';
 import type { CalendarGroup, CalendarSubjectItem, WeekdayEn } from '@/lib/api/types';
 import { routes } from '@/routes/paths';
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/FeedbackState';
+import { Page } from '@/shared/ui/Page';
 
 const coverPlaceholder = '/assets/placeholders/subject-cover.png';
 const weekdays = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
@@ -45,8 +46,8 @@ const weekdayLabels: Record<Locale, Record<(typeof weekdays)[number], string>> =
   },
 };
 
-function titleOf(item: CalendarSubjectItem) {
-  return item.display_title || item.title || item.title_cn || 'Untitled';
+function titleOf(item: CalendarSubjectItem, fallback: string) {
+  return item.display_title || item.title || item.title_cn || fallback;
 }
 
 function formatHeat(value: number, locale: Locale) {
@@ -57,7 +58,7 @@ function findGroup(groups: CalendarGroup[], weekday: WeekdayEn) {
   return groups.find((group) => group.weekday.en === weekday);
 }
 
-function CalendarSubjectRow({ item, locale }: { item: CalendarSubjectItem; locale: Locale }) {
+function CalendarSubjectRow({ item, locale, titleFallback }: { item: CalendarSubjectItem; locale: Locale; titleFallback: string }) {
   return (
     <Link
       className="grid min-w-0 grid-cols-[72px_minmax(0,1fr)_auto] gap-4 rounded-xl border border-neutral-200 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-[var(--color-accent-border)] hover:shadow-md dark:border-neutral-800 dark:bg-neutral-950 max-sm:grid-cols-[64px_minmax(0,1fr)]"
@@ -66,11 +67,11 @@ function CalendarSubjectRow({ item, locale }: { item: CalendarSubjectItem; local
       <img
         className="h-24 w-[72px] rounded-lg bg-neutral-100 object-cover dark:bg-neutral-900 max-sm:h-[88px] max-sm:w-16"
         src={item.image_thumbnail || coverPlaceholder}
-        alt={titleOf(item)}
+        alt={titleOf(item, titleFallback)}
         loading="lazy"
       />
       <span className="grid min-w-0 content-center gap-2">
-        <span className="line-clamp-2 text-base font-semibold leading-6 text-neutral-950 dark:text-white">{titleOf(item)}</span>
+        <span className="line-clamp-2 text-base font-semibold leading-6 text-neutral-950 dark:text-white">{titleOf(item, titleFallback)}</span>
         {item.display_subtitle ? (
           <span className="line-clamp-1 text-sm text-neutral-500 dark:text-neutral-400">{item.display_subtitle}</span>
         ) : null}
@@ -105,22 +106,14 @@ export function CalendarPage() {
   const hottestItems = allItems.slice(0, 5);
 
   return (
-    <div className="bg-neutral-50 pb-14 dark:bg-neutral-950">
-      <section className="border-b border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
-        <div className="mx-auto grid max-w-6xl gap-5 px-5 py-8">
-          <div className="max-w-3xl">
-            <p className="text-xs font-semibold uppercase tracking-normal text-[var(--color-accent-strong)]">
-              {t('calendar.weeklyLineup')}
-            </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-neutral-950 dark:text-white sm:text-4xl">
-              {t('calendar.title')}
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-neutral-500 dark:text-neutral-400">
-              {t('public.calendarBody')}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
+    <Page
+      title={t('calendar.title')}
+      eyebrow={t('nav.groupDiscover')}
+      description={t('public.calendarBody')}
+      actions={<span className="text-sm text-neutral-500 dark:text-neutral-400">{allItems.length} {t('calendar.weeklyItems')}</span>}
+    >
+      <div className="grid gap-6 pb-8">
+        <div className="flex flex-wrap gap-2">
             {weekdays.map((weekday) => {
               const isActive = selectedWeekday === weekday;
               const count = weekday ? (findGroup(groups, weekday)?.items.length ?? 0) : allItems.length;
@@ -142,20 +135,17 @@ export function CalendarPage() {
               );
             })}
           </div>
-        </div>
-      </section>
 
-      <section className="mx-auto grid max-w-6xl gap-6 px-5 py-8">
-        {calendarQuery.isLoading ? <LoadingState title="Loading calendar" description="Fetching weekly airing subjects." /> : null}
-        {calendarQuery.isError ? <ErrorState title="Unable to load calendar." description="Please check the backend connection." /> : null}
+        {calendarQuery.isLoading ? <LoadingState title={t('calendar.loading')} description={t('public.calendarBody')} /> : null}
+        {calendarQuery.isError ? <ErrorState title={t('search.errorTitle')} description={t('search.errorBody')} /> : null}
 
         {!calendarQuery.isLoading && !calendarQuery.isError && allItems.length === 0 ? (
-          <EmptyState title="No calendar items." description="Run backend calendar sync first." />
+          <EmptyState title={t('calendar.empty')} description={t('public.calendarBody')} />
         ) : null}
 
         <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
           <aside className="grid content-start gap-3">
-            <section className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+            <section className="rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
               <span className="text-xs font-semibold uppercase text-neutral-500 dark:text-neutral-400">{t('calendar.overview')}</span>
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <div>
@@ -169,14 +159,14 @@ export function CalendarPage() {
               </div>
             </section>
 
-            <section className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+            <section className="rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
               <span className="text-xs font-semibold uppercase text-neutral-500 dark:text-neutral-400">{t('calendar.trending')}</span>
               <div className="mt-3 grid gap-2">
                 {hottestItems.map((item) => (
                   <Link className="grid min-w-0 grid-cols-[42px_minmax(0,1fr)] gap-2 rounded-lg p-1.5 transition hover:bg-neutral-50 dark:hover:bg-neutral-900" key={item.subject_id} to={routes.subject(item.subject_id)}>
-                    <img className="h-14 w-[42px] rounded-md bg-neutral-100 object-cover dark:bg-neutral-900" src={item.image_thumbnail || coverPlaceholder} alt={titleOf(item)} loading="lazy" />
+                    <img className="h-14 w-[42px] rounded-md bg-neutral-100 object-cover dark:bg-neutral-900" src={item.image_thumbnail || coverPlaceholder} alt={titleOf(item, t('common.untitledSubject'))} loading="lazy" />
                     <span className="grid min-w-0 content-center">
-                      <span className="truncate text-sm font-semibold text-neutral-950 dark:text-white">{titleOf(item)}</span>
+                      <span className="truncate text-sm font-semibold text-neutral-950 dark:text-white">{titleOf(item, t('common.untitledSubject'))}</span>
                       <span className="text-xs text-neutral-500 dark:text-neutral-400">{formatHeat(item.doing, locale)}</span>
                     </span>
                   </Link>
@@ -192,18 +182,18 @@ export function CalendarPage() {
                   <h2 className="text-xl font-semibold tracking-tight text-neutral-950 dark:text-white">
                     {weekdayLabels[locale][group.weekday.en]}
                   </h2>
-                  <span className="text-sm text-neutral-500 dark:text-neutral-400">{group.items.length} items</span>
+                  <span className="text-sm text-neutral-500 dark:text-neutral-400">{group.items.length} {t('common.items')}</span>
                 </div>
                 <div className="grid gap-3">
                   {group.items.map((item) => (
-                    <CalendarSubjectRow item={item} key={item.subject_id} locale={locale} />
+                    <CalendarSubjectRow item={item} key={item.subject_id} locale={locale} titleFallback={t('common.untitledSubject')} />
                   ))}
                 </div>
               </section>
             ))}
           </div>
         </div>
-      </section>
-    </div>
+      </div>
+    </Page>
   );
 }

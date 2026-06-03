@@ -1,5 +1,5 @@
 import { api } from '@/lib/api/client';
-import type { AccessTokenPayload, CurrentUserProfile, SendCodePurpose } from '@/lib/api/types';
+import type { AccessTokenPayload, CurrentUserProfile, ProfileStats, SendCodePurpose } from '@/lib/api/types';
 
 export const authApi = {
   sendCode: (body: { email: string; purpose: SendCodePurpose; hcaptcha_token?: string }) =>
@@ -27,6 +27,14 @@ export const profileApi = {
 
   updateMe: (body: Partial<Pick<CurrentUserProfile, 'nickname' | 'bio' | 'theme_color'>>) =>
     api.patch<CurrentUserProfile, typeof body>('/api/users/me/profile/', body),
+
+  getSettings: () => api.get<CurrentUserProfile>('/api/users/me/settings/'),
+
+  updateSettings: (body: Partial<Pick<CurrentUserProfile, 'language' | 'appearance' | 'theme_color'>>) =>
+    api.patch<CurrentUserProfile, typeof body>('/api/users/me/settings/', body),
+
+  getStats: (query: { year?: number; timezone?: string } = {}) =>
+    api.get<ProfileStats>('/api/users/me/profile/stats/', { query }),
 
   uploadAvatar: (avatar: File) => {
     const body = new FormData();
