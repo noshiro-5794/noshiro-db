@@ -59,6 +59,7 @@ export type CommunityCommentBody = {
 
 export type CommunityBookmarkListQuery = PageQuery & {
   target_type?: CommunityTargetType;
+  keyword?: string;
 };
 
 export type CommunityNotificationListQuery = PageQuery & {
@@ -75,9 +76,9 @@ export const communityFollowsApi = {
   listMyFollowing: (query: PageQuery = {}) => api.get<ApiPage<FollowRelation>>('/api/community/me/following/', { query }),
   listMyFollowers: (query: PageQuery = {}) => api.get<ApiPage<FollowRelation>>('/api/community/me/followers/', { query }),
   listUserFollowing: (userId: number, query: PageQuery = {}) =>
-    api.get<ApiPage<FollowRelation>>(`/api/community/users/${encodePath(userId)}/following/`, { query, skipAuth: true }),
+    api.get<ApiPage<FollowRelation>>(`/api/community/users/${encodePath(userId)}/following/`, { query }),
   listUserFollowers: (userId: number, query: PageQuery = {}) =>
-    api.get<ApiPage<FollowRelation>>(`/api/community/users/${encodePath(userId)}/followers/`, { query, skipAuth: true }),
+    api.get<ApiPage<FollowRelation>>(`/api/community/users/${encodePath(userId)}/followers/`, { query }),
 };
 
 export const communityRelationshipsApi = {
@@ -92,10 +93,11 @@ export const communityRelationshipsApi = {
 };
 
 export const communityActivitiesApi = {
+  listPublic: (query: CommunityActivityListQuery = {}) => api.get<ApiPage<Activity>>('/api/community/activities/', { query }),
   listMine: (query: CommunityActivityListQuery = {}) => api.get<ApiPage<Activity>>('/api/community/me/activities/', { query }),
   listFeed: (query: CommunityActivityListQuery = {}) => api.get<ApiPage<Activity>>('/api/community/me/feed/', { query }),
   listUser: (userId: number, query: CommunityActivityListQuery = {}) =>
-    api.get<ApiPage<Activity>>(`/api/community/users/${encodePath(userId)}/activities/`, { query, skipAuth: true }),
+    api.get<ApiPage<Activity>>(`/api/community/users/${encodePath(userId)}/activities/`, { query }),
 };
 
 export const communityPostsApi = {

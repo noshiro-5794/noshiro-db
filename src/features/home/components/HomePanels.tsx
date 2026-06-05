@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CalendarDays, Layers3, Library, MessageSquare, Settings, ShieldCheck } from 'lucide-react';
 import { CalendarBoard } from '@/features/calendar/components/CalendarBoard';
+import { activityTargetHref } from '@/features/community/activity-target';
 import { CommunityCommentsSection } from '@/features/community/components/CommunityCommentsSection';
 import { CommunityContentCard } from '@/features/community/components/CommunityContentCard';
 import { CommunityTargetActions } from '@/features/community/components/CommunityTargetActions';
@@ -16,11 +17,13 @@ import { routes } from '@/routes/paths';
 import { Badge } from '@/shared/ui/Badge';
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/FeedbackState';
 
+const avatarPlaceholder = '/assets/placeholders/avatar.png';
+
 export function SessionCheckingHome() {
   return (
     <div className="grid gap-3 sm:grid-cols-3">
-      <div className="h-44 rounded-xl border border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 sm:col-span-2" />
-      <div className="h-44 rounded-xl border border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900" />
+      <div className="h-44 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] sm:col-span-2" />
+      <div className="h-44 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)]" />
     </div>
   );
 }
@@ -33,7 +36,7 @@ export function GuestHome() {
     <div className="space-y-14 pb-10">
       <section className="mx-auto flex min-h-[calc(100svh-23rem)] max-w-5xl flex-col items-center justify-center px-4 py-10 text-center sm:py-12">
         <Link
-          className="motion-rise inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-neutral-600 shadow-sm transition hover:border-[var(--color-accent-border)] hover:text-[var(--color-accent-strong)] dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-400"
+          className="motion-rise inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1 text-xs font-medium text-[var(--color-text-muted)] shadow-sm transition hover:border-[var(--color-accent-border)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-accent-strong)]"
           to={routes.docsIntroduction}
         >
           <span>{t('public.announcement')}</span>
@@ -47,11 +50,11 @@ export function GuestHome() {
           {t('public.heroBody')}
         </p>
         <div className="motion-rise motion-delay-3 mt-6 flex flex-wrap justify-center gap-3">
-          <Link className="button button-primary h-10 rounded-full px-5" to={routes.register}>
-            {t('auth.register')}
-          </Link>
-          <Link className="button button-secondary h-10 rounded-full px-5" to={routes.search}>
+          <Link className="button button-primary h-10 rounded-full px-5" to={routes.search}>
             {t('public.searchAction')}
+          </Link>
+          <Link className="button button-secondary h-10 rounded-full px-5" to={routes.register}>
+            {t('auth.register')}
           </Link>
         </div>
       </section>
@@ -101,14 +104,6 @@ function statusLabel(status: string | undefined, t: ReturnType<typeof useI18n>['
     drop: t('status.drop'),
   };
   return labels[status ?? ''] ?? status?.replaceAll('_', ' ') ?? t('status.marked');
-}
-
-function activityHref(activity: Activity) {
-  if (activity.post?.id) return routes.communityPost(activity.post.id);
-  if (activity.review?.id) return routes.review(activity.review.id);
-  if (activity.collection?.id) return routes.collections;
-  if (activity.subject?.id) return routes.subject(activity.subject.id);
-  return routes.home;
 }
 
 function activityTypeLabel(type: string, t: ReturnType<typeof useI18n>['t']) {
@@ -165,87 +160,95 @@ export function UserHome({ isAdmin, profile }: UserHomeProps) {
   const collections = (collectionsQuery.data?.results ?? []).slice(0, 4);
 
   return (
-    <div className="grid gap-6">
-      <section className="rounded-lg border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-950">
-        <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="text-xl font-semibold tracking-tight text-neutral-950 dark:text-white">
-              {t('home.welcomeBack')}, {profile?.nickname || t('common.anonymous')}
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-500 dark:text-neutral-400">{t('home.feedBody')}</p>
+    <div className="home-shell">
+      <section className="home-overview">
+        <div className="home-overview-main">
+          <div className="flex min-w-0 items-center gap-3.5">
+            <img
+              alt=""
+              className="home-avatar"
+              src={profile?.avatar || avatarPlaceholder}
+            />
+            <div className="min-w-0">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <p className="home-kicker">{t('home.welcomeBack')}</p>
+                {isAdmin ? <Badge variant="secondary">{t('auth.admin')}</Badge> : null}
+              </div>
+              <h2 className="home-overview-title">
+                {profile?.nickname || t('common.anonymous')}
+              </h2>
+            </div>
           </div>
-          {isAdmin ? <Badge variant="secondary">{t('auth.admin')}</Badge> : null}
         </div>
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <div className="home-stat-grid">
           {[
             { label: t('home.marked'), value: recentSubjectsQuery.data?.count ?? 0, href: routes.library },
             { label: t('status.doing'), value: watchingSubjectsQuery.data?.count ?? 0, href: routes.library },
             { label: t('common.reviews'), value: reviewsQuery.data?.count ?? 0, href: routes.reviews },
           ].map((item) => (
-            <Link className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 transition hover:border-[var(--color-accent-border)] dark:border-neutral-800 dark:bg-neutral-900/60" key={item.label} to={item.href}>
-              <strong className="text-2xl font-semibold tracking-tight text-neutral-950 dark:text-white">{item.value}</strong>
-              <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{item.label}</p>
+            <Link className="home-stat" key={item.label} to={item.href}>
+              <strong>{item.value}</strong>
+              <span>{item.label}</span>
             </Link>
           ))}
         </div>
       </section>
 
       {isAdmin ? (
-        <section className="rounded-lg border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-950">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex min-w-0 items-start gap-4">
-              <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[var(--color-accent-soft)] text-[var(--color-accent-strong)]">
-                <ShieldCheck className="size-5" />
-              </span>
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-semibold uppercase text-[var(--color-accent-strong)]">{t('auth.admin')}</span>
-                  <Badge variant="secondary">{t('admin.syncTitle')}</Badge>
-                </div>
-                <h2 className="mt-2 text-lg font-semibold tracking-tight text-neutral-950 dark:text-white">{t('home.adminTitle')}</h2>
-                <p className="mt-1 max-w-2xl text-sm leading-6 text-neutral-500 dark:text-neutral-400">{t('admin.description')}</p>
-              </div>
+        <section className="home-admin-panel">
+          <div className="home-admin-content">
+            <span className="home-panel-icon">
+              <ShieldCheck className="size-5" />
+            </span>
+            <div className="min-w-0">
+              <p className="home-admin-meta">
+                {t('auth.admin')}
+                <span aria-hidden="true">/</span>
+                {t('admin.syncTitle')}
+              </p>
+              <h2 className="home-admin-title">{t('home.adminTitle')}</h2>
             </div>
-            <Link className="button button-secondary w-fit shrink-0" to={routes.admin}>
-              <ShieldCheck className="size-4" />
-              {t('nav.admin')}
-            </Link>
           </div>
+          <Link className="button button-secondary home-admin-action" to={routes.admin}>
+            <ShieldCheck className="size-4" />
+            {t('nav.admin')}
+          </Link>
         </section>
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <main className="grid min-w-0 content-start gap-6">
-          <section className="grid gap-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold tracking-tight text-neutral-950 dark:text-white">{t('home.feed')}</h2>
-                <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{t('home.feedBody')}</p>
-              </div>
+      <div className="home-layout">
+        <main className="home-main">
+          <section className="home-panel home-feed-panel">
+            <div className="home-section-header">
+              <h2>{t('home.feed')}</h2>
               <Link className="text-sm font-semibold text-[var(--color-accent-strong)]" to={routes.communityPosts}>{t('home.viewAll')}</Link>
             </div>
 
-            <div className="grid gap-3">
+            <div className="home-feed-list">
               {feedItems.map((activity) => (
                 <div className="grid gap-3" key={activity.id}>
                   <CommunityContentCard
                     actions={(
                       <>
                         <CommunityTargetActions
+                          inlineMiddleAction={(
+                            <button
+                              aria-label={expandedActivityId === activity.id ? t('community.hideComments') : t('community.viewComments')}
+                              className={`timeline-action-button ${expandedActivityId === activity.id ? 'is-active' : ''}`}
+                              type="button"
+                              onClick={() => setExpandedActivityId((current) => current === activity.id ? null : activity.id)}
+                            >
+                              <MessageSquare className="size-4" />
+                              {typeof activity.reply_count === 'number' ? <span>{activity.reply_count}</span> : null}
+                            </button>
+                          )}
+                          presentation="inline"
                           reactionCount={typeof activity.reaction_count === 'number' ? activity.reaction_count : undefined}
                           reportLabel={t('community.reportActivity')}
                           targetId={activity.id}
                           targetType="activity"
                           viewerState={activity.viewer_state}
                         />
-                        <button
-                          className="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-sm font-semibold text-neutral-500 transition hover:bg-neutral-100 hover:text-[var(--color-accent-strong)] dark:text-neutral-400 dark:hover:bg-neutral-900"
-                          type="button"
-                          onClick={() => setExpandedActivityId((current) => current === activity.id ? null : activity.id)}
-                        >
-                          <MessageSquare className="size-4" />
-                          {expandedActivityId === activity.id ? t('community.hideComments') : t('community.viewComments')}
-                        </button>
                       </>
                     )}
                     author={activity.user?.id ? {
@@ -256,7 +259,7 @@ export function UserHome({ isAdmin, profile }: UserHomeProps) {
                     body={activityBody(activity, t)}
                     cover={activity.subject?.image_thumbnail || null}
                     date={formatDate(activity.created_at)}
-                    href={activityHref(activity)}
+                    href={activityTargetHref(activity, routes.home)}
                     icon={<MessageSquare className="size-4" />}
                     subject={activity.subject?.id ? {
                       href: routes.subject(activity.subject.id),
@@ -266,7 +269,7 @@ export function UserHome({ isAdmin, profile }: UserHomeProps) {
                     typeLabel={activityTypeLabel(activity.activity_type, t)}
                   />
                   {expandedActivityId === activity.id ? (
-                    <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
+                    <div className="activity-comments-drawer">
                       <CommunityCommentsSection targetType="activity" targetId={activity.id} />
                     </div>
                   ) : null}
@@ -288,90 +291,103 @@ export function UserHome({ isAdmin, profile }: UserHomeProps) {
             </div>
           </section>
 
-          <section className="grid gap-4 md:grid-cols-2">
-            <div className="grid content-start gap-3">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="font-semibold tracking-tight text-neutral-950 dark:text-white">{t('home.recentMarks')}</h2>
+          <section className="home-card-grid">
+            <div className="home-panel">
+              <div className="home-section-header">
+                <h2>{t('home.recentMarks')}</h2>
                 <Link className="text-sm font-semibold text-[var(--color-accent-strong)]" to={routes.library}>{t('home.viewLibrary')}</Link>
               </div>
-              <div className="grid overflow-hidden rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
+              <div className="home-list">
                 {recentSubjects.map((item) => (
-                  <Link className="grid grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-3 border-b border-neutral-200 px-3 py-3 transition last:border-b-0 hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-900/60" key={item.id} to={routes.subject(item.subject.id)}>
-                    <img className="h-14 w-10 rounded-md bg-neutral-100 object-cover dark:bg-neutral-900" src={item.subject.image_thumbnail || item.subject.image || '/assets/placeholders/subject-cover.png'} alt="" />
+                  <Link className="home-list-item is-mark" key={item.id} to={routes.subject(item.subject.id)}>
+                    <img src={item.subject.image_thumbnail || item.subject.image || '/assets/placeholders/subject-cover.png'} alt="" />
                     <span className="min-w-0">
-                      <span className="block truncate text-sm font-semibold text-neutral-950 dark:text-white">{subjectTitle(item, t('common.untitledSubject'))}</span>
-                      <span className="mt-1 block text-xs text-neutral-500 dark:text-neutral-400">{formatDate(item.updated_at || item.created_at)}</span>
+                      <span className="home-list-title">{subjectTitle(item, t('common.untitledSubject'))}</span>
+                      <span className="home-list-meta">{formatDate(item.updated_at || item.created_at)}</span>
                     </span>
                     <Badge variant="secondary">{statusLabel(item.status, t)}</Badge>
                   </Link>
                 ))}
                 {recentSubjectsQuery.isError ? <ErrorState title={t('home.marksErrorTitle')} description={t('home.marksErrorBody')} /> : null}
-                {!recentSubjectsQuery.isLoading && !recentSubjectsQuery.isError && recentSubjects.length === 0 ? <p className="p-5 text-sm text-neutral-500 dark:text-neutral-400">{t('home.noMarks')}</p> : null}
+                {!recentSubjectsQuery.isLoading && !recentSubjectsQuery.isError && recentSubjects.length === 0 ? <p className="home-empty-line">{t('home.noMarks')}</p> : null}
               </div>
             </div>
 
-            <div className="grid content-start gap-3">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="font-semibold tracking-tight text-neutral-950 dark:text-white">{t('home.latestReviews')}</h2>
+            <div className="home-panel">
+              <div className="home-section-header">
+                <h2>{t('home.latestReviews')}</h2>
                 <Link className="text-sm font-semibold text-[var(--color-accent-strong)]" to={routes.reviews}>{t('home.viewAll')}</Link>
               </div>
-              <div className="grid gap-3">
+              <div className="home-list">
                 {reviews.map((review) => (
-                  <Link className="block rounded-lg border border-neutral-200 bg-white p-4 transition hover:border-[var(--color-accent-border)] dark:border-neutral-800 dark:bg-neutral-950" key={review.id} to={routes.review(review.id)}>
-                    <p className="line-clamp-1 text-sm font-semibold text-neutral-950 dark:text-white">{review.title}</p>
-                    <p className="mt-1 line-clamp-2 text-sm leading-6 text-neutral-500 dark:text-neutral-400">{review.content || t('common.noContent')}</p>
+                  <Link className="home-review-row" key={review.id} to={routes.review(review.id)}>
+                    <p>{review.title}</p>
+                    <span>{review.content || t('common.noContent')}</span>
                   </Link>
                 ))}
                 {reviewsQuery.isError ? <ErrorState title={t('reviews.errorTitle')} description={t('search.errorBody')} /> : null}
-                {!reviewsQuery.isLoading && !reviewsQuery.isError && reviews.length === 0 ? <p className="rounded-lg border border-dashed border-neutral-200 bg-white p-5 text-sm text-neutral-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-400">{t('home.noReviews')}</p> : null}
+                {!reviewsQuery.isLoading && !reviewsQuery.isError && reviews.length === 0 ? <p className="home-empty-line">{t('home.noReviews')}</p> : null}
               </div>
             </div>
           </section>
         </main>
 
-        <aside className="grid content-start gap-4">
-          <section className="rounded-lg border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-950">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="font-semibold tracking-tight text-neutral-950 dark:text-white">{t('home.continue')}</h2>
+        <aside className="home-rail">
+          <section className="home-panel">
+            <div className="home-section-header">
+              <h2>{t('home.continue')}</h2>
               <Link className="text-sm font-semibold text-[var(--color-accent-strong)]" to={routes.library}>{t('home.viewLibrary')}</Link>
             </div>
-            <div className="mt-4 grid gap-3">
+            <div className="home-list is-compact">
               {watchingSubjects.map((item) => (
-                <Link className="grid min-w-0 grid-cols-[44px_minmax(0,1fr)] gap-3" key={item.id} to={routes.subject(item.subject.id)}>
-                  <img className="h-14 w-10 rounded-md bg-neutral-100 object-cover dark:bg-neutral-900" src={item.subject.image_thumbnail || item.subject.image || '/assets/placeholders/subject-cover.png'} alt="" />
+                <Link className="home-list-item" key={item.id} to={routes.subject(item.subject.id)}>
+                  <img src={item.subject.image_thumbnail || item.subject.image || '/assets/placeholders/subject-cover.png'} alt="" />
                   <span className="grid min-w-0 content-center">
-                    <span className="line-clamp-2 text-sm font-semibold leading-5 text-neutral-950 dark:text-white">{subjectTitle(item, t('common.untitledSubject'))}</span>
-                    <span className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{item.rating ? `${item.rating} / 10` : statusLabel(item.status, t)}</span>
+                    <span className="home-list-title">{subjectTitle(item, t('common.untitledSubject'))}</span>
+                    <span className="home-list-meta">{item.rating ? `${item.rating} / 10` : statusLabel(item.status, t)}</span>
                   </span>
                 </Link>
               ))}
               {watchingSubjectsQuery.isError ? <ErrorState title={t('home.marksErrorTitle')} description={t('home.marksErrorBody')} /> : null}
-              {!watchingSubjectsQuery.isLoading && !watchingSubjectsQuery.isError && watchingSubjects.length === 0 ? <p className="text-sm text-neutral-500 dark:text-neutral-400">{t('home.noWatching')}</p> : null}
+              {!watchingSubjectsQuery.isLoading && !watchingSubjectsQuery.isError && watchingSubjects.length === 0 ? <p className="home-empty-line">{t('home.noWatching')}</p> : null}
             </div>
           </section>
 
-          <section className="rounded-lg border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-950">
-            <h2 className="font-semibold tracking-tight text-neutral-950 dark:text-white">{t('home.quickActions')}</h2>
-            <div className="mt-4 grid gap-2">
-              <Link className="button button-secondary justify-start" to={routes.library}><Library className="size-4" /> {t('nav.library')}</Link>
-              <Link className="button button-secondary justify-start" to={routes.calendar}><CalendarDays className="size-4" /> {t('nav.calendar')}</Link>
-              <Link className="button button-secondary justify-start" to={routes.collections}><Layers3 className="size-4" /> {t('nav.collections')}</Link>
-              {isAdmin ? <Link className="button button-secondary justify-start" to={routes.admin}><ShieldCheck className="size-4" /> {t('nav.admin')}</Link> : null}
-              <Link className="button button-secondary justify-start" to={routes.settings}><Settings className="size-4" /> {t('settings.title')}</Link>
+          <section className="home-panel">
+            <div className="home-section-header">
+              <h2>{t('home.quickActions')}</h2>
+            </div>
+            <div className="home-shortcut-grid">
+            {[
+              { label: t('nav.library'), href: routes.library, icon: <Library className="size-4" /> },
+              { label: t('nav.calendar'), href: routes.calendar, icon: <CalendarDays className="size-4" /> },
+              { label: t('nav.collections'), href: routes.collections, icon: <Layers3 className="size-4" /> },
+              ...(isAdmin ? [{ label: t('nav.admin'), href: routes.admin, icon: <ShieldCheck className="size-4" /> }] : []),
+              { label: t('settings.title'), href: routes.settings, icon: <Settings className="size-4" /> },
+            ].map((item) => (
+              <Link className="home-shortcut" key={item.href} to={item.href}>
+                <span className="inline-flex items-center gap-2">
+                  {item.icon}
+                  {item.label}
+                </span>
+              </Link>
+            ))}
             </div>
           </section>
 
-          <section className="rounded-lg border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-950">
-            <h2 className="font-semibold tracking-tight text-neutral-950 dark:text-white">{t('nav.collections')}</h2>
-            <div className="mt-4 grid gap-3">
+          <section className="home-panel">
+            <div className="home-section-header">
+              <h2>{t('nav.collections')}</h2>
+            </div>
+            <div className="home-list is-compact">
               {collections.map((collection) => (
-                <Link className="grid gap-1 rounded-lg px-2 py-1.5 transition hover:bg-neutral-50 dark:hover:bg-neutral-900" key={collection.id} to={routes.collections}>
-                  <p className="line-clamp-1 text-sm font-semibold text-neutral-950 dark:text-white">{collection.name}</p>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">{collection.item_count ?? 0} {t('common.items')}</p>
+                <Link className="home-collection-row" key={collection.id} to={routes.collections}>
+                  <p>{collection.name}</p>
+                  <span>{collection.item_count ?? 0} {t('common.items')}</span>
                 </Link>
               ))}
               {collectionsQuery.isError ? <ErrorState title={t('collections.errorTitle')} description={t('search.errorBody')} /> : null}
-              {!collectionsQuery.isLoading && !collectionsQuery.isError && collections.length === 0 ? <p className="text-sm text-neutral-500 dark:text-neutral-400">{t('home.noCollections')}</p> : null}
+              {!collectionsQuery.isLoading && !collectionsQuery.isError && collections.length === 0 ? <p className="home-empty-line">{t('home.noCollections')}</p> : null}
             </div>
           </section>
         </aside>

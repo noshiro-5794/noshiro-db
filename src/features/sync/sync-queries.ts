@@ -5,6 +5,7 @@ import type { UUID } from '@/lib/api/types';
 export const syncQueryKeys = {
   all: ['sync'] as const,
   incrementalStatus: () => [...syncQueryKeys.all, 'incremental-status'] as const,
+  jobs: () => [...syncQueryKeys.all, 'jobs'] as const,
 };
 
 export const syncQueries = {
@@ -12,6 +13,12 @@ export const syncQueries = {
     queryOptions({
       queryKey: syncQueryKeys.incrementalStatus(),
       queryFn: () => syncApi.getIncrementalStatus(),
+    }),
+
+  jobs: () =>
+    queryOptions({
+      queryKey: syncQueryKeys.jobs(),
+      queryFn: () => syncApi.getJobs({ limit: 20 }),
     }),
 };
 

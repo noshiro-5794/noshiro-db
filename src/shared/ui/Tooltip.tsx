@@ -14,7 +14,7 @@ function TooltipContent({
   return (
     <TooltipPrimitive.Portal>
       <TooltipPrimitive.Content
-        className={cn('z-50 rounded-lg bg-neutral-950 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg dark:bg-white dark:text-neutral-950', className)}
+        className={cn('z-50 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-2.5 py-1.5 text-xs font-medium text-[var(--color-text)] shadow-[var(--shadow-soft)]', className)}
         sideOffset={sideOffset}
         {...props}
       />

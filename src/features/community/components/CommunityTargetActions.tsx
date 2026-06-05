@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, type ReactNode, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Bookmark, Flag, Heart } from 'lucide-react';
@@ -25,6 +25,8 @@ type CommunityTargetActionsProps = {
     has_bookmarked?: boolean;
   } | null;
   className?: string;
+  presentation?: 'bar' | 'inline';
+  inlineMiddleAction?: ReactNode;
 };
 
 export function CommunityTargetActions({
@@ -34,6 +36,8 @@ export function CommunityTargetActions({
   reactionCount,
   viewerState,
   className = '',
+  presentation = 'bar',
+  inlineMiddleAction,
 }: CommunityTargetActionsProps) {
   const { t } = useI18n();
   const auth = useAuth();
@@ -97,6 +101,14 @@ export function CommunityTargetActions({
 
   const isPending = reactMutation.isPending || unreactMutation.isPending || bookmarkMutation.isPending || unbookmarkMutation.isPending || reportMutation.isPending;
   const canBookmark = targetType !== 'activity';
+  const isInline = presentation === 'inline';
+  const rootClassName = presentation === 'inline' ? `timeline-action-row ${className}` : `community-action-bar ${className}`;
+  const buttonClassName = presentation === 'inline'
+    ? 'timeline-action-button'
+    : 'community-action-button';
+  const activeButtonClassName = presentation === 'inline'
+    ? `${buttonClassName} is-active`
+    : `${buttonClassName} is-active`;
 
   function toggleReaction() {
     const body = { target_type: targetType, target_id: targetId, reaction_type: 'like' as const };
@@ -122,8 +134,8 @@ export function CommunityTargetActions({
 
   if (!auth.isAuthenticated) {
     return (
-      <div className={`flex flex-wrap items-center gap-2 ${className}`}>
-        <Button asChild size="sm" type="button" variant="secondary">
+      <div className={rootClassName}>
+        <Button asChild className={buttonClassName} size="sm" type="button" variant="ghost">
           <Link to={routes.login}>{t('community.loginToInteract')}</Link>
         </Button>
       </div>
@@ -131,19 +143,34 @@ export function CommunityTargetActions({
   }
 
   return (
-    <div className={`flex flex-wrap items-center gap-2 ${className}`}>
-      <Button disabled={isPending} size="sm" type="button" variant={hasLiked ? 'accent' : 'secondary'} onClick={toggleReaction}>
+    <div className={rootClassName}>
+      <Button
+        className={hasLiked ? activeButtonClassName : buttonClassName}
+        disabled={isPending}
+        size="sm"
+        type="button"
+        variant="ghost"
+        onClick={toggleReaction}
+      >
         <Heart className="size-4" />
-        {hasLiked ? t('community.liked') : t('community.like')}
+        {isInline ? null : hasLiked ? t('community.liked') : t('community.like')}
         {typeof localReactionCount === 'number' ? <span>{localReactionCount}</span> : null}
       </Button>
+      {isInline ? inlineMiddleAction : null}
       {canBookmark ? (
-        <Button disabled={isPending} size="sm" type="button" variant={hasBookmarked ? 'accent' : 'secondary'} onClick={toggleBookmark}>
-          <Bookmark className="size-4" /> {hasBookmarked ? t('community.bookmarked') : t('community.bookmark')}
+        <Button
+          className={hasBookmarked ? activeButtonClassName : buttonClassName}
+          disabled={isPending}
+          size="sm"
+          type="button"
+          variant="ghost"
+          onClick={toggleBookmark}
+        >
+          <Bookmark className="size-4" /> {isInline ? null : hasBookmarked ? t('community.bookmarked') : t('community.bookmark')}
         </Button>
       ) : null}
-      <Button size="sm" type="button" variant="ghost" onClick={() => setReportOpen(true)}>
-        <Flag className="size-4" /> {t('community.report')}
+      <Button aria-label={t('community.report')} className={buttonClassName} size="sm" type="button" variant="ghost" onClick={() => setReportOpen(true)}>
+        <Flag className="size-4" /> {isInline ? null : t('community.report')}
       </Button>
 
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
@@ -154,7 +181,7 @@ export function CommunityTargetActions({
           </DialogHeader>
           <form className="grid gap-4" onSubmit={submitReport}>
             <div className="grid gap-2">
-              <span className="text-sm font-semibold text-neutral-950 dark:text-white">{t('community.reportReason')}</span>
+              <span className="text-sm font-semibold text-[var(--color-text)]">{t('community.reportReason')}</span>
               <div className="flex flex-wrap gap-2">
                 {reportReasons.map((reason) => (
                   <button
@@ -162,7 +189,7 @@ export function CommunityTargetActions({
                       'rounded-full border px-3 py-1.5 text-sm font-semibold transition',
                       reportReason === reason
                         ? 'border-[var(--color-accent-border)] bg-[var(--color-accent-soft)] text-[var(--color-accent-strong)]'
-                        : 'border-neutral-200 text-neutral-500 hover:border-neutral-300 dark:border-neutral-800 dark:text-neutral-400',
+                        : 'border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-[var(--color-accent-border)]',
                     ].join(' ')}
                     key={reason}
                     type="button"
@@ -174,7 +201,7 @@ export function CommunityTargetActions({
               </div>
             </div>
             <textarea
-              className="min-h-28 resize-y rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm leading-6 outline-none transition placeholder:text-neutral-400 focus:border-[var(--color-accent-border)] dark:border-neutral-800 dark:bg-neutral-900"
+              className="min-h-28 resize-y rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3 py-2 text-sm leading-6 text-[var(--color-text)] outline-none transition placeholder:text-neutral-400 focus:border-[var(--color-accent-border)]"
               value={reportDescription}
               placeholder={t('community.reportPlaceholder')}
               onChange={(event) => setReportDescription(event.target.value)}

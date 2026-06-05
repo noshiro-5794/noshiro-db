@@ -32,14 +32,19 @@ export function AppShell({ children }: AppShellProps) {
   ];
   const appNavGroups: Array<{ title: string; items: NavItem[] }> = [
     {
-      title: t('nav.groupWorkspace'),
+      title: t('nav.groupOverview'),
       items: [
         { to: routes.home, label: t('nav.home'), icon: <Home className="size-4" />, end: true },
-        { to: routes.communityPosts, label: t('nav.posts'), icon: <MessageSquare className="size-4" /> },
       ],
     },
     {
-      title: t('nav.groupExplore'),
+      title: t('nav.groupCommunity'),
+      items: [
+        { to: routes.communityPosts, label: t('nav.activity'), icon: <MessageSquare className="size-4" /> },
+      ],
+    },
+    {
+      title: t('nav.groupDiscover'),
       items: [
         { to: routes.search, label: t('nav.search'), icon: <Search className="size-4" /> },
         { to: routes.calendar, label: t('nav.calendar'), icon: <CalendarDays className="size-4" /> },
@@ -55,7 +60,7 @@ export function AppShell({ children }: AppShellProps) {
       ],
     },
     {
-      title: t('nav.groupResources'),
+      title: t('nav.groupMore'),
       items: [
         ...(role === 'admin' ? [{ to: routes.admin, label: t('nav.admin'), icon: <ShieldCheck className="size-4" /> }] : []),
         { to: routes.docsIntroduction, label: t('nav.docs'), icon: <BookOpen className="size-4" /> },
@@ -70,8 +75,8 @@ export function AppShell({ children }: AppShellProps) {
 
   if (role === 'guest') {
     return (
-      <div className="min-h-screen bg-white text-neutral-950 dark:bg-neutral-950 dark:text-neutral-50">
-        <header className="sticky top-0 z-20 border-b border-neutral-200 bg-white/85 backdrop-blur-xl dark:border-neutral-800 dark:bg-neutral-950/85">
+      <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)]">
+        <header className="sticky top-0 z-20 border-b border-[color-mix(in_srgb,var(--color-border)_72%,transparent)] bg-[color-mix(in_srgb,var(--color-bg)_86%,transparent)] backdrop-blur-xl">
           <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-5">
             <NavLink className="flex min-w-0 items-center gap-2" to={routes.home} aria-label="Noshiro DB">
               <img
@@ -83,7 +88,7 @@ export function AppShell({ children }: AppShellProps) {
               <span className="truncate text-sm font-semibold">Noshiro DB</span>
             </NavLink>
 
-            <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 p-1 dark:border-neutral-800 dark:bg-neutral-900/80 md:flex">
+            <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-1 md:flex">
               {publicNavItems.map((item) => (
                 <NavLink
                   key={item.to}
@@ -92,8 +97,8 @@ export function AppShell({ children }: AppShellProps) {
                     [
                       'rounded-full px-3 py-1.5 text-sm font-medium transition',
                       isActive
-                        ? 'bg-white text-neutral-950 shadow-sm dark:bg-neutral-950 dark:text-white'
-                        : 'text-neutral-500 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white',
+                        ? 'bg-[var(--color-surface-elevated)] text-[var(--color-text)] shadow-sm'
+                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]',
                     ].join(' ')
                   }
                   end={item.to === routes.home}
@@ -105,13 +110,13 @@ export function AppShell({ children }: AppShellProps) {
 
             <div className="flex items-center gap-2">
               <NavLink
-                className="hidden h-9 rounded-full px-3 py-2 text-sm font-medium leading-none text-neutral-600 transition hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white sm:inline-flex"
+                className="hidden h-9 items-center justify-center rounded-full px-3 text-sm font-medium text-[var(--color-text-muted)] transition hover:text-[var(--color-text)] sm:inline-flex"
                 to={routes.login}
               >
                 {t('auth.login')}
               </NavLink>
               <NavLink
-                className="h-9 rounded-full border border-neutral-950 bg-neutral-950 px-3 py-2 text-sm font-medium leading-none text-white transition hover:bg-neutral-800 dark:border-white dark:bg-white dark:text-neutral-950 dark:hover:bg-neutral-200"
+                className="inline-flex h-9 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--color-text)_16%,var(--color-border))] bg-[var(--color-text)] px-3 text-sm font-medium text-[var(--color-bg)] shadow-sm transition hover:opacity-90"
                 to={routes.register}
               >
                 {t('auth.register')}
@@ -129,7 +134,7 @@ export function AppShell({ children }: AppShellProps) {
     <div className="workspace-shell">
       <aside className="workspace-sidebar">
         <NavLink
-          className="flex min-w-0 shrink-0 items-center gap-2 rounded-xl px-2 py-1.5 transition hover:bg-neutral-100 dark:hover:bg-neutral-900"
+          className="flex min-w-0 shrink-0 items-center gap-2 rounded-xl px-2 py-1.5 transition hover:bg-[var(--color-surface-muted)]"
           to={routes.home}
           aria-label="Noshiro DB"
         >
@@ -142,7 +147,7 @@ export function AppShell({ children }: AppShellProps) {
         <nav className="workspace-nav">
           {appNavGroups.map((group) => (
             <section className="flex gap-1 lg:grid" key={group.title}>
-              <h2 className="hidden px-3 text-[11px] font-semibold uppercase text-neutral-400 dark:text-neutral-500 lg:block">
+              <h2 className="workspace-group-title">
                 {group.title}
               </h2>
               <div className="flex gap-1 lg:grid">
@@ -154,8 +159,8 @@ export function AppShell({ children }: AppShellProps) {
                       [
                         'inline-flex h-9 items-center gap-2 whitespace-nowrap rounded-xl px-3 text-sm font-medium transition lg:w-full',
                         isActive
-                          ? 'bg-neutral-950 text-white shadow-sm dark:bg-white dark:text-neutral-950'
-                          : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-950 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-white',
+                          ? 'bg-[var(--color-surface-elevated)] text-[var(--color-text)] shadow-sm ring-1 ring-[var(--color-border)]'
+                          : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text)]',
                       ].join(' ')
                     }
                     end={item.end}
@@ -172,7 +177,7 @@ export function AppShell({ children }: AppShellProps) {
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-2 lg:ml-0 lg:mt-4 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_auto]">
-          <NavLink className="hidden min-h-10 items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-3 text-sm text-neutral-500 transition hover:border-[var(--color-accent-border)] hover:text-neutral-950 dark:border-neutral-800 dark:bg-neutral-900/70 dark:text-neutral-400 dark:hover:text-white lg:flex" to={routes.me}>
+          <NavLink className="workspace-profile-button" to={routes.me}>
             <img className="size-6 rounded-lg object-cover" src={profile?.avatar || '/assets/placeholders/avatar.png'} alt="" />
             <span className="min-w-0 truncate">{status === 'checking' ? t('auth.checking') : profile?.nickname || t(`auth.${role}`)}</span>
           </NavLink>
@@ -180,7 +185,7 @@ export function AppShell({ children }: AppShellProps) {
             fallback={(
               <button
                 aria-label={t('nav.notifications')}
-                className="grid size-10 place-items-center rounded-xl border border-neutral-200 bg-neutral-50 text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900/70 dark:text-neutral-400"
+                className="workspace-tool-button"
                 type="button"
               >
                 <Bell className="size-4" />
@@ -191,7 +196,7 @@ export function AppShell({ children }: AppShellProps) {
           </Suspense>
           <NavLink
             aria-label={t('settings.title')}
-            className="grid size-10 place-items-center rounded-xl border border-neutral-200 bg-neutral-50 text-neutral-500 transition hover:border-[var(--color-accent-border)] hover:text-neutral-950 dark:border-neutral-800 dark:bg-neutral-900/70 dark:text-neutral-400 dark:hover:text-white"
+            className="workspace-tool-button"
             to={routes.settings}
           >
             <Settings className="size-4" />
