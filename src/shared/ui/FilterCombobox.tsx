@@ -68,7 +68,7 @@ export function FilterCombobox<TValue extends string>({
         <div className="p-1">
           <input
             autoFocus
-            className="h-9 w-full rounded-lg border-0 bg-neutral-100 px-3 text-sm outline-none ring-1 ring-transparent transition placeholder:text-neutral-400 focus:bg-white focus:ring-neutral-200 dark:bg-neutral-900 dark:focus:bg-neutral-950 dark:focus:ring-neutral-800"
+            className="h-9 w-full rounded-lg border-0 bg-[var(--color-surface-muted)] px-3 text-sm text-[var(--color-text)] outline-none ring-1 ring-transparent transition placeholder:text-neutral-400 focus:bg-[var(--color-surface)] focus:ring-[var(--color-focus-ring)]"
             placeholder={placeholder}
             value={query}
             onChange={(event) => setQuery(event.target.value)}

@@ -39,6 +39,8 @@ VITE_HCAPTCHA_SITE_KEY=your-site-key
 Build:
 
 ```bash
+source ~/.nvm/nvm.sh
+nvm use 20
 npm ci
 npm run typecheck
 npm run lint
@@ -46,6 +48,8 @@ npm run build
 ```
 
 The production files are generated in `dist/`.
+
+If dependencies are already installed on the deployment machine, `npm run build` is enough for a rebuild. Use `npm ci` for clean release builds.
 
 ## 1Panel Static Website
 
@@ -81,6 +85,8 @@ location / {
 
 Without this fallback, direct visits or refreshes on nested routes will return `404 Not Found openresty`.
 
+This fallback must apply to all frontend routes, including public pages like `/search`, `/calendar`, `/docs/...`, subject pages, and authenticated workspace routes. API traffic should not be served by the frontend site; it belongs on `api.noshiro.moe`.
+
 ## Ports
 
 For public access, only expose HTTPS and HTTP redirect ports:
@@ -102,6 +108,17 @@ Make sure the backend production settings allow the deployment domain:
 - CORS allowed origins include `https://noshiro.moe`
 - if refresh tokens or session cookies are stored in cookies, cross-subdomain cookies must use `Secure` and `SameSite=None`, or a suitable shared cookie domain such as `.noshiro.moe`
 - uploaded media/static backend files have their own serving strategy
+- calendar cover images may be served from MinIO/CDN URLs when the backend has mirrored them successfully; otherwise Bangumi image URLs can still appear as fallback data
+
+## hCaptcha
+
+Login, registration, and password-reset email-code flows can show hCaptcha before sending a code. Use the public site key in frontend environment variables:
+
+```text
+VITE_HCAPTCHA_SITE_KEY=your-site-key
+```
+
+The hCaptcha secret belongs only in backend environment variables and must never be committed to this repository.
 
 ## Smoke Test
 

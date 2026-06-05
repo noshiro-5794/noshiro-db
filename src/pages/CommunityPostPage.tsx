@@ -208,25 +208,25 @@ function CommentItem({
           {isDeleted ? t('community.deletedCommentBody') : comment.content}
         </p>
         {!isDeleted ? (
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button disabled={pending} size="sm" type="button" variant={comment.viewer_state?.has_liked ? 'accent' : 'ghost'} onClick={() => onLike(comment)}>
+          <div className="community-action-bar mt-3">
+            <Button className={`community-action-button ${comment.viewer_state?.has_liked ? 'is-active' : ''}`} disabled={pending} size="sm" type="button" variant="ghost" onClick={() => onLike(comment)}>
               <Heart className="size-4" /> {comment.reaction_count ?? 0}
             </Button>
             {canReply ? (
-              <Button disabled={pending} size="sm" type="button" variant="ghost" onClick={() => onReply(comment)}>
+              <Button className="community-action-button" disabled={pending} size="sm" type="button" variant="ghost" onClick={() => onReply(comment)}>
                 <MessageSquare className="size-4" /> {t('community.reply')}
               </Button>
             ) : null}
-            <Button size="sm" type="button" variant="ghost" onClick={() => onReport(comment)}>
+            <Button className="community-action-button" size="sm" type="button" variant="ghost" onClick={() => onReport(comment)}>
               <Flag className="size-4" /> {t('community.report')}
             </Button>
             {canEdit ? (
-              <Button disabled={pending} size="sm" type="button" variant="ghost" onClick={() => onEdit(comment)}>
+              <Button className="community-action-button" disabled={pending} size="sm" type="button" variant="ghost" onClick={() => onEdit(comment)}>
                 <PencilLine className="size-4" /> {t('common.edit')}
               </Button>
             ) : null}
             {canDelete ? (
-              <Button disabled={pending} size="sm" type="button" variant="ghost" onClick={() => onDelete(comment)}>
+              <Button className="community-action-button" disabled={pending} size="sm" type="button" variant="ghost" onClick={() => onDelete(comment)}>
                 <Trash2 className="size-4" /> {t('common.delete')}
               </Button>
             ) : null}
@@ -538,14 +538,13 @@ export function CommunityPostPage() {
   }
 
   if (!Number.isFinite(postId) || postId <= 0) {
-    return <Page title={t('community.postDetailTitle')}><ErrorState title={t('community.invalidPostTitle')} description={t('community.invalidPostBody')} /></Page>;
+    return <Page title={t('community.postDetailTitle')} eyebrow={t('nav.groupCommunity')}><ErrorState title={t('community.invalidPostTitle')} description={t('community.invalidPostBody')} /></Page>;
   }
 
   return (
     <Page
       title={t('community.postDetailTitle')}
-      eyebrow={t('nav.groupWorkspace')}
-      description={t('community.postDetailDescription')}
+      eyebrow={t('nav.groupCommunity')}
       actions={(
         <Button asChild type="button" variant="secondary">
           <Link to={routes.communityPosts}>{t('community.backToPosts')}</Link>
@@ -557,28 +556,28 @@ export function CommunityPostPage() {
       {post ? (
         <div className="grid gap-4">
           <PostBody post={post} />
-          <div className="flex flex-wrap gap-2 rounded-lg border border-neutral-200 bg-white p-2 dark:border-neutral-800 dark:bg-neutral-950">
-            <Button disabled={isActionPending} type="button" variant={post.viewer_state?.has_liked ? 'accent' : 'secondary'} onClick={togglePostReaction}>
+          <div className="community-action-bar">
+            <Button className={`community-action-button ${post.viewer_state?.has_liked ? 'is-active' : ''}`} disabled={isActionPending} type="button" variant="ghost" onClick={togglePostReaction}>
               <Heart className="size-4" /> {post.viewer_state?.has_liked ? t('community.liked') : t('community.like')}
             </Button>
-            <Button disabled={isActionPending} type="button" variant={post.viewer_state?.has_bookmarked ? 'accent' : 'secondary'} onClick={togglePostBookmark}>
+            <Button className={`community-action-button ${post.viewer_state?.has_bookmarked ? 'is-active' : ''}`} disabled={isActionPending} type="button" variant="ghost" onClick={togglePostBookmark}>
               <Bookmark className="size-4" /> {post.viewer_state?.has_bookmarked ? t('community.bookmarked') : t('community.bookmark')}
             </Button>
             {post.author?.id && !isOwnPost ? (
-              <Button disabled={isActionPending} type="button" variant="secondary" onClick={toggleFollowAuthor}>
+              <Button className={`community-action-button ${post.viewer_state?.is_following_author ? 'is-active' : ''}`} disabled={isActionPending} type="button" variant="ghost" onClick={toggleFollowAuthor}>
                 <UserPlus className="size-4" /> {post.viewer_state?.is_following_author ? t('community.following') : t('community.followAuthor')}
               </Button>
             ) : null}
-            <Button type="button" variant="ghost" onClick={() => openReport({ type: 'post', id: post.id, label: t('community.reportPost') })}>
+            <Button className="community-action-button" type="button" variant="ghost" onClick={() => openReport({ type: 'post', id: post.id, label: t('community.reportPost') })}>
               <Flag className="size-4" /> {t('community.report')}
             </Button>
             {isOwnPost ? (
-              <Button disabled={isActionPending} type="button" variant="ghost" onClick={() => setEditTarget({ type: 'post', id: post.id, content: post.content, is_spoiler: post.is_spoiler, is_nsfw: post.is_nsfw })}>
+              <Button className="community-action-button" disabled={isActionPending} type="button" variant="ghost" onClick={() => setEditTarget({ type: 'post', id: post.id, content: post.content, is_spoiler: post.is_spoiler, is_nsfw: post.is_nsfw })}>
                 <PencilLine className="size-4" /> {t('common.edit')}
               </Button>
             ) : null}
             {isOwnPost ? (
-              <Button disabled={isActionPending} type="button" variant="ghost" onClick={() => setDeleteTarget({ type: 'post', id: post.id })}>
+              <Button className="community-action-button" disabled={isActionPending} type="button" variant="ghost" onClick={() => setDeleteTarget({ type: 'post', id: post.id })}>
                 <Trash2 className="size-4" /> {t('common.delete')}
               </Button>
             ) : null}

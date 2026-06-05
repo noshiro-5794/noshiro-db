@@ -17,14 +17,15 @@ function PopoverContent({
       <PopoverPrimitive.Content
         align={align}
         className={cn(
-          'z-50 w-72 rounded-xl border border-neutral-200 bg-white p-4 text-neutral-950 shadow-xl outline-none dark:border-neutral-800 dark:bg-neutral-950 dark:text-white',
+          'z-50 w-72 overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_82%,transparent)] bg-[color-mix(in_srgb,var(--color-surface-elevated)_94%,transparent)] p-4 text-[var(--color-text)] shadow-[var(--shadow-hover)] outline-none backdrop-blur-xl',
           className,
         )}
+        collisionPadding={16}
         sideOffset={sideOffset}
         {...props}
       >
         {children}
-        <PopoverPrimitive.Arrow className="fill-white dark:fill-neutral-950" height={8} width={14} />
+        <PopoverPrimitive.Arrow className="fill-[var(--color-surface-elevated)]" height={8} width={14} />
       </PopoverPrimitive.Content>
     </PopoverPrimitive.Portal>
   );

@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, FileText, Lock, Save, ShieldAlert, Sparkles } from 'lucide-react';
 import { libraryMutations, libraryQueries, libraryQueryKeys } from '@/features/library/library-queries';
@@ -7,6 +7,7 @@ import { useI18n } from '@/features/i18n/use-i18n';
 import { MarkdownEditor } from '@/features/reviews/components/MarkdownEditor';
 import { subjectQueries } from '@/features/subjects/subject-queries';
 import { routes } from '@/routes/paths';
+import { backTargetFromState } from '@/shared/navigation/route-state';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import { ErrorState, LoadingState } from '@/shared/ui/FeedbackState';
@@ -27,6 +28,7 @@ function parseReviewId(value?: string) {
 export function ReviewEditorPage() {
   const { t } = useI18n();
   const { reviewId: reviewIdParam } = useParams<ReviewRouteParams>();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -51,7 +53,8 @@ export function ReviewEditorPage() {
   const subject = reviewQuery.data?.subject ?? subjectQuery.data;
   const subjectTitle = subject?.display_title || subject?.title || t('common.untitledSubject');
   const canCreate = !isEditing && Boolean(subjectId);
-  const backTarget = subject?.id ? routes.subject(subject.id) : routes.reviews;
+  const fallbackBackTarget = subject?.id ? routes.subject(subject.id) : routes.reviews;
+  const backTarget = backTargetFromState(location, fallbackBackTarget);
 
   const createReviewMutation = useMutation({
     ...libraryMutations.createReview(),
@@ -61,7 +64,7 @@ export function ReviewEditorPage() {
         subject?.id ? queryClient.invalidateQueries({ queryKey: libraryQueryKeys.subjectReviews(subject.id) }) : Promise.resolve(),
       ]);
       toast.success(t('reviewEditor.created'));
-      navigate(routes.reviewEdit(review.id));
+      navigate(routes.reviewEdit(review.id), { replace: true, state: { from: backTarget } });
     },
   });
   const updateReviewMutation = useMutation({
@@ -110,11 +113,11 @@ export function ReviewEditorPage() {
   }
 
   if (isEditing && reviewQuery.isLoading) {
-    return <Page title={t('reviewEditor.title')} eyebrow={t('reviews.title')}><LoadingState title={t('reviewEditor.loading')} /></Page>;
+    return <Page title={t('reviewEditor.title')} eyebrow={t('nav.groupLibrary')}><LoadingState title={t('reviewEditor.loading')} /></Page>;
   }
 
   if ((isEditing && reviewQuery.isError) || (!isEditing && subjectQuery.isError)) {
-    return <Page title={t('reviewEditor.title')} eyebrow={t('reviews.title')}><ErrorState title={t('reviewEditor.errorTitle')} description={t('reviewEditor.errorBody')} /></Page>;
+    return <Page title={t('reviewEditor.title')} eyebrow={t('nav.groupLibrary')}><ErrorState title={t('reviewEditor.errorTitle')} description={t('reviewEditor.errorBody')} /></Page>;
   }
 
   return (
@@ -129,8 +132,8 @@ export function ReviewEditorPage() {
           </Button>
         </>
       )}
-      description={subject ? subjectTitle : t('reviewEditor.description')}
-      eyebrow={t('reviews.title')}
+      description={subject ? subjectTitle : undefined}
+      eyebrow={t('nav.groupLibrary')}
       title={isEditing ? t('reviewEditor.editTitle') : t('reviewEditor.newTitle')}
     >
       {!hasTarget ? (

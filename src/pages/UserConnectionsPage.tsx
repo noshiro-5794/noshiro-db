@@ -96,7 +96,7 @@ export function UserConnectionsPage({ mode }: UserConnectionsPageProps) {
 
   if (!isValidUserId) {
     return (
-      <Page title={title} description={t('profile.invalidBody')}>
+      <Page title={title} eyebrow={t('profile.title')}>
         <ErrorState title={t('profile.invalidTitle')} description={t('profile.invalidBody')} />
       </Page>
     );
@@ -105,8 +105,7 @@ export function UserConnectionsPage({ mode }: UserConnectionsPageProps) {
   return (
     <Page
       title={title}
-      eyebrow={t('profile.eyebrow')}
-      description={profileQuery.data?.nickname ? `${profileQuery.data.nickname} · ${listQuery.data?.count ?? 0}` : t('profile.connectionsDescription')}
+      eyebrow={t('profile.title')}
       actions={(
         <Button asChild type="button" variant="secondary">
           <Link to={routes.userProfile(userId)}><ArrowLeft className="size-4" /> {t('profile.backToProfile')}</Link>
