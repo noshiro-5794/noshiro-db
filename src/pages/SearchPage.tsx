@@ -43,7 +43,7 @@ type SearchPosterProps = {
   to: string;
 };
 
-type SearchFilterKey = 'type' | 'year' | 'season' | 'sort' | 'platform' | 'episodes' | 'safety';
+type SearchFilterKey = 'type' | 'sourceId' | 'year' | 'season' | 'sort' | 'platform' | 'episodes' | 'safety';
 
 function calendarTitleOf(item: CalendarSubjectItem, fallback: string) {
   return item.display_title || item.title || item.title_cn || fallback;
@@ -103,6 +103,7 @@ export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const keyword = searchParams.get('keyword') ?? '';
   const subjectType = (searchParams.get('subject_type') ?? '') as SubjectTypeFilter;
+  const sourceId = searchParams.get('source_id') ?? '';
   const ordering = (searchParams.get('ordering') ?? '-date') as SubjectOrdering;
   const safety = searchParams.get('nsfw') === 'false' ? 'safe' : 'all';
   const year = searchParams.get('year') ?? '';
@@ -111,10 +112,11 @@ export function SearchPage() {
   const episodeRange = (searchParams.get('episodes') ?? '') as EpisodeRangeFilter;
   const currentPage = Math.max(1, Number(searchParams.get('page') ?? '1') || 1);
   const [draftKeyword, setDraftKeyword] = useState(keyword);
-  const hasDatabaseOnlyFilters = Boolean(year || season || platform || episodeRange);
+  const hasDatabaseOnlyFilters = Boolean(sourceId || year || season || platform || episodeRange);
   const shouldUseSubjectSearch = Boolean(keyword.trim()) || hasDatabaseOnlyFilters;
   const [activeFilters, setActiveFilters] = useState<SearchFilterKey[]>(() => {
     const initialFilters: SearchFilterKey[] = ['type', 'year', 'season', 'sort'];
+    if (sourceId) initialFilters.splice(1, 0, 'sourceId');
     if (platform) initialFilters.push('platform');
     if (episodeRange) initialFilters.push('episodes');
     if (searchParams.has('nsfw')) initialFilters.push('safety');
@@ -125,6 +127,7 @@ export function SearchPage() {
   const subjectQueryParams = useMemo(
     () => ({
       keyword: keyword || undefined,
+      source_id: sourceId || undefined,
       subject_type: subjectType || undefined,
       ordering,
       nsfw: safety === 'safe' ? false : undefined,
@@ -136,7 +139,7 @@ export function SearchPage() {
       page: currentPage,
       page_size: pageSize,
     }),
-    [currentPage, episodeRangeParams.max, episodeRangeParams.min, keyword, ordering, platform, safety, season, subjectType, year],
+    [currentPage, episodeRangeParams.max, episodeRangeParams.min, keyword, ordering, platform, safety, season, sourceId, subjectType, year],
   );
 
   const subjectsQuery = useQuery({
@@ -228,6 +231,9 @@ export function SearchPage() {
     if (filter === 'type') {
       updateSearchParam('subject_type', '');
     }
+    if (filter === 'sourceId') {
+      updateSearchParam('source_id', '');
+    }
     if (filter === 'year') {
       updateSearchParam('year', '');
     }
@@ -250,6 +256,7 @@ export function SearchPage() {
 
   const filterLabels: Record<SearchFilterKey, string> = {
     type: t('search.type'),
+    sourceId: t('search.sourceId'),
     year: t('search.year'),
     season: t('search.season'),
     sort: t('search.sort'),
@@ -257,7 +264,8 @@ export function SearchPage() {
     episodes: t('search.episodes'),
     safety: t('search.safety'),
   };
-  const availableFilters = (['type', 'year', 'season', 'sort', 'platform', 'episodes', 'safety'] as const).filter(
+  const allFilters: SearchFilterKey[] = ['type', 'sourceId', 'year', 'season', 'sort', 'platform', 'episodes', 'safety'];
+  const availableFilters = allFilters.filter(
     (filter) => !activeFilters.includes(filter),
   );
   const subjectLinkState = useMemo(() => routeBackState(location, t('nav.search')), [location, t]);
@@ -309,6 +317,19 @@ export function SearchPage() {
                       value={subjectType}
                       onChange={(value) => updateSearchParam('subject_type', value)}
                     />
+                  ) : null}
+                  {filter === 'sourceId' ? (
+                    <label className="flex h-10 min-w-0 items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-sm font-semibold text-[var(--color-text)] shadow-sm transition focus-within:ring-4 focus-within:ring-[var(--color-focus-ring)] hover:border-[var(--color-accent-border)] hover:bg-[var(--color-surface-muted)]">
+                      <span className="shrink-0 text-neutral-400 dark:text-neutral-500">{filterLabels.sourceId}</span>
+                      <Input
+                        className="h-auto min-w-0 flex-1 rounded-none bg-transparent p-0 text-sm font-semibold shadow-none ring-0 placeholder:text-neutral-400 focus:ring-0"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        placeholder={t('search.sourceIdPlaceholder')}
+                        value={sourceId}
+                        onChange={(event) => updateSearchParam('source_id', event.target.value.replace(/\D/gu, ''))}
+                      />
+                    </label>
                   ) : null}
                   {filter === 'year' ? (
                     <FilterCombobox
