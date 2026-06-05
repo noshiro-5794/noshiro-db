@@ -17,6 +17,7 @@ import type {
 
 export type SubjectListQuery = PageQuery & {
   keyword?: string;
+  source_id?: string;
   subject_type?: PrimarySubjectType;
   nsfw?: boolean;
   year?: number;
