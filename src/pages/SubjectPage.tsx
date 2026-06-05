@@ -1,5 +1,5 @@
 import { type FormEvent, type ReactNode, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, Check, ExternalLink, Eye, Heart, Network, Pause, PencilLine, Plus, ShieldAlert, Sparkles, Star, Trash2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -9,6 +9,7 @@ import { libraryMutations, libraryQueries, libraryQueryKeys } from '@/features/l
 import { subjectQueries } from '@/features/subjects/subject-queries';
 import type { ProgressSummary, RatingDetail, SubjectCharacter, SubjectDetail, SubjectEpisode, SubjectRelation, SubjectStaff, UserSubjectStatus } from '@/lib/api/types';
 import { routes } from '@/routes/paths';
+import { currentRoutePath, routeBackState } from '@/shared/navigation/route-state';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/Card';
@@ -21,6 +22,15 @@ import { Pagination } from '@/shared/ui/Pagination';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/Popover';
 
 const coverPlaceholder = '/assets/placeholders/subject-cover.png';
+const staffPageSize = 8;
+const episodePageSize = 12;
+const otherEpisodeFetchSize = 120;
+const otherEpisodePageSize = 8;
+const characterPageSize = 8;
+const relationFetchSize = 160;
+const relationVisualPageBudget = 6.4;
+const relationChunkSize = 9;
+const publicReviewPageSize = 8;
 
 type InfoboxRow = {
   key: string;
@@ -199,6 +209,99 @@ function groupStaffByRole(staff: SubjectStaff[]) {
   });
 }
 
+function relationSortWeight(relation: SubjectRelation) {
+  const label = relation.relation?.toLowerCase() ?? '';
+  if (label.includes('前') || label.includes('prequel')) return 0;
+  if (label.includes('续') || label.includes('続') || label.includes('sequel')) return 1;
+  if (label.includes('主') || label.includes('main')) return 2;
+  if (label.includes('改编') || label.includes('adapt')) return 3;
+  if (label.includes('外传') || label.includes('番外') || label.includes('side') || label.includes('spin')) return 4;
+  return 20;
+}
+
+function relationSubjectTypeWeight(relation: SubjectRelation) {
+  if (relation.subject.subject_type === 'anime') return 0;
+  if (relation.subject.subject_type === 'galgame') return 1;
+  return 2;
+}
+
+type RelationDisplayGroup = {
+  key: string;
+  label: string;
+  tier: 'primary' | 'other';
+  items: SubjectRelation[];
+  totalCount: number;
+};
+
+function relationTierOf(relation: SubjectRelation): RelationDisplayGroup['tier'] {
+  return isPrimaryRelation(relation) ? 'primary' : 'other';
+}
+
+function groupRelationsForDisplay(relations: SubjectRelation[], fallback: string): RelationDisplayGroup[] {
+  const groups = new Map<string, RelationDisplayGroup>();
+
+  for (const relation of relations) {
+    const label = relation.relation?.trim() || fallback;
+    const tier = relationTierOf(relation);
+    const key = `${tier}:${label}`;
+    const current = groups.get(key);
+    groups.set(key, {
+      key,
+      label,
+      tier,
+      items: [...(current?.items ?? []), relation],
+      totalCount: (current?.totalCount ?? 0) + 1,
+    });
+  }
+
+  return [...groups.entries()]
+    .map(([, group]) => ({
+      ...group,
+      items: [...group.items].sort((a, b) => relationSubjectTypeWeight(a) - relationSubjectTypeWeight(b) || relationTitle(a).localeCompare(relationTitle(b))),
+    }))
+    .sort((a, b) => {
+      const tierWeight = (group: RelationDisplayGroup) => (group.tier === 'primary' ? 0 : 1);
+      return tierWeight(a) - tierWeight(b) || relationSortWeight(a.items[0]) - relationSortWeight(b.items[0]) || a.label.localeCompare(b.label);
+    });
+}
+
+function relationGroupVisualCost(itemCount: number) {
+  return 1 + Math.ceil(itemCount / 3);
+}
+
+function paginateRelationGroups(groups: RelationDisplayGroup[]) {
+  const pages: RelationDisplayGroup[][] = [];
+  let currentPage: RelationDisplayGroup[] = [];
+  let currentCost = 0;
+
+  for (const group of groups) {
+    for (let index = 0; index < group.items.length; index += relationChunkSize) {
+      const items = group.items.slice(index, index + relationChunkSize);
+      const chunk: RelationDisplayGroup = {
+        ...group,
+        key: `${group.key}:${index}`,
+        items,
+      };
+      const cost = relationGroupVisualCost(items.length);
+
+      if (currentPage.length > 0 && currentCost + cost > relationVisualPageBudget) {
+        pages.push(currentPage);
+        currentPage = [];
+        currentCost = 0;
+      }
+
+      currentPage.push(chunk);
+      currentCost += cost;
+    }
+  }
+
+  if (currentPage.length > 0) {
+    pages.push(currentPage);
+  }
+
+  return pages.length ? pages : [[]];
+}
+
 function posterOf(subject: SubjectDetail) {
   return subject.images?.original || subject.image_original || subject.images?.poster || subject.image_thumbnail || subject.image || coverPlaceholder;
 }
@@ -231,7 +334,7 @@ function StarRatingControl({ clearLabel, disabled, value, onChange }: { clearLab
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <div className="inline-flex rounded-full border border-neutral-200 bg-white p-1 dark:border-neutral-800 dark:bg-neutral-950">
+      <div className="inline-flex rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] p-1">
         {[1, 2, 3, 4, 5].map((ratingValue) => {
           const active = numericValue >= ratingValue;
           return (
@@ -240,7 +343,7 @@ function StarRatingControl({ clearLabel, disabled, value, onChange }: { clearLab
               className={`grid size-9 place-items-center rounded-full transition ${
                 active
                   ? 'text-[var(--color-accent-strong)]'
-                  : 'text-neutral-300 hover:bg-neutral-100 hover:text-neutral-500 dark:text-neutral-700 dark:hover:bg-neutral-900 dark:hover:text-neutral-400'
+                  : 'text-[color-mix(in_srgb,var(--color-text-muted)_45%,transparent)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text-muted)]'
               }`}
               disabled={disabled}
               key={ratingValue}
@@ -261,7 +364,7 @@ function StarRatingControl({ clearLabel, disabled, value, onChange }: { clearLab
 
 function StarRatingDisplay({ value, emptyLabel }: { value?: number | null; emptyLabel: string }) {
   if (!value) {
-    return <span className="text-sm font-semibold text-neutral-950 dark:text-white">{emptyLabel}</span>;
+    return <span className="text-sm font-semibold text-[var(--color-text)]">{emptyLabel}</span>;
   }
 
   return (
@@ -277,11 +380,11 @@ function DetailList({ rows }: { rows: Array<readonly [string, string]> }) {
   if (rows.length === 0) return null;
 
   return (
-    <dl className="grid divide-y divide-neutral-200 rounded-xl border border-neutral-200 text-sm dark:divide-neutral-800 dark:border-neutral-800">
+    <dl className="grid divide-y divide-[var(--color-border)] rounded-xl border border-[var(--color-border)] text-sm">
       {rows.map(([label, value]) => (
         <div className="grid grid-cols-[96px_minmax(0,1fr)] gap-3 px-3 py-2.5" key={label}>
-          <dt className="text-neutral-500 dark:text-neutral-400">{label}</dt>
-          <dd className="min-w-0 break-words font-medium text-neutral-900 dark:text-neutral-100">{value}</dd>
+          <dt className="text-[var(--color-text-muted)]">{label}</dt>
+          <dd className="min-w-0 break-words font-medium text-[var(--color-text)]">{value}</dd>
         </div>
       ))}
     </dl>
@@ -310,16 +413,16 @@ function DetailShell({
       <div className="grid grid-cols-[84px_minmax(0,1fr)] gap-4">
         <img
           alt=""
-          className="h-28 w-[84px] rounded-xl bg-neutral-100 object-cover ring-1 ring-neutral-200 dark:bg-neutral-900 dark:ring-neutral-800"
+          className="h-28 w-[84px] rounded-xl bg-[var(--color-surface-muted)] object-cover ring-1 ring-[var(--color-border)]"
           src={image || coverPlaceholder}
         />
         <div className="min-w-0 self-center">
-          <h3 className="line-clamp-2 text-lg font-semibold tracking-tight text-neutral-950 dark:text-white">{title}</h3>
-          {subtitle ? <p className="mt-2 text-sm leading-6 text-neutral-500 dark:text-neutral-400">{subtitle}</p> : null}
+          <h3 className="line-clamp-2 text-lg font-semibold tracking-tight text-[var(--color-text)]">{title}</h3>
+          {subtitle ? <p className="mt-2 text-sm leading-6 text-[var(--color-text-muted)]">{subtitle}</p> : null}
         </div>
       </div>
       {rows?.length ? <DetailList rows={rows} /> : null}
-      <div className="rounded-xl bg-neutral-50 p-4 text-sm leading-7 text-neutral-600 dark:bg-neutral-900/50 dark:text-neutral-300">
+      <div className="rounded-xl bg-[var(--color-surface-muted)] p-4 text-sm leading-7 text-[var(--color-text-muted)]">
         {compactText(description, emptyLabel)}
       </div>
       {children}
@@ -348,9 +451,39 @@ function StaffDetail({ emptyLabel, labels, staff, role }: { emptyLabel: string; 
   );
 }
 
+function RelationItemContent({
+  emptyText,
+  relation,
+  titleFallback,
+}: {
+  emptyText: string;
+  relation: SubjectRelation;
+  titleFallback: string;
+}) {
+  const primary = isPrimaryRelation(relation);
+
+  return (
+    <>
+      <img
+        alt=""
+        className="relation-item-cover"
+        src={subjectImage(relation.subject)}
+      />
+      <div className="relation-item-body">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <Badge variant={primary ? 'accent' : 'secondary'}>{relation.subject.subject_type}</Badge>
+        </div>
+        <h3 className="relation-item-title">{relationTitle(relation, titleFallback)}</h3>
+        <p className="relation-item-meta">{relationMeta(relation, emptyText)}</p>
+      </div>
+    </>
+  );
+}
+
 export function SubjectPage() {
   const { t } = useI18n();
   const { subjectId } = useParams();
+  const location = useLocation();
   const auth = useAuth();
   const isAuthenticated = auth.isAuthenticated;
   const queryClient = useQueryClient();
@@ -380,6 +513,7 @@ export function SubjectPage() {
   const [staffRole, setStaffRole] = useState('');
   const [staffPage, setStaffPage] = useState(1);
   const [episodePage, setEpisodePage] = useState(1);
+  const [otherEpisodePage, setOtherEpisodePage] = useState(1);
   const [characterPage, setCharacterPage] = useState(1);
   const [publicReviewPage, setPublicReviewPage] = useState(1);
   const [relationPage, setRelationPage] = useState(1);
@@ -388,7 +522,6 @@ export function SubjectPage() {
   const [selectedCharacter, setSelectedCharacter] = useState<SubjectCharacter | null>(null);
   const [selectedRelation, setSelectedRelation] = useState<SubjectRelation | null>(null);
   const [isMarkDialogOpen, setIsMarkDialogOpen] = useState(false);
-  const [pendingMarkBody, setPendingMarkBody] = useState<MarkFormBody | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [pendingEpisodeId, setPendingEpisodeId] = useState<number | null>(null);
   const selectedStatusLabel = statusOptions.find((option) => option.value === status)?.label ?? status;
@@ -403,15 +536,15 @@ export function SubjectPage() {
     enabled: Boolean(bangumiSubjectId),
   });
   const episodesQuery = useQuery({
-    ...subjectQueries.episodes(subjectId ?? '', { page: episodePage, page_size: 12, type: 'EP' }),
+    ...subjectQueries.episodes(subjectId ?? '', { page: episodePage, page_size: episodePageSize, type: 'EP' }),
     enabled: Boolean(subjectId),
   });
   const otherEpisodesQuery = useQuery({
-    ...subjectQueries.episodes(subjectId ?? '', { page: 1, page_size: 24 }),
+    ...subjectQueries.episodes(subjectId ?? '', { page: 1, page_size: otherEpisodeFetchSize }),
     enabled: Boolean(subjectId),
   });
   const staffQuery = useQuery({
-    ...subjectQueries.staff(subjectId ?? '', { page: staffPage, page_size: 12, role: staffRole || undefined }),
+    ...subjectQueries.staff(subjectId ?? '', { page: staffPage, page_size: staffPageSize, role: staffRole || undefined }),
     enabled: Boolean(subjectId),
   });
   const staffRolesQuery = useQuery({
@@ -419,7 +552,7 @@ export function SubjectPage() {
     enabled: Boolean(subjectId),
   });
   const charactersQuery = useQuery({
-    ...subjectQueries.characters(subjectId ?? '', { page: characterPage, page_size: 8 }),
+    ...subjectQueries.characters(subjectId ?? '', { page: characterPage, page_size: characterPageSize }),
     enabled: Boolean(subjectId),
   });
   const selectedEpisodeQuery = useQuery({
@@ -427,7 +560,7 @@ export function SubjectPage() {
     enabled: Boolean(subjectId) && selectedEpisodeId !== null,
   });
   const relationsQuery = useQuery({
-    ...subjectQueries.relations(subjectId ?? '', { page: relationPage, page_size: 6 }),
+    ...subjectQueries.relations(subjectId ?? '', { page: 1, page_size: relationFetchSize }),
     enabled: Boolean(subjectId),
   });
   const contextQuery = useQuery({
@@ -435,7 +568,7 @@ export function SubjectPage() {
     enabled: Boolean(subjectId) && isAuthenticated,
   });
   const publicReviewsQuery = useQuery({
-    ...libraryQueries.publicSubjectReviews(subjectId ?? '', { page: publicReviewPage, page_size: 8, ordering: '-created_at' }),
+    ...libraryQueries.publicSubjectReviews(subjectId ?? '', { page: publicReviewPage, page_size: publicReviewPageSize, ordering: '-created_at' }),
     enabled: Boolean(subjectId),
   });
   const progressQuery = useQuery({
@@ -483,6 +616,7 @@ export function SubjectPage() {
   useEffect(() => {
     setStaffPage(1);
     setEpisodePage(1);
+    setOtherEpisodePage(1);
     setCharacterPage(1);
     setPublicReviewPage(1);
     setRelationPage(1);
@@ -515,24 +649,24 @@ export function SubjectPage() {
       is_public: isPublic,
     };
 
-    setPendingMarkBody(body);
+    await executeMarkSubmit(body);
   }
 
-  async function executeMarkSubmit() {
-    if (!subjectId || !pendingMarkBody) return;
+  async function executeMarkSubmit(markBody: MarkFormBody) {
+    if (!subjectId) return;
     setNoticeMessage('');
     setErrorMessage('');
     try {
       if (userSubject) {
         await updateSubjectMutation.mutateAsync({
           userSubjectId: userSubject.id,
-          body: pendingMarkBody,
+          body: markBody,
         });
         setNoticeMessage(t('subject.markUpdated'));
       } else {
         await createSubjectMutation.mutateAsync({
           subject_id: subjectId,
-          ...pendingMarkBody,
+          ...markBody,
         });
         setNoticeMessage(t('subject.markCreated'));
       }
@@ -547,11 +681,9 @@ export function SubjectPage() {
       await replaceRatingDetailsMutation.mutateAsync({ subjectId, details });
       await refreshUserSubjectData();
       await queryClient.invalidateQueries({ queryKey: libraryQueryKeys.tags() });
-      setPendingMarkBody(null);
       setIsMarkDialogOpen(false);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : t('common.requestFailed'));
-      setPendingMarkBody(null);
     }
   }
 
@@ -608,7 +740,7 @@ export function SubjectPage() {
 
   if (!subjectId) {
     return (
-      <Page title={t('subject.title')}>
+      <Page title={t('subject.title')} eyebrow={t('subject.title')}>
         <EmptyState title={t('subject.missingTitle')} description={t('subject.missingBody')} />
       </Page>
     );
@@ -616,25 +748,28 @@ export function SubjectPage() {
 
   if (detailQuery.isLoading) {
     return (
-      <Page title={t('subject.title')} description={t('subject.loadingDescription')}>
-        <LoadingState title={t('subject.loadingTitle')} description={t('subject.loadingBody')} />
+      <Page title={t('subject.title')} eyebrow={t('subject.title')}>
+        <LoadingState title={t('subject.loadingTitle')} />
       </Page>
     );
   }
 
   if (detailQuery.isError || !detailQuery.data) {
     return (
-      <Page title={t('subject.title')}>
+      <Page title={t('subject.title')} eyebrow={t('subject.title')}>
         <ErrorState title={t('subject.errorTitle')} description={t('subject.errorBody')} />
       </Page>
     );
   }
 
   const subject = detailQuery.data;
-  const relationPageSize = 6;
   const relationItems = relationsQuery.data?.results ?? [];
-  const relationTotalPages = Math.max(1, Math.ceil((relationsQuery.data?.count ?? 0) / relationPageSize));
-  const relationRows = relationItems;
+  const relationGroups = groupRelationsForDisplay(relationItems, t('subject.related'));
+  const relationPages = paginateRelationGroups(relationGroups);
+  const relationTotalPages = relationPages.length;
+  const currentRelationPage = Math.min(relationPage, relationTotalPages);
+  const visibleRelationGroups = relationPages[currentRelationPage - 1] ?? [];
+  const relationRows = relationGroups.flatMap((group) => group.items);
   const episodeProgressIds = new Set(progress?.finished_episode_ids ?? []);
   const infoboxRows = sortInfoboxRows(getInfoboxRows(subject.infobox));
   const staffGroups = groupStaffByRole(staffQuery.data?.results ?? []);
@@ -642,19 +777,23 @@ export function SubjectPage() {
     { label: t('subject.allRoles'), value: '' },
     ...(staffRolesQuery.data?.roles ?? []).map((role) => ({ label: role, value: role })),
   ];
-  const staffTotalPages = Math.max(1, Math.ceil((staffQuery.data?.count ?? 0) / 12));
-  const episodeTotalPages = Math.max(1, Math.ceil((episodesQuery.data?.count ?? 0) / 12));
-  const characterTotalPages = Math.max(1, Math.ceil((charactersQuery.data?.count ?? 0) / 8));
-  const publicReviewTotalPages = Math.max(1, Math.ceil((publicReviewsQuery.data?.count ?? 0) / 8));
+  const staffTotalPages = Math.max(1, Math.ceil((staffQuery.data?.count ?? 0) / staffPageSize));
+  const episodeTotalPages = Math.max(1, Math.ceil((episodesQuery.data?.count ?? 0) / episodePageSize));
+  const characterTotalPages = Math.max(1, Math.ceil((charactersQuery.data?.count ?? 0) / characterPageSize));
+  const publicReviewTotalPages = Math.max(1, Math.ceil((publicReviewsQuery.data?.count ?? 0) / publicReviewPageSize));
   const episodeRows = episodesQuery.data?.results ?? progress?.episodes ?? [];
-  const otherEpisodeRows = (otherEpisodesQuery.data?.results ?? []).filter((episode) => episode.type !== 'EP');
+  const allOtherEpisodeRows = (otherEpisodesQuery.data?.results ?? []).filter((episode) => episode.type !== 'EP');
+  const otherEpisodeTotalPages = Math.max(1, Math.ceil(allOtherEpisodeRows.length / otherEpisodePageSize));
+  const otherEpisodeRows = allOtherEpisodeRows.slice((otherEpisodePage - 1) * otherEpisodePageSize, otherEpisodePage * otherEpisodePageSize);
   const finishedPrimaryCount = progress?.finished_count ?? episodeRows.filter((episode) => episodeProgressIds.has(episode.id)).length;
   const totalPrimaryCount = progress?.total_episodes ?? episodesQuery.data?.count ?? episodeRows.length;
-  const selectedEpisodePreview = [...episodeRows, ...otherEpisodeRows].find((episode) => episode.id === selectedEpisodeId);
+  const selectedEpisodePreview = [...episodeRows, ...allOtherEpisodeRows].find((episode) => episode.id === selectedEpisodeId);
   const bangumiSnapshot = bangumiSnapshotQuery.data;
   const bangumiRank = bangumiSnapshot?.rating?.rank ?? bangumiSnapshot?.rank;
   const bangumiUrl = bangumiSubjectId ? `https://bangumi.tv/subject/${bangumiSubjectId}` : null;
   const anchorScrollClass = isAuthenticated ? 'scroll-mt-24' : 'scroll-mt-36';
+  const detailLinkState = routeBackState(location, titleOf(subject, t('common.untitledSubject')));
+  const loginState = { returnTo: currentRoutePath(location) };
 
   return (
     <Page
@@ -670,7 +809,7 @@ export function SubjectPage() {
       )}
     >
       <nav className={`sticky ${isAuthenticated ? 'top-3' : 'top-20'} z-20 mb-5 flex justify-center`}>
-        <div className="flex max-w-full gap-1 overflow-x-auto rounded-full border border-neutral-200 bg-white/92 p-1 text-sm shadow-sm backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/92">
+        <div className="flex max-w-full gap-1 overflow-x-auto rounded-full border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_92%,transparent)] p-1 text-sm shadow-sm backdrop-blur">
           {[
             ['#mark', t('subject.mark')],
             ['#reviews', t('reviews.title')],
@@ -680,26 +819,26 @@ export function SubjectPage() {
             ['#relations', t('subject.relations')],
             ['#public-reviews', t('subject.publicReviews')],
           ].map(([href, label]) => (
-            <a className="whitespace-nowrap rounded-full px-3 py-1.5 font-semibold text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-950 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-white" href={href} key={href}>
+            <a className="whitespace-nowrap rounded-full px-3 py-1.5 font-semibold text-[var(--color-text-muted)] transition hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text)]" href={href} key={href}>
               {label}
             </a>
           ))}
         </div>
       </nav>
-      <div className="grid gap-8 lg:grid-cols-[300px_minmax(0,1fr)]">
-        <aside className="grid content-start gap-4">
+      <div className="grid items-start gap-8 lg:grid-cols-[300px_minmax(0,1fr)]">
+        <aside className="grid content-start gap-4 self-start">
           <img
-            className="aspect-[2/3] w-full rounded-xl bg-neutral-100 object-cover shadow-sm ring-1 ring-neutral-200 dark:bg-neutral-900 dark:ring-neutral-800"
+            className="aspect-[2/3] w-full rounded-xl bg-[var(--color-surface-muted)] object-cover shadow-sm ring-1 ring-[var(--color-border)]"
             src={posterOf(subject)}
             alt={titleOf(subject, t('common.untitledSubject'))}
           />
 
           {bangumiUrl ? (
-            <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+            <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-normal text-neutral-500 dark:text-neutral-400">{t('subject.externalSource')}</p>
-                  <h2 className="mt-1 flex min-w-0 items-center gap-2 text-sm font-semibold text-neutral-950 dark:text-white">
+                  <p className="text-xs font-semibold uppercase tracking-normal text-[var(--color-text-muted)]">{t('subject.externalSource')}</p>
+                  <h2 className="mt-1 flex min-w-0 items-center gap-2 text-sm font-semibold text-[var(--color-text)]">
                     <img className="size-4 rounded-sm" src="https://bangumi.tv/img/favicon.ico" alt="" aria-hidden="true" />
                     <span className="truncate">Bangumi</span>
                   </h2>
@@ -711,55 +850,55 @@ export function SubjectPage() {
                 </Button>
               </div>
               <div className="mt-4 grid grid-cols-3 gap-2">
-                <div className="rounded-lg bg-neutral-50 p-3 dark:bg-neutral-900/70">
+                <div className="rounded-lg bg-[var(--color-surface-muted)] p-3">
                   <p className="text-[11px] font-semibold uppercase text-neutral-400">{t('subject.liveScore')}</p>
-                  <p className="mt-1 text-base font-semibold text-neutral-950 dark:text-white">
+                  <p className="mt-1 text-base font-semibold text-[var(--color-text)]">
                     {bangumiSnapshot?.rating?.score ? bangumiSnapshot.rating.score.toFixed(1) : emptyText}
                   </p>
                 </div>
-                <div className="rounded-lg bg-neutral-50 p-3 dark:bg-neutral-900/70">
+                <div className="rounded-lg bg-[var(--color-surface-muted)] p-3">
                   <p className="text-[11px] font-semibold uppercase text-neutral-400">{t('subject.liveRank')}</p>
-                  <p className="mt-1 text-base font-semibold text-neutral-950 dark:text-white">
+                  <p className="mt-1 text-base font-semibold text-[var(--color-text)]">
                     {bangumiRank ? `#${bangumiRank}` : emptyText}
                   </p>
                 </div>
-                <div className="rounded-lg bg-neutral-50 p-3 dark:bg-neutral-900/70">
+                <div className="rounded-lg bg-[var(--color-surface-muted)] p-3">
                   <p className="text-[11px] font-semibold uppercase text-neutral-400">{t('subject.liveVotes')}</p>
-                  <p className="mt-1 text-base font-semibold text-neutral-950 dark:text-white">
+                  <p className="mt-1 text-base font-semibold text-[var(--color-text)]">
                     {bangumiSnapshot?.rating?.total ?? emptyText}
                   </p>
                 </div>
               </div>
               {bangumiSnapshotQuery.isFetching ? (
-                <p className="mt-3 text-xs text-neutral-500 dark:text-neutral-400">{t('subject.loadingExternalSource')}</p>
+              <p className="mt-3 text-xs text-[var(--color-text-muted)]">{t('subject.loadingExternalSource')}</p>
               ) : null}
               {bangumiSnapshotQuery.isError ? (
-                <p className="mt-3 text-xs text-neutral-500 dark:text-neutral-400">{t('subject.externalSourceUnavailable')}</p>
+                <p className="mt-3 text-xs text-[var(--color-text-muted)]">{t('subject.externalSourceUnavailable')}</p>
               ) : null}
             </section>
           ) : null}
 
-          <section className="border-t border-neutral-200 pt-4 dark:border-neutral-800">
+          <section className="border-t border-[var(--color-border)] pt-4">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold uppercase text-neutral-500 dark:text-neutral-400">{t('subject.infobox')}</h2>
+              <h2 className="text-sm font-semibold uppercase text-[var(--color-text-muted)]">{t('subject.infobox')}</h2>
               <span className="text-xs text-neutral-400">{infoboxRows.length} {t('common.items')}</span>
             </div>
-            <dl className="mt-3 divide-y divide-neutral-200 text-sm dark:divide-neutral-800">
+            <dl className="mt-3 divide-y divide-[var(--color-border)] text-sm">
               {infoboxRows.slice(0, 14).map((item) => (
                 <div className="grid grid-cols-[88px_minmax(0,1fr)] gap-3 py-2.5" key={item.key}>
-                  <dt className="text-neutral-500 dark:text-neutral-400">{item.key}</dt>
-                  <dd className="min-w-0 break-words leading-6 text-neutral-800 dark:text-neutral-200">{item.value}</dd>
+                  <dt className="text-[var(--color-text-muted)]">{item.key}</dt>
+                  <dd className="min-w-0 break-words leading-6 text-[var(--color-text)]">{item.value}</dd>
                 </div>
               ))}
               {infoboxRows.length === 0 ? (
-                <div className="py-3 text-sm text-neutral-500 dark:text-neutral-400">{emptyText}</div>
+                <div className="py-3 text-sm text-[var(--color-text-muted)]">{emptyText}</div>
               ) : null}
             </dl>
           </section>
 
-          <section className="border-t border-neutral-200 pt-4 dark:border-neutral-800">
+          <section className="border-t border-[var(--color-border)] pt-4">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold uppercase text-neutral-500 dark:text-neutral-400">{t('subject.staff')}</h2>
+              <h2 className="text-sm font-semibold uppercase text-[var(--color-text-muted)]">{t('subject.staff')}</h2>
               <span className="text-xs text-neutral-400">
                 {staffQuery.data?.count ?? 0} {t('common.items')}
               </span>
@@ -785,17 +924,17 @@ export function SubjectPage() {
                       <Popover key={`${role}-${member.id}`}>
                         <PopoverTrigger asChild>
                           <button
-                            className="grid grid-cols-[36px_minmax(0,1fr)] items-center gap-2 rounded-lg border border-neutral-200 bg-white p-2 text-left transition hover:border-[var(--color-accent-border)] hover:shadow-sm dark:border-neutral-800 dark:bg-neutral-950"
+                            className="grid grid-cols-[36px_minmax(0,1fr)] items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-2 text-left transition hover:border-[var(--color-accent-border)] hover:bg-[var(--color-surface-muted)] hover:shadow-sm"
                             type="button"
                           >
                             <img
-                              className="size-9 rounded-md bg-neutral-100 object-cover dark:bg-neutral-900"
+                              className="size-9 rounded-md bg-[var(--color-surface-muted)] object-cover"
                               src={member.image_thumbnail || coverPlaceholder}
                               alt=""
                             />
                             <span className="min-w-0">
-                              <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{member.name}</span>
-                              <span className="block truncate text-xs text-neutral-500 dark:text-neutral-400">{member.type || (role === 'Staff' ? t('subject.staff') : role)}</span>
+                              <span className="block truncate text-sm font-semibold text-[var(--color-text)]">{member.name}</span>
+                              <span className="block truncate text-xs text-[var(--color-text-muted)]">{member.type || (role === 'Staff' ? t('subject.staff') : role)}</span>
                             </span>
                           </button>
                         </PopoverTrigger>
@@ -811,36 +950,40 @@ export function SubjectPage() {
               {!staffQuery.isFetching && staffGroups.length === 0 ? (
                 <p className="text-sm text-neutral-500 dark:text-neutral-400">{emptyText}</p>
               ) : null}
-              <Pagination currentPage={staffPage} totalPages={staffTotalPages} onPageChange={setStaffPage} />
+              <Pagination
+                currentPage={staffPage}
+                totalPages={staffTotalPages}
+                onPageChange={setStaffPage}
+              />
             </div>
           </section>
 
         </aside>
 
-        <main className="grid gap-4">
+        <main className="grid gap-4 self-start">
           <div className="grid gap-4 lg:grid-cols-2">
             <Card className={anchorScrollClass} id="mark">
               <CardHeader>
                 <CardTitle>{t('subject.mark')}</CardTitle>
-                <CardDescription>{userSubject ? selectedStatusLabel : isAuthenticated ? t('subject.notMarked') : t('subject.loginToMark')}</CardDescription>
+                {userSubject ? <CardDescription>{selectedStatusLabel}</CardDescription> : null}
               </CardHeader>
               <CardContent className="grid gap-4">
                 {userSubject ? (
                   <div className="grid gap-3">
                     <div className="grid grid-cols-3 gap-2">
-                      <div className="rounded-lg bg-neutral-100 p-3 dark:bg-neutral-900">
-                        <p className="text-xs font-semibold uppercase text-neutral-500 dark:text-neutral-400">{t('subject.progress')}</p>
-                        <p className="mt-1 text-sm font-semibold text-neutral-950 dark:text-white">{finishedPrimaryCount} / {totalPrimaryCount}</p>
+                      <div className="rounded-lg bg-[var(--color-surface-muted)] p-3">
+                        <p className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">{t('subject.progress')}</p>
+                        <p className="mt-1 text-sm font-semibold text-[var(--color-text)]">{finishedPrimaryCount} / {totalPrimaryCount}</p>
                       </div>
-                      <div className="rounded-lg bg-neutral-100 p-3 dark:bg-neutral-900">
-                        <p className="text-xs font-semibold uppercase text-neutral-500 dark:text-neutral-400">{t('subject.simple')}</p>
+                      <div className="rounded-lg bg-[var(--color-surface-muted)] p-3">
+                        <p className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">{t('subject.simple')}</p>
                         <p className="mt-1">
                           <StarRatingDisplay emptyLabel={emptyText} value={userSubject.simple_rating} />
                         </p>
                       </div>
-                      <div className="rounded-lg bg-neutral-100 p-3 dark:bg-neutral-900">
-                        <p className="text-xs font-semibold uppercase text-neutral-500 dark:text-neutral-400">{t('subject.rating')}</p>
-                        <p className="mt-1 text-sm font-semibold text-neutral-950 dark:text-white">{userSubject.rating ?? emptyText}</p>
+                      <div className="rounded-lg bg-[var(--color-surface-muted)] p-3">
+                        <p className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">{t('subject.rating')}</p>
+                        <p className="mt-1 text-sm font-semibold text-[var(--color-text)]">{userSubject.rating ?? emptyText}</p>
                       </div>
                     </div>
                     {(contextQuery.data?.tags ?? []).length ? (
@@ -853,15 +996,15 @@ export function SubjectPage() {
                     {(contextQuery.data?.rating_details ?? []).length ? (
                       <dl className="grid gap-2 text-sm">
                         {(contextQuery.data?.rating_details ?? []).map((detail) => (
-                          <div className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 px-3 py-2 dark:border-neutral-800" key={detail.key}>
-                            <dt className="truncate text-neutral-500 dark:text-neutral-400">{detail.key}</dt>
-                            <dd className="font-semibold text-neutral-950 dark:text-white">{detail.value}</dd>
+                          <div className="flex items-center justify-between gap-3 rounded-lg border border-[var(--color-border)] px-3 py-2" key={detail.key}>
+                            <dt className="truncate text-[var(--color-text-muted)]">{detail.key}</dt>
+                            <dd className="font-semibold text-[var(--color-text)]">{detail.value}</dd>
                           </div>
                         ))}
                       </dl>
                     ) : null}
                     {userSubject.comment ? (
-                      <p className="rounded-lg border border-neutral-200 p-3 text-sm leading-6 text-neutral-600 dark:border-neutral-800 dark:text-neutral-300">
+                      <p className="rounded-lg border border-[var(--color-border)] p-3 text-sm leading-6 text-[var(--color-text-muted)]">
                         {userSubject.comment}
                       </p>
                     ) : null}
@@ -879,7 +1022,7 @@ export function SubjectPage() {
                   </Button>
                 ) : (
                   <Button asChild className="mark-primary-action">
-                    <Link to={routes.login}>{t('auth.login')}</Link>
+                    <Link state={loginState} to={routes.login}>{t('auth.login')}</Link>
                   </Button>
                 )}
               </CardContent>
@@ -888,20 +1031,20 @@ export function SubjectPage() {
             <Card className={anchorScrollClass} id="reviews">
               <CardHeader>
                 <CardTitle>{t('reviews.title')}</CardTitle>
-                <CardDescription>{(contextQuery.data?.reviews ?? []).length} {t('subject.myReviewsDescription')}</CardDescription>
+                <CardDescription>{(contextQuery.data?.reviews ?? []).length} {t('common.items')}</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-3">
                 {(contextQuery.data?.reviews ?? []).map((review) => (
-                  <article className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-800" key={review.id}>
+                  <article className="rounded-lg border border-[var(--color-border)] p-3" key={review.id}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <Link className="truncate text-sm font-semibold text-neutral-950 transition hover:text-[var(--color-accent-strong)] dark:text-white" to={routes.review(review.id)}>
+                        <Link className="truncate text-sm font-semibold text-[var(--color-text)] transition hover:text-[var(--color-accent-strong)]" state={detailLinkState} to={routes.review(review.id)}>
                           {review.title}
                         </Link>
-                        <p className="mt-1 line-clamp-2 text-sm leading-6 text-neutral-500 dark:text-neutral-400">{review.content}</p>
+                        <p className="mt-1 line-clamp-2 text-sm leading-6 text-[var(--color-text-muted)]">{review.content}</p>
                       </div>
                       <Button asChild size="icon" type="button" variant="ghost">
-                        <Link to={routes.reviewEdit(review.id)}><PencilLine className="size-4" /></Link>
+                        <Link state={detailLinkState} to={routes.reviewEdit(review.id)}><PencilLine className="size-4" /></Link>
                       </Button>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
@@ -915,7 +1058,7 @@ export function SubjectPage() {
                 ) : null}
                 {userSubject ? (
                   <Button asChild className="w-fit" variant="secondary">
-                    <Link to={routes.reviewNewForSubject(subjectId)}>
+                    <Link state={detailLinkState} to={routes.reviewNewForSubject(subjectId)}>
                       {t('subject.newReview')}
                     </Link>
                   </Button>
@@ -931,9 +1074,6 @@ export function SubjectPage() {
           <Card className={anchorScrollClass} id="episodes">
             <CardHeader>
               <CardTitle>{t('subject.episodes')}</CardTitle>
-              <CardDescription>
-                {t('subject.episodeProgressDescription')}
-              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
@@ -983,10 +1123,14 @@ export function SubjectPage() {
                   <p className="text-sm text-neutral-500 dark:text-neutral-400">{emptyText}</p>
                 ) : null}
               </div>
-              <Pagination currentPage={episodePage} totalPages={episodeTotalPages} onPageChange={setEpisodePage} />
+              <Pagination
+                currentPage={episodePage}
+                totalPages={episodeTotalPages}
+                onPageChange={setEpisodePage}
+              />
               {otherEpisodeRows.length > 0 ? (
-                <div className="mt-5 border-t border-neutral-200 pt-4 dark:border-neutral-800">
-                  <h3 className="text-sm font-semibold text-neutral-950 dark:text-white">{t('subject.otherChapters')}</h3>
+                <div className="mt-5 border-t border-[var(--color-border)] pt-4">
+                  <h3 className="text-sm font-semibold text-[var(--color-text)]">{t('subject.otherChapters')}</h3>
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
                     {otherEpisodeRows.map((episode) => (
                       <button
@@ -1003,6 +1147,11 @@ export function SubjectPage() {
                       </button>
                     ))}
                   </div>
+                  <Pagination
+                    currentPage={otherEpisodePage}
+                    totalPages={otherEpisodeTotalPages}
+                    onPageChange={setOtherEpisodePage}
+                  />
                 </div>
               ) : null}
             </CardContent>
@@ -1011,7 +1160,6 @@ export function SubjectPage() {
           <Card className={anchorScrollClass} id="description">
             <CardHeader>
               <CardTitle>{t('subject.description')}</CardTitle>
-              <CardDescription>{subject.title}</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4">
               <p className="text-sm leading-7 text-neutral-600 dark:text-neutral-300">
@@ -1020,7 +1168,7 @@ export function SubjectPage() {
               {subject.tags?.length ? (
                 <div className="flex flex-wrap gap-2">
                   {subject.tags.slice(0, 12).map((tag) => (
-                    <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-semibold text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400" key={tag}>
+                    <span className="rounded-full bg-[var(--color-surface-muted)] px-3 py-1 text-xs font-semibold text-[var(--color-text-muted)]" key={tag}>
                       {tag}
                     </span>
                   ))}
@@ -1032,30 +1180,29 @@ export function SubjectPage() {
           <Card className={anchorScrollClass} id="characters">
             <CardHeader>
               <CardTitle>{t('subject.characters')}</CardTitle>
-              <CardDescription>{t('subject.charactersDescription')}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid gap-3 md:grid-cols-2">
                 {(charactersQuery.data?.results ?? []).map((character) => (
                   <button
-                    className="grid grid-cols-[56px_minmax(0,1fr)] gap-3 rounded-lg border border-neutral-200 p-3 text-left transition hover:border-[var(--color-accent-border)] hover:shadow-sm dark:border-neutral-800"
+                    className="grid grid-cols-[56px_minmax(0,1fr)] gap-3 rounded-lg border border-[var(--color-border)] p-3 text-left transition hover:border-[var(--color-accent-border)] hover:bg-[var(--color-surface-muted)] hover:shadow-sm"
                     key={character.id}
                     type="button"
                     onClick={() => setSelectedCharacter(character)}
                   >
                     <img
-                      className="h-20 w-14 rounded-md bg-neutral-100 object-cover dark:bg-neutral-900"
+                      className="h-20 w-14 rounded-md bg-[var(--color-surface-muted)] object-cover object-top"
                       src={character.image_thumbnail || coverPlaceholder}
                       alt={character.name}
                     />
                     <div className="min-w-0">
-                      <h3 className="truncate text-sm font-semibold text-neutral-950 dark:text-white">{character.name}</h3>
+                      <h3 className="truncate text-sm font-semibold text-[var(--color-text)]">{character.name}</h3>
                       <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{character.role || character.type || t('subject.character')}</p>
                       <div className="mt-3 grid gap-1">
                         {(character.actors ?? []).slice(0, 2).map((actor) => (
                           <div className="grid grid-cols-[24px_minmax(0,1fr)] items-center gap-2" key={actor.id}>
                             <img
-                              className="size-6 rounded-full bg-neutral-100 object-cover dark:bg-neutral-900"
+                              className="size-6 rounded-full bg-[var(--color-surface-muted)] object-cover object-top"
                               src={actor.image_thumbnail || coverPlaceholder}
                               alt=""
                             />
@@ -1070,9 +1217,11 @@ export function SubjectPage() {
                   </button>
                 ))}
               </div>
-              {characterTotalPages > 1 ? (
-                <Pagination currentPage={characterPage} totalPages={characterTotalPages} onPageChange={setCharacterPage} />
-              ) : null}
+              <Pagination
+                currentPage={characterPage}
+                totalPages={characterTotalPages}
+                onPageChange={setCharacterPage}
+              />
             </CardContent>
           </Card>
 
@@ -1107,57 +1256,49 @@ export function SubjectPage() {
               ) : null}
 
               {relationRows.length > 0 ? (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {relationRows.map((relation) => {
-                    const primary = isPrimaryRelation(relation);
-                    const content = (
-                      <>
-                        <img
-                          alt=""
-                          className="relation-card-cover"
-                          src={subjectImage(relation.subject)}
-                        />
-                        <div className="grid min-w-0 content-start gap-2.5">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant={primary ? 'accent' : 'secondary'}>{relation.subject.subject_type}</Badge>
-                            <span className="text-xs font-medium text-neutral-400">{relation.relation || t('subject.related')}</span>
-                          </div>
-                          <h3 className="line-clamp-2 text-base font-semibold leading-5 text-neutral-950 dark:text-white">{relationTitle(relation, t('common.untitledSubject'))}</h3>
-                          <p className="line-clamp-2 text-xs leading-5 text-neutral-500 dark:text-neutral-400">{relationMeta(relation, emptyText)}</p>
-                          {relation.subject.description_excerpt || relation.subject.description ? (
-                            <p className="line-clamp-2 text-xs leading-5 text-neutral-500 dark:text-neutral-400">
-                              {relation.subject.description_excerpt || relation.subject.description}
-                            </p>
-                          ) : null}
-                        </div>
-                      </>
-                    );
+                <div className="relation-groups">
+                  {visibleRelationGroups.map((group) => (
+                    <section className="relation-section" key={group.key}>
+                      <div className="relation-section-heading">
+                        <span>{group.label}</span>
+                        <small>{group.items.length === group.totalCount ? group.items.length : `${group.items.length}/${group.totalCount}`}</small>
+                      </div>
+                      <div className="relation-grid">
+                        {group.items.map((relation) => {
+                          const primary = isPrimaryRelation(relation);
+                          const content = <RelationItemContent emptyText={emptyText} relation={relation} titleFallback={t('common.untitledSubject')} />;
 
-                    return primary ? (
-                      <Link
-                        className="relation-card"
-                        key={`${relation.direction}-${relation.relation}-${relation.subject.id}`}
-                        to={routes.subject(relation.subject.id)}
-                      >
-                        {content}
-                      </Link>
-                    ) : (
-                      <button
-                        className="relation-card w-full text-left"
-                        key={`${relation.direction}-${relation.relation}-${relation.subject.id}`}
-                        type="button"
-                        onClick={() => setSelectedRelation(relation)}
-                      >
-                        {content}
-                      </button>
-                    );
-                  })}
+                          return primary ? (
+                            <Link
+                              className="relation-item"
+                              key={`${relation.direction}-${relation.relation}-${relation.subject.id}`}
+                              state={detailLinkState}
+                              to={routes.subject(relation.subject.id)}
+                            >
+                              {content}
+                            </Link>
+                          ) : (
+                            <button
+                              className="relation-item w-full text-left"
+                              key={`${relation.direction}-${relation.relation}-${relation.subject.id}`}
+                              type="button"
+                              onClick={() => setSelectedRelation(relation)}
+                            >
+                              {content}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  ))}
                 </div>
               ) : null}
 
-              {relationTotalPages > 1 ? (
-                <Pagination currentPage={relationPage} totalPages={relationTotalPages} onPageChange={setRelationPage} />
-              ) : null}
+              <Pagination
+                currentPage={currentRelationPage}
+                totalPages={relationTotalPages}
+                onPageChange={setRelationPage}
+              />
             </CardContent>
           </Card>
 
@@ -1182,24 +1323,24 @@ export function SubjectPage() {
                           <Link to={routes.userProfile(review.user.id)}>
                             <img
                               alt=""
-                              className="size-9 rounded-full bg-neutral-100 object-cover transition hover:ring-2 hover:ring-[var(--color-accent-border)] dark:bg-neutral-900"
+                              className="size-9 rounded-full bg-[var(--color-surface-muted)] object-cover transition hover:ring-2 hover:ring-[var(--color-accent-border)]"
                               src={review.user.avatar || '/assets/placeholders/avatar.png'}
                             />
                           </Link>
                         ) : (
                           <img
                             alt=""
-                            className="size-9 rounded-full bg-neutral-100 object-cover dark:bg-neutral-900"
+                            className="size-9 rounded-full bg-[var(--color-surface-muted)] object-cover"
                             src="/assets/placeholders/avatar.png"
                           />
                         )}
                         <div className="min-w-0">
                           {review.user?.id ? (
-                            <Link className="block truncate text-sm font-semibold text-neutral-950 transition hover:text-[var(--color-accent-strong)] dark:text-white" to={routes.userProfile(review.user.id)}>
+                            <Link className="block truncate text-sm font-semibold text-[var(--color-text)] transition hover:text-[var(--color-accent-strong)]" to={routes.userProfile(review.user.id)}>
                               {review.user.nickname || t('common.anonymous')}
                             </Link>
                           ) : (
-                            <p className="truncate text-sm font-semibold text-neutral-950 dark:text-white">{t('common.anonymous')}</p>
+                            <p className="truncate text-sm font-semibold text-[var(--color-text)]">{t('common.anonymous')}</p>
                           )}
                           <p className="text-xs text-neutral-500 dark:text-neutral-400">{formatDate(review.updated_at || review.created_at)}</p>
                         </div>
@@ -1208,19 +1349,19 @@ export function SubjectPage() {
                         {review.is_spoiler ? <Badge><ShieldAlert className="size-3" /> {t('common.spoiler')}</Badge> : null}
                         {isOwnReview ? (
                           <Button asChild size="sm" variant="ghost">
-                            <Link to={routes.reviewEdit(review.id)}>{t('common.edit')}</Link>
+                            <Link state={detailLinkState} to={routes.reviewEdit(review.id)}>{t('common.edit')}</Link>
                           </Button>
                         ) : null}
                       </div>
                     </div>
-                    <Link className="mt-4 block" to={routes.review(review.id)}>
-                      <h3 className="font-semibold text-neutral-950 transition hover:text-[var(--color-accent-strong)] dark:text-white">{review.title}</h3>
+                    <Link className="mt-4 block" state={detailLinkState} to={routes.review(review.id)}>
+                      <h3 className="font-semibold text-[var(--color-text)] transition hover:text-[var(--color-accent-strong)]">{review.title}</h3>
                       <div className={`relative mt-2 overflow-hidden rounded-lg ${review.is_spoiler ? 'max-h-24' : ''}`}>
                         <p className={`line-clamp-3 text-sm leading-6 text-neutral-600 dark:text-neutral-300 ${review.is_spoiler ? 'blur-sm transition hover:blur-none' : ''}`}>
                           {review.content}
                         </p>
                         {review.is_spoiler ? (
-                          <div className="pointer-events-none absolute inset-0 grid place-items-center bg-white/35 text-xs font-semibold text-neutral-600 backdrop-blur-sm dark:bg-neutral-950/35 dark:text-neutral-300">
+                          <div className="pointer-events-none absolute inset-0 grid place-items-center bg-[color-mix(in_srgb,var(--color-surface)_38%,transparent)] text-xs font-semibold text-[var(--color-text)] backdrop-blur-sm">
                             {t('subject.spoilerReview')}
                           </div>
                         ) : null}
@@ -1233,23 +1374,25 @@ export function SubjectPage() {
                   <p className="text-sm text-neutral-500 dark:text-neutral-400">{emptyText}</p>
                 ) : null}
             </div>
-            {publicReviewTotalPages > 1 ? (
-              <Pagination currentPage={publicReviewPage} totalPages={publicReviewTotalPages} onPageChange={setPublicReviewPage} />
-            ) : null}
+            <Pagination
+              currentPage={publicReviewPage}
+              totalPages={publicReviewTotalPages}
+              onPageChange={setPublicReviewPage}
+            />
             </CardContent>
           </Card>
         </main>
       </div>
       <Dialog open={isMarkDialogOpen} onOpenChange={setIsMarkDialogOpen}>
-        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-3xl overflow-hidden p-0">
-          <DialogHeader className="border-b border-neutral-200 px-5 py-4 pr-12 dark:border-neutral-800">
+        <DialogContent className="grid max-h-[calc(100dvh-2rem)] max-w-3xl grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0">
+          <DialogHeader className="border-b border-[var(--color-border)] px-5 py-4 pr-12">
             <DialogTitle>{userSubject ? t('subject.editMark') : t('subject.markSubject')}</DialogTitle>
           </DialogHeader>
-          <div className="grid max-h-[calc(100dvh-9rem)] gap-5 overflow-y-auto px-5 py-5">
-            <form className="grid gap-5" onSubmit={handleMarkSubmit}>
+          <div className="min-h-0 overflow-y-auto px-5 py-5">
+            <form className="grid gap-5" id="subject-mark-form" onSubmit={handleMarkSubmit}>
               <section className="grid gap-3">
                 <div>
-                  <div className="text-sm font-semibold text-neutral-950 dark:text-white">{t('subject.status')}</div>
+                  <div className="text-sm font-semibold text-[var(--color-text)]">{t('subject.status')}</div>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-5">
                   {statusOptions.map((option) => {
@@ -1275,26 +1418,26 @@ export function SubjectPage() {
                 </div>
               </section>
               <div className="grid gap-4 sm:grid-cols-2">
-                <label className="grid gap-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                <label className="grid gap-2 text-sm font-medium text-[var(--color-text)]">
                   {t('subject.simple')}
                   <StarRatingControl clearLabel={t('common.clear')} value={simpleRating} onChange={setSimpleRating} />
                 </label>
-                <label className="grid gap-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                <label className="grid gap-2 text-sm font-medium text-[var(--color-text)]">
                   {t('subject.rating')}
                   <Input inputMode="decimal" placeholder="0.0 - 10.0" value={rating} onChange={(event) => setRating(event.target.value)} />
                 </label>
               </div>
-              <label className="grid gap-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">
+              <label className="grid gap-2 text-sm font-medium text-[var(--color-text)]">
                 {t('subject.comment')}
                 <textarea
-                  className="min-h-24 rounded-xl border-0 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-1 ring-neutral-200 focus:ring-4 focus:ring-neutral-200 dark:bg-neutral-950 dark:ring-neutral-800 dark:focus:ring-neutral-800"
+                  className="min-h-24 rounded-xl border-0 bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text)] shadow-sm outline-none ring-1 ring-[var(--color-border)] focus:ring-4 focus:ring-[var(--color-focus-ring)]"
                   value={comment}
                   onChange={(event) => setComment(event.target.value)}
                 />
               </label>
               <div className="mark-visibility-toggle">
                 <span className="grid min-w-0 gap-0.5">
-                  <span className="font-semibold text-neutral-950 dark:text-white">{t('subject.publicVisibility')}</span>
+                  <span className="font-semibold text-[var(--color-text)]">{t('subject.publicVisibility')}</span>
                 </span>
                 <button
                   aria-pressed={isPublic}
@@ -1305,8 +1448,8 @@ export function SubjectPage() {
                   <span />
                 </button>
               </div>
-              <section className="grid gap-3 border-t border-neutral-200 pt-5 dark:border-neutral-800">
-                <label className="grid gap-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">
+              <section className="grid gap-3 border-t border-[var(--color-border)] pt-5">
+                <label className="grid gap-2 text-sm font-medium text-[var(--color-text)]">
                   {t('subject.tags')}
                   <Input
                     placeholder="favorite, rewatch, key"
@@ -1317,7 +1460,7 @@ export function SubjectPage() {
                 <div className="flex flex-wrap gap-2">
                   {(tagsQuery.data?.results ?? []).slice(0, 8).map((tag) => (
                     <button
-                      className="rounded-full border border-neutral-200 px-3 py-1 text-xs font-semibold text-neutral-500 transition hover:border-[var(--color-accent-border)] hover:text-[var(--color-accent-strong)] dark:border-neutral-800 dark:text-neutral-400"
+                      className="rounded-full border border-[var(--color-border)] px-3 py-1 text-xs font-semibold text-[var(--color-text-muted)] transition hover:border-[var(--color-accent-border)] hover:text-[var(--color-accent-strong)]"
                       key={tag.id}
                       type="button"
                       onClick={() => {
@@ -1332,9 +1475,9 @@ export function SubjectPage() {
                   ))}
                 </div>
               </section>
-              <section className="grid gap-3 border-t border-neutral-200 pt-5 dark:border-neutral-800">
+              <section className="grid gap-3 border-t border-[var(--color-border)] pt-5">
                 <div>
-                  <div className="text-sm font-semibold text-neutral-950 dark:text-white">{t('subject.ratingDetails')}</div>
+                  <div className="text-sm font-semibold text-[var(--color-text)]">{t('subject.ratingDetails')}</div>
                 </div>
                 <div className="grid gap-2">
                   {ratingDetailRows.map((detail, index) => (
@@ -1378,42 +1521,29 @@ export function SubjectPage() {
               </section>
               {noticeMessage ? <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">{noticeMessage}</p> : null}
               {errorMessage ? <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/30 dark:text-red-300">{errorMessage}</p> : null}
-              <div className={`mark-dialog-footer ${userSubject ? '' : 'is-single'}`}>
-                <Button
-                  className="mark-dialog-submit"
-                  disabled={
-                    createSubjectMutation.isPending ||
-                    updateSubjectMutation.isPending ||
-                    replaceTagsMutation.isPending ||
-                    replaceRatingDetailsMutation.isPending
-                  }
-                  type="submit"
-                >
-                  {userSubject ? t('subject.saveMark') : t('subject.markSubject')}
-                </Button>
-                {userSubject ? (
-                  <Button className="mark-dialog-delete" disabled={deleteSubjectMutation.isPending} type="button" variant="secondary" onClick={() => setIsDeleteConfirmOpen(true)}>
-                    {t('subject.deleteMark')}
-                  </Button>
-                ) : null}
-              </div>
             </form>
           </div>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={Boolean(pendingMarkBody)} onOpenChange={(open) => !open && setPendingMarkBody(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{userSubject ? t('subject.confirmMarkTitle') : t('subject.confirmCreateMarkTitle')}</DialogTitle>
-            <DialogDescription>{t('subject.confirmMarkBody')}</DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-wrap justify-end gap-2">
-            <Button type="button" variant="secondary" onClick={() => setPendingMarkBody(null)}>
-              {t('common.cancel')}
+          <div className={`mark-dialog-footer ${userSubject ? '' : 'is-single'}`}>
+            <Button
+              className="mark-dialog-submit"
+              disabled={
+                createSubjectMutation.isPending ||
+                updateSubjectMutation.isPending ||
+                replaceTagsMutation.isPending ||
+                replaceRatingDetailsMutation.isPending
+              }
+              form="subject-mark-form"
+              type="submit"
+            >
+              <Check className="size-4" />
+              {userSubject ? t('subject.saveMark') : t('subject.markSubject')}
             </Button>
-            <Button disabled={createSubjectMutation.isPending || updateSubjectMutation.isPending} type="button" onClick={() => void executeMarkSubmit()}>
-              {t('common.confirm')}
-            </Button>
+            {userSubject ? (
+              <Button className="mark-dialog-delete" disabled={deleteSubjectMutation.isPending} type="button" variant="secondary" onClick={() => setIsDeleteConfirmOpen(true)}>
+                <Trash2 className="size-4" />
+                {t('subject.deleteMark')}
+              </Button>
+            ) : null}
           </div>
         </DialogContent>
       </Dialog>
@@ -1502,22 +1632,22 @@ export function SubjectPage() {
               >
                 {(selectedCharacter.actors ?? []).length ? (
                   <section className="grid gap-3">
-                    <h4 className="text-sm font-semibold text-neutral-950 dark:text-white">{t('subject.voiceCast')}</h4>
+                    <h4 className="text-sm font-semibold text-[var(--color-text)]">{t('subject.voiceCast')}</h4>
                     <div className="grid gap-2 sm:grid-cols-2">
                       {(selectedCharacter.actors ?? []).map((actor) => (
                         <button
-                          className="grid grid-cols-[40px_minmax(0,1fr)] items-center gap-3 rounded-lg border border-neutral-200 p-2 text-left transition hover:border-[var(--color-accent-border)] hover:shadow-sm dark:border-neutral-800"
+                          className="grid grid-cols-[40px_minmax(0,1fr)] items-center gap-3 rounded-lg border border-[var(--color-border)] p-2 text-left transition hover:border-[var(--color-accent-border)] hover:bg-[var(--color-surface-muted)] hover:shadow-sm"
                           key={actor.id}
                           type="button"
                           onClick={() => setSelectedStaff(actor)}
                         >
                           <img
                             alt=""
-                            className="size-10 rounded-md bg-neutral-100 object-cover dark:bg-neutral-900"
+                            className="size-10 rounded-md bg-[var(--color-surface-muted)] object-cover object-top"
                             src={actor.image_thumbnail || coverPlaceholder}
                           />
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-neutral-950 dark:text-white">{actor.name}</p>
+                            <p className="truncate text-sm font-semibold text-[var(--color-text)]">{actor.name}</p>
                             <p className="truncate text-xs text-neutral-500 dark:text-neutral-400">{actor.type || t('subject.voice')}</p>
                           </div>
                         </button>

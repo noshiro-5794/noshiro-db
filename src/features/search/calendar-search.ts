@@ -14,6 +14,15 @@ function itemTitle(item: CalendarSubjectItem) {
   return item.display_title || item.title || item.title_cn || 'Untitled';
 }
 
+export function calendarImageOf(item: CalendarSubjectItem) {
+  const images = 'images' in item && typeof item.images === 'object' && item.images
+    ? item.images as { original?: string | null; poster?: string | null; thumbnail?: string | null }
+    : null;
+  const image = 'image' in item && typeof item.image === 'string' ? item.image : null;
+
+  return item.image_url || item.image_thumbnail || images?.poster || images?.thumbnail || images?.original || image || null;
+}
+
 export function flattenCalendarGroups(groups: CalendarGroup[] = []) {
   return groups.flatMap((group) => group.items);
 }
@@ -52,6 +61,8 @@ export function sortCalendarItems(items: CalendarSubjectItem[], ordering: Subjec
 }
 
 export function calendarItemToSubjectSummary(item: CalendarSubjectItem): SubjectSummary {
+  const image = calendarImageOf(item);
+
   return {
     id: item.subject_id,
     subject_type: item.subject_type,
@@ -65,12 +76,12 @@ export function calendarItemToSubjectSummary(item: CalendarSubjectItem): Subject
     date: item.date ?? null,
     platform: item.platform,
     nsfw: item.nsfw,
-    image: item.image_thumbnail,
-    image_thumbnail: item.image_thumbnail,
+    image,
+    image_thumbnail: image,
     images: {
-      poster: item.image_thumbnail,
-      thumbnail: item.image_thumbnail,
-      original: item.image_thumbnail,
+      poster: image,
+      thumbnail: image,
+      original: image,
     },
   };
 }

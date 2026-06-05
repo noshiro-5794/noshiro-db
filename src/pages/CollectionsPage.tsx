@@ -298,14 +298,14 @@ export function CollectionsPage() {
   }, [collections, selectedCollectionId, setSearchParams]);
 
   useEffect(() => {
-    if (currentPage > totalPages) {
+    if (collectionsQuery.data && currentPage > totalPages) {
       setSearchParams((currentParams) => {
         const nextParams = new URLSearchParams(currentParams);
         nextParams.set('page', String(totalPages));
         return nextParams;
       });
     }
-  }, [currentPage, setSearchParams, totalPages]);
+  }, [collectionsQuery.data, currentPage, setSearchParams, totalPages]);
 
   useEffect(() => {
     const nextItems = itemsQuery.data?.results ?? [];
@@ -432,8 +432,7 @@ export function CollectionsPage() {
   return (
     <Page
       title={t('collections.title')}
-      eyebrow={t('nav.groupMarked')}
-      description={t('collections.description')}
+      eyebrow={t('nav.groupLibrary')}
       actions={
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
@@ -482,13 +481,13 @@ export function CollectionsPage() {
       }
     >
       <div className="grid min-w-0 gap-5 xl:grid-cols-[340px_minmax(0,1fr)]">
-        <aside className="grid content-start gap-4">
-          <form className="grid gap-3 rounded-2xl bg-neutral-100 p-3 dark:bg-neutral-900/80" onSubmit={handleSearchSubmit}>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400" />
-              <Input className="pl-9" value={draftKeyword} placeholder={t('collections.searchPlaceholder')} onChange={(event) => setDraftKeyword(event.target.value)} />
-            </div>
-            <div className="grid grid-cols-[1fr_auto] gap-2">
+        <aside className="grid content-start gap-5">
+          <form className="content-toolbar" onSubmit={handleSearchSubmit}>
+            <div className="content-toolbar-grid is-collection">
+              <div className="content-toolbar-search">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400" />
+                <Input className="pl-9" value={draftKeyword} placeholder={t('collections.searchPlaceholder')} onChange={(event) => setDraftKeyword(event.target.value)} />
+              </div>
               <FilterMenu label={t('common.sort')} options={orderingOptions} value={ordering} onChange={(value) => updateSearchParam('ordering', value)} />
               <Button type="submit" variant="secondary">
                 {t('common.search')}
@@ -496,9 +495,15 @@ export function CollectionsPage() {
             </div>
           </form>
 
-          <div className="flex items-center justify-between text-sm text-neutral-500 dark:text-neutral-400">
-            <span>{totalCount} {t('nav.collections')}</span>
-            <span>{collectionsQuery.isFetching ? t('common.loading') : `${t('common.page')} ${currentPage} / ${totalPages}`}</span>
+          <div className="content-summary-bar">
+            <div className="content-summary-count">
+              <span className="content-summary-number">{totalCount}</span>
+              <span>{t('nav.collections')}</span>
+            </div>
+            <div className="content-summary-side">
+              {collectionsQuery.isFetching ? <span>{t('common.loading')}</span> : null}
+              <span className="content-summary-page">{t('common.page')} {currentPage} / {totalPages}</span>
+            </div>
           </div>
 
           {collectionsQuery.isLoading ? <LoadingState title={t('calendar.loading')} /> : null}
@@ -528,7 +533,9 @@ export function CollectionsPage() {
                     <span
                       className={cn(
                         'rounded-full px-2 py-0.5 text-xs font-semibold',
-                        isSelected ? 'bg-white/15 text-current dark:bg-neutral-950/10' : 'bg-neutral-100 text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400',
+                        isSelected
+                          ? 'bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)]'
+                          : 'bg-neutral-100 text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400',
                       )}
                     >
                       {collection.item_count ?? 0}
@@ -553,20 +560,17 @@ export function CollectionsPage() {
 
         <section className="min-w-0">
           {!selectedCollection ? (
-            <div className="grid min-h-[520px] place-items-center rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 px-6 text-center dark:border-neutral-800 dark:bg-neutral-900/40">
+            <div className="collection-empty-state">
               <div className="max-w-sm">
-                <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-white text-neutral-500 shadow-sm ring-1 ring-neutral-200 dark:bg-neutral-950 dark:ring-neutral-800">
+                <div className="collection-empty-icon">
                   <Layers3 className="size-5" />
                 </div>
                 <h2 className="mt-4 text-lg font-semibold tracking-tight text-neutral-950 dark:text-white">{t('collections.chooseTitle')}</h2>
-                <p className="mt-2 text-sm leading-6 text-neutral-500 dark:text-neutral-400">
-                  {t('collections.chooseBody')}
-                </p>
               </div>
             </div>
           ) : (
             <div className="grid min-w-0 gap-5">
-              <div className="min-w-0 rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-950">
+              <div className="content-list-panel min-w-0 p-5">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
@@ -718,13 +722,10 @@ export function CollectionsPage() {
                 </div>
               </div>
 
-              <div className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
-                <div className="flex flex-col gap-3 border-b border-neutral-200 p-4 dark:border-neutral-800 md:flex-row md:items-center md:justify-between">
+              <div className="content-list-panel min-w-0">
+                <div className="content-section-header">
                   <div>
                     <h3 className="text-sm font-semibold text-neutral-950 dark:text-white">{t('collections.itemsTitle')}</h3>
-                    <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                      {t('collections.itemRailBody')}
-                    </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {isOrderDirty ? (

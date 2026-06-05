@@ -5,6 +5,8 @@ Noshiro DB Frontend is a React, TypeScript, and Vite application for the Noshiro
 ## Local Setup
 
 ```bash
+source ~/.nvm/nvm.sh
+nvm use 20
 npm install
 cp .env.example .env
 npm run dev
@@ -38,6 +40,15 @@ docs: update development guide
 refactor: simplify library query options
 ```
 
+Prefer small, scoped commits when possible:
+
+- `feat` for user-visible product work
+- `fix` for bugs and regressions
+- `docs` for README or documentation-only changes
+- `style` for visual-only polish without behavior changes
+- `refactor` for internal structure changes without behavior changes
+- `chore` for tooling or maintenance
+
 ## Project Boundaries
 
 - `src/app` owns providers, app shell, and global layout.
@@ -47,3 +58,12 @@ refactor: simplify library query options
 - `src/shared/ui` owns reusable UI primitives without domain ownership.
 
 Avoid committing generated files such as `dist/`, `node_modules/`, `*.tsbuildinfo`, or local `.env` files.
+
+## Copy and i18n
+
+The product contains anime and galgame entries. Keep subject-level wording neutral:
+
+- Prefer `planned`, `in progress`, `completed`, `on hold`, and `dropped` for Library status.
+- Avoid anime-only wording such as "watching" for subject-level state.
+- Episode-specific controls may use watched language because they refer to anime episodes.
+- Keep Chinese, English, and Japanese message keys aligned in `src/features/i18n/messages.ts`.

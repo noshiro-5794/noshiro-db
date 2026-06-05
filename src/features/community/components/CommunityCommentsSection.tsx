@@ -88,50 +88,89 @@ function CommentItem({
   const isDeleted = Boolean(comment.is_hidden);
 
   return (
-    <article className="community-comment-item scroll-mt-24" id={`comment-${comment.id}`}>
+    <article className="timeline-comment-item scroll-mt-24" id={`comment-${comment.id}`}>
       {comment.author?.id && !isDeleted ? (
         <Link to={routes.userProfile(comment.author.id)}>
-          <img className="size-9 rounded-full bg-neutral-100 object-cover transition hover:ring-2 hover:ring-[var(--color-accent-border)] dark:bg-neutral-900" src={comment.author.avatar || '/assets/placeholders/avatar.png'} alt="" />
+          <img className="timeline-comment-avatar" src={comment.author.avatar || '/assets/placeholders/avatar.png'} alt="" />
         </Link>
       ) : (
-        <img className="size-9 rounded-full bg-neutral-100 object-cover dark:bg-neutral-900" src="/assets/placeholders/avatar.png" alt="" />
+        <img className="timeline-comment-avatar" src="/assets/placeholders/avatar.png" alt="" />
       )}
       <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2 text-sm">
+        <div className="timeline-comment-meta">
           {comment.author?.id && !isDeleted ? (
-            <Link className="font-semibold text-neutral-950 transition hover:text-[var(--color-accent-strong)] dark:text-white" to={routes.userProfile(comment.author.id)}>
+            <Link className="timeline-comment-author" to={routes.userProfile(comment.author.id)}>
               {comment.author.nickname || t('common.anonymous')}
             </Link>
           ) : (
-            <span className="font-semibold text-neutral-950 dark:text-white">{isDeleted ? t('community.deletedComment') : t('common.anonymous')}</span>
+            <span className="timeline-comment-author">{isDeleted ? t('community.deletedComment') : t('common.anonymous')}</span>
           )}
-          <span className="text-neutral-400">{formatDate(comment.created_at)}</span>
+          <span>{formatDate(comment.created_at)}</span>
           {comment.is_locked ? <Badge>{t('community.locked')}</Badge> : null}
           {comment.is_spoiler ? <Badge><ShieldAlert className="mr-1 size-3" /> {t('common.spoiler')}</Badge> : null}
         </div>
-        <p className={`mt-2 whitespace-pre-wrap text-sm leading-6 ${isDeleted ? 'text-neutral-400 dark:text-neutral-500' : 'text-neutral-700 dark:text-neutral-300'} ${comment.is_spoiler && !isDeleted ? 'blur-sm transition hover:blur-none' : ''}`}>
+        <p className={`timeline-comment-copy ${isDeleted ? 'is-deleted' : ''} ${comment.is_spoiler && !isDeleted ? 'is-spoiler' : ''}`}>
           {isDeleted ? t('community.deletedCommentBody') : comment.content}
         </p>
         {canInteract && !isDeleted ? (
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button disabled={pending} size="sm" type="button" variant={comment.viewer_state?.has_liked ? 'accent' : 'ghost'} onClick={() => onLike(comment)}>
+          <div className="timeline-comment-actions">
+            <Button
+              aria-label={t('community.like')}
+              className={`timeline-action-button ${comment.viewer_state?.has_liked ? 'is-active' : ''}`}
+              disabled={pending}
+              size="sm"
+              type="button"
+              variant="ghost"
+              onClick={() => onLike(comment)}
+            >
               <Heart className="size-4" /> {comment.reaction_count ?? 0}
             </Button>
             {canReply ? (
-              <Button disabled={pending} size="sm" type="button" variant="ghost" onClick={() => onReply(comment)}>
-                <MessageSquare className="size-4" /> {t('community.reply')}
+              <Button
+                aria-label={t('community.reply')}
+                className="timeline-action-button"
+                disabled={pending}
+                size="sm"
+                type="button"
+                variant="ghost"
+                onClick={() => onReply(comment)}
+              >
+                <MessageSquare className="size-4" />
               </Button>
             ) : null}
-            <Button size="sm" type="button" variant="ghost" onClick={() => onReport(comment)}>
-              <Flag className="size-4" /> {t('community.report')}
+            <Button
+              aria-label={t('community.report')}
+              className="timeline-action-button"
+              size="sm"
+              type="button"
+              variant="ghost"
+              onClick={() => onReport(comment)}
+            >
+              <Flag className="size-4" />
             </Button>
             {canEdit ? (
               <>
-                <Button disabled={pending} size="sm" type="button" variant="ghost" onClick={() => onEdit(comment)}>
-                  <PencilLine className="size-4" /> {t('common.edit')}
+                <Button
+                  aria-label={t('common.edit')}
+                  className="timeline-action-button"
+                  disabled={pending}
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                  onClick={() => onEdit(comment)}
+                >
+                  <PencilLine className="size-4" />
                 </Button>
-                <Button disabled={pending} size="sm" type="button" variant="ghost" onClick={() => onDelete(comment)}>
-                  <Trash2 className="size-4" /> {t('common.delete')}
+                <Button
+                  aria-label={t('common.delete')}
+                  className="timeline-action-button"
+                  disabled={pending}
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                  onClick={() => onDelete(comment)}
+                >
+                  <Trash2 className="size-4" />
                 </Button>
               </>
             ) : null}
@@ -168,7 +207,7 @@ function CommentThread({
   const isOwnComment = Boolean(node.author?.id && currentUserId && String(node.author.id) === String(currentUserId));
 
   return (
-    <div className="border-b border-neutral-200 last:border-b-0 dark:border-neutral-800">
+    <div className="timeline-comment-thread">
       <CommentItem
         comment={node}
         canEdit={isOwnComment && !node.is_hidden && !node.is_locked}
@@ -182,7 +221,7 @@ function CommentThread({
         onReply={onReply}
       />
       {node.children.length > 0 ? (
-        <div className="ml-8 border-l border-neutral-200 pl-3 dark:border-neutral-800 sm:ml-14">
+        <div className="timeline-comment-children">
           {node.children.map((child) => (
             <CommentThread
               key={child.id}
@@ -320,30 +359,30 @@ export function CommunityCommentsSection({ targetType, targetId, locked = false 
   }
 
   return (
-    <section className="grid gap-3">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-base font-semibold tracking-tight text-neutral-950 dark:text-white">{t('community.comments')}</h2>
-        <span className="text-sm text-neutral-500 dark:text-neutral-400">{commentsQuery.data?.count ?? 0}</span>
+    <section className="timeline-comments">
+      <div className="timeline-comments-header">
+        <h2>{t('community.comments')}</h2>
+        <span>{commentsQuery.data?.count ?? 0}</span>
       </div>
 
       {locked ? <EmptyState title={t('community.postLockedTitle')} description={t('community.postLockedBody')} /> : null}
       {!locked && auth.isAuthenticated ? (
-        <form className="grid gap-3 rounded-lg border border-neutral-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-950" onSubmit={submitComment}>
+        <form className="timeline-comment-form" onSubmit={submitComment}>
           {replyTarget ? (
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-neutral-50 px-3 py-2 text-sm text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
-              <span>{t('community.replyingTo')} <strong className="text-neutral-950 dark:text-white">{replyTargetName(replyTarget)}</strong></span>
+            <div className="timeline-reply-pill">
+              <span>{t('community.replyingTo')} <strong className="text-[var(--color-text)]">{replyTargetName(replyTarget)}</strong></span>
               <button className="font-semibold text-[var(--color-accent-strong)]" type="button" onClick={() => setReplyTarget(null)}>
                 {t('community.cancelReply')}
               </button>
             </div>
           ) : null}
           <textarea
-            className="min-h-28 resize-y rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm leading-6 outline-none transition placeholder:text-neutral-400 focus:border-[var(--color-accent-border)] dark:border-neutral-800 dark:bg-neutral-900"
+            className="timeline-comment-textarea"
             value={comment}
             placeholder={replyTarget ? t('community.replyPlaceholder') : t('community.commentPlaceholder')}
             onChange={(event) => setComment(event.target.value)}
           />
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="timeline-comment-form-footer">
             <label className="inline-flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400">
               <input checked={commentSpoiler} className="size-4 accent-[var(--color-accent)]" type="checkbox" onChange={(event) => setCommentSpoiler(event.target.checked)} />
               {t('community.markSpoiler')}
@@ -367,7 +406,7 @@ export function CommunityCommentsSection({ targetType, targetId, locked = false 
       {!commentsQuery.isLoading && !commentsQuery.isError && comments.length === 0 ? (
         <EmptyState title={t('community.noCommentsTitle')} description={t('community.noCommentsBody')} />
       ) : null}
-      <div className="community-comment-list">
+      <div className="timeline-comment-list">
         {commentTree.map((item) => (
           <CommentThread
             key={item.id}
@@ -413,7 +452,7 @@ export function CommunityCommentsSection({ targetType, targetId, locked = false 
           </DialogHeader>
           <form className="grid gap-4" onSubmit={submitEdit}>
             <textarea
-              className="min-h-40 resize-y rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm leading-6 outline-none transition placeholder:text-neutral-400 focus:border-[var(--color-accent-border)] dark:border-neutral-800 dark:bg-neutral-900"
+              className="min-h-40 resize-y rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3 py-2 text-sm leading-6 text-[var(--color-text)] outline-none transition placeholder:text-neutral-400 focus:border-[var(--color-accent-border)]"
               value={editTarget?.content ?? ''}
               placeholder={t('community.commentPlaceholder')}
               onChange={(event) => setEditTarget((current) => current ? { ...current, content: event.target.value } : current)}
@@ -440,7 +479,7 @@ export function CommunityCommentsSection({ targetType, targetId, locked = false 
           </DialogHeader>
           <form className="grid gap-4" onSubmit={submitReport}>
             <div className="grid gap-2">
-              <span className="text-sm font-semibold text-neutral-950 dark:text-white">{t('community.reportReason')}</span>
+              <span className="text-sm font-semibold text-[var(--color-text)]">{t('community.reportReason')}</span>
               <div className="flex flex-wrap gap-2">
                 {reportReasons.map((reason) => (
                   <button
@@ -448,7 +487,7 @@ export function CommunityCommentsSection({ targetType, targetId, locked = false 
                       'rounded-full border px-3 py-1.5 text-sm font-semibold transition',
                       reportReason === reason
                         ? 'border-[var(--color-accent-border)] bg-[var(--color-accent-soft)] text-[var(--color-accent-strong)]'
-                        : 'border-neutral-200 text-neutral-500 hover:border-neutral-300 dark:border-neutral-800 dark:text-neutral-400',
+                        : 'border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-[var(--color-accent-border)]',
                     ].join(' ')}
                     key={reason}
                     type="button"
@@ -460,7 +499,7 @@ export function CommunityCommentsSection({ targetType, targetId, locked = false 
               </div>
             </div>
             <textarea
-              className="min-h-28 resize-y rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm leading-6 outline-none transition placeholder:text-neutral-400 focus:border-[var(--color-accent-border)] dark:border-neutral-800 dark:bg-neutral-900"
+              className="min-h-28 resize-y rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3 py-2 text-sm leading-6 text-[var(--color-text)] outline-none transition placeholder:text-neutral-400 focus:border-[var(--color-accent-border)]"
               value={reportDescription}
               placeholder={t('community.reportPlaceholder')}
               onChange={(event) => setReportDescription(event.target.value)}
