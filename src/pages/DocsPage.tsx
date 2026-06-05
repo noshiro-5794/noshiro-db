@@ -53,6 +53,7 @@ export function DocsPage() {
   const isPersonalPage = page?.slug === personalDocsSlug;
   const personalNavItem = content.nav.find((item) => item.slug === personalDocsSlug);
   const siteNavItems = content.nav.filter((item) => item.slug !== personalDocsSlug);
+  const stickyTopClass = auth.role === 'guest' ? 'top-24' : 'top-8';
 
   if (!page) {
     return <Navigate replace to={routes.docs(defaultDocsSlug)} />;
@@ -62,7 +63,7 @@ export function DocsPage() {
     <>
       <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-[1320px] gap-8 px-5 py-10 lg:grid-cols-[230px_minmax(0,1fr)_210px] lg:px-8">
         <aside className="hidden lg:block">
-          <div className="sticky top-8 grid gap-5">
+          <div className={`sticky ${stickyTopClass} grid gap-5`}>
             <Button asChild className="w-fit" size="sm" variant="secondary">
               <Link to={routes.home}>
                 <ArrowLeft className="size-4" />
@@ -191,7 +192,7 @@ export function DocsPage() {
         </main>
 
         <aside className="hidden xl:block">
-          <div className="sticky top-8 grid gap-3 rounded-3xl border border-[color-mix(in_srgb,var(--color-border)_62%,transparent)] bg-[color-mix(in_srgb,var(--color-surface)_58%,transparent)] p-4 text-sm shadow-sm">
+          <div className={`sticky ${stickyTopClass} grid gap-3 rounded-3xl border border-[color-mix(in_srgb,var(--color-border)_62%,transparent)] bg-[color-mix(in_srgb,var(--color-surface)_58%,transparent)] p-4 text-sm shadow-sm`}>
             <span className="text-xs font-semibold uppercase tracking-normal text-[var(--color-text-muted)]">{labels.onThisPage}</span>
             <nav className="grid gap-2">
               {page.sections.map((section) => (
