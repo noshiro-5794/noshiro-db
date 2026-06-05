@@ -3,9 +3,10 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { KeyRound, LockKeyhole, Mail } from 'lucide-react';
 import { env } from '@/config/env';
 import { authApi } from '@/features/auth/api';
-import { HCaptchaBox } from '@/features/auth/components/HCaptchaBox';
+import { CaptchaSentStatus, HCaptchaBox } from '@/features/auth/components/HCaptchaBox';
 import { AuthField, AuthPageLayout } from '@/features/auth/components/AuthPageLayout';
 import { useAuth } from '@/features/auth/use-auth';
+import { formatCodeCooldownLabel, useCodeCooldown } from '@/features/auth/use-code-cooldown';
 import { useI18n } from '@/features/i18n/use-i18n';
 import { routes } from '@/routes/paths';
 import { Button } from '@/shared/ui/Button';
@@ -25,8 +26,8 @@ export function LoginPage() {
   const [captchaToken, setCaptchaToken] = useState('');
   const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
   const [isSendingCode, setIsSendingCode] = useState(false);
-  const [noticeMessage, setNoticeMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const { isCoolingDown, remainingSeconds, startCooldown } = useCodeCooldown(60);
   const handleCaptchaChange = useCallback((token: string) => setCaptchaToken(token), []);
 
   if (auth.isAuthenticated) {
@@ -46,15 +47,15 @@ export function LoginPage() {
 
     setIsSendingCode(true);
     setErrorMessage('');
-    setNoticeMessage('');
     try {
       await authApi.sendCode({
         email: trimmedEmail,
         purpose: 'login',
         hcaptcha_token: captchaToken || undefined,
       });
-      setNoticeMessage(t('auth.codeSent'));
       setCaptchaResetSignal((value) => value + 1);
+      setCaptchaToken('');
+      startCooldown();
     } catch (error) {
       setErrorMessage(getErrorMessage(error, t('common.requestFailed')));
     } finally {
@@ -152,11 +153,18 @@ export function LoginPage() {
             </div>
           ) : (
             <>
-              <HCaptchaBox
-                resetSignal={captchaResetSignal}
-                siteKey={env.hcaptchaSiteKey}
-                onChange={handleCaptchaChange}
-              />
+              {isCoolingDown ? (
+                <CaptchaSentStatus
+                  detail={formatCodeCooldownLabel(t('auth.resendIn'), remainingSeconds)}
+                  title={t('auth.codeSentCompact')}
+                />
+              ) : (
+                <HCaptchaBox
+                  resetSignal={captchaResetSignal}
+                  siteKey={env.hcaptchaSiteKey}
+                  onChange={handleCaptchaChange}
+                />
+              )}
               <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
                 <AuthField
                   autoComplete="one-time-code"
@@ -169,23 +177,22 @@ export function LoginPage() {
                 />
                 <Button
                   className="h-11"
-                  disabled={isSendingCode || auth.loading}
+                  disabled={isSendingCode || auth.loading || isCoolingDown}
                   type="button"
                   variant="secondary"
                   onClick={handleSendCode}
                 >
-                  {isSendingCode ? t('auth.sending') : t('auth.sendCode')}
+                  {isSendingCode
+                    ? t('auth.sending')
+                    : isCoolingDown
+                      ? formatCodeCooldownLabel(t('auth.resendIn'), remainingSeconds)
+                      : t('auth.sendCode')}
                 </Button>
               </div>
             </>
           )}
         </div>
 
-        {noticeMessage ? (
-          <p className="motion-rise rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
-            {noticeMessage}
-          </p>
-        ) : null}
         {errorMessage ? (
           <p className="motion-rise rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/30 dark:text-red-300">
             {errorMessage}

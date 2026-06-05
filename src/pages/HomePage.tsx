@@ -9,7 +9,7 @@ export function HomePage() {
 
   if (status === 'checking') {
     return (
-      <Page title={t('home.title')} description={t('auth.checking')}>
+      <Page title={t('home.title')} eyebrow={t('nav.groupOverview')}>
         <SessionCheckingHome />
       </Page>
     );
@@ -20,11 +20,7 @@ export function HomePage() {
   }
 
   return (
-    <Page
-      title={role === 'admin' ? t('home.adminTitle') : t('home.dashboard')}
-      eyebrow={t('nav.groupHome')}
-      description={role === 'admin' ? t('home.adminBody') : t('home.userBody')}
-    >
+    <Page title={role === 'admin' ? t('home.adminTitle') : t('nav.home')} eyebrow={t('nav.groupOverview')}>
       <UserHome isAdmin={role === 'admin'} profile={profile} />
     </Page>
   );

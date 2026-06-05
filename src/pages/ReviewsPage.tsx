@@ -1,12 +1,14 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { EyeOff, PencilLine, Search, Trash2 } from 'lucide-react';
+import { EyeOff, FileText, PencilLine, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { CommunityContentCard } from '@/features/community/components/CommunityContentCard';
 import { libraryMutations, libraryQueries, libraryQueryKeys } from '@/features/library/library-queries';
 import { useI18n } from '@/features/i18n/use-i18n';
+import type { Review } from '@/lib/api/types';
 import { routes } from '@/routes/paths';
+import type { RouteBackState } from '@/shared/navigation/route-state';
+import { routeBackState } from '@/shared/navigation/route-state';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/FeedbackState';
@@ -16,7 +18,6 @@ import { Page } from '@/shared/ui/Page';
 import { Pagination } from '@/shared/ui/Pagination';
 
 const pageSize = 12;
-const coverPlaceholder = '/assets/placeholders/subject-cover.png';
 
 function formatDate(value: string | undefined, fallback: string) {
   if (!value) return fallback;
@@ -27,12 +28,77 @@ function reviewSubjectTitle(review: { subject?: { display_title?: string | null;
   return review.subject?.display_title || review.subject?.title || review.subject?.title_cn || fallback;
 }
 
+function ReviewCard({
+  review,
+  isDeleting,
+  onDelete,
+  state,
+}: {
+  review: Review;
+  isDeleting: boolean;
+  onDelete: (reviewId: number) => void;
+  state: RouteBackState;
+}) {
+  const { t } = useI18n();
+  const subjectTitle = reviewSubjectTitle(review, t('common.untitledSubject'));
+  const cover = review.subject?.image_thumbnail || review.subject?.image;
+
+  return (
+    <article className="review-showcase-card">
+      <Link className="review-showcase-cover" state={state} to={review.subject ? routes.subject(review.subject.id) : routes.review(review.id)}>
+        {cover ? <img src={cover} alt="" loading="lazy" /> : <span><FileText className="size-5" /></span>}
+      </Link>
+      <div className="review-showcase-main">
+        <div className="review-showcase-meta">
+          <Badge variant={review.is_public ? 'accent' : 'secondary'}>{review.is_public ? t('common.public') : t('common.private')}</Badge>
+          {review.is_spoiler ? (
+            <Badge>
+              <EyeOff className="size-3" />
+              {t('common.spoiler')}
+            </Badge>
+          ) : null}
+          <span>{formatDate(review.updated_at || review.created_at, t('common.noDate'))}</span>
+        </div>
+        <div className="review-showcase-heading">
+          <Link className="review-showcase-title" state={state} to={routes.review(review.id)}>{review.title}</Link>
+          <div className="review-showcase-actions">
+            <Button asChild aria-label={`${t('common.edit')} ${review.title}`} size="icon" type="button" variant="ghost">
+              <Link state={state} to={routes.reviewEdit(review.id)}>
+                <PencilLine className="size-4" />
+              </Link>
+            </Button>
+            <Button
+              aria-label={`${t('common.delete')} ${review.title}`}
+              disabled={isDeleting}
+              size="icon"
+              type="button"
+              variant="ghost"
+              onClick={() => onDelete(review.id)}
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          </div>
+        </div>
+        {review.subject ? (
+          <Link className="review-showcase-subject" state={state} to={routes.subject(review.subject.id)}>
+            <span>{subjectTitle}</span>
+            {review.subject.subject_type ? <small>{review.subject.subject_type}</small> : null}
+          </Link>
+        ) : null}
+        <p className={`review-showcase-body ${review.is_spoiler ? 'is-spoiler' : ''}`}>{review.content || t('common.noContent')}</p>
+      </div>
+    </article>
+  );
+}
+
 export function ReviewsPage() {
   const { t } = useI18n();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const keyword = searchParams.get('keyword') ?? '';
   const ordering = searchParams.get('ordering') ?? '-created_at';
   const currentPage = Math.max(1, Number(searchParams.get('page') ?? '1') || 1);
+  const routeState = routeBackState(location, t('nav.reviews'));
   const [draftKeyword, setDraftKeyword] = useState(keyword);
   const queryClient = useQueryClient();
   const orderingOptions = [
@@ -67,14 +133,14 @@ export function ReviewsPage() {
   }, [keyword]);
 
   useEffect(() => {
-    if (currentPage > totalPages) {
+    if (reviewsQuery.data && currentPage > totalPages) {
       setSearchParams((currentParams) => {
         const nextParams = new URLSearchParams(currentParams);
         nextParams.set('page', String(totalPages));
         return nextParams;
       });
     }
-  }, [currentPage, setSearchParams, totalPages]);
+  }, [currentPage, reviewsQuery.data, setSearchParams, totalPages]);
 
   function updateSearchParam(key: string, value: string) {
     setSearchParams((currentParams) => {
@@ -96,22 +162,28 @@ export function ReviewsPage() {
   }
 
   return (
-    <Page title={t('reviews.title')} eyebrow={t('nav.groupMarked')} description={t('reviews.description')}>
-      <form className="reviews-toolbar" onSubmit={handleSubmit}>
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_190px_auto]">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400" />
-            <Input className="pl-9" value={draftKeyword} placeholder={t('reviews.searchPlaceholder')} onChange={(event) => setDraftKeyword(event.target.value)} />
+    <Page title={t('reviews.title')} eyebrow={t('nav.groupLibrary')}>
+      <div className="grid gap-5">
+        <form className="content-toolbar" onSubmit={handleSubmit}>
+          <div className="content-toolbar-grid is-review">
+            <div className="content-toolbar-search">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400" />
+              <Input className="pl-9" value={draftKeyword} placeholder={t('reviews.searchPlaceholder')} onChange={(event) => setDraftKeyword(event.target.value)} />
+            </div>
+            <FilterMenu label={t('common.sort')} options={orderingOptions} value={ordering} onChange={(value) => updateSearchParam('ordering', value)} />
+            <Button type="submit" variant="secondary">{t('common.search')}</Button>
           </div>
-          <FilterMenu label={t('common.sort')} options={orderingOptions} value={ordering} onChange={(value) => updateSearchParam('ordering', value)} />
-          <Button type="submit">{t('common.search')}</Button>
-        </div>
-      </form>
+        </form>
 
-      <div className="grid gap-4">
-        <div className="flex items-center justify-between gap-3 text-sm text-neutral-500 dark:text-neutral-400">
-          <span>{totalCount} {t('common.reviews')}</span>
-          {reviewsQuery.isFetching ? <span>{t('common.loading')}</span> : null}
+        <div className="content-summary-bar">
+          <div className="content-summary-count">
+            <span className="content-summary-number">{totalCount}</span>
+            <span>{t('common.reviews')}</span>
+          </div>
+          <div className="content-summary-side">
+            {reviewsQuery.isFetching ? <span>{t('common.loading')}</span> : null}
+            <span className="content-summary-page">{t('common.page')} {currentPage} / {totalPages}</span>
+          </div>
         </div>
 
         {reviewsQuery.isLoading ? <LoadingState title={t('reviews.loading')} /> : null}
@@ -130,49 +202,12 @@ export function ReviewsPage() {
 
         <div className="review-list">
           {(reviewsQuery.data?.results ?? []).map((review) => (
-            <CommunityContentCard
-            actions={(
-              <>
-                <Button asChild aria-label={`${t('common.edit')} ${review.title}`} size="icon" type="button" variant="ghost">
-                  <Link to={routes.reviewEdit(review.id)}>
-                    <PencilLine className="size-4" />
-                  </Link>
-                </Button>
-                <Button
-                  aria-label={`${t('common.delete')} ${review.title}`}
-                  disabled={deleteReviewMutation.isPending}
-                  size="icon"
-                  type="button"
-                  variant="ghost"
-                  onClick={() => deleteReviewMutation.mutate(review.id)}
-                >
-                  <Trash2 className="size-4" />
-                </Button>
-              </>
-            )}
-            badges={(
-              <>
-                <Badge variant={review.is_public ? 'accent' : 'secondary'}>{review.is_public ? t('common.public') : t('common.private')}</Badge>
-                {review.is_spoiler ? (
-                  <Badge>
-                    <EyeOff className="size-3" />
-                    {t('common.spoiler')}
-                  </Badge>
-                ) : null}
-              </>
-            )}
-            body={review.content || t('common.noContent')}
-            cover={review.subject?.image_thumbnail || review.subject?.image || coverPlaceholder}
-            date={formatDate(review.updated_at || review.created_at, t('common.noDate'))}
-            href={routes.review(review.id)}
-            isSpoiler={review.is_spoiler}
-            key={review.id}
-            subject={review.subject ? {
-              href: routes.subject(review.subject.id),
-              title: reviewSubjectTitle(review, t('common.untitledSubject')),
-            } : undefined}
-            title={review.title}
-            typeLabel={t('community.targetType.review')}
+            <ReviewCard
+              key={review.id}
+              review={review}
+              isDeleting={deleteReviewMutation.isPending}
+              state={routeState}
+              onDelete={(reviewId) => deleteReviewMutation.mutate(reviewId)}
             />
           ))}
         </div>

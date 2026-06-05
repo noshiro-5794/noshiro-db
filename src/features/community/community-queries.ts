@@ -30,6 +30,7 @@ export const communityQueryKeys = {
   blocks: (query: PageQuery = {}) => [...communityQueryKeys.relationships(), 'blocks', query] as const,
   mutes: (query: PageQuery = {}) => [...communityQueryKeys.relationships(), 'mutes', query] as const,
   activities: () => [...communityQueryKeys.all, 'activities'] as const,
+  publicActivities: (query: CommunityActivityListQuery = {}) => [...communityQueryKeys.activities(), 'public', query] as const,
   myActivities: (query: CommunityActivityListQuery = {}) => [...communityQueryKeys.activities(), 'mine', query] as const,
   feed: (query: CommunityActivityListQuery = {}) => [...communityQueryKeys.activities(), 'feed', query] as const,
   userActivities: (userId: number, query: CommunityActivityListQuery = {}) => [...communityQueryKeys.activities(), 'user', userId, query] as const,
@@ -58,6 +59,7 @@ export const communityQueries = {
   blocks: (query: PageQuery = {}) => queryOptions({ queryKey: communityQueryKeys.blocks(query), queryFn: () => communityRelationshipsApi.listBlocks(query) }),
   mutes: (query: PageQuery = {}) => queryOptions({ queryKey: communityQueryKeys.mutes(query), queryFn: () => communityRelationshipsApi.listMutes(query) }),
   myActivities: (query: CommunityActivityListQuery = {}) => queryOptions({ queryKey: communityQueryKeys.myActivities(query), queryFn: () => communityActivitiesApi.listMine(query) }),
+  publicActivities: (query: CommunityActivityListQuery = {}) => queryOptions({ queryKey: communityQueryKeys.publicActivities(query), queryFn: () => communityActivitiesApi.listPublic(query) }),
   feed: (query: CommunityActivityListQuery = {}) => queryOptions({ queryKey: communityQueryKeys.feed(query), queryFn: () => communityActivitiesApi.listFeed(query) }),
   userActivities: (userId: number, query: CommunityActivityListQuery = {}) =>
     queryOptions({ queryKey: communityQueryKeys.userActivities(userId, query), queryFn: () => communityActivitiesApi.listUser(userId, query) }),

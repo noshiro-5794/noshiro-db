@@ -1,15 +1,20 @@
-import { Link, useSearchParams } from 'react-router-dom';
+import { type FormEvent, useEffect, useState } from 'react';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bookmark, FileText, Layers3, MessageSquare, Star, Trash2 } from 'lucide-react';
+import { Bookmark, ExternalLink, FileText, Layers3, MessageSquare, Search, Star, Trash2 } from 'lucide-react';
 import { invalidateCommunityTargets } from '@/features/community/cache';
-import { CommunityContentCard } from '@/features/community/components/CommunityContentCard';
 import { communityMutations, communityQueries, communityQueryKeys } from '@/features/community/community-queries';
 import { useI18n } from '@/features/i18n/use-i18n';
+import { socialQueries } from '@/features/social/social-queries';
 import type { CommunityBookmark } from '@/lib/api/types';
 import { routes } from '@/routes/paths';
+import type { RouteBackState } from '@/shared/navigation/route-state';
+import { routeBackState } from '@/shared/navigation/route-state';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/FeedbackState';
+import { FilterMenu } from '@/shared/ui/FilterMenu';
+import { Input } from '@/shared/ui/Input';
 import { Page } from '@/shared/ui/Page';
 import { Pagination } from '@/shared/ui/Pagination';
 
@@ -44,77 +49,119 @@ function targetTypeLabel(t: ReturnType<typeof useI18n>['t'], type: string) {
   return type;
 }
 
+function BookmarkCollectionCover({ collectionId, userId }: { collectionId: number; userId: number }) {
+  const previewQuery = useQuery({
+    ...socialQueries.publicCollectionItems(userId, collectionId, { page: 1, page_size: 1 }),
+    enabled: Boolean(userId && collectionId),
+  });
+  const cover = previewQuery.data?.results?.[0]?.subject?.image_thumbnail;
+
+  if (cover) return <img src={cover} alt="" loading="lazy" />;
+  return <span><Layers3 className="size-4" /></span>;
+}
+
 function BookmarkCard({
   bookmark,
   isRemoving,
   onRemove,
+  state,
 }: {
   bookmark: CommunityBookmark;
   isRemoving: boolean;
   onRemove: (bookmark: CommunityBookmark) => void;
+  state: RouteBackState;
 }) {
   const { t } = useI18n();
   const href = bookmarkHref(bookmark);
   const title = bookmark.target?.title || `${bookmark.target_type} #${bookmark.target_id}`;
-  const body = bookmark.target?.body || bookmark.target?.subject?.title || bookmark.target?.subject?.title_cn || '';
+  const body = bookmark.target?.body || '';
   const author = bookmark.target?.author;
+  const subject = bookmark.target?.subject;
+  const cover = bookmark.target_type === 'collection' ? null : subject?.image_thumbnail;
+  const subjectTitle = subject?.title || subject?.title_cn || t('common.untitledSubject');
+  const typeLabel = targetTypeLabel(t, bookmark.target_type);
+  const canShowCollectionCover = bookmark.target_type === 'collection' && Boolean(author?.id);
 
   return (
-    <CommunityContentCard
-      actions={(
-        <>
-          <Button asChild size="sm" type="button" variant="secondary">
-            <Link to={href}>{t('community.openTarget')}</Link>
-          </Button>
-          <Button disabled={isRemoving} size="sm" type="button" variant="ghost" onClick={() => onRemove(bookmark)}>
-            <Trash2 className="size-4" /> {t('community.removeBookmark')}
-          </Button>
-        </>
-      )}
-      author={author?.id ? {
-        href: routes.userProfile(author.id),
-        name: author.nickname || t('common.anonymous'),
-        avatar: author.avatar,
-      } : undefined}
-      badges={(
-        <>
+    <article className="bookmark-card">
+      <Link className="bookmark-card-visual" state={state} to={subject ? routes.subject(subject.id) : href}>
+        {canShowCollectionCover && author?.id ? (
+          <BookmarkCollectionCover collectionId={bookmark.target_id} userId={author.id} />
+        ) : cover ? (
+          <img src={cover} alt="" loading="lazy" />
+        ) : (
+          <span><BookmarkIcon type={bookmark.target_type} /></span>
+        )}
+      </Link>
+
+      <div className="bookmark-card-main">
+        <div className="bookmark-card-meta">
+          <Badge variant="secondary">{typeLabel}</Badge>
+          <span>{formatDate(bookmark.created_at)}</span>
           {!bookmark.target ? <Badge>{t('community.bookmarkDetailUnavailable')}</Badge> : null}
           {bookmark.target?.is_spoiler ? <Badge>{t('common.spoiler')}</Badge> : null}
           {bookmark.target?.simple_rating ? (
-            <span className="inline-flex items-center gap-0.5 text-[var(--color-accent-strong)]">
+            <span className="bookmark-card-stars">
               {Array.from({ length: 5 }, (_, index) => (
-                <Star className={`size-3 ${index < Number(bookmark.target?.simple_rating) ? 'fill-current' : 'text-neutral-300 dark:text-neutral-700'}`} key={index} />
+                <Star className={`size-3 ${index < Number(bookmark.target?.simple_rating) ? 'fill-current' : ''}`} key={index} />
               ))}
             </span>
           ) : null}
-        </>
-      )}
-      body={body}
-      date={formatDate(bookmark.created_at)}
-      href={href}
-      icon={<BookmarkIcon type={bookmark.target_type} />}
-      isSpoiler={bookmark.target?.is_spoiler}
-      subject={bookmark.target?.subject ? {
-        href: routes.subject(bookmark.target.subject.id),
-        title: bookmark.target.subject.title || bookmark.target.subject.title_cn || t('common.untitledSubject'),
-      } : undefined}
-      title={title}
-      typeLabel={targetTypeLabel(t, bookmark.target_type)}
-    />
+        </div>
+
+        <div className="bookmark-card-heading">
+          <Link className="bookmark-card-title" state={state} to={href}>{title}</Link>
+          <div className="bookmark-card-actions">
+            <Button asChild size="icon" type="button" variant="ghost" aria-label={t('community.openTarget')}>
+              <Link state={state} to={href}><ExternalLink className="size-4" /></Link>
+            </Button>
+            <Button aria-label={t('community.removeBookmark')} disabled={isRemoving} size="icon" type="button" variant="ghost" onClick={() => onRemove(bookmark)}>
+              <Trash2 className="size-4" />
+            </Button>
+          </div>
+        </div>
+        {body ? <p className={`bookmark-card-body ${bookmark.target?.is_spoiler ? 'is-spoiler' : ''}`}>{body}</p> : null}
+
+        {subject ? (
+          <Link className="bookmark-card-subject" state={state} to={routes.subject(subject.id)}>
+            <span>{subjectTitle}</span>
+            {subject.subject_type ? <small>{subject.subject_type}</small> : null}
+          </Link>
+        ) : null}
+
+        <div className="bookmark-card-footer">
+          {author?.id ? (
+            <Link className="bookmark-card-author" to={routes.userProfile(author.id)}>
+              <img src={author.avatar || '/assets/placeholders/avatar.png'} alt="" />
+              <span>{author.nickname || t('common.anonymous')}</span>
+            </Link>
+          ) : <span />}
+        </div>
+      </div>
+    </article>
   );
 }
 
 export function BookmarksPage() {
   const { t } = useI18n();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const currentPage = Math.max(1, Number(searchParams.get('page') ?? '1') || 1);
+  const routeState = routeBackState(location, t('nav.bookmarks'));
+  const keyword = searchParams.get('keyword') ?? '';
   const targetType = (searchParams.get('target_type') ?? '') as BookmarkFilter;
+  const [draftKeyword, setDraftKeyword] = useState(keyword);
   const normalizedTargetType = targetFilters.includes(targetType) ? targetType : '';
+  const targetTypeOptions: Array<{ label: string; value: BookmarkFilter }> = targetFilters.map((filter) => ({
+    label: filter ? targetTypeLabel(t, filter) : t('common.all'),
+    value: filter,
+  }));
   const bookmarksQuery = useQuery(communityQueries.bookmarks({
     page: currentPage,
     page_size: pageSize,
     target_type: normalizedTargetType || undefined,
+    keyword: keyword || undefined,
   }));
   const removeBookmarkMutation = useMutation({
     ...communityMutations.unbookmark(),
@@ -128,7 +175,21 @@ export function BookmarksPage() {
   const bookmarks = bookmarksQuery.data?.results ?? [];
   const totalPages = Math.max(1, Math.ceil((bookmarksQuery.data?.count ?? 0) / pageSize));
 
-  function updateParams(nextParams: { page?: number; target_type?: BookmarkFilter }) {
+  useEffect(() => {
+    setDraftKeyword(keyword);
+  }, [keyword]);
+
+  useEffect(() => {
+    if (bookmarksQuery.data && currentPage > totalPages) {
+      setSearchParams((currentParams) => {
+        const nextParams = new URLSearchParams(currentParams);
+        nextParams.set('page', String(totalPages));
+        return nextParams;
+      });
+    }
+  }, [bookmarksQuery.data, currentPage, setSearchParams, totalPages]);
+
+  function updateParams(nextParams: { page?: number; target_type?: BookmarkFilter; keyword?: string }) {
     const next = new URLSearchParams(searchParams);
     if (nextParams.page) next.set('page', String(nextParams.page));
     if (nextParams.target_type !== undefined) {
@@ -136,7 +197,17 @@ export function BookmarksPage() {
       else next.delete('target_type');
       next.set('page', '1');
     }
+    if (nextParams.keyword !== undefined) {
+      if (nextParams.keyword) next.set('keyword', nextParams.keyword);
+      else next.delete('keyword');
+      next.set('page', '1');
+    }
     setSearchParams(next);
+  }
+
+  function handleSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    updateParams({ keyword: draftKeyword.trim() });
   }
 
   function removeBookmark(bookmark: CommunityBookmark) {
@@ -147,29 +218,33 @@ export function BookmarksPage() {
   }
 
   return (
-    <Page title={t('community.bookmarksTitle')} eyebrow={t('nav.groupWorkspace')} description={t('community.bookmarksDescription')}>
-      <div className="flex flex-wrap gap-2">
-        {targetFilters.map((filter) => (
-          <button
-            className={[
-              'rounded-full border px-3 py-1.5 text-sm font-semibold transition',
-              normalizedTargetType === filter
-                ? 'border-[var(--color-accent-border)] bg-[var(--color-accent-soft)] text-[var(--color-accent-strong)]'
-                : 'border-neutral-200 bg-white text-neutral-500 hover:border-neutral-300 hover:text-neutral-950 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-400 dark:hover:text-white',
-            ].join(' ')}
-            key={filter || 'all'}
-            type="button"
-            onClick={() => updateParams({ target_type: filter })}
-          >
-            {filter ? targetTypeLabel(t, filter) : t('common.all')}
-          </button>
-        ))}
-      </div>
+    <Page title={t('community.bookmarksTitle')} eyebrow={t('nav.groupLibrary')}>
+      <div className="grid gap-5">
+        <form className="content-toolbar" onSubmit={handleSearch}>
+          <div className="content-toolbar-grid is-bookmark">
+            <div className="content-toolbar-search">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400" />
+              <Input
+                className="pl-9"
+                value={draftKeyword}
+                placeholder={t('community.bookmarksSearchPlaceholder')}
+                onChange={(event) => setDraftKeyword(event.target.value)}
+              />
+            </div>
+            <FilterMenu label={t('search.type')} options={targetTypeOptions} value={normalizedTargetType} onChange={(value) => updateParams({ target_type: value })} />
+            <Button type="submit" variant="secondary">{t('common.search')}</Button>
+          </div>
+        </form>
 
-      <div className="grid gap-4">
-        <div className="flex items-center justify-between gap-3 text-sm text-neutral-500 dark:text-neutral-400">
-          <span>{bookmarksQuery.data?.count ?? 0} {t('nav.bookmarks')}</span>
-          {bookmarksQuery.isFetching ? <span>{t('common.loading')}</span> : null}
+        <div className="content-summary-bar">
+          <div className="content-summary-count">
+            <span className="content-summary-number">{bookmarksQuery.data?.count ?? 0}</span>
+            <span>{t('nav.bookmarks')}</span>
+          </div>
+          <div className="content-summary-side">
+            {bookmarksQuery.isFetching ? <span>{t('common.loading')}</span> : null}
+            <span className="content-summary-page">{t('common.page')} {currentPage} / {totalPages}</span>
+          </div>
         </div>
 
         {bookmarksQuery.isLoading ? <LoadingState title={t('community.loadingBookmarks')} /> : null}
@@ -191,6 +266,7 @@ export function BookmarksPage() {
               bookmark={bookmark}
               isRemoving={removeBookmarkMutation.isPending}
               key={bookmark.id}
+              state={routeState}
               onRemove={removeBookmark}
             />
           ))}

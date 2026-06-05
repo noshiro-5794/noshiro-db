@@ -13,7 +13,7 @@ export function RequireAuth({ adminOnly = false, children }: { adminOnly?: boole
 
   if (auth.status === 'checking') {
     return (
-      <Page title="Noshiro DB" description={t('auth.checking')}>
+      <Page title="Noshiro DB">
         <LoadingState title={t('auth.checking')} />
       </Page>
     );

@@ -7,7 +7,7 @@ function Toaster(props: ToasterProps) {
       position="top-center"
       toastOptions={{
         classNames: {
-          toast: 'rounded-xl border border-neutral-200 bg-white text-neutral-950 shadow-xl dark:border-neutral-800 dark:bg-neutral-950 dark:text-white',
+          toast: 'rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-elevated)] text-[var(--color-text)] shadow-[var(--shadow-hover)]',
         },
       }}
       {...props}

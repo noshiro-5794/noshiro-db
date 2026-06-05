@@ -54,8 +54,7 @@ export function NotificationsPage() {
   return (
     <Page
       title={t('community.notificationsTitle')}
-      eyebrow={t('nav.groupWorkspace')}
-      description={t('community.notificationsDescription')}
+      eyebrow={t('nav.groupCommunity')}
       actions={(
         <Button disabled={markAllReadMutation.isPending || notifications.length === 0} type="button" variant="secondary" onClick={() => markAllReadMutation.mutate()}>
           <CheckCheck className="size-4" /> {t('community.markAllRead')}

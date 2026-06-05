@@ -46,7 +46,7 @@ export function NotificationBell() {
       <PopoverTrigger asChild>
         <button
           aria-label={t('nav.notifications')}
-          className="relative grid size-10 place-items-center rounded-xl border border-neutral-200 bg-neutral-50 text-neutral-500 transition hover:border-[var(--color-accent-border)] hover:text-neutral-950 dark:border-neutral-800 dark:bg-neutral-900/70 dark:text-neutral-400 dark:hover:text-white"
+          className="workspace-tool-button relative"
           type="button"
         >
           <Bell className="size-4" />
@@ -57,18 +57,18 @@ export function NotificationBell() {
           ) : null}
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[min(22rem,calc(100vw-1.5rem))] p-0">
-        <div className="flex items-center justify-between gap-3 border-b border-neutral-200 p-3 dark:border-neutral-800">
+      <PopoverContent align="end" className="w-[min(23rem,calc(100vw-2rem))] p-0" side="top">
+        <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-4">
           <div className="min-w-0">
-            <h2 className="truncate text-sm font-semibold text-neutral-950 dark:text-white">{t('community.recentNotifications')}</h2>
-            <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">{t('community.notificationsPreviewDescription')}</p>
+            <h2 className="truncate text-sm font-semibold text-[var(--color-text)]">{t('community.recentNotifications')}</h2>
+            <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{t('community.notificationsPreviewDescription')}</p>
           </div>
           {unreadNotifications > 0 ? <Badge>{unreadNotifications > 99 ? '99+' : unreadNotifications}</Badge> : null}
         </div>
-        <div className="max-h-96 overflow-y-auto">
+        <div className="max-h-96 overflow-y-auto px-2 pb-2">
           {notificationPreviewQuery.isLoading ? <LoadingState title={t('community.loadingNotifications')} /> : null}
           {!notificationPreviewQuery.isLoading && notificationPreview.length === 0 ? (
-            <div className="p-3">
+            <div className="px-2 py-3">
               <EmptyState title={t('community.noNotificationsTitle')} description={t('community.noNotificationsBody')} />
             </div>
           ) : null}
@@ -77,27 +77,27 @@ export function NotificationBell() {
             return (
               <Link
                 className={[
-                  'grid gap-1 border-b border-neutral-100 px-3 py-3 text-sm transition last:border-b-0 hover:bg-neutral-50 dark:border-neutral-900 dark:hover:bg-neutral-900/70',
-                  notification.is_read ? '' : 'bg-[var(--color-accent-soft)]/40',
+                  'group relative grid gap-1 rounded-xl px-3 py-2.5 text-sm transition hover:bg-[var(--color-surface-muted)]',
+                  notification.is_read ? '' : 'bg-[color-mix(in_srgb,var(--color-accent-soft)_52%,var(--color-surface-muted))]',
                 ].join(' ')}
                 key={notification.id}
                 to={href}
                 onClick={() => markNotificationReadIfNeeded(notification.id, notification.is_read)}
               >
+                {!notification.is_read ? <span className="absolute left-1.5 top-3 size-1.5 rounded-full bg-[var(--color-accent)]" /> : null}
                 <span className="flex min-w-0 items-center gap-2">
-                  <span className="truncate font-semibold text-neutral-950 dark:text-white">
+                  <span className="truncate font-semibold text-[var(--color-text)]">
                     {notification.actor?.nickname || t('common.system')}
                   </span>
-                  {!notification.is_read ? <span className="size-1.5 rounded-full bg-[var(--color-accent)]" /> : null}
                 </span>
-                <span className="line-clamp-2 text-neutral-600 dark:text-neutral-300">{notificationMessage(t, notification)}</span>
+                <span className="line-clamp-2 text-[var(--color-text-muted)]">{notificationMessage(t, notification)}</span>
                 <span className="text-xs text-neutral-400">{formatNotificationDate(notification.created_at)}</span>
               </Link>
             );
           })}
         </div>
-        <div className="border-t border-neutral-200 p-3 dark:border-neutral-800">
-          <Button asChild className="w-full" size="sm" type="button" variant="secondary">
+        <div className="px-2 pb-2">
+          <Button asChild className="h-9 w-full" size="sm" type="button" variant="ghost">
             <Link to={routes.notifications}>{t('community.viewAllNotifications')}</Link>
           </Button>
         </div>

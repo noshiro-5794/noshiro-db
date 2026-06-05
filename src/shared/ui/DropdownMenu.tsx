@@ -17,7 +17,7 @@ function DropdownMenuContent({
       <DropdownMenuPrimitive.Content
         align={align}
         className={cn(
-          'z-[120] min-w-44 overflow-hidden rounded-xl border border-neutral-200 bg-white p-1.5 text-neutral-950 shadow-xl outline-none dark:border-neutral-800 dark:bg-neutral-950 dark:text-white',
+          'z-[120] min-w-44 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-1.5 text-[var(--color-text)] shadow-[var(--shadow-hover)] outline-none',
           className,
         )}
         sideOffset={sideOffset}
@@ -35,7 +35,7 @@ function DropdownMenuItem({
   return (
     <DropdownMenuPrimitive.Item
       className={cn(
-        'relative flex cursor-default select-none items-center rounded-lg px-3 py-2 text-sm outline-none transition focus:bg-neutral-100 focus:text-neutral-950 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 dark:focus:bg-neutral-900 dark:focus:text-white',
+        'relative flex cursor-default select-none items-center rounded-lg px-3 py-2 text-sm outline-none transition focus:bg-[var(--color-surface-muted)] focus:text-[var(--color-text)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
         inset && 'pl-8',
         className,
       )}
@@ -54,7 +54,7 @@ function DropdownMenuCheckboxItem({
     <DropdownMenuPrimitive.CheckboxItem
       checked={checked}
       className={cn(
-        'relative flex cursor-default select-none items-center rounded-lg py-2 pl-8 pr-3 text-sm outline-none transition focus:bg-neutral-100 focus:text-neutral-950 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 dark:focus:bg-neutral-900 dark:focus:text-white',
+        'relative flex cursor-default select-none items-center rounded-lg py-2 pl-8 pr-3 text-sm outline-none transition focus:bg-[var(--color-surface-muted)] focus:text-[var(--color-text)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
         className,
       )}
       {...props}
@@ -70,7 +70,7 @@ function DropdownMenuCheckboxItem({
 }
 
 const DropdownMenuSeparator = ({ className, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Separator>) => (
-  <DropdownMenuPrimitive.Separator className={cn('-mx-1 my-1 h-px bg-neutral-200 dark:bg-neutral-800', className)} {...props} />
+  <DropdownMenuPrimitive.Separator className={cn('-mx-1 my-1 h-px bg-[var(--color-border)]', className)} {...props} />
 );
 
 export {

@@ -201,6 +201,7 @@ export type CalendarSubjectItem = {
   display_meta?: string[];
   display_subtitle?: string;
   date?: DateString | null;
+  image_url?: string | null;
   image_thumbnail: string | null;
   platform: string | null;
   nsfw: boolean;
@@ -485,6 +486,7 @@ export type SyncTaskStatus = {
 export type QueuedTask = {
   task_id: string;
   status: 'queued' | string;
+  job_id?: UUID;
 };
 
 export type IncrementalSyncResult = {
@@ -496,6 +498,34 @@ export type IncrementalSyncResult = {
   synced_count: number;
   skipped_count: number;
   failed_count: number;
+  frontier_reached?: boolean;
+};
+
+export type CalendarSyncResult = {
+  weekday_count: number;
+  item_count: number;
+  synced_subject_count: number;
+  failed_subject_count: number;
+};
+
+export type SyncJob = {
+  id: UUID;
+  job_type: 'subject_bangumi' | 'subject_resync' | 'calendar' | 'incremental' | string;
+  status: 'queued' | 'running' | 'succeeded' | 'failed' | string;
+  celery_task_id: string;
+  parameters: Record<string, unknown>;
+  result: Record<string, unknown> | null;
+  error: string;
+  current_label: string;
+  total_count: number;
+  processed_count: number;
+  synced_count: number;
+  skipped_count: number;
+  failed_count: number;
+  started_at: ISODateString | null;
+  finished_at: ISODateString | null;
+  created_at: ISODateString;
+  updated_at: ISODateString;
 };
 
 export type SubjectResyncResult = {

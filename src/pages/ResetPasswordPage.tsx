@@ -4,8 +4,9 @@ import { KeyRound, LockKeyhole, Mail } from 'lucide-react';
 import { env } from '@/config/env';
 import { authApi } from '@/features/auth/api';
 import { AuthField, AuthPageLayout } from '@/features/auth/components/AuthPageLayout';
-import { HCaptchaBox } from '@/features/auth/components/HCaptchaBox';
+import { CaptchaSentStatus, HCaptchaBox } from '@/features/auth/components/HCaptchaBox';
 import { useAuth } from '@/features/auth/use-auth';
+import { formatCodeCooldownLabel, useCodeCooldown } from '@/features/auth/use-code-cooldown';
 import { useI18n } from '@/features/i18n/use-i18n';
 import { routes } from '@/routes/paths';
 import { Button } from '@/shared/ui/Button';
@@ -23,8 +24,8 @@ export function ResetPasswordPage() {
   const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
   const [isSendingCode, setIsSendingCode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [noticeMessage, setNoticeMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const { isCoolingDown, remainingSeconds, startCooldown } = useCodeCooldown(60);
   const handleCaptchaChange = useCallback((token: string) => setCaptchaToken(token), []);
 
   async function handleSendCode() {
@@ -39,7 +40,6 @@ export function ResetPasswordPage() {
     }
 
     setIsSendingCode(true);
-    setNoticeMessage('');
     setErrorMessage('');
     try {
       await authApi.sendCode({
@@ -47,9 +47,9 @@ export function ResetPasswordPage() {
         purpose: 'reset_password',
         hcaptcha_token: captchaToken || undefined,
       });
-      setNoticeMessage(t('auth.codeSent'));
       setCaptchaResetSignal((value) => value + 1);
       setCaptchaToken('');
+      startCooldown();
     } catch (error) {
       setErrorMessage(getErrorMessage(error, t('common.requestFailed')));
     } finally {
@@ -68,7 +68,6 @@ export function ResetPasswordPage() {
     }
 
     setIsSubmitting(true);
-    setNoticeMessage('');
     setErrorMessage('');
     try {
       await authApi.resetPassword({
@@ -104,7 +103,14 @@ export function ResetPasswordPage() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
           />
-          <HCaptchaBox resetSignal={captchaResetSignal} siteKey={env.hcaptchaSiteKey} onChange={handleCaptchaChange} />
+          {isCoolingDown ? (
+            <CaptchaSentStatus
+              detail={formatCodeCooldownLabel(t('auth.resendIn'), remainingSeconds)}
+              title={t('auth.codeSentCompact')}
+            />
+          ) : (
+            <HCaptchaBox resetSignal={captchaResetSignal} siteKey={env.hcaptchaSiteKey} onChange={handleCaptchaChange} />
+          )}
           <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
             <AuthField
               autoComplete="one-time-code"
@@ -115,8 +121,12 @@ export function ResetPasswordPage() {
               required
               type="text"
             />
-            <Button className="h-11" disabled={isSendingCode || isSubmitting} type="button" variant="secondary" onClick={handleSendCode}>
-              {isSendingCode ? t('auth.sending') : t('auth.sendCode')}
+            <Button className="h-11" disabled={isSendingCode || isSubmitting || isCoolingDown} type="button" variant="secondary" onClick={handleSendCode}>
+              {isSendingCode
+                ? t('auth.sending')
+                : isCoolingDown
+                  ? formatCodeCooldownLabel(t('auth.resendIn'), remainingSeconds)
+                  : t('auth.sendCode')}
             </Button>
           </div>
           <AuthField
@@ -139,7 +149,6 @@ export function ResetPasswordPage() {
           />
         </div>
 
-        {noticeMessage ? <p className="motion-rise rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">{noticeMessage}</p> : null}
         {errorMessage ? <p className="motion-rise rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/30 dark:text-red-300">{errorMessage}</p> : null}
 
         <Button className="motion-rise motion-delay-2 w-full" disabled={isSubmitting} size="lg" type="submit">

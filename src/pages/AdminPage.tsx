@@ -1,8 +1,9 @@
 import { type FormEvent, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Activity, CalendarDays, DatabaseZap, ShieldCheck } from 'lucide-react';
+import { Activity, CalendarDays, DatabaseZap, RefreshCw, ShieldCheck } from 'lucide-react';
 import { syncMutations, syncQueries, syncQueryKeys } from '@/features/sync/sync-queries';
-import type { IncrementalSyncResult, QueuedTask, SubjectResyncResult, SyncTaskStatus } from '@/lib/api/types';
+import { useI18n } from '@/features/i18n/use-i18n';
+import type { CalendarSyncResult, IncrementalSyncResult, QueuedTask, SubjectResyncResult, SyncJob, SyncTaskStatus } from '@/lib/api/types';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/Card';
@@ -10,7 +11,6 @@ import { ErrorState, LoadingState } from '@/shared/ui/FeedbackState';
 import { FilterMenu } from '@/shared/ui/FilterMenu';
 import { Input } from '@/shared/ui/Input';
 import { Page } from '@/shared/ui/Page';
-import { useI18n } from '@/features/i18n/use-i18n';
 
 const incrementalTaskOptions = [
   '',
@@ -41,6 +41,46 @@ function isIncrementalResult(value: unknown): value is { results?: IncrementalSy
   return Boolean(value && typeof value === 'object');
 }
 
+function isCalendarResult(value: unknown): value is CalendarSyncResult {
+  return Boolean(value && typeof value === 'object' && 'weekday_count' in value && 'item_count' in value);
+}
+
+function getIncrementalResults(data: unknown) {
+  if (!data || typeof data !== 'object') {
+    return [];
+  }
+  if ('results' in data && Array.isArray(data.results)) {
+    return data.results as IncrementalSyncResult[];
+  }
+  if ('task_name' in data && 'processed_count' in data) {
+    return [data as IncrementalSyncResult];
+  }
+  return [];
+}
+
+function jobTypeLabel(jobType: string, t: ReturnType<typeof useI18n>['t']) {
+  const labels: Record<string, string> = {
+    subject_bangumi: t('admin.jobSubjectBangumi'),
+    subject_resync: t('admin.jobSubjectResync'),
+    calendar: t('admin.jobCalendar'),
+    incremental: t('admin.jobIncremental'),
+  };
+  return labels[jobType] ?? jobType.replaceAll('_', ' ');
+}
+
+function jobStatusVariant(status: string): 'default' | 'secondary' | 'danger' {
+  if (status === 'failed') return 'danger';
+  if (status === 'queued' || status === 'running') return 'secondary';
+  return 'default';
+}
+
+function jobProgress(job: SyncJob) {
+  if (job.total_count <= 0) {
+    return job.status === 'succeeded' ? 100 : 0;
+  }
+  return Math.max(0, Math.min(100, Math.round((job.processed_count / job.total_count) * 100)));
+}
+
 function ResultPanel({ result }: { result: AdminResult | null }) {
   const { t } = useI18n();
 
@@ -69,12 +109,32 @@ function ResultPanel({ result }: { result: AdminResult | null }) {
             <dt className="text-neutral-500 dark:text-neutral-400">Task ID</dt>
             <dd className="mt-1 break-all font-mono text-neutral-950 dark:text-white">{data.task_id}</dd>
           </div>
+          <div>
+            <dt className="text-neutral-500 dark:text-neutral-400">Status</dt>
+            <dd className="mt-1 font-medium text-neutral-950 dark:text-white">{data.status}</dd>
+          </div>
           {'bangumi_id' in data ? (
             <div>
               <dt className="text-neutral-500 dark:text-neutral-400">Bangumi ID</dt>
               <dd className="mt-1 font-mono text-neutral-950 dark:text-white">{String(data.bangumi_id)}</dd>
             </div>
           ) : null}
+        </dl>
+      ) : null}
+
+      {isCalendarResult(data) ? (
+        <dl className="grid gap-3 text-sm sm:grid-cols-2">
+          {[
+            ['Weekdays', data.weekday_count],
+            ['Items', data.item_count],
+            ['Subjects synced', data.synced_subject_count],
+            ['Failed subjects', data.failed_subject_count],
+          ].map(([label, value]) => (
+            <div key={label}>
+              <dt className="text-neutral-500 dark:text-neutral-400">{label}</dt>
+              <dd className="mt-1 font-medium text-neutral-950 dark:text-white">{String(value)}</dd>
+            </div>
+          ))}
         </dl>
       ) : null}
 
@@ -97,14 +157,16 @@ function ResultPanel({ result }: { result: AdminResult | null }) {
         </dl>
       ) : null}
 
-      {isIncrementalResult(data) && Array.isArray(data.results) ? (
+      {isIncrementalResult(data) && getIncrementalResults(data).length > 0 ? (
         <div className="grid gap-2">
-          {data.results.map((item) => (
-            <div className="grid gap-2 rounded-lg bg-neutral-50 p-3 text-sm dark:bg-neutral-900/70 sm:grid-cols-4" key={`${item.task_name}-${item.shard}`}>
-              <strong className="text-neutral-950 dark:text-white">{item.task_name}</strong>
+          {getIncrementalResults(data).map((item) => (
+            <div className="grid gap-2 rounded-lg bg-neutral-50 p-3 text-sm dark:bg-neutral-900/70 sm:grid-cols-[minmax(0,1.4fr)_repeat(4,minmax(0,0.7fr))]" key={`${item.task_name}-${item.shard}`}>
+              <strong className="truncate text-neutral-950 dark:text-white">{item.task_name}</strong>
+              <span>{item.processed_count} processed</span>
               <span>{item.synced_count} synced</span>
               <span>{item.skipped_count} skipped</span>
               <span>{item.failed_count} failed</span>
+              {item.frontier_reached ? <span className="text-xs font-semibold text-[var(--color-accent-strong)] sm:col-span-5">Frontier reached</span> : null}
             </div>
           ))}
         </div>
@@ -131,6 +193,90 @@ function StatusList({ tasks }: { tasks: SyncTaskStatus[] }) {
   );
 }
 
+function SyncJobList({
+  isRefreshing,
+  jobs,
+  onRefresh,
+}: {
+  isRefreshing: boolean;
+  jobs: SyncJob[];
+  onRefresh: () => void;
+}) {
+  const { t } = useI18n();
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle>{t('admin.syncRuns')}</CardTitle>
+            <CardDescription>{t('admin.syncRunsDescription')}</CardDescription>
+          </div>
+          <Button disabled={isRefreshing} size="sm" type="button" variant="secondary" onClick={onRefresh}>
+            <RefreshCw className={`size-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {t('admin.refresh')}
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {jobs.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-neutral-200 p-5 text-sm text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
+            {t('admin.noSyncRuns')}
+          </div>
+        ) : (
+          <div className="grid gap-2">
+            {jobs.map((job) => {
+              const percent = jobProgress(job);
+              return (
+                <div className="grid gap-3 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800" key={job.id}>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        <p className="truncate text-sm font-semibold text-neutral-950 dark:text-white">{jobTypeLabel(job.job_type, t)}</p>
+                        <Badge variant={jobStatusVariant(job.status)}>{job.status}</Badge>
+                      </div>
+                      <p className="mt-1 truncate text-xs text-neutral-500 dark:text-neutral-400">
+                        {job.current_label || job.celery_task_id || job.id}
+                      </p>
+                    </div>
+                    <p className="shrink-0 text-xs text-neutral-500 dark:text-neutral-400">
+                      {new Date(job.updated_at).toLocaleString()}
+                    </p>
+                  </div>
+
+                  <div className="grid gap-1.5">
+                    <div className="h-1.5 overflow-hidden rounded-full bg-neutral-100 dark:bg-neutral-900">
+                      <div
+                        className="h-full rounded-full bg-[var(--color-accent)] transition-[width]"
+                        style={{ width: `${percent}%` }}
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-500 dark:text-neutral-400">
+                      <span>
+                        {job.processed_count}
+                        {job.total_count > 0 ? ` / ${job.total_count}` : ''} {t('admin.processed')}
+                      </span>
+                      <span>{percent}%</span>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2 text-xs text-neutral-500 dark:text-neutral-400 sm:grid-cols-4">
+                    <span>{job.synced_count} {t('admin.synced')}</span>
+                    <span>{job.skipped_count} {t('admin.skipped')}</span>
+                    <span>{job.failed_count} {t('admin.failed')}</span>
+                    <span>{job.started_at ? `${t('admin.started')} ${new Date(job.started_at).toLocaleTimeString()}` : t('admin.waiting')}</span>
+                  </div>
+                  {job.error ? <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600 dark:bg-red-950/25 dark:text-red-300">{job.error}</p> : null}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function AdminPage() {
   const { t } = useI18n();
   const queryClient = useQueryClient();
@@ -146,9 +292,13 @@ export function AdminPage() {
   const syncBangumiMutation = useMutation(syncMutations.syncBangumiSubject());
   const calendarMutation = useMutation(syncMutations.runCalendar());
   const incrementalMutation = useMutation(syncMutations.runIncremental());
+  const jobsQuery = useQuery(syncQueries.jobs());
 
   async function refreshStatus() {
-    await queryClient.invalidateQueries({ queryKey: syncQueryKeys.incrementalStatus() });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: syncQueryKeys.incrementalStatus() }),
+      queryClient.invalidateQueries({ queryKey: syncQueryKeys.jobs() }),
+    ]);
   }
 
   async function handleBangumiSync(event: FormEvent<HTMLFormElement>) {
@@ -187,9 +337,9 @@ export function AdminPage() {
   const isPending = syncBangumiMutation.isPending || calendarMutation.isPending || incrementalMutation.isPending;
 
   return (
-    <Page title={t('admin.title')} eyebrow={t('auth.admin')} description={t('admin.description')}>
+    <Page title={t('admin.title')} eyebrow={t('nav.groupMore')}>
       <div className="grid gap-6">
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <section className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
           <Card>
             <CardHeader>
               <div className="flex items-start gap-3">
@@ -255,18 +405,41 @@ export function AdminPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('admin.lastResult')}</CardTitle>
-              <CardDescription>{t('admin.noResult')}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResultPanel result={result} />
-            </CardContent>
-          </Card>
+          <aside className="grid gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>{t('admin.lastResult')}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResultPanel result={result} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-start gap-3">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[var(--color-accent-soft)] text-[var(--color-accent-strong)]">
+                    <ShieldCheck className="size-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <CardTitle>{t('admin.reportsTitle')}</CardTitle>
+                    <CardDescription>{t('admin.reportsDescription')}</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+          </aside>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <SyncJobList
+          isRefreshing={jobsQuery.isFetching}
+          jobs={jobsQuery.data?.jobs ?? []}
+          onRefresh={() => {
+            void refreshStatus();
+          }}
+        />
+
+        <section>
           <Card>
             <CardHeader>
               <CardTitle>{t('admin.statusTitle')}</CardTitle>
@@ -277,20 +450,6 @@ export function AdminPage() {
               {statusQuery.isError ? <ErrorState title={t('search.errorTitle')} description={t('search.errorBody')} /> : null}
               {statusQuery.data ? <StatusList tasks={statusQuery.data.tasks} /> : null}
             </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="flex items-start gap-3">
-                <span className="grid size-10 place-items-center rounded-xl bg-neutral-100 text-neutral-600 dark:bg-neutral-900 dark:text-neutral-300">
-                  <ShieldCheck className="size-5" />
-                </span>
-                <div>
-                  <CardTitle>{t('admin.reportsTitle')}</CardTitle>
-                  <CardDescription>{t('admin.reportsDescription')}</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
           </Card>
         </section>
       </div>

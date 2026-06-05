@@ -109,14 +109,14 @@ export const reviewsApi = {
   listForSubject: (subjectId: UUID) => api.get<Review[]>(`/api/users/me/subjects/${encodePath(subjectId)}/reviews/`),
 
   listPublicForSubject: (subjectId: UUID, query: ReviewListQuery = {}) =>
-    api.get<ApiPage<Review>>(`/api/users/subjects/${encodePath(subjectId)}/reviews/`, { query, skipAuth: true }),
+    api.get<ApiPage<Review>>(`/api/users/subjects/${encodePath(subjectId)}/reviews/`, { query }),
 
   createForSubject: (subjectId: UUID, body: { title: string; content: string; is_public?: boolean; is_spoiler?: boolean }) =>
     api.post<Review, typeof body>(`/api/users/me/subjects/${encodePath(subjectId)}/reviews/`, body),
 
   getMine: (reviewId: number) => api.get<Review>(`/api/users/me/reviews/${encodePath(reviewId)}/`),
 
-  getPublic: (reviewId: number) => api.get<Review>(`/api/users/reviews/${encodePath(reviewId)}/`, { skipAuth: true }),
+  getPublic: (reviewId: number) => api.get<Review>(`/api/users/reviews/${encodePath(reviewId)}/`),
 
   updateMine: (reviewId: number, body: Partial<Pick<Review, 'title' | 'content' | 'is_public' | 'is_spoiler'>>) =>
     api.patch<Review, typeof body>(`/api/users/me/reviews/${encodePath(reviewId)}/`, body),

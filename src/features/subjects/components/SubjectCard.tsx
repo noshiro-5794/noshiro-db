@@ -1,8 +1,9 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import type { Locale } from '@/features/i18n/messages';
 import { useI18n } from '@/features/i18n/use-i18n';
 import type { SubjectSummary } from '@/lib/api/types';
 import { routes } from '@/routes/paths';
+import { routeBackState } from '@/shared/navigation/route-state';
 
 const coverPlaceholder = '/assets/placeholders/subject-cover.png';
 const episodeUnit: Record<Locale, string> = {
@@ -11,8 +12,8 @@ const episodeUnit: Record<Locale, string> = {
   'ja-JP': '話',
 };
 
-function getSubjectTitle(subject: SubjectSummary) {
-  return subject.display_title || subject.title || subject.title_cn || 'Untitled';
+function getSubjectTitle(subject: SubjectSummary, fallback: string) {
+  return subject.display_title || subject.title || subject.title_cn || fallback;
 }
 
 function getSubjectPoster(subject: SubjectSummary) {
@@ -32,10 +33,11 @@ type SubjectCardProps = {
 };
 
 export function SubjectCard({ subject }: SubjectCardProps) {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
+  const location = useLocation();
 
   return (
-    <Link className="subject-card" to={routes.subject(subject.id)}>
+    <Link className="subject-card" state={routeBackState(location, t('nav.search'))} to={routes.subject(subject.id)}>
       <img
         className="subject-card-cover"
         src={getSubjectPoster(subject)}
@@ -43,7 +45,7 @@ export function SubjectCard({ subject }: SubjectCardProps) {
         loading="lazy"
       />
       <span className="subject-card-body">
-        <span className="subject-card-title">{getSubjectTitle(subject)}</span>
+        <span className="subject-card-title">{getSubjectTitle(subject, t('common.untitledSubject'))}</span>
         <span className="subject-card-meta">{getSubjectMeta(subject, locale) || subject.subject_type}</span>
       </span>
     </Link>

@@ -1,4 +1,4 @@
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, PencilLine, ShieldAlert, Trash2 } from 'lucide-react';
 import { useAuth } from '@/features/auth/use-auth';
@@ -8,6 +8,7 @@ import { useI18n } from '@/features/i18n/use-i18n';
 import { libraryMutations, libraryQueries, libraryQueryKeys } from '@/features/library/library-queries';
 import { MarkdownRenderer } from '@/features/reviews/components/MarkdownRenderer';
 import { routes } from '@/routes/paths';
+import { backTargetFromState, routeBackState } from '@/shared/navigation/route-state';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/ui/Dialog';
@@ -33,6 +34,7 @@ export function ReviewViewerPage() {
   const { t } = useI18n();
   const { reviewId: reviewIdParam } = useParams();
   const auth = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -47,6 +49,8 @@ export function ReviewViewerPage() {
     enabled: Boolean(reviewId),
   });
   const review = myReviewQuery.data ?? reviewQuery.data;
+  const fallbackBackTarget = review?.subject ? routes.subject(review.subject.id) : routes.reviews;
+  const backTarget = backTargetFromState(location, fallbackBackTarget);
   const isOwnReview = Boolean(myReviewQuery.data || (review?.user?.id && auth.profile?.user_id && String(review.user.id) === String(auth.profile.user_id)));
   const deleteReviewMutation = useMutation({
     ...libraryMutations.deleteReview(),
@@ -56,20 +60,20 @@ export function ReviewViewerPage() {
         queryClient.invalidateQueries({ queryKey: libraryQueryKeys.publicReviewDetail(reviewId ?? 0) }),
       ]);
       setDeleteOpen(false);
-      navigate(routes.reviews);
+      navigate(reviewId && backTarget === routes.review(reviewId) ? routes.reviews : backTarget);
     },
   });
 
   if (!reviewId) {
-    return <Page title={t('common.review')}><ErrorState title={t('reviewViewer.invalidTitle')} description={t('reviewViewer.invalidBody')} /></Page>;
+    return <Page title={t('common.review')} eyebrow={t('reviewViewer.publicReview')}><ErrorState title={t('reviewViewer.invalidTitle')} description={t('reviewViewer.invalidBody')} /></Page>;
   }
 
   if (reviewQuery.isLoading || (auth.isAuthenticated && myReviewQuery.isLoading)) {
-    return <Page title={t('common.review')}><LoadingState title={t('reviewViewer.loading')} /></Page>;
+    return <Page title={t('common.review')} eyebrow={t('reviewViewer.publicReview')}><LoadingState title={t('reviewViewer.loading')} /></Page>;
   }
 
   if ((reviewQuery.isError && myReviewQuery.isError) || !review) {
-    return <Page title={t('common.review')}><ErrorState title={t('reviewViewer.unavailableTitle')} description={t('reviewViewer.unavailableBody')} /></Page>;
+    return <Page title={t('common.review')} eyebrow={t('reviewViewer.publicReview')}><ErrorState title={t('reviewViewer.unavailableTitle')} description={t('reviewViewer.unavailableBody')} /></Page>;
   }
 
   return (
@@ -77,12 +81,12 @@ export function ReviewViewerPage() {
       actions={(
         <>
           <Button asChild variant="ghost">
-            <Link to={review.subject ? routes.subject(review.subject.id) : routes.reviews}><ArrowLeft className="size-4" /> {t('common.back')}</Link>
+            <Link to={backTarget}><ArrowLeft className="size-4" /> {t('common.back')}</Link>
           </Button>
           {isOwnReview ? (
             <>
               <Button asChild>
-                <Link to={routes.reviewEdit(review.id)}><PencilLine className="size-4" /> {t('common.edit')}</Link>
+                <Link state={routeBackState(location, t('common.review'))} to={routes.reviewEdit(review.id)}><PencilLine className="size-4" /> {t('common.edit')}</Link>
               </Button>
               <Button type="button" variant="secondary" onClick={() => setDeleteOpen(true)}>
                 <Trash2 className="size-4" /> {t('common.delete')}
@@ -92,43 +96,46 @@ export function ReviewViewerPage() {
         </>
       )}
       description={review.subject?.display_title || review.subject?.title || t('reviewViewer.publicReview')}
-      eyebrow={t('common.review')}
+      eyebrow={t('reviewViewer.publicReview')}
       title={review.title}
     >
-      <article className="review-reader">
-        <header className="review-reader-header">
-          <div className="flex min-w-0 items-center gap-3">
+      <article className="content-reader">
+        <header className="content-reader-header">
+          <div className="content-reader-author">
             <img
               alt=""
-              className="size-10 rounded-full bg-neutral-100 object-cover dark:bg-neutral-900"
               src={review.user?.avatar || '/assets/placeholders/avatar.png'}
             />
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-neutral-950 dark:text-white">{review.user?.nickname || t('common.anonymous')}</p>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              <p>{review.user?.nickname || t('common.anonymous')}</p>
+              <span>
                 {formatDate(review.updated_at || review.created_at)}
-              </p>
+              </span>
             </div>
           </div>
-          <div className="flex flex-wrap justify-end gap-2">
+          <div className="content-reader-badges">
             <Badge variant={review.is_public ? 'accent' : 'secondary'}>{review.is_public ? t('common.public') : t('common.private')}</Badge>
             {review.is_spoiler ? <Badge><ShieldAlert className="size-3" /> {t('common.spoiler')}</Badge> : null}
           </div>
         </header>
-        <div className={review.is_spoiler ? 'review-reader-content is-spoiler' : 'review-reader-content'}>
+        <div className={review.is_spoiler ? 'content-reader-body is-spoiler' : 'content-reader-body'}>
           <MarkdownRenderer content={review.content} />
         </div>
+        <footer className="content-reader-actions">
+          <CommunityTargetActions
+            presentation="inline"
+            reactionCount={numberMeta(review.reaction_count)}
+            reportLabel={t('community.reportReview')}
+            targetId={review.id}
+            targetType="review"
+            viewerState={review.viewer_state as { has_liked?: boolean; has_bookmarked?: boolean } | undefined}
+          />
+        </footer>
       </article>
-      <CommunityTargetActions
-        className="rounded-lg border border-neutral-200 bg-white p-2 dark:border-neutral-800 dark:bg-neutral-950"
-        reactionCount={numberMeta(review.reaction_count)}
-        reportLabel={t('community.reportReview')}
-        targetId={review.id}
-        targetType="review"
-        viewerState={review.viewer_state as { has_liked?: boolean; has_bookmarked?: boolean } | undefined}
-      />
       {review.is_public || isOwnReview ? (
-        <CommunityCommentsSection targetType="review" targetId={review.id} />
+        <section className="content-reader-section">
+          <CommunityCommentsSection targetType="review" targetId={review.id} />
+        </section>
       ) : null}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent>

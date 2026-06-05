@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { CheckCircle2 } from 'lucide-react';
 
 declare global {
   interface Window {
@@ -24,6 +25,25 @@ type HCaptchaBoxProps = {
   siteKey: string;
   onChange: (token: string) => void;
 };
+
+type CaptchaSentStatusProps = {
+  detail: string;
+  title: string;
+};
+
+export function CaptchaSentStatus({ detail, title }: CaptchaSentStatusProps) {
+  return (
+    <div className="auth-captcha-status" role="status">
+      <span className="auth-captcha-status-icon" aria-hidden="true">
+        <CheckCircle2 className="size-3.5" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-medium text-[var(--color-text)]">{title}</span>
+        <span className="mt-0.5 block text-[11px] text-[var(--color-text-muted)]">{detail}</span>
+      </span>
+    </div>
+  );
+}
 
 export function HCaptchaBox({ resetSignal, siteKey, onChange }: HCaptchaBoxProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);

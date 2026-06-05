@@ -3,34 +3,25 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BookOpen, FileText, Library, MessageSquare, UserPlus, Users } from 'lucide-react';
 import { useAuth } from '@/features/auth/use-auth';
+import { activityTargetHref } from '@/features/community/activity-target';
 import { invalidateCommunityFollows } from '@/features/community/cache';
 import { CommunityCommentsSection } from '@/features/community/components/CommunityCommentsSection';
 import { CommunityContentCard } from '@/features/community/components/CommunityContentCard';
 import { CommunityTargetActions } from '@/features/community/components/CommunityTargetActions';
 import { useI18n } from '@/features/i18n/use-i18n';
+import { PublicCollectionPackCard, PublicReviewItem, PublicSubjectListItem } from '@/features/social/components/PublicContentItems';
 import { socialMutations, socialQueries, socialQueryKeys } from '@/features/social/social-queries';
-import type { Activity, Collection, Review, UserSubject } from '@/lib/api/types';
+import type { Activity } from '@/lib/api/types';
 import { routes } from '@/routes/paths';
-import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/FeedbackState';
 import { Page } from '@/shared/ui/Page';
 
 const avatarPlaceholder = '/assets/placeholders/avatar.png';
-const coverPlaceholder = '/assets/placeholders/subject-cover.png';
 
 function formatDate(value?: string) {
   if (!value) return '';
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(value));
-}
-
-function activityHref(activity: Activity, ownerId?: number) {
-  if (activity.post?.id) return routes.communityPost(activity.post.id);
-  if (activity.review?.id) return routes.review(activity.review.id);
-  if (activity.collection?.id && ownerId) return routes.userCollection(ownerId, activity.collection.id);
-  if (activity.collection?.id) return routes.collections;
-  if (activity.subject?.id) return routes.subject(activity.subject.id);
-  return routes.home;
 }
 
 function activityTypeLabel(type: string, t: ReturnType<typeof useI18n>['t']) {
@@ -69,40 +60,6 @@ function activityBody(activity: Activity, fallback: string) {
     || activity.subject?.display_subtitle
     || activity.subject?.platform
     || fallback
-  );
-}
-
-function subjectTitle(item: UserSubject, fallback: string) {
-  return item.subject.display_title || item.subject.title || item.subject.title_cn || fallback;
-}
-
-function statusLabel(status: string | undefined, t: ReturnType<typeof useI18n>['t']) {
-  const labels: Record<string, string> = {
-    wish: t('status.wish'),
-    doing: t('status.doing'),
-    done: t('status.done'),
-    on_hold: t('status.onHold'),
-    drop: t('status.drop'),
-  };
-  return labels[status ?? ''] ?? status?.replaceAll('_', ' ') ?? t('status.marked');
-}
-
-function reviewSubjectTitle(review: Review, fallback: string) {
-  return review.subject?.display_title || review.subject?.title || review.subject?.title_cn || fallback;
-}
-
-function CollectionCard({ collection, userId }: { collection: Collection; userId: number }) {
-  const { t } = useI18n();
-
-  return (
-    <CommunityContentCard
-      badges={<Badge variant="secondary">{collection.item_count ?? 0} {t('common.items')}</Badge>}
-      body={collection.note || t('common.noNote')}
-      href={routes.userCollection(userId, collection.id)}
-      icon={<BookOpen className="size-4" />}
-      title={collection.name}
-      typeLabel={t('community.targetType.collection')}
-    />
   );
 }
 
@@ -150,9 +107,77 @@ export function PublicUserPage() {
     }
   }
 
+  function renderActivitySection(ownerId: number) {
+    return (
+      <section className="grid gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-semibold tracking-tight text-neutral-950 dark:text-white">{t('profile.publicActivity')}</h2>
+          <MessageSquare className="size-4 text-neutral-400" />
+        </div>
+        {activitiesQuery.isLoading ? <LoadingState title={t('profile.loadingActivity')} /> : null}
+        {activitiesQuery.isError ? <ErrorState title={t('profile.contentErrorTitle')} description={t('profile.contentErrorBody')} /> : null}
+        {!activitiesQuery.isLoading && !activitiesQuery.isError && activities.length === 0 ? (
+          <EmptyState title={t('profile.noActivityTitle')} description={t('profile.noActivityBody')} />
+        ) : null}
+        <div className="grid gap-3">
+          {activities.map((activity) => (
+            <div className="grid gap-3" key={activity.id}>
+              <CommunityContentCard
+                actions={(
+                  <>
+                    <CommunityTargetActions
+                      inlineMiddleAction={(
+                        <button
+                          aria-label={expandedActivityId === activity.id ? t('community.hideComments') : t('community.viewComments')}
+                          className={`timeline-action-button ${expandedActivityId === activity.id ? 'is-active' : ''}`}
+                          type="button"
+                          onClick={() => setExpandedActivityId((current) => current === activity.id ? null : activity.id)}
+                        >
+                          <MessageSquare className="size-4" />
+                          {typeof activity.reply_count === 'number' ? <span>{activity.reply_count}</span> : null}
+                        </button>
+                      )}
+                      presentation="inline"
+                      reactionCount={typeof activity.reaction_count === 'number' ? activity.reaction_count : undefined}
+                      reportLabel={t('community.reportActivity')}
+                      targetId={activity.id}
+                      targetType="activity"
+                      viewerState={activity.viewer_state}
+                    />
+                  </>
+                )}
+                author={activity.user?.id ? {
+                  href: routes.userProfile(activity.user.id),
+                  name: activity.user.nickname || t('common.anonymous'),
+                  avatar: activity.user.avatar,
+                } : undefined}
+                body={activityBody(activity, t('common.noContent'))}
+                cover={activity.subject?.image_thumbnail || null}
+                date={formatDate(activity.created_at)}
+                href={activityTargetHref(activity, routes.home, ownerId)}
+                icon={<MessageSquare className="size-4" />}
+                subject={activity.subject?.id ? {
+                  href: routes.subject(activity.subject.id),
+                  title: activity.subject.display_title || activity.subject.title || activity.subject.title_cn || t('common.untitledSubject'),
+                } : undefined}
+                title={activityTitle(activity, t('common.untitled'))}
+                typeLabel={activityTypeLabel(activity.activity_type, t)}
+              />
+              {expandedActivityId === activity.id ? (
+                <div className="activity-comments-drawer">
+                  <CommunityCommentsSection targetType="activity" targetId={activity.id} />
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
   if (!isValidUserId) {
     return (
-      <Page title={t('profile.title')} description={t('profile.invalidBody')}>
+    <Page title={t('profile.title')} eyebrow={t('profile.title')}>
         <ErrorState title={t('profile.invalidTitle')} description={t('profile.invalidBody')} />
       </Page>
     );
@@ -161,8 +186,8 @@ export function PublicUserPage() {
   return (
     <Page
       title={profile?.nickname || t('profile.title')}
-      eyebrow={t('profile.eyebrow')}
-      description={profile?.bio || t('profile.description')}
+      eyebrow={t('profile.title')}
+      description={profile?.bio || undefined}
       actions={profile ? (
         isSelf ? (
           <Button asChild type="button" variant="secondary">
@@ -184,32 +209,36 @@ export function PublicUserPage() {
       {profile ? (
         <div className="grid gap-8 xl:grid-cols-[280px_minmax(0,1fr)]">
           <aside className="grid content-start gap-5">
-            <section className="rounded-lg border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-950">
-              <img className="size-24 rounded-full bg-neutral-100 object-cover dark:bg-neutral-900" src={profile.avatar || avatarPlaceholder} alt="" />
-              <h2 className="mt-4 text-xl font-semibold tracking-tight text-neutral-950 dark:text-white">{profile.nickname}</h2>
-              <p className="mt-2 text-sm leading-6 text-neutral-500 dark:text-neutral-400">{profile.bio || t('profile.noBio')}</p>
-              <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
-                <Link className="rounded-lg p-1 transition hover:bg-neutral-50 dark:hover:bg-neutral-900" to={routes.userSubjects(profile.id)}>
-                  <strong className="text-lg text-neutral-950 dark:text-white">{profile.stats.subject_count}</strong>
-                  <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{t('common.subjects')}</p>
+            <section className="xl:sticky xl:top-6">
+              <div className="flex items-center gap-4 xl:block">
+                <img
+                  className="size-20 rounded-full bg-[var(--color-surface-muted)] object-cover ring-1 ring-[var(--color-border)] xl:size-24"
+                  src={profile.avatar || avatarPlaceholder}
+                  alt=""
+                />
+                <div className="min-w-0 xl:mt-4">
+                  <h2 className="truncate text-xl font-semibold tracking-tight text-neutral-950 dark:text-white">{profile.nickname}</h2>
+                  <p className="mt-1 line-clamp-3 text-sm leading-6 text-neutral-500 dark:text-neutral-400 xl:line-clamp-none">{profile.bio || t('profile.noBio')}</p>
+                </div>
+              </div>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <Link
+                  className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-muted)] shadow-sm transition hover:border-[var(--color-accent-border)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-accent-strong)]"
+                  to={routes.userFollowers(profile.id)}
+                >
+                  <Users className="size-4" />
+                  <strong className="font-semibold text-[var(--color-text)]">{profile.stats.follower_count}</strong>
+                  <span>{t('profile.followers')}</span>
                 </Link>
-                <Link className="rounded-lg p-1 transition hover:bg-neutral-50 dark:hover:bg-neutral-900" to={routes.userReviews(profile.id)}>
-                  <strong className="text-lg text-neutral-950 dark:text-white">{profile.stats.review_count}</strong>
-                  <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{t('common.reviews')}</p>
-                </Link>
-                <Link className="rounded-lg p-1 transition hover:bg-neutral-50 dark:hover:bg-neutral-900" to={routes.userCollections(profile.id)}>
-                  <strong className="text-lg text-neutral-950 dark:text-white">{profile.stats.collection_count}</strong>
-                  <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{t('nav.collections')}</p>
-                </Link>
-                <Link className="rounded-lg p-1 transition hover:bg-neutral-50 dark:hover:bg-neutral-900" to={routes.userFollowers(profile.id)}>
-                  <strong className="text-lg text-neutral-950 dark:text-white">{profile.stats.follower_count}</strong>
-                  <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{t('profile.followers')}</p>
+                <Link
+                  className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-muted)] shadow-sm transition hover:border-[var(--color-accent-border)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-accent-strong)]"
+                  to={routes.userFollowing(profile.id)}
+                >
+                  <Users className="size-4" />
+                  <strong className="font-semibold text-[var(--color-text)]">{profile.stats.following_count}</strong>
+                  <span>{t('profile.followingCount')}</span>
                 </Link>
               </div>
-              <Link className="mt-4 flex items-center gap-2 rounded-lg text-sm text-neutral-500 transition hover:text-[var(--color-accent-strong)] dark:text-neutral-400" to={routes.userFollowing(profile.id)}>
-                <Users className="size-4" />
-                {profile.stats.following_count} {t('profile.followingCount')}
-              </Link>
             </section>
           </aside>
 
@@ -227,87 +256,11 @@ export function PublicUserPage() {
                 <EmptyState title={t('profile.noReviewsTitle')} description={t('profile.noReviewsBody')} />
               ) : null}
               <div className="grid gap-3">
-                {reviews.map((review) => (
-                  <CommunityContentCard
-                    badges={review.is_spoiler ? <Badge>{t('common.spoiler')}</Badge> : null}
-                    body={review.content || t('common.noContent')}
-                    cover={review.subject?.image_thumbnail || review.subject?.image || coverPlaceholder}
-                    date={formatDate(review.updated_at || review.created_at)}
-                    href={routes.review(review.id)}
-                    isSpoiler={review.is_spoiler}
-                    key={review.id}
-                    subject={review.subject ? {
-                      href: routes.subject(review.subject.id),
-                      title: reviewSubjectTitle(review, t('common.untitledSubject')),
-                    } : undefined}
-                    title={review.title || t('common.untitled')}
-                    typeLabel={t('community.targetType.review')}
-                  />
-                ))}
+                {reviews.map((review) => <PublicReviewItem key={review.id} review={review} />)}
               </div>
             </section>
 
-            <section className="grid gap-3">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="font-semibold tracking-tight text-neutral-950 dark:text-white">{t('profile.publicActivity')}</h2>
-                <MessageSquare className="size-4 text-neutral-400" />
-              </div>
-              {activitiesQuery.isLoading ? <LoadingState title={t('profile.loadingActivity')} /> : null}
-              {activitiesQuery.isError ? <ErrorState title={t('profile.contentErrorTitle')} description={t('profile.contentErrorBody')} /> : null}
-              {!activitiesQuery.isLoading && !activitiesQuery.isError && activities.length === 0 ? (
-                <EmptyState title={t('profile.noActivityTitle')} description={t('profile.noActivityBody')} />
-              ) : null}
-              <div className="grid gap-3">
-                {activities.map((activity) => (
-                  <div className="grid gap-3" key={activity.id}>
-                    <CommunityContentCard
-                      actions={(
-                        <>
-                          <CommunityTargetActions
-                            reactionCount={typeof activity.reaction_count === 'number' ? activity.reaction_count : undefined}
-                            reportLabel={t('community.reportActivity')}
-                            targetId={activity.id}
-                            targetType="activity"
-                            viewerState={activity.viewer_state}
-                          />
-                          <button
-                            className="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-sm font-semibold text-neutral-500 transition hover:bg-neutral-100 hover:text-[var(--color-accent-strong)] dark:text-neutral-400 dark:hover:bg-neutral-900"
-                            type="button"
-                            onClick={() => setExpandedActivityId((current) => current === activity.id ? null : activity.id)}
-                          >
-                            <MessageSquare className="size-4" />
-                            {expandedActivityId === activity.id ? t('community.hideComments') : t('community.viewComments')}
-                          </button>
-                        </>
-                      )}
-                      author={activity.user?.id ? {
-                        href: routes.userProfile(activity.user.id),
-                        name: activity.user.nickname || t('common.anonymous'),
-                        avatar: activity.user.avatar,
-                      } : undefined}
-                      body={activityBody(activity, t('common.noContent'))}
-                      cover={activity.subject?.image_thumbnail || null}
-                      date={formatDate(activity.created_at)}
-                      href={activityHref(activity, profile.id)}
-                      icon={<MessageSquare className="size-4" />}
-                      subject={activity.subject?.id ? {
-                        href: routes.subject(activity.subject.id),
-                        title: activity.subject.display_title || activity.subject.title || activity.subject.title_cn || t('common.untitledSubject'),
-                      } : undefined}
-                      title={activityTitle(activity, t('common.untitled'))}
-                      typeLabel={activityTypeLabel(activity.activity_type, t)}
-                    />
-                      {expandedActivityId === activity.id ? (
-                        <div className="mt-3 rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
-                          <CommunityCommentsSection targetType="activity" targetId={activity.id} />
-                        </div>
-                      ) : null}
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section className="grid gap-3 md:grid-cols-2">
+            <section className="grid gap-6">
               <div className="grid content-start gap-3">
                 <div className="flex items-center justify-between gap-3">
                   <h2 className="font-semibold tracking-tight text-neutral-950 dark:text-white">{t('profile.recentSubjects')}</h2>
@@ -320,19 +273,8 @@ export function PublicUserPage() {
                 {!subjectsQuery.isLoading && !subjectsQuery.isError && subjects.length === 0 ? (
                   <EmptyState title={t('profile.noSubjectsTitle')} description={t('profile.noSubjectsBody')} />
                 ) : null}
-                <div className="grid gap-3">
-                  {subjects.map((item) => (
-                    <CommunityContentCard
-                      badges={<Badge variant="secondary">{statusLabel(item.status, t)}</Badge>}
-                      body={item.comment || item.subject.display_subtitle || item.subject.platform || ''}
-                      cover={item.subject.image_thumbnail || item.subject.image || coverPlaceholder}
-                      date={formatDate(item.updated_at || item.created_at)}
-                      href={routes.subject(item.subject.id)}
-                      key={item.id}
-                      title={subjectTitle(item, t('common.untitledSubject'))}
-                      typeLabel={item.subject.subject_type}
-                    />
-                  ))}
+                <div className="content-list-panel">
+                  {subjects.map((item) => <PublicSubjectListItem key={item.id} item={item} />)}
                 </div>
               </div>
 
@@ -348,11 +290,13 @@ export function PublicUserPage() {
                 {!collectionsQuery.isLoading && !collectionsQuery.isError && collections.length === 0 ? (
                   <EmptyState title={t('profile.noCollectionsTitle')} description={t('profile.noCollectionsBody')} />
                 ) : null}
-                <div className="grid gap-3">
-                  {collections.map((collection) => <CollectionCard collection={collection} key={collection.id} userId={profile.id} />)}
+                <div className="grid auto-rows-fr gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  {collections.map((collection) => <PublicCollectionPackCard collection={collection} key={collection.id} userId={profile.id} />)}
                 </div>
               </div>
             </section>
+
+            {renderActivitySection(profile.id)}
           </main>
         </div>
       ) : null}

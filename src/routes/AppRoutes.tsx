@@ -45,13 +45,13 @@ export function AppRoutes() {
         <Route path={routes.docsPattern} element={<DocsPage />} />
         <Route path={routes.communityPosts} element={<RequireAuth><CommunityPostsPage /></RequireAuth>} />
         <Route path={routes.communityPostPattern} element={<RequireAuth><CommunityPostPage /></RequireAuth>} />
-        <Route path={routes.userProfilePattern} element={<RequireAuth><PublicUserPage /></RequireAuth>} />
-        <Route path={routes.userFollowersPattern} element={<RequireAuth><UserConnectionsPage mode="followers" /></RequireAuth>} />
-        <Route path={routes.userFollowingPattern} element={<RequireAuth><UserConnectionsPage mode="following" /></RequireAuth>} />
-        <Route path={routes.userReviewsPattern} element={<RequireAuth><PublicUserContentPage mode="reviews" /></RequireAuth>} />
-        <Route path={routes.userSubjectsPattern} element={<RequireAuth><PublicUserContentPage mode="subjects" /></RequireAuth>} />
-        <Route path={routes.userCollectionsPattern} element={<RequireAuth><PublicUserContentPage mode="collections" /></RequireAuth>} />
-        <Route path={routes.userCollectionPattern} element={<RequireAuth><PublicCollectionPage /></RequireAuth>} />
+        <Route path={routes.userProfilePattern} element={<PublicUserPage />} />
+        <Route path={routes.userFollowersPattern} element={<UserConnectionsPage mode="followers" />} />
+        <Route path={routes.userFollowingPattern} element={<UserConnectionsPage mode="following" />} />
+        <Route path={routes.userReviewsPattern} element={<PublicUserContentPage mode="reviews" />} />
+        <Route path={routes.userSubjectsPattern} element={<PublicUserContentPage mode="subjects" />} />
+        <Route path={routes.userCollectionsPattern} element={<PublicUserContentPage mode="collections" />} />
+        <Route path={routes.userCollectionPattern} element={<PublicCollectionPage />} />
         <Route path={routes.notifications} element={<RequireAuth><NotificationsPage /></RequireAuth>} />
         <Route path={routes.bookmarks} element={<RequireAuth><BookmarksPage /></RequireAuth>} />
         <Route path={routes.admin} element={<RequireAuth adminOnly><AdminPage /></RequireAuth>} />

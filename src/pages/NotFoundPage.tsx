@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Home, Search } from 'lucide-react';
 import { useI18n } from '@/features/i18n/use-i18n';
 import { routes } from '@/routes/paths';
@@ -6,7 +6,16 @@ import { Button } from '@/shared/ui/Button';
 
 export function NotFoundPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useI18n();
+
+  function handleBack() {
+    if (location.key === 'default') {
+      navigate(routes.home, { replace: true });
+      return;
+    }
+    navigate(-1);
+  }
 
   return (
     <section className="grid min-h-full place-items-center px-5 py-16">
@@ -21,7 +30,7 @@ export function NotFoundPage() {
           {t('notFound.description')}
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Button type="button" variant="secondary" onClick={() => navigate(-1)}>
+          <Button type="button" variant="secondary" onClick={handleBack}>
             <ArrowLeft className="size-4" />
             {t('notFound.back')}
           </Button>

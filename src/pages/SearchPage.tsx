@@ -1,9 +1,10 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { X } from 'lucide-react';
+import { Search, X } from 'lucide-react';
+import { useAuth } from '@/features/auth/use-auth';
 import { useI18n } from '@/features/i18n/use-i18n';
-import { filterCalendarItems, flattenCalendarGroups, sortCalendarItems } from '@/features/search/calendar-search';
+import { calendarImageOf, filterCalendarItems, flattenCalendarGroups, sortCalendarItems } from '@/features/search/calendar-search';
 import {
   orderingOptions,
   episodeRangeOptions,
@@ -25,7 +26,10 @@ import { FilterCombobox } from '@/shared/ui/FilterCombobox';
 import { FilterMenu } from '@/shared/ui/FilterMenu';
 import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
+import type { RouteBackState } from '@/shared/navigation/route-state';
+import { routeBackState } from '@/shared/navigation/route-state';
 import { Page } from '@/shared/ui/Page';
+import { Pagination } from '@/shared/ui/Pagination';
 
 const coverPlaceholder = '/assets/placeholders/subject-cover.png';
 const pageSize = 30;
@@ -34,28 +38,28 @@ type SearchPosterProps = {
   badge?: string;
   poster: string;
   subtitle?: string;
+  state?: RouteBackState;
   title: string;
   to: string;
 };
 
 type SearchFilterKey = 'type' | 'year' | 'season' | 'sort' | 'platform' | 'episodes' | 'safety';
-type PaginationItem = number | 'ellipsis';
 
-function calendarTitleOf(item: CalendarSubjectItem) {
-  return item.display_title || item.title || item.title_cn || 'Untitled';
+function calendarTitleOf(item: CalendarSubjectItem, fallback: string) {
+  return item.display_title || item.title || item.title_cn || fallback;
 }
 
-function subjectTitleOf(subject: SubjectSummary) {
-  return subject.display_title || subject.title || subject.title_cn || 'Untitled';
+function subjectTitleOf(subject: SubjectSummary, fallback: string) {
+  return subject.display_title || subject.title || subject.title_cn || fallback;
 }
 
 function subjectPosterOf(subject: SubjectSummary) {
   return subject.images?.poster || subject.images?.thumbnail || subject.image_thumbnail || subject.image || coverPlaceholder;
 }
 
-function SearchPoster({ badge, poster, subtitle, title, to }: SearchPosterProps) {
+function SearchPoster({ badge, poster, state, subtitle, title, to }: SearchPosterProps) {
   return (
-    <Link className="group grid min-w-0 gap-2" to={to}>
+    <Link className="group grid min-w-0 gap-2" state={state} to={to}>
       <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-neutral-100 shadow-sm ring-1 ring-neutral-200 transition group-hover:-translate-y-1 group-hover:shadow-lg group-hover:ring-[var(--color-accent-border)] dark:bg-neutral-900 dark:ring-neutral-800">
         <img
           className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.035]"
@@ -92,42 +96,10 @@ function getEpisodeRangeParams(range: EpisodeRangeFilter) {
   return { min: undefined, max: undefined };
 }
 
-function buildPaginationItems(currentPage: number, totalPages: number): PaginationItem[] {
-  if (totalPages <= 7) {
-    return Array.from({ length: totalPages }, (_, index) => index + 1);
-  }
-
-  const pages = new Set([1, totalPages, currentPage, currentPage - 1, currentPage + 1]);
-
-  if (currentPage <= 4) {
-    [2, 3, 4, 5].forEach((page) => pages.add(page));
-  }
-
-  if (currentPage >= totalPages - 3) {
-    [totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1].forEach((page) => pages.add(page));
-  }
-
-  const sortedPages = [...pages]
-    .filter((page) => page >= 1 && page <= totalPages)
-    .sort((a, b) => a - b);
-
-  return sortedPages.flatMap((page, index) => {
-    const previousPage = sortedPages[index - 1];
-    if (!previousPage) {
-      return [page];
-    }
-    if (page - previousPage === 2) {
-      return [previousPage + 1, page];
-    }
-    if (page - previousPage > 2) {
-      return ['ellipsis' as const, page];
-    }
-    return [page];
-  });
-}
-
 export function SearchPage() {
   const { locale, t } = useI18n();
+  const { role } = useAuth();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const keyword = searchParams.get('keyword') ?? '';
   const subjectType = (searchParams.get('subject_type') ?? '') as SubjectTypeFilter;
@@ -139,7 +111,6 @@ export function SearchPage() {
   const episodeRange = (searchParams.get('episodes') ?? '') as EpisodeRangeFilter;
   const currentPage = Math.max(1, Number(searchParams.get('page') ?? '1') || 1);
   const [draftKeyword, setDraftKeyword] = useState(keyword);
-  const [jumpPage, setJumpPage] = useState('');
   const hasDatabaseOnlyFilters = Boolean(year || season || platform || episodeRange);
   const shouldUseSubjectSearch = Boolean(keyword.trim()) || hasDatabaseOnlyFilters;
   const [activeFilters, setActiveFilters] = useState<SearchFilterKey[]>(() => {
@@ -187,8 +158,8 @@ export function SearchPage() {
   }, [calendarQuery.data, ordering, safety, subjectType]);
 
   const resultCount = shouldUseSubjectSearch ? subjectsQuery.data?.count : calendarItems.length;
+  const hasResolvedResults = shouldUseSubjectSearch ? subjectsQuery.data !== undefined : calendarQuery.data !== undefined;
   const totalPages = Math.max(1, Math.ceil((resultCount ?? 0) / pageSize));
-  const paginationItems = useMemo(() => buildPaginationItems(currentPage, totalPages), [currentPage, totalPages]);
   const visibleCalendarItems = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
     return calendarItems.slice(start, start + pageSize);
@@ -202,14 +173,14 @@ export function SearchPage() {
   }, [keyword]);
 
   useEffect(() => {
-    if (currentPage > totalPages) {
+    if (hasResolvedResults && currentPage > totalPages) {
       setSearchParams((currentParams) => {
         const nextParams = new URLSearchParams(currentParams);
         nextParams.set('page', String(totalPages));
         return nextParams;
       });
     }
-  }, [currentPage, setSearchParams, totalPages]);
+  }, [currentPage, hasResolvedResults, setSearchParams, totalPages]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -243,15 +214,6 @@ export function SearchPage() {
 
   function goToPage(nextPage: number) {
     updateSearchParam('page', String(Math.min(Math.max(nextPage, 1), totalPages)));
-  }
-
-  function handleJumpSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const nextPage = Number(jumpPage);
-    if (Number.isFinite(nextPage)) {
-      goToPage(nextPage);
-      setJumpPage('');
-    }
   }
 
   function addFilter(filter: SearchFilterKey | '') {
@@ -298,6 +260,7 @@ export function SearchPage() {
   const availableFilters = (['type', 'year', 'season', 'sort', 'platform', 'episodes', 'safety'] as const).filter(
     (filter) => !activeFilters.includes(filter),
   );
+  const subjectLinkState = useMemo(() => routeBackState(location, t('nav.search')), [location, t]);
   const yearOptions = useMemo(() => {
     const currentYear = new Date().getFullYear();
     return [
@@ -313,31 +276,32 @@ export function SearchPage() {
     <Page
       title={t('search.title')}
       eyebrow={t('nav.groupDiscover')}
-      description={t('public.searchBody')}
-      actions={<span className="text-sm text-neutral-500 dark:text-neutral-400">{typeof resultCount === 'number' ? `${resultCount} ${t('search.results')}` : t('search.ready')}</span>}
+      hideHeader={role === 'guest'}
     >
       <div className="grid gap-6 pb-8">
         <form
-          className="grid gap-3 rounded-xl border border-neutral-200 p-3 dark:border-neutral-800"
+          className="content-toolbar"
           onSubmit={handleSubmit}
         >
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
-              <label className="grid gap-1.5">
+            <div className="content-toolbar-grid is-search">
+              <label className="content-toolbar-search">
                 <span className="sr-only">{t('search.keyword')}</span>
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400" />
                 <Input
+                  className="pl-9"
                   value={draftKeyword}
                   placeholder={t('public.searchPlaceholder')}
                   onChange={(event) => handleKeywordChange(event.target.value)}
                 />
               </label>
-              <Button className="self-end" size="lg" type="submit">
+              <Button type="submit" variant="secondary">
                 {t('search.title')}
               </Button>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="content-toolbar-filter-row">
               {activeFilters.map((filter) => (
-                <div className="grid min-w-44 grid-cols-[minmax(0,1fr)_40px] gap-1" key={filter}>
+                <div className="content-toolbar-filter-item" key={filter}>
                   {filter === 'type' ? (
                     <FilterMenu
                       label={filterLabels.type}
@@ -444,8 +408,9 @@ export function SearchPage() {
                 <SearchPoster
                   key={subject.id}
                   poster={subjectPosterOf(subject)}
+                  state={subjectLinkState}
                   subtitle={subject.display_subtitle || subject.subject_type}
-                  title={subjectTitleOf(subject)}
+                  title={subjectTitleOf(subject, t('common.untitledSubject'))}
                   to={routes.subject(subject.id)}
                 />
               ))
@@ -453,73 +418,16 @@ export function SearchPage() {
                 <SearchPoster
                   badge={new Intl.NumberFormat(locale, { notation: item.doing >= 10000 ? 'compact' : 'standard' }).format(item.doing)}
                   key={item.subject_id}
-                  poster={item.image_thumbnail || coverPlaceholder}
+                  poster={calendarImageOf(item) || coverPlaceholder}
+                  state={subjectLinkState}
                   subtitle={item.display_subtitle || item.subject_type}
-                  title={calendarTitleOf(item)}
+                  title={calendarTitleOf(item, t('common.untitledSubject'))}
                   to={routes.subject(item.subject_id)}
                 />
               ))}
         </div>
 
-        {totalPages > 1 ? (
-          <div className="flex flex-col gap-4 border-t border-neutral-200 pt-5 text-sm text-neutral-500 dark:border-neutral-800 dark:text-neutral-400 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                disabled={currentPage <= 1}
-                type="button"
-                variant="secondary"
-                onClick={() => goToPage(currentPage - 1)}
-              >
-                {t('search.previous')}
-              </Button>
-              <div className="flex flex-wrap items-center gap-1">
-                {paginationItems.map((item, index) =>
-                  item === 'ellipsis' ? (
-                    <span className="px-2 text-neutral-400" key={`ellipsis-${index}`}>
-                      ...
-                    </span>
-                  ) : (
-                    <Button
-                      className="min-w-10 px-3"
-                      key={item}
-                      size="sm"
-                      type="button"
-                      variant={item === currentPage ? 'default' : 'secondary'}
-                      onClick={() => goToPage(item)}
-                    >
-                      {item}
-                    </Button>
-                  ),
-                )}
-              </div>
-              <Button
-                disabled={currentPage >= totalPages}
-                type="button"
-                variant="secondary"
-                onClick={() => goToPage(currentPage + 1)}
-              >
-                {t('search.next')}
-              </Button>
-            </div>
-
-            <form className="flex items-center gap-2" onSubmit={handleJumpSubmit}>
-              <span className="whitespace-nowrap">{t('search.page')}</span>
-              <Input
-                className="h-10 w-20 px-3"
-                inputMode="numeric"
-                min={1}
-                max={totalPages}
-                type="number"
-                value={jumpPage}
-                placeholder={String(currentPage)}
-                onChange={(event) => setJumpPage(event.target.value)}
-              />
-              <Button size="sm" type="submit" variant="secondary">
-                {t('search.go')}
-              </Button>
-            </form>
-          </div>
-        ) : null}
+        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={goToPage} />
       </div>
     </Page>
   );
