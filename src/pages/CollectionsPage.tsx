@@ -1,11 +1,13 @@
-import { type DragEvent, type FormEvent, useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { type DragEvent, type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Eye,
   EyeOff,
+  ExternalLink,
   GripVertical,
   Layers3,
+  ListOrdered,
   Pencil,
   Plus,
   Search,
@@ -13,11 +15,13 @@ import {
   Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '@/features/auth/use-auth';
 import { libraryMutations, libraryQueries, libraryQueryKeys } from '@/features/library/library-queries';
 import { useI18n } from '@/features/i18n/use-i18n';
 import type { Collection, CollectionItem, UserSubject } from '@/lib/api/types';
 import { cn } from '@/lib/utils';
 import { routes } from '@/routes/paths';
+import { routeBackState } from '@/shared/navigation/route-state';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/shared/ui/Dialog';
@@ -129,6 +133,17 @@ function moveItemToDrop<T>(items: T[], fromIndex: number, targetIndex: number, p
   return nextItems;
 }
 
+function moveItemToPosition(items: CollectionItem[], itemId: number, position: number) {
+  const fromIndex = items.findIndex((item) => item.id === itemId);
+  if (fromIndex < 0) return items;
+
+  const nextItems = [...items];
+  const [movedItem] = nextItems.splice(fromIndex, 1);
+  const insertIndex = Math.max(0, Math.min(position - 1, nextItems.length));
+  nextItems.splice(insertIndex, 0, movedItem);
+  return nextItems;
+}
+
 function CollectionPackCover({ collectionId }: { collectionId: number }) {
   const previewQuery = useQuery({
     ...libraryQueries.collectionItems(collectionId, { page: 1, page_size: 4 }),
@@ -151,6 +166,8 @@ function CollectionPackCover({ collectionId }: { collectionId: number }) {
 
 export function CollectionsPage() {
   const { t } = useI18n();
+  const { profile } = useAuth();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const keyword = searchParams.get('keyword') ?? '';
   const ordering = (searchParams.get('ordering') ?? '-id') as CollectionOrdering;
@@ -173,7 +190,14 @@ export function CollectionsPage() {
   const [items, setItems] = useState<CollectionItem[]>([]);
   const [draggingItemId, setDraggingItemId] = useState<number | null>(null);
   const [dropPreview, setDropPreview] = useState<DropPreview>(null);
+  const [quickSortItem, setQuickSortItem] = useState<CollectionItem | null>(null);
+  const [quickSortPosition, setQuickSortPosition] = useState('');
   const [isOrderDirty, setIsOrderDirty] = useState(false);
+  const railRef = useRef<HTMLDivElement | null>(null);
+  const autoScrollFrameRef = useRef<number | null>(null);
+  const autoScrollVelocityRef = useRef(0);
+  const isDraggingRef = useRef(false);
+  const lastDragClientXRef = useRef<number | null>(null);
   const queryClient = useQueryClient();
   const orderingOptions: Array<{ label: string; value: CollectionOrdering }> = [
     { label: t('collections.sortNewest'), value: '-id' },
@@ -218,6 +242,7 @@ export function CollectionsPage() {
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const itemCount = itemsQuery.data?.count ?? selectedCollection?.item_count ?? 0;
   const canSaveOrder = isOrderDirty && Boolean(selectedCollectionId) && !itemsQuery.isFetching;
+  const publicProfileUserId = Number(profile?.user_id ?? 0);
 
   const createCollectionMutation = useMutation({
     ...libraryMutations.createCollection(),
@@ -322,6 +347,18 @@ export function CollectionsPage() {
     setEditIsPublic(selectedCollection.is_public);
   }, [selectedCollection]);
 
+  useEffect(() => {
+    function handleWindowDragOver(event: globalThis.DragEvent) {
+      handleDragMove(event.clientX);
+    }
+
+    window.addEventListener('dragover', handleWindowDragOver);
+    return () => {
+      window.removeEventListener('dragover', handleWindowDragOver);
+      stopRailAutoScroll();
+    };
+  }, []);
+
   function updateSearchParam(key: string, value: string) {
     setSearchParams((currentParams) => {
       const nextParams = new URLSearchParams(currentParams);
@@ -376,10 +413,70 @@ export function CollectionsPage() {
 
   function handleDragOver(event: DragEvent<HTMLDivElement>, targetItemId: number) {
     event.preventDefault();
+    handleDragMove(event.clientX);
     if (!draggingItemId || draggingItemId === targetItemId) return;
     const rect = event.currentTarget.getBoundingClientRect();
     const position: DropPosition = event.clientX < rect.left + rect.width / 2 ? 'before' : 'after';
     setDropPreview((current) => (current?.itemId === targetItemId && current.position === position ? current : { itemId: targetItemId, position }));
+  }
+
+  function stopRailAutoScroll() {
+    autoScrollVelocityRef.current = 0;
+    lastDragClientXRef.current = null;
+    if (autoScrollFrameRef.current !== null) {
+      window.cancelAnimationFrame(autoScrollFrameRef.current);
+      autoScrollFrameRef.current = null;
+    }
+  }
+
+  function runRailAutoScroll() {
+    if (!railRef.current || !isDraggingRef.current || autoScrollVelocityRef.current === 0) {
+      autoScrollFrameRef.current = null;
+      return;
+    }
+
+    railRef.current.scrollLeft += autoScrollVelocityRef.current;
+    autoScrollFrameRef.current = window.requestAnimationFrame(runRailAutoScroll);
+  }
+
+  function updateRailAutoScroll(clientX: number) {
+    if (!railRef.current || !isDraggingRef.current) return;
+    const rail = railRef.current;
+    const rect = rail.getBoundingClientRect();
+    const threshold = 120;
+    const maxVelocity = 22;
+    const leftDistance = clientX - rect.left;
+    const rightDistance = rect.right - clientX;
+    let velocity = 0;
+
+    if (leftDistance < threshold) {
+      velocity = -Math.max(4, Math.round(((threshold - Math.max(0, leftDistance)) / threshold) * maxVelocity));
+    } else if (rightDistance < threshold) {
+      velocity = Math.max(4, Math.round(((threshold - Math.max(0, rightDistance)) / threshold) * maxVelocity));
+    }
+
+    autoScrollVelocityRef.current = velocity;
+    if (velocity !== 0 && autoScrollFrameRef.current === null) {
+      autoScrollFrameRef.current = window.requestAnimationFrame(runRailAutoScroll);
+    }
+    if (velocity === 0 && autoScrollFrameRef.current !== null) {
+      stopRailAutoScroll();
+    }
+  }
+
+  function handleDragMove(clientX: number) {
+    const nextClientX = clientX > 0 ? clientX : lastDragClientXRef.current;
+    if (!nextClientX) return;
+    lastDragClientXRef.current = nextClientX;
+    updateRailAutoScroll(nextClientX);
+    if (railRef.current && autoScrollVelocityRef.current !== 0) {
+      railRef.current.scrollLeft += autoScrollVelocityRef.current;
+    }
+  }
+
+  function handleRailDragOver(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    handleDragMove(event.clientX);
   }
 
   function handleDrop(event: DragEvent<HTMLDivElement>, targetItemId: number) {
@@ -392,6 +489,8 @@ export function CollectionsPage() {
 
     setItems(moveItemToDrop(items, fromIndex, toIndex, dropPreview?.position ?? 'before'));
     setDraggingItemId(null);
+    isDraggingRef.current = false;
+    stopRailAutoScroll();
     setDropPreview(null);
     setIsOrderDirty(true);
   }
@@ -407,6 +506,23 @@ export function CollectionsPage() {
         relation: item.relation || '',
       })),
     });
+  }
+
+  function openQuickSort(item: CollectionItem, index: number) {
+    setQuickSortItem(item);
+    setQuickSortPosition(String(index + 1));
+  }
+
+  function handleQuickSortSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!quickSortItem) return;
+    const position = Number(quickSortPosition);
+    if (!Number.isInteger(position) || position < 1 || position > items.length) return;
+    setItems(moveItemToPosition(items, quickSortItem.id, position));
+    setQuickSortItem(null);
+    setQuickSortPosition('');
+    setDropPreview(null);
+    setIsOrderDirty(true);
   }
 
   function addLibraryItem(userSubjectId: number) {
@@ -592,6 +708,18 @@ export function CollectionsPage() {
                   </div>
 
                   <div className="flex flex-wrap gap-2">
+                    {selectedCollection.is_public && Number.isFinite(publicProfileUserId) && publicProfileUserId > 0 ? (
+                      <Button asChild type="button" variant="secondary">
+                        <Link
+                          state={routeBackState(location, t('collections.title'))}
+                          to={routes.userCollection(publicProfileUserId, selectedCollection.id)}
+                        >
+                          <ExternalLink className="size-4" />
+                          {t('collections.viewPublic')}
+                        </Link>
+                      </Button>
+                    ) : null}
+
                     <Dialog open={addOpen} onOpenChange={setAddOpen}>
                       <DialogTrigger asChild>
                         <Button type="button">
@@ -742,7 +870,12 @@ export function CollectionsPage() {
                   <EmptyState title={t('collections.emptyItemsTitle')} description={t('collections.emptyItemsBody')} />
                 ) : null}
 
-                <div className="collection-rail" aria-label={t('collections.itemsTitle')}>
+                <div
+                  className={cn('collection-rail', draggingItemId ? 'is-sorting' : '')}
+                  ref={railRef}
+                  aria-label={t('collections.itemsTitle')}
+                  onDragOver={handleRailDragOver}
+                >
                   {items.map((item, index) => (
                     <div
                       className={cn(
@@ -755,15 +888,23 @@ export function CollectionsPage() {
                       key={item.id}
                       onDragEnd={() => {
                         setDraggingItemId(null);
+                        isDraggingRef.current = false;
+                        stopRailAutoScroll();
                         setDropPreview(null);
                       }}
                       onDragOver={(event) => handleDragOver(event, item.id)}
-                      onDragStart={() => setDraggingItemId(item.id)}
+                      onDrag={(event) => handleDragMove(event.clientX)}
+                      onDragStart={(event) => {
+                        event.dataTransfer.effectAllowed = 'move';
+                        event.dataTransfer.setData('text/plain', String(item.id));
+                        setDraggingItemId(item.id);
+                        isDraggingRef.current = true;
+                      }}
                       onDrop={(event) => handleDrop(event, item.id)}
                     >
                       <div className="collection-rail-card-top">
                         <span>{index + 1}</span>
-                        <GripVertical className="size-4 cursor-grab" />
+                        <GripVertical className="size-4 cursor-grab" aria-label={t('collections.dragHandle')} />
                       </div>
                       <Link className="collection-rail-poster" to={routes.subject(item.subject.id)}>
                         {subjectImage(item) ? (
@@ -789,8 +930,14 @@ export function CollectionsPage() {
                         ) : null}
                       </div>
                       <div className="collection-rail-actions">
-                        <Button asChild size="sm" type="button" variant="secondary">
-                          <Link to={routes.subject(item.subject.id)}>{t('common.open')}</Link>
+                        <Button
+                          aria-label={t('collections.quickSort')}
+                          size="icon"
+                          type="button"
+                          variant="ghost"
+                          onClick={() => openQuickSort(item, index)}
+                        >
+                          <ListOrdered className="size-4" />
                         </Button>
                         <Button
                           aria-label={t('collections.removeItem')}
@@ -806,6 +953,38 @@ export function CollectionsPage() {
                     </div>
                   ))}
                 </div>
+                <Dialog open={Boolean(quickSortItem)} onOpenChange={(open) => {
+                  if (!open) {
+                    setQuickSortItem(null);
+                    setQuickSortPosition('');
+                  }
+                }}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>{t('collections.quickSortTitle')}</DialogTitle>
+                      <DialogDescription>{t('collections.quickSortDescription')}</DialogDescription>
+                    </DialogHeader>
+                    <form className="grid gap-4" onSubmit={handleQuickSortSubmit}>
+                      <div className="rounded-xl bg-neutral-100 p-4 text-sm font-semibold text-neutral-700 dark:bg-neutral-900 dark:text-neutral-300">
+                        {quickSortItem ? subjectTitle(quickSortItem, t('common.untitledSubject')) : null}
+                      </div>
+                      <label className="grid gap-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                        {t('collections.position')}
+                        <Input
+                          inputMode="numeric"
+                          max={items.length}
+                          min={1}
+                          type="number"
+                          value={quickSortPosition}
+                          onChange={(event) => setQuickSortPosition(event.target.value)}
+                        />
+                      </label>
+                      <Button type="submit" disabled={!quickSortItem || !quickSortPosition}>
+                        {t('collections.moveItem')}
+                      </Button>
+                    </form>
+                  </DialogContent>
+                </Dialog>
               </div>
             </div>
           )}
