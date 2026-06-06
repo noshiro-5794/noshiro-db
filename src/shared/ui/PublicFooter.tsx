@@ -10,7 +10,7 @@ type FooterLink =
   | { type: 'route'; label: string; to: string }
   | { type: 'external'; label: string; href: string };
 
-const repositoryUrl = 'https://github.com/LHYHENRY/noshiro-db-frontend';
+const githubProfileUrl = 'https://github.com/noshiro-5794/';
 const contactEmail = 'hello@noshiro.moe';
 
 export function PublicFooter({ variant = 'public' }: PublicFooterProps) {
@@ -24,7 +24,7 @@ export function PublicFooter({ variant = 'public' }: PublicFooterProps) {
     { type: 'route', label: t('footer.community'), to: routes.docs('community') },
     { type: 'route', label: t('nav.docs'), to: routes.docsIntroduction },
     { type: 'external', label: t('footer.contact'), href: `mailto:${contactEmail}` },
-    { type: 'external', label: 'GitHub', href: repositoryUrl },
+    { type: 'external', label: 'GitHub', href: githubProfileUrl },
   ];
 
   return (
