@@ -294,7 +294,7 @@ export function SearchPage() {
       />
       <div className="grid gap-6 pb-8">
         <form
-          className={`content-toolbar ${role === 'guest' ? 'is-public' : ''}`}
+          className="content-toolbar"
           onSubmit={handleSubmit}
         >
             <div className="content-toolbar-grid is-search">

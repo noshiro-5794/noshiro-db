@@ -348,13 +348,13 @@ export function AdminPage() {
   }
 
   const isPending = syncBangumiMutation.isPending || calendarMutation.isPending || incrementalMutation.isPending;
-  const jobTotalPages = Math.max(1, Math.ceil((jobsQuery.data?.count ?? 0) / jobPageSize));
+  const jobTotalPages = jobsQuery.data ? Math.max(1, Math.ceil(jobsQuery.data.count / jobPageSize)) : Math.max(1, jobPage);
 
   useEffect(() => {
-    if (jobPage > jobTotalPages) {
+    if (jobsQuery.data && jobPage > jobTotalPages) {
       setJobPage(jobTotalPages);
     }
-  }, [jobPage, jobTotalPages]);
+  }, [jobPage, jobTotalPages, jobsQuery.data]);
 
   return (
     <Page title={t('admin.title')} eyebrow={t('nav.groupMore')}>
