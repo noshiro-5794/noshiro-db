@@ -1,4 +1,4 @@
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
 import { CommunityCommentsSection } from '@/features/community/components/CommunityCommentsSection';
@@ -7,6 +7,7 @@ import { useI18n } from '@/features/i18n/use-i18n';
 import { PublicCollectionRailItem, PublicRatingStars } from '@/features/social/components/PublicContentItems';
 import { socialQueries } from '@/features/social/social-queries';
 import { routes } from '@/routes/paths';
+import { backTargetFromState } from '@/shared/navigation/route-state';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/FeedbackState';
@@ -21,6 +22,7 @@ function numberMeta(value: unknown) {
 
 export function PublicCollectionPage() {
   const { t } = useI18n();
+  const location = useLocation();
   const params = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const userId = Number(params.userId);
@@ -35,6 +37,7 @@ export function PublicCollectionPage() {
   });
   const items = itemsQuery.data?.results ?? [];
   const totalPages = Math.max(1, Math.ceil((itemsQuery.data?.count ?? 0) / pageSize));
+  const backTarget = backTargetFromState(location, Number.isFinite(userId) && userId > 0 ? routes.userCollections(userId) : routes.home);
 
   function goToPage(page: number) {
     const next = new URLSearchParams(searchParams);
@@ -56,7 +59,7 @@ export function PublicCollectionPage() {
       eyebrow={t('profile.publicCollections')}
       actions={(
         <Button asChild type="button" variant="secondary">
-          <Link to={routes.userCollections(userId)}><ArrowLeft className="size-4" /> {t('profile.allCollectionsTitle')}</Link>
+          <Link to={backTarget}><ArrowLeft className="size-4" /> {t('common.back')}</Link>
         </Button>
       )}
     >

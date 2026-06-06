@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Seo } from '@/shared/seo/Seo';
 
 type PageProps = {
   title: string;
@@ -6,12 +7,14 @@ type PageProps = {
   description?: string;
   actions?: ReactNode;
   hideHeader?: boolean;
+  seo?: boolean;
   children?: ReactNode;
 };
 
-export function Page({ title, eyebrow, description, actions, hideHeader = false, children }: PageProps) {
+export function Page({ title, eyebrow, description, actions, hideHeader = false, seo = true, children }: PageProps) {
   return (
     <section className="page-shell">
+      {seo ? <Seo title={title} description={description} /> : null}
       {hideHeader ? (
         <h1 className="sr-only">{title}</h1>
       ) : (
