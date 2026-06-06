@@ -84,7 +84,7 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <AuthPageLayout>
+    <AuthPageLayout title={t('auth.resetPassword')}>
       <form className="grid gap-5" onSubmit={handleSubmit}>
         <div className="motion-rise grid justify-items-center text-center">
           <img className="size-12 rounded-2xl" src="/brand/icon.svg" alt="" aria-hidden="true" />

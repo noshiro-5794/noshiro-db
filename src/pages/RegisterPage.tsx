@@ -82,7 +82,7 @@ export function RegisterPage() {
   }
 
   return (
-    <AuthPageLayout>
+    <AuthPageLayout title={t('register.title')}>
       <form
         className="grid gap-5"
         onSubmit={handleSubmit}
