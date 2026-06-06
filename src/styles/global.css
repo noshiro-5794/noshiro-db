@@ -1343,6 +1343,15 @@
     box-shadow: 0 1px 2px rgb(17 17 24 / 4%);
   }
 
+  .content-toolbar.is-public {
+    border-color: color-mix(in srgb, var(--color-border) 58%, transparent);
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--color-surface) 52%, transparent), transparent),
+      color-mix(in srgb, var(--color-bg) 72%, transparent);
+    box-shadow: inset 0 1px 0 color-mix(in srgb, white 46%, transparent);
+    backdrop-filter: blur(18px);
+  }
+
   .content-toolbar-grid {
     @apply grid items-center gap-2.5;
   }
@@ -1382,6 +1391,22 @@
 
   .content-toolbar-filter-item {
     @apply grid min-w-44 grid-cols-[minmax(0,1fr)_40px] gap-1;
+  }
+
+  .calendar-weekday-bar {
+    @apply flex flex-wrap gap-2 rounded-lg border p-2;
+    border-color: color-mix(in srgb, var(--color-border) 72%, transparent);
+    background: var(--color-surface);
+    box-shadow: 0 1px 2px rgb(17 17 24 / 4%);
+  }
+
+  .calendar-weekday-bar.is-public {
+    border-color: color-mix(in srgb, var(--color-border) 58%, transparent);
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--color-surface) 48%, transparent), transparent),
+      color-mix(in srgb, var(--color-bg) 76%, transparent);
+    box-shadow: inset 0 1px 0 color-mix(in srgb, white 42%, transparent);
+    backdrop-filter: blur(18px);
   }
 
   .content-filter-panel {

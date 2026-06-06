@@ -10,6 +10,7 @@ import type { CalendarGroup, CalendarSubjectItem, WeekdayEn } from '@/lib/api/ty
 import { routes } from '@/routes/paths';
 import type { RouteBackState } from '@/shared/navigation/route-state';
 import { routeBackState } from '@/shared/navigation/route-state';
+import { Seo } from '@/shared/seo/Seo';
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/FeedbackState';
 import { Page } from '@/shared/ui/Page';
 
@@ -128,8 +129,13 @@ export function CalendarPage() {
       eyebrow={t('nav.groupDiscover')}
       hideHeader={role === 'guest'}
     >
+      <Seo
+        title={t('calendar.title')}
+        description="Browse the weekly anime calendar, discover airing titles by weekday, and open detailed subject pages."
+        path={routes.calendar}
+      />
       <div className="grid gap-6 pb-8">
-        <div className="flex flex-wrap gap-2">
+        <div className={`calendar-weekday-bar ${role === 'guest' ? 'is-public' : ''}`}>
             {weekdays.map((weekday) => {
               const isActive = selectedWeekday === weekday;
               const count = weekday ? (findGroup(groups, weekday)?.items.length ?? 0) : allItems.length;
