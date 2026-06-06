@@ -1,11 +1,12 @@
 import { mutationOptions, queryOptions } from '@tanstack/react-query';
 import { syncApi } from '@/features/sync/api';
-import type { UUID } from '@/lib/api/types';
+import type { PageQuery, UUID } from '@/lib/api/types';
 
 export const syncQueryKeys = {
   all: ['sync'] as const,
   incrementalStatus: () => [...syncQueryKeys.all, 'incremental-status'] as const,
   jobs: () => [...syncQueryKeys.all, 'jobs'] as const,
+  jobsList: (query: PageQuery & { status?: string; job_type?: string }) => [...syncQueryKeys.jobs(), query] as const,
 };
 
 export const syncQueries = {
@@ -15,10 +16,10 @@ export const syncQueries = {
       queryFn: () => syncApi.getIncrementalStatus(),
     }),
 
-  jobs: () =>
+  jobs: (query: PageQuery & { status?: string; job_type?: string } = {}) =>
     queryOptions({
-      queryKey: syncQueryKeys.jobs(),
-      queryFn: () => syncApi.getJobs({ limit: 20 }),
+      queryKey: syncQueryKeys.jobsList(query),
+      queryFn: () => syncApi.getJobs(query),
     }),
 };
 

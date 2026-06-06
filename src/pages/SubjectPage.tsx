@@ -10,6 +10,7 @@ import { subjectQueries } from '@/features/subjects/subject-queries';
 import type { ProgressSummary, RatingDetail, SubjectCharacter, SubjectDetail, SubjectEpisode, SubjectRelation, SubjectStaff, UserSubjectStatus } from '@/lib/api/types';
 import { routes } from '@/routes/paths';
 import { currentRoutePath, routeBackState } from '@/shared/navigation/route-state';
+import { Seo } from '@/shared/seo/Seo';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/Card';
@@ -81,6 +82,14 @@ function titleOf(subject: SubjectDetail, fallback = 'Untitled') {
 
 function metaOf(subject: SubjectDetail) {
   return [subject.subject_type, subject.platform, subject.date].filter(Boolean).join(' · ');
+}
+
+function seoDescriptionOf(subject: SubjectDetail) {
+  return subject.description_excerpt || subject.summary || subject.description || metaOf(subject) || 'Open anime and galgame details on Noshiro DB.';
+}
+
+function seoImageOf(subject: SubjectDetail) {
+  return subject.images?.original || subject.images?.poster || subject.image_original || subject.images?.thumbnail || subject.image_thumbnail || null;
 }
 
 function bangumiSubjectIdOf(subject?: SubjectDetail | null) {
@@ -808,6 +817,12 @@ export function SubjectPage() {
         </Button>
       )}
     >
+      <Seo
+        title={titleOf(subject, t('common.untitledSubject'))}
+        description={seoDescriptionOf(subject)}
+        image={seoImageOf(subject)}
+        path={routes.subject(subject.id)}
+      />
       <nav className={`sticky ${isAuthenticated ? 'top-3' : 'top-20'} z-20 mb-5 flex justify-center`}>
         <div className="flex max-w-full gap-1 overflow-x-auto rounded-full border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_92%,transparent)] p-1 text-sm shadow-sm backdrop-blur">
           {[
