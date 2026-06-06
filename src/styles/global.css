@@ -2722,11 +2722,15 @@
   }
 
   .collection-rail {
-    @apply flex max-w-full gap-5 overflow-x-auto px-6 py-5;
+    @apply flex w-full max-w-full gap-5 overflow-x-auto px-6 py-5;
     min-width: 0;
     scroll-snap-type: x proximity;
     scroll-padding-inline: 1.5rem;
     scrollbar-width: thin;
+  }
+
+  .collection-rail.is-sorting {
+    scroll-snap-type: none;
   }
 
   .collection-rail-card {

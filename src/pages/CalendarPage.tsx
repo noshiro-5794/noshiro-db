@@ -128,6 +128,7 @@ export function CalendarPage() {
       title={t('calendar.title')}
       eyebrow={t('nav.groupDiscover')}
       hideHeader={role === 'guest'}
+      seo={false}
     >
       <Seo
         title={t('calendar.title')}

@@ -84,7 +84,7 @@ export function LoginPage() {
   }
 
   return (
-    <AuthPageLayout>
+    <AuthPageLayout title={t('login.title')}>
       <form
         className="grid gap-5"
         onSubmit={handleSubmit}

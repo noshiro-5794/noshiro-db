@@ -1,7 +1,9 @@
 import type { ComponentProps, ReactNode } from 'react';
+import { Seo } from '@/shared/seo/Seo';
 
 type AuthPageLayoutProps = {
   children: ReactNode;
+  title: string;
 };
 
 type AuthFieldProps = ComponentProps<'input'> & {
@@ -9,9 +11,10 @@ type AuthFieldProps = ComponentProps<'input'> & {
   icon: ReactNode;
 };
 
-export function AuthPageLayout({ children }: AuthPageLayoutProps) {
+export function AuthPageLayout({ children, title }: AuthPageLayoutProps) {
   return (
     <main className="grid min-h-screen place-items-center bg-[var(--color-bg)] px-5 py-10 text-[var(--color-text)]">
+      <Seo noindex title={title} />
       <div className="w-full max-w-[380px]">{children}</div>
     </main>
   );

@@ -7,6 +7,7 @@ import { indexApi } from '@/features/subjects/api';
 import { subjectQueries } from '@/features/subjects/subject-queries';
 import type { ApiPage, PageQuery, SubjectCharacter, SubjectDetail, SubjectEpisode, SubjectRelation, SubjectStaff, SubjectSummary, UUID } from '@/lib/api/types';
 import { routes } from '@/routes/paths';
+import { Seo } from '@/shared/seo/Seo';
 import { Button } from '@/shared/ui/Button';
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/FeedbackState';
 import { useI18n } from '@/features/i18n/use-i18n';
@@ -78,6 +79,10 @@ type ViewTransform = {
   offsetX: number;
   offsetY: number;
 };
+
+function subjectTitle(subject: SubjectDetail | undefined, fallback: string) {
+  return subject?.display_title || subject?.title || subject?.title_cn || fallback;
+}
 
 type PanState = {
   startX: number;
@@ -990,6 +995,12 @@ export function SubjectGraphPage() {
 
   return (
     <section className="graph-fullscreen">
+      <Seo
+        title={`${subjectTitle(subject, t('subject.title'))} · ${t('graph.title')}`}
+        description={subject?.description_excerpt || subject?.summary || t('graph.description')}
+        image={subject?.images?.poster || subject?.image || subject?.image_thumbnail}
+        path={subjectId ? routes.subjectGraph(subjectId) : undefined}
+      />
       <div className="graph-back">
         <Button asChild aria-label={t('common.back')} size="icon" variant="secondary">
           <Link to={subjectId ? routes.subject(subjectId) : routes.search}>

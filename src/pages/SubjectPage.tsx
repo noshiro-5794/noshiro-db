@@ -809,6 +809,7 @@ export function SubjectPage() {
       title={titleOf(subject, t('common.untitledSubject'))}
       eyebrow={t('subject.title')}
       description={metaOf(subject)}
+      seo={false}
       actions={(
         <Button asChild aria-label={t('subject.graph')} className="graph-entry-button" size="icon" type="button" variant="secondary">
           <Link title={t('subject.graph')} to={routes.subjectGraph(subject.id)}>

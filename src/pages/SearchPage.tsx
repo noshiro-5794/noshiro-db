@@ -286,6 +286,7 @@ export function SearchPage() {
       title={t('search.title')}
       eyebrow={t('nav.groupDiscover')}
       hideHeader={role === 'guest'}
+      seo={false}
     >
       <Seo
         title={t('search.title')}

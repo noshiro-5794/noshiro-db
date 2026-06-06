@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Home, Search } from 'lucide-react';
 import { useI18n } from '@/features/i18n/use-i18n';
 import { routes } from '@/routes/paths';
+import { Seo } from '@/shared/seo/Seo';
 import { Button } from '@/shared/ui/Button';
 
 export function NotFoundPage() {
@@ -19,6 +20,7 @@ export function NotFoundPage() {
 
   return (
     <section className="grid min-h-full place-items-center px-5 py-16">
+      <Seo noindex title={t('notFound.title')} description={t('notFound.description')} />
       <div className="mx-auto grid w-full max-w-xl justify-items-center text-center">
         <span className="rounded-full border border-neutral-200 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
           404
