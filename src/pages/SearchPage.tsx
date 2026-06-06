@@ -28,6 +28,7 @@ import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
 import type { RouteBackState } from '@/shared/navigation/route-state';
 import { routeBackState } from '@/shared/navigation/route-state';
+import { Seo } from '@/shared/seo/Seo';
 import { Page } from '@/shared/ui/Page';
 import { Pagination } from '@/shared/ui/Pagination';
 
@@ -286,9 +287,14 @@ export function SearchPage() {
       eyebrow={t('nav.groupDiscover')}
       hideHeader={role === 'guest'}
     >
+      <Seo
+        title={t('search.title')}
+        description="Search anime and galgame entries by title, year, season, platform, episode count, content type, and source ID."
+        path={routes.search}
+      />
       <div className="grid gap-6 pb-8">
         <form
-          className="content-toolbar"
+          className={`content-toolbar ${role === 'guest' ? 'is-public' : ''}`}
           onSubmit={handleSubmit}
         >
             <div className="content-toolbar-grid is-search">

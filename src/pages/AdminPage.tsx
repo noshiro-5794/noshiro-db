@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Activity, CalendarDays, DatabaseZap, RefreshCw, ShieldCheck } from 'lucide-react';
 import { syncMutations, syncQueries, syncQueryKeys } from '@/features/sync/sync-queries';
@@ -11,6 +11,7 @@ import { ErrorState, LoadingState } from '@/shared/ui/FeedbackState';
 import { FilterMenu } from '@/shared/ui/FilterMenu';
 import { Input } from '@/shared/ui/Input';
 import { Page } from '@/shared/ui/Page';
+import { Pagination } from '@/shared/ui/Pagination';
 
 const incrementalTaskOptions = [
   '',
@@ -23,6 +24,7 @@ const incrementalTaskOptions = [
   'incremental_staff',
 ];
 const incrementalTaskValues = incrementalTaskOptions as ReadonlyArray<string>;
+const jobPageSize = 8;
 
 type AdminResult = {
   title: string;
@@ -194,13 +196,19 @@ function StatusList({ tasks }: { tasks: SyncTaskStatus[] }) {
 }
 
 function SyncJobList({
+  currentPage,
   isRefreshing,
   jobs,
   onRefresh,
+  onPageChange,
+  totalPages,
 }: {
+  currentPage: number;
   isRefreshing: boolean;
   jobs: SyncJob[];
   onRefresh: () => void;
+  onPageChange: (page: number) => void;
+  totalPages: number;
 }) {
   const { t } = useI18n();
 
@@ -272,6 +280,7 @@ function SyncJobList({
             })}
           </div>
         )}
+        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={onPageChange} />
       </CardContent>
     </Card>
   );
@@ -287,12 +296,13 @@ export function AdminPage() {
   const [syncSubjectDetails, setSyncSubjectDetails] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [result, setResult] = useState<AdminResult | null>(null);
+  const [jobPage, setJobPage] = useState(1);
 
   const statusQuery = useQuery(syncQueries.incrementalStatus());
   const syncBangumiMutation = useMutation(syncMutations.syncBangumiSubject());
   const calendarMutation = useMutation(syncMutations.runCalendar());
   const incrementalMutation = useMutation(syncMutations.runIncremental());
-  const jobsQuery = useQuery(syncQueries.jobs());
+  const jobsQuery = useQuery(syncQueries.jobs({ page: jobPage, page_size: jobPageSize }));
 
   async function refreshStatus() {
     await Promise.all([
@@ -312,6 +322,7 @@ export function AdminPage() {
 
     const data = await syncBangumiMutation.mutateAsync({ bangumi_id: parsedBangumiId, run_async: runAsync });
     setResult({ title: t('admin.bangumiSubject'), data });
+    setJobPage(1);
     await refreshStatus();
   }
 
@@ -319,6 +330,7 @@ export function AdminPage() {
     setErrorMessage('');
     const data = await calendarMutation.mutateAsync({ run_async: runAsync, sync_subject_details: syncSubjectDetails });
     setResult({ title: t('admin.calendarSync'), data });
+    setJobPage(1);
     await refreshStatus();
   }
 
@@ -331,10 +343,18 @@ export function AdminPage() {
       task_name: taskName || undefined,
     });
     setResult({ title: t('admin.incrementalSync'), data });
+    setJobPage(1);
     await refreshStatus();
   }
 
   const isPending = syncBangumiMutation.isPending || calendarMutation.isPending || incrementalMutation.isPending;
+  const jobTotalPages = Math.max(1, Math.ceil((jobsQuery.data?.count ?? 0) / jobPageSize));
+
+  useEffect(() => {
+    if (jobPage > jobTotalPages) {
+      setJobPage(jobTotalPages);
+    }
+  }, [jobPage, jobTotalPages]);
 
   return (
     <Page title={t('admin.title')} eyebrow={t('nav.groupMore')}>
@@ -432,11 +452,14 @@ export function AdminPage() {
         </section>
 
         <SyncJobList
+          currentPage={jobPage}
           isRefreshing={jobsQuery.isFetching}
-          jobs={jobsQuery.data?.jobs ?? []}
+          jobs={jobsQuery.data?.results ?? []}
           onRefresh={() => {
             void refreshStatus();
           }}
+          onPageChange={setJobPage}
+          totalPages={jobTotalPages}
         />
 
         <section>

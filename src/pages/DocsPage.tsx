@@ -4,6 +4,7 @@ import { useAuth } from '@/features/auth/use-auth';
 import { defaultDocsSlug, docsContent, personalDocsSlug } from '@/features/docs/content/docs';
 import { useI18n } from '@/features/i18n/use-i18n';
 import { routes } from '@/routes/paths';
+import { Seo } from '@/shared/seo/Seo';
 import { Button } from '@/shared/ui/Button';
 import { PublicFooter } from '@/shared/ui/PublicFooter';
 
@@ -61,6 +62,7 @@ export function DocsPage() {
 
   return (
     <>
+      <Seo title={page.title} description={page.description} path={routes.docs(page.slug)} />
       <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-[1320px] gap-8 px-5 py-10 lg:grid-cols-[230px_minmax(0,1fr)_210px] lg:px-8">
         <aside className="hidden lg:block">
           <div className={`sticky ${stickyTopClass} grid gap-5`}>
