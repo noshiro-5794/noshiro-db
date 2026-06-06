@@ -135,7 +135,7 @@ export function CalendarPage() {
         path={routes.calendar}
       />
       <div className="grid gap-6 pb-8">
-        <div className={`calendar-weekday-bar ${role === 'guest' ? 'is-public' : ''}`}>
+        <div className="flex flex-wrap gap-2">
             {weekdays.map((weekday) => {
               const isActive = selectedWeekday === weekday;
               const count = weekday ? (findGroup(groups, weekday)?.items.length ?? 0) : allItems.length;
