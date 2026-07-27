@@ -1,87 +1,99 @@
 # Architecture
 
-Noshiro DB frontend uses a feature-oriented structure with shared infrastructure kept separate from product modules.
+Noshiro DB frontend uses a layered, domain-oriented architecture. Dependencies flow in one direction:
 
 ```text
-src/app/       application shell, providers, and global layout
-src/config/    environment access
-src/features/  product features, API wrappers, query options, and feature components
-src/lib/       framework-agnostic infrastructure such as API and query clients
-src/pages/     route-level pages
-src/routes/    path helpers and route table
-src/shared/    reusable UI primitives
-src/styles/    global Tailwind CSS and design tokens
+app -> pages -> widgets -> features -> entities -> shared
 ```
 
-## Boundaries
+Each layer may use layers to its right, but never layers to its left. ESLint enforces this rule and requires
+consumers to import entity, feature, and widget slices through their public `index.ts` entry point.
 
-- `lib` is for technical infrastructure that does not belong to a product domain.
-- `features` is for domain logic such as auth, subjects, library, search, calendar, community, social, docs, and sync.
-- `shared/ui` is for reusable UI primitives without domain ownership.
-- `pages` compose features into routes.
-- `routes` owns path helpers, route metadata, and auth boundaries.
+## Source Layers
+
+```text
+src/app/       application bootstrap, providers, router, shell, and global styles
+src/pages/     route-level composition grouped by route domain
+src/widgets/   reusable, product-aware sections composed from features and entities
+src/features/  user interactions and use cases
+src/entities/  domain data access, query definitions, models, and entity UI
+src/shared/    domain-independent infrastructure, utilities, and UI primitives
+```
+
+`src/main.tsx` is the browser entry point. It mounts application providers and the router, but contains no product
+logic.
+
+## Slice Structure
+
+Entities, features, and widgets are independent slices. A slice uses only the segments it needs:
+
+```text
+slice/
+  api/       transport calls owned by the slice
+  model/     query definitions, state, and domain helpers
+  ui/        slice-owned React components
+  index.ts   public API for other slices and layers
+```
+
+Internal files use relative imports. External consumers use only the public API, for example
+`@/entities/subject`, never `@/entities/subject/model/subject-queries`.
+
+Pages are grouped by route domain. Page-local helpers, content, and UI may live beneath that page directory and are
+not public cross-page APIs.
+
+## Domain Ownership
+
+- `entities/session` owns authentication transport, the current session model, and profile access.
+- `entities/subject` owns subject search/detail data and subject presentation.
+- `entities/library` owns marks, progress, tags, ratings, reviews, and collections.
+- `entities/community` owns posts, comments, reactions, bookmarks, follows, activity, and notifications.
+- `entities/user` owns public user profiles and public user content queries.
+- `features/auth` owns login and registration interaction helpers.
+- `features/community` owns community mutations that coordinate entity caches and interactive community UI.
+- `features/search` owns client-side search filters and calendar search transformations.
+- `features/reviews` owns Markdown editing and sanitized rendering.
+- `features/admin-sync` owns administrative synchronization operations.
+
+Widgets compose these slices into reusable product sections such as the home dashboard, notification control, public
+content presentation, and public footer.
 
 ## API Layer
 
-Feature APIs live next to their domain:
+`src/shared/api` contains the HTTP client and transport contracts. Contracts are split by backend resource domain in
+`src/shared/api/contracts/`; its `index.ts` is the only public import path. Domain-owned API calls and TanStack Query
+definitions remain in their entity or feature slice.
 
-- `features/auth/api.ts`
-- `features/subjects/api.ts`
-- `features/library/api.ts`
-- `features/community/api.ts`
-- `features/social/api.ts`
-- `features/sync/api.ts`
+The backend resource split is mirrored by the frontend:
 
-React Query options are defined per feature so pages can stay focused on composition and user flow.
+- `/api/users/` owns auth, profile, marks, progress, tags, reviews, collections, and public profile resources.
+- `/api/community/` owns follows, activities, posts, notifications, bookmarks, reactions, comments, and reports.
+- administrative synchronization routes are owned by `features/admin-sync`.
 
-The backend currently separates social/community APIs from user-owned record APIs:
+## Routing
 
-- `/api/users/` keeps auth, profile, subject marks, progress, tags, reviews, collections, and public profile resources.
-- `/api/community/` owns follows, followers, following, activities, feed, notifications, bookmarks, reactions, comments, and reports.
-
-Frontend modules follow the same split: user-owned library/review/collection flows stay in their feature modules, while community interaction and public activity flows use `features/community` and `features/social`.
-
-## Route Pages
-
-Route pages live in `src/pages` and compose feature modules into user-facing flows.
-
-Public pages:
-
-- Home
-- Search
-- Calendar
-- Subject
-- Subject Graph
-- Docs
-
-Authenticated pages:
-
-- Workspace Home
-- Me and public profile shortcuts
-- Settings
-- Library
-- Collections
-- Reviews
-- Bookmarks
-- Notifications
-- Activity/community pages
-
-Admin pages are authenticated and additionally depend on the backend role returned for the current user.
+`src/app/router/router.tsx` defines the TanStack Router tree, route-level lazy loading, and access boundaries.
+Application code uses the adapters in `src/shared/routing/navigation/` for links and navigation state. Shared path
+builders in `src/shared/routing/paths.ts` keep URL construction consistent and independently testable.
 
 ## Internationalization
 
-Global UI messages live in `src/features/i18n/messages.ts`. A few content-heavy pages keep local content maps:
+`src/shared/i18n/catalogs/` contains business-focused message catalogs. Every catalog defines Chinese, English, and
+Japanese together; `defineMessages()` checks key parity at compile time, and `catalog.test.ts` verifies the assembled
+catalog at runtime.
 
-- `src/features/docs/content/docs.ts` for frontend-owned docs pages
-- `src/pages/MePage.tsx` for compact profile-page labels
+Content-heavy documentation remains page-local in `src/pages/docs/content/docs.ts`. Locale-sensitive dates and
+weekdays use `Intl` through shared formatting helpers instead of duplicated label maps.
 
-Copy should stay neutral for mixed anime and galgame entries. Use status labels such as planned, in progress, completed, on hold, and dropped for subject-level state. Episode-specific controls may use watched language because they apply to anime episodes.
+## Global Concerns
+
+- Providers are composed in `src/app/providers/AppProviders.tsx`.
+- Application chrome lives in `src/app/shell/`.
+- Global Tailwind CSS and design tokens live in `src/app/styles/global.css`.
+- Environment parsing lives in `src/shared/config/env.ts`.
+- The Query client lives in `src/shared/query/query-client.ts`.
+- Reusable, domain-independent controls live in `src/shared/ui/`.
 
 ## Static Assets
 
-Production static files live under `public/`:
-
-- `brand/icon.svg`
-- favicon and Apple touch icon files
-- PWA icons and `site.webmanifest`
-- placeholder images used by cards and avatars
+Production static files live under `public/`, including the brand icon, PWA metadata, social image, and placeholder
+images. Build output remains in `dist/` and is not source code.

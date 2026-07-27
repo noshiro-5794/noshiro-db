@@ -1,0 +1,4 @@
+engineStrict: true
+fund: false
+minimumReleaseAge: 1440
+strictPeerDependencies: true
