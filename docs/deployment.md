@@ -39,17 +39,15 @@ VITE_HCAPTCHA_SITE_KEY=your-site-key
 Build:
 
 ```bash
-source ~/.nvm/nvm.sh
-nvm use 20
-npm ci
-npm run typecheck
-npm run lint
-npm run build
+fnm use --install-if-missing
+corepack enable pnpm
+pnpm install --frozen-lockfile
+pnpm check
 ```
 
 The production files are generated in `dist/`.
 
-If dependencies are already installed on the deployment machine, `npm run build` is enough for a rebuild. Use `npm ci` for clean release builds.
+If dependencies are already installed on the deployment machine, `pnpm build` is enough for a rebuild. Use `pnpm install --frozen-lockfile` for clean release builds.
 
 ## 1Panel Static Website
 
@@ -73,7 +71,7 @@ rsync -a --delete dist/ /path/to/1panel/site/root/
 
 ## SPA Fallback
 
-React Router handles routes such as `/search`, `/calendar`, and `/subjects/<id>` in the browser. The static server must fall back to `index.html` when a real file does not exist.
+TanStack Router handles routes such as `/search`, `/calendar`, and `/subjects/<id>` in the browser. The static server must fall back to `index.html` when a real file does not exist.
 
 In 1Panel, set the static website rewrite or OpenResty config to:
 
