@@ -1,12 +1,13 @@
 import { useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
-import { env } from '@/config/env';
-import type { Locale } from '@/features/i18n/messages';
-import { useI18n } from '@/features/i18n/use-i18n';
+import { useLocation } from '@/shared/routing/navigation';
+import { env } from '@/shared/config/env';
+import type { Locale } from '@/shared/i18n';
+import { useI18n } from '@/shared/i18n';
 
 const siteName = 'Noshiro DB';
 const defaultTitle = siteName;
-const defaultDescription = 'Explore anime and galgames, browse weekly anime, and keep track of marks, reviews, and collections.';
+const defaultDescription =
+  'Explore anime and galgames, browse weekly anime, and keep track of marks, reviews, and collections.';
 const defaultImage = '/icons/icon-512.png';
 
 const htmlLangByLocale: Record<Locale, string> = {

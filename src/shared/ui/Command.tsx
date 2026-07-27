@@ -1,10 +1,18 @@
 import * as React from 'react';
 import { Command as CommandPrimitive } from 'cmdk';
 import { Search } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/cn';
 
 function Command({ className, ...props }: React.ComponentProps<typeof CommandPrimitive>) {
-  return <CommandPrimitive className={cn('flex h-full w-full flex-col overflow-hidden rounded-xl bg-[var(--color-surface-elevated)] text-[var(--color-text)]', className)} {...props} />;
+  return (
+    <CommandPrimitive
+      className={cn(
+        'flex h-full w-full flex-col overflow-hidden rounded-xl bg-[var(--color-surface-elevated)] text-[var(--color-text)]',
+        className,
+      )}
+      {...props}
+    />
+  );
 }
 
 function CommandInput({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.Input>) {
@@ -12,7 +20,10 @@ function CommandInput({ className, ...props }: React.ComponentProps<typeof Comma
     <div className="flex items-center border-b border-[var(--color-border)] px-3">
       <Search className="mr-2 size-4 shrink-0 text-neutral-400" />
       <CommandPrimitive.Input
-        className={cn('flex h-11 w-full bg-transparent text-sm outline-none placeholder:text-neutral-400 disabled:cursor-not-allowed disabled:opacity-50', className)}
+        className={cn(
+          'flex h-11 w-full bg-transparent text-sm outline-none placeholder:text-neutral-400 disabled:cursor-not-allowed disabled:opacity-50',
+          className,
+        )}
         {...props}
       />
     </div>
@@ -28,7 +39,9 @@ function CommandEmpty(props: React.ComponentProps<typeof CommandPrimitive.Empty>
 }
 
 function CommandGroup({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.Group>) {
-  return <CommandPrimitive.Group className={cn('overflow-hidden p-1.5 text-[var(--color-text)]', className)} {...props} />;
+  return (
+    <CommandPrimitive.Group className={cn('overflow-hidden p-1.5 text-[var(--color-text)]', className)} {...props} />
+  );
 }
 
 function CommandItem({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.Item>) {

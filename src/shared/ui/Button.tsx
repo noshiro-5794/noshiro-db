@@ -1,14 +1,15 @@
 import * as React from 'react';
 import { Slot } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/cn';
 
 const buttonVariants = cva(
   'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold outline-none transition disabled:pointer-events-none disabled:opacity-50 focus-visible:ring-4 focus-visible:ring-[var(--color-focus-ring)]',
   {
     variants: {
       variant: {
-        default: 'border border-[color-mix(in_srgb,var(--color-text)_16%,var(--color-border))] bg-[var(--color-text)] text-[var(--color-bg)] shadow-sm hover:opacity-90',
+        default:
+          'border border-[color-mix(in_srgb,var(--color-text)_16%,var(--color-border))] bg-[var(--color-text)] text-[var(--color-bg)] shadow-sm hover:opacity-90',
         secondary:
           'border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] shadow-sm hover:border-[var(--color-accent-border)] hover:bg-[var(--color-surface-muted)]',
         ghost: 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text)]',

@@ -1,7 +1,7 @@
 import type * as React from 'react';
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
 import { Check } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/cn';
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
@@ -69,7 +69,10 @@ function DropdownMenuCheckboxItem({
   );
 }
 
-const DropdownMenuSeparator = ({ className, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Separator>) => (
+const DropdownMenuSeparator = ({
+  className,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Separator>) => (
   <DropdownMenuPrimitive.Separator className={cn('-mx-1 my-1 h-px bg-[var(--color-border)]', className)} {...props} />
 );
 

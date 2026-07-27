@@ -1,11 +1,6 @@
 import { Check, ChevronDown } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/shared/ui/DropdownMenu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/ui/DropdownMenu';
 
 export type FilterMenuOption<TValue extends string> = {
   label: string;

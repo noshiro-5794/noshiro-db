@@ -1,13 +1,16 @@
 import type * as React from 'react';
 import * as TabsPrimitive from '@radix-ui/react-tabs';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/cn';
 
 const Tabs = TabsPrimitive.Root;
 
 function TabsList({ className, ...props }: React.ComponentProps<typeof TabsPrimitive.List>) {
   return (
     <TabsPrimitive.List
-      className={cn('inline-flex h-10 items-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-1', className)}
+      className={cn(
+        'inline-flex h-10 items-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-1',
+        className,
+      )}
       {...props}
     />
   );

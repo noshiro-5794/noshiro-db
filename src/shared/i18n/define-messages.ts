@@ -1,0 +1,23 @@
+export const locales = ['zh-CN', 'en-US', 'ja-JP'] as const;
+
+export type Locale = (typeof locales)[number];
+
+export const localeLabels: Record<Locale, string> = {
+  'zh-CN': '简体中文',
+  'en-US': 'English',
+  'ja-JP': '日本語',
+};
+
+type MessageMap = Record<string, string>;
+
+export function defineMessages<
+  const Chinese extends MessageMap,
+  const English extends Record<keyof Chinese, string>,
+  const Japanese extends Record<keyof Chinese, string>,
+>(messages: {
+  'zh-CN': Chinese;
+  'en-US': English & Record<Exclude<keyof English, keyof Chinese>, never>;
+  'ja-JP': Japanese & Record<Exclude<keyof Japanese, keyof Chinese>, never>;
+}) {
+  return messages;
+}

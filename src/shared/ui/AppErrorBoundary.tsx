@@ -11,7 +11,7 @@ type AppErrorBoundaryState = {
 };
 
 export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorBoundaryState> {
-  state: AppErrorBoundaryState = {
+  override state: AppErrorBoundaryState = {
     error: null,
   };
 
@@ -19,11 +19,11 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
     return { error };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Unhandled React error', error, errorInfo);
   }
 
-  render() {
+  override render() {
     if (this.state.error) {
       return (
         <main className="grid min-h-dvh place-items-center bg-[var(--color-bg)] px-6 py-16 text-[var(--color-text)]">
@@ -34,7 +34,8 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
             <p className="mt-6 text-xs font-semibold uppercase text-neutral-400">Application error</p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Something went wrong</h1>
             <p className="mt-4 max-w-md text-sm leading-6 text-[var(--color-text-muted)]">
-              The current view failed while rendering. Try reloading this view, or return to a stable route from the navigation.
+              The current view failed while rendering. Try reloading this view, or return to a stable route from the
+              navigation.
             </p>
             <div className="mt-8">
               <Button type="button" variant="secondary" onClick={() => this.setState({ error: null })}>
