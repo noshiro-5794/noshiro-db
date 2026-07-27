@@ -1,4 +1,4 @@
-import { useI18n } from '@/features/i18n/use-i18n';
+import { useI18n } from '@/shared/i18n';
 
 export function PageLoader() {
   const { t } = useI18n();

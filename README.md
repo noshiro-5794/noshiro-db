@@ -7,7 +7,8 @@ Modern React frontend for **Noshiro DB**, a personal anime and galgame database 
 - React 19
 - TypeScript
 - Vite
-- React Router
+- pnpm 11
+- TanStack Router
 - TanStack Query
 - Tailwind CSS v4
 - Radix UI primitives
@@ -53,23 +54,21 @@ Signed-in users can additionally access:
 ## Getting Started
 
 ```bash
-npm install
+fnm use --install-if-missing
+corepack enable pnpm
+pnpm install --frozen-lockfile
 cp .env.example .env
-npm run dev
+pnpm dev
 ```
 
-This project targets Node.js 20. When using `nvm`:
-
-```bash
-source ~/.nvm/nvm.sh
-nvm use 20
-```
-
-Default local API base:
+This project targets Node.js 24 LTS. The exact pnpm release is pinned in `package.json`. Local development reaches the deployed API through Vite's same-origin proxy:
 
 ```text
-VITE_API_BASE_URL=http://127.0.0.1:8008
+API_PROXY_TARGET=https://api.noshiro.moe
+VITE_API_BASE_URL=
 ```
+
+Change `API_PROXY_TARGET` to `http://127.0.0.1:8008` only when developing against a local backend. Production builds do not use this proxy and continue to call `https://api.noshiro.moe` directly.
 
 If hCaptcha is enabled in the backend, set:
 
@@ -80,31 +79,37 @@ VITE_HCAPTCHA_SITE_KEY=your-site-key
 For remote development over SSH, expose Vite explicitly:
 
 ```bash
-npm run dev -- --host 0.0.0.0
+pnpm dev --host 0.0.0.0
 ```
 
 ## Scripts
 
 ```bash
-npm run dev
-npm run typecheck
-npm run lint
-npm run build
-npm run preview
+pnpm dev
+pnpm format
+pnpm typecheck
+pnpm lint
+pnpm test
+pnpm test:watch
+pnpm build
+pnpm preview
+pnpm check
+pnpm check:dependencies
 ```
 
 ## Structure
 
 ```text
-src/app/       application shell and top-level providers
-src/config/    environment configuration
-src/features/  domain features, API wrappers, query options, and feature components
-src/lib/       API client, query client, and framework-agnostic utilities
-src/pages/     route pages
-src/routes/    route table and path helpers
-src/shared/    shared UI primitives
-src/styles/    global styles, theme tokens, and Tailwind utilities
+src/app/       application bootstrap, providers, router, shell, and global styles
+src/pages/     route-level composition grouped by route domain
+src/widgets/   reusable product sections
+src/features/  user interactions and use cases
+src/entities/  domain data, queries, models, and entity UI
+src/shared/    infrastructure, routing adapters, i18n, utilities, and UI primitives
 ```
+
+Dependencies follow `app -> pages -> widgets -> features -> entities -> shared`. ESLint enforces layer boundaries and
+slice public APIs; see the architecture guide for ownership details.
 
 ## Documentation
 
@@ -129,11 +134,9 @@ The static server must fall back nested routes to `index.html`; otherwise refres
 Run before committing:
 
 ```bash
-npm run typecheck
-npm run lint
-npm run build
+pnpm check
 ```
 
 ## Related Repository
 
-Backend API: `noshiro-db-backend`
+Backend API: [noshiro-db-backend](https://github.com/noshiro-5794/noshiro-db-backend)

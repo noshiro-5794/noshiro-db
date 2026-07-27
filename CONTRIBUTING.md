@@ -5,33 +5,34 @@ Noshiro DB Frontend is a React, TypeScript, and Vite application for the Noshiro
 ## Local Setup
 
 ```bash
-source ~/.nvm/nvm.sh
-nvm use 20
-npm install
+fnm use --install-if-missing
+corepack enable pnpm
+pnpm install --frozen-lockfile
 cp .env.example .env
-npm run dev
+pnpm dev
 ```
 
-Set the local API endpoint in `.env`:
+Local development connects to the deployed API through Vite's same-origin proxy:
 
 ```text
-VITE_API_BASE_URL=http://127.0.0.1:8008
+API_PROXY_TARGET=https://api.noshiro.moe
+VITE_API_BASE_URL=
 VITE_HCAPTCHA_SITE_KEY=
 ```
+
+Set `API_PROXY_TARGET=http://127.0.0.1:8008` when working against a local backend.
 
 ## Development Checks
 
 Run these before opening a pull request or pushing a release branch:
 
 ```bash
-npm run typecheck
-npm run lint
-npm run build
+pnpm check
 ```
 
 ## Commit Style
 
-Use Commitizen-style conventional commits:
+Use Conventional Commits:
 
 ```text
 feat: add subject graph page
@@ -51,11 +52,14 @@ Prefer small, scoped commits when possible:
 
 ## Project Boundaries
 
-- `src/app` owns providers, app shell, and global layout.
-- `src/features` owns domain modules, API wrappers, query options, and feature components.
-- `src/lib` owns technical infrastructure such as the API client and query client.
-- `src/pages` owns route-level composition.
-- `src/shared/ui` owns reusable UI primitives without domain ownership.
+- Dependencies flow from `app` to `pages`, `widgets`, `features`, `entities`, and finally `shared`.
+- `src/app` owns bootstrap, providers, the router, the application shell, and global styles.
+- `src/pages` owns route-level composition grouped by route domain.
+- `src/widgets` owns reusable product sections assembled from features and entities.
+- `src/features` owns user interactions and use cases.
+- `src/entities` owns domain data access, queries, models, and entity presentation.
+- `src/shared` owns domain-independent infrastructure, utilities, routing adapters, i18n, and UI primitives.
+- Import entities, features, and widgets through their slice `index.ts`; ESLint rejects deep cross-slice imports.
 
 Avoid committing generated files such as `dist/`, `node_modules/`, `*.tsbuildinfo`, or local `.env` files.
 
@@ -66,4 +70,4 @@ The product contains anime and galgame entries. Keep subject-level wording neutr
 - Prefer `planned`, `in progress`, `completed`, `on hold`, and `dropped` for Library status.
 - Avoid anime-only wording such as "watching" for subject-level state.
 - Episode-specific controls may use watched language because they refer to anime episodes.
-- Keep Chinese, English, and Japanese message keys aligned in `src/features/i18n/messages.ts`.
+- Keep Chinese, English, and Japanese message keys aligned in the relevant `src/shared/i18n/catalogs/*.ts` catalog.
