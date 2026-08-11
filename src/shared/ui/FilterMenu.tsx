@@ -1,6 +1,12 @@
-import { Check, ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/ui/DropdownMenu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '@/shared/ui/DropdownMenu';
 
 export type FilterMenuOption<TValue extends string> = {
   label: string;
@@ -10,39 +16,61 @@ export type FilterMenuOption<TValue extends string> = {
 type FilterMenuProps<TValue extends string> = {
   label: string;
   options: ReadonlyArray<FilterMenuOption<TValue>>;
+  size?: 'default' | 'lg';
   value: TValue;
   onChange: (value: TValue) => void;
 };
 
-export function FilterMenu<TValue extends string>({ label, options, value, onChange }: FilterMenuProps<TValue>) {
+function isOptionValue<TValue extends string>(
+  options: ReadonlyArray<FilterMenuOption<TValue>>,
+  value: unknown,
+): value is TValue {
+  return typeof value === 'string' && options.some((option) => option.value === value);
+}
+
+export function FilterMenu<TValue extends string>({
+  label,
+  options,
+  size = 'default',
+  value,
+  onChange,
+}: FilterMenuProps<TValue>) {
   const selectedOption = options.find((option) => option.value === value) ?? options[0];
+  const showSelectedLabel = selectedOption?.label && selectedOption.label !== label;
+  const accessibleLabel = showSelectedLabel ? `${label}: ${selectedOption.label}` : label;
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button className="w-full justify-between px-3" type="button" variant="secondary">
-          <span className="flex min-w-0 items-center gap-1.5">
-            <span className="text-neutral-400 dark:text-neutral-500">{label}</span>
-            <span className="truncate">{selectedOption?.label}</span>
-          </span>
-          <ChevronDown className="size-4 flex-shrink-0 text-neutral-400" />
-        </Button>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            aria-label={accessibleLabel}
+            className="w-full justify-between px-3"
+            size={size}
+            type="button"
+            variant="secondary"
+          />
+        }
+      >
+        <span className="flex min-w-0 items-center gap-1.5">
+          <span className="text-[var(--ui-text-subtle)]">{label}</span>
+          {showSelectedLabel ? <span className="truncate">{selectedOption.label}</span> : null}
+        </span>
+        <ChevronDown className="size-4 flex-shrink-0 text-[var(--ui-text-subtle)]" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="min-w-[var(--radix-dropdown-menu-trigger-width)]">
-        {options.map((option) => {
-          const isSelected = option.value === value;
-
-          return (
-            <DropdownMenuItem
-              className="justify-between gap-3"
-              key={option.value || 'empty'}
-              onSelect={() => onChange(option.value)}
-            >
-              <span>{option.label}</span>
-              {isSelected ? <Check className="size-4 text-[var(--color-accent-strong)]" /> : null}
-            </DropdownMenuItem>
-          );
-        })}
+      <DropdownMenuContent className="min-w-[var(--anchor-width)]">
+        <DropdownMenuRadioGroup
+          value={value}
+          onValueChange={(nextValue) => {
+            if (isOptionValue(options, nextValue)) onChange(nextValue);
+          }}
+        >
+          {options.map((option) => (
+            <DropdownMenuRadioItem closeOnClick key={option.value || 'empty'} value={option.value}>
+              {option.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );

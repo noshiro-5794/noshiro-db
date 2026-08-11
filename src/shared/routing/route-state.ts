@@ -1,4 +1,4 @@
-import type { Location } from '@/shared/routing/navigation';
+import type {} from '@tanstack/history';
 
 export type RouteBackState = {
   from?: string;
@@ -6,8 +6,19 @@ export type RouteBackState = {
   returnTo?: string;
 };
 
-export function currentRoutePath(location: Location) {
-  return `${location.pathname}${location.search}${location.hash}`;
+declare module '@tanstack/history' {
+  interface HistoryState {
+    from?: string;
+    fromLabel?: string;
+    returnTo?: string;
+  }
+}
+
+export type RouteLocation =
+  { href: string; state: unknown } | { hash: string; pathname: string; search: string; state: unknown };
+
+export function currentRoutePath(location: RouteLocation) {
+  return 'href' in location ? location.href : `${location.pathname}${location.search}${location.hash}`;
 }
 
 function isInternalPath(value: unknown): value is string {
@@ -29,10 +40,10 @@ function hasControlCharacter(value: string) {
   return false;
 }
 
-export function routeBackState(location: Location, fromLabel?: string): RouteBackState {
+export function routeBackState(location: RouteLocation, fromLabel?: string): RouteBackState {
   return {
     from: currentRoutePath(location),
-    fromLabel,
+    ...(fromLabel === undefined ? {} : { fromLabel }),
   };
 }
 
@@ -44,7 +55,7 @@ export function returnTargetFromState(state: unknown, fallback: string) {
   return isInternalPath(state.returnTo) ? state.returnTo : fallback;
 }
 
-export function backTargetFromState(location: Location, fallback: string) {
+export function backTargetFromState(location: RouteLocation, fallback: string) {
   const state = location.state as RouteBackState | null;
   const currentPath = currentRoutePath(location);
 

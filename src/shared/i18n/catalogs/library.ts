@@ -3,7 +3,6 @@ import { defineMessages } from '../define-messages';
 export const libraryMessages = defineMessages({
   'zh-CN': {
     'library.title': '资料库',
-    'library.description': '筛选和整理已标记作品。',
     'library.status': '状态',
     'library.tags': '标签',
     'library.noTags': '还没有标签。',
@@ -28,7 +27,6 @@ export const libraryMessages = defineMessages({
   },
   'en-US': {
     'library.title': 'Library',
-    'library.description': 'Filter, organize, and return to subjects you have marked.',
     'library.status': 'Status',
     'library.tags': 'Tags',
     'library.noTags': 'No tags yet.',
@@ -53,7 +51,6 @@ export const libraryMessages = defineMessages({
   },
   'ja-JP': {
     'library.title': 'ライブラリ',
-    'library.description': '記録した作品を絞り込み、整理し、すぐ戻れるようにします。',
     'library.status': 'ステータス',
     'library.tags': 'タグ',
     'library.noTags': 'タグはまだありません。',

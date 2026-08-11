@@ -1,7 +1,7 @@
 export {
   PublicCollectionPackCard,
-  PublicCollectionRailItem,
+  PublicCollectionItemCard,
   PublicRatingStars,
   PublicReviewItem,
-  PublicSubjectListItem,
 } from './ui/PublicContentItems';
+export { PublicUserContentBrowser, type PublicContentSearchKey } from './ui/PublicUserContentBrowser';

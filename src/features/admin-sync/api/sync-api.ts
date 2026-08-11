@@ -1,9 +1,17 @@
-import { api } from '@/shared/api';
-import { encodePath } from '@/shared/api';
+import { api, encodePath } from '@/shared/api';
+import {
+  decodeBangumiSubjectResult,
+  decodeCalendarRunResult,
+  decodeIncrementalRunResult,
+  decodeIncrementalStatus,
+  decodeSubjectResyncResult,
+  decodeSyncJobPage,
+} from './sync-decoders';
 import type {
   ApiPage,
+  ApiRequestContext,
   CalendarSyncResult,
-  IncrementalSyncResult,
+  IncrementalSyncRunResult,
   PageQuery,
   QueuedTask,
   SubjectResyncResult,
@@ -13,26 +21,36 @@ import type {
 } from '@/shared/api';
 
 export const syncApi = {
-  getIncrementalStatus: () => api.get<{ tasks: SyncTaskStatus[] }>('/api/sync/incremental/status/'),
+  getIncrementalStatus: (context: ApiRequestContext = {}) =>
+    api.get<{ tasks: SyncTaskStatus[] }>('/api/sync/incremental/status/', {
+      ...context,
+      decode: decodeIncrementalStatus,
+    }),
 
-  getJobs: (query: PageQuery & { status?: string; job_type?: string } = {}) =>
-    api.get<ApiPage<SyncJob>>('/api/sync/jobs/', { query }),
+  getJobs: (query: PageQuery & { status?: string; job_type?: string } = {}, context: ApiRequestContext = {}) =>
+    api.get<ApiPage<SyncJob>>('/api/sync/jobs/', { ...context, decode: decodeSyncJobPage, query }),
 
   runIncremental: (body: { run_async?: boolean; batch_size?: number; task_name?: string } = {}) =>
-    api.post<QueuedTask | { results: IncrementalSyncResult[] }, typeof body>('/api/sync/incremental/run/', body),
+    api.post<IncrementalSyncRunResult, typeof body>('/api/sync/incremental/run/', body, {
+      decode: decodeIncrementalRunResult,
+    }),
 
   runCalendar: (body: { run_async?: boolean; sync_subject_details?: boolean } = {}) =>
-    api.post<QueuedTask | CalendarSyncResult, typeof body>('/api/sync/calendar/run/', body),
+    api.post<QueuedTask | CalendarSyncResult, typeof body>('/api/sync/calendar/run/', body, {
+      decode: decodeCalendarRunResult,
+    }),
 
   syncBangumiSubject: (body: { bangumi_id: number; run_async?: boolean }) =>
     api.post<(QueuedTask & { bangumi_id: number }) | SubjectResyncResult, typeof body>(
       '/api/sync/subjects/bangumi/',
       body,
+      { decode: decodeBangumiSubjectResult },
     ),
 
   resyncSubject: (subjectId: UUID, body: { run_async?: boolean } = {}) =>
     api.post<(QueuedTask & { subject_id: UUID }) | SubjectResyncResult, typeof body>(
       `/api/sync/subjects/${encodePath(subjectId)}/resync/`,
       body,
+      { decode: decodeSubjectResyncResult },
     ),
 };

@@ -1,11 +1,17 @@
-import type { Location } from '@/shared/routing/navigation';
 import { describe, expect, it } from 'vitest';
-import { backTargetFromState, currentRoutePath, returnTargetFromState, routeBackState } from './route-state';
+import {
+  backTargetFromState,
+  currentRoutePath,
+  returnTargetFromState,
+  routeBackState,
+  type RouteLocation,
+} from './route-state';
 
-function location(overrides: Partial<Location> = {}): Location {
+type LegacyRouteLocation = Extract<RouteLocation, { pathname: string }>;
+
+function location(overrides: Partial<LegacyRouteLocation> = {}): LegacyRouteLocation {
   return {
     hash: '#section',
-    key: 'test',
     pathname: '/subjects/1',
     search: '?tab=details',
     state: null,

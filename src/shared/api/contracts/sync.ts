@@ -34,7 +34,16 @@ export type CalendarSyncResult = {
   item_count: number;
   synced_subject_count: number;
   failed_subject_count: number;
+  detail_synced_count: number;
+  detail_failed_count: number;
 };
+
+export type IncrementalSyncRunResult =
+  | QueuedTask
+  | IncrementalSyncResult
+  | {
+      results: IncrementalSyncResult[];
+    };
 
 export type SyncJob = {
   id: UUID;

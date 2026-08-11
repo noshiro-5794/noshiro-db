@@ -1,102 +1,47 @@
-import { type FormEvent, useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useSearchParams } from '@/shared/routing/navigation';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Search, SlidersHorizontal, Star, Tag as TagIcon, X } from 'lucide-react';
-import { libraryMutations, libraryQueries, libraryQueryKeys } from '@/entities/library';
+import { type SyntheticEvent, useEffect, useMemo, useState } from 'react';
+import { getRouteApi, useLocation } from '@tanstack/react-router';
+import { useQuery } from '@tanstack/react-query';
+import { SlidersHorizontal } from 'lucide-react';
+import { libraryQueries, UserSubjectListItem } from '@/entities/library';
+import { TagManagerPanel } from '@/features/tag-manager';
 import { useI18n } from '@/shared/i18n';
-import type { PrimarySubjectType, Tag, UserSubject, UserSubjectStatus } from '@/shared/api';
-import { routes } from '@/shared/routing/paths';
+import type { PrimarySubjectType, UserSubjectStatus } from '@/shared/api';
+import { validateLibrarySearch, type LibrarySearch } from '@/shared/routing/route-search';
 import { routeBackState } from '@/shared/routing/route-state';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/ui/Dialog';
-import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/FeedbackState';
+import {
+  DataToolbar,
+  DataToolbarPrimary,
+  DataToolbarRow,
+  ListSurface,
+  ResultsMeta,
+  ResultsState,
+  SearchField,
+  type ResultsStatus,
+} from '@/shared/ui/DataView';
 import { FilterMenu } from '@/shared/ui/FilterMenu';
-import { Input } from '@/shared/ui/Input';
+import { FilterPanel, FilterPanelChoice, FilterPanelHeader } from '@/shared/ui/FilterPanel';
 import { Page } from '@/shared/ui/Page';
 import { Pagination } from '@/shared/ui/Pagination';
+import { ToggleGroup } from '@/shared/ui/Toggle';
 
 const pageSize = 12;
-const coverPlaceholder = '/assets/placeholders/subject-cover.png';
-function formatDate(value?: string) {
-  if (!value) return '';
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(value));
-}
-
-function titleOf(item: UserSubject, fallback: string) {
-  return item.subject.display_title || item.subject.title || item.subject.title_cn || fallback;
-}
-
-function subjectMetaOf(item: UserSubject, episodeUnit: string) {
-  const subject = item.subject;
-  const content = subject.content;
-  const year = subject.year ?? subject.date?.slice(0, 4);
-  const episodes =
-    typeof content?.episodes === 'number' && content.episodes > 0 ? `${content.episodes} ${episodeUnit}` : '';
-  const hasSubtitle = Boolean(subject.display_subtitle);
-  return [
-    subject.subject_type,
-    subject.platform || '',
-    !hasSubtitle && year ? String(year) : '',
-    !hasSubtitle ? episodes : '',
-  ]
-    .filter(Boolean)
-    .filter((value, index, array) => array.indexOf(value) === index)
-    .slice(0, 4);
-}
-
-function subjectSubtitleOf(item: UserSubject) {
-  const subject = item.subject;
-  return (
-    subject.display_subtitle ||
-    subject.display_meta?.join(' / ') ||
-    subject.date ||
-    subject.platform ||
-    subject.subject_type ||
-    ''
-  );
-}
-
-function SimpleRatingStars({
-  value,
-  emptyLabel,
-  ratingLabel,
-}: {
-  value: number | null;
-  emptyLabel: string;
-  ratingLabel: string;
-}) {
-  if (!value) return <span className="text-sm text-neutral-400">{emptyLabel}</span>;
-
-  return (
-    <span aria-label={`${ratingLabel} ${value}/5`} className="flex items-center gap-0.5">
-      {Array.from({ length: 5 }, (_, index) => (
-        <Star
-          className={
-            index < value
-              ? 'size-4 fill-[var(--color-accent)] text-[var(--color-accent)]'
-              : 'size-4 text-neutral-300 dark:text-neutral-700'
-          }
-          key={index}
-        />
-      ))}
-    </span>
-  );
-}
+const libraryRoute = getRouteApi('/library');
+type LibraryOrdering = NonNullable<LibrarySearch['ordering']>;
 
 export function LibraryPage() {
   const { t } = useI18n();
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const keyword = searchParams.get('keyword') ?? '';
-  const status = searchParams.get('status') ?? '';
-  const subjectType = (searchParams.get('subject_type') ?? '') as PrimarySubjectType | '';
-  const tagId = searchParams.get('tag_id') ?? '';
-  const ordering = searchParams.get('ordering') ?? '-updated_at';
-  const currentPage = Math.max(1, Number(searchParams.get('page') ?? '1') || 1);
+  const navigate = libraryRoute.useNavigate();
+  const search = libraryRoute.useSearch();
+  const keyword = search.keyword ?? '';
+  const status = search.status ?? '';
+  const subjectType = search.subject_type ?? '';
+  const tagId = search.tag_id ?? null;
+  const ordering = search.ordering ?? '-updated_at';
+  const currentPage = search.page ?? 1;
   const [draftKeyword, setDraftKeyword] = useState(keyword);
-  const [deleteTagTarget, setDeleteTagTarget] = useState<Tag | null>(null);
-  const queryClient = useQueryClient();
   const statusOptions: Array<{ label: string; value: UserSubjectStatus | '' }> = [
     { label: t('status.all'), value: '' },
     { label: t('status.wish'), value: 'wish' },
@@ -110,7 +55,7 @@ export function LibraryPage() {
     { label: t('search.anime'), value: 'anime' },
     { label: t('search.galgame'), value: 'galgame' },
   ];
-  const orderingOptions = [
+  const orderingOptions: Array<{ label: string; value: LibraryOrdering }> = [
     { label: t('library.sortRecentlyUpdated'), value: '-updated_at' },
     { label: t('library.sortRecentlyAdded'), value: '-created_at' },
     { label: t('library.sortRatingHigh'), value: '-rating' },
@@ -122,10 +67,10 @@ export function LibraryPage() {
 
   const query = useMemo(
     () => ({
-      keyword: keyword || undefined,
-      status: status || undefined,
-      subject_type: subjectType || undefined,
-      tag_id: tagId ? Number(tagId) : undefined,
+      ...(keyword ? { keyword } : {}),
+      ...(status ? { status } : {}),
+      ...(subjectType ? { subject_type: subjectType } : {}),
+      ...(tagId === null ? {} : { tag_id: tagId }),
       ordering,
       page: currentPage,
       page_size: pageSize,
@@ -134,23 +79,19 @@ export function LibraryPage() {
   );
   const libraryQuery = useQuery(libraryQueries.userSubjects(query));
   const tagsQuery = useQuery(libraryQueries.tags());
-  const deleteTagMutation = useMutation({
-    ...libraryMutations.deleteTag(),
-    onSuccess: async () => {
-      const deletedTagId = deleteTagTarget?.id;
-      setDeleteTagTarget(null);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: libraryQueryKeys.tags() }),
-        queryClient.invalidateQueries({ queryKey: libraryQueryKeys.userSubjects() }),
-      ]);
-      if (deletedTagId && tagId === String(deletedTagId)) {
-        updateSearchParam('tag_id', '');
-      }
-    },
-  });
   const totalCount = libraryQuery.data?.count ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-  const selectedTag = (tagsQuery.data?.results ?? []).find((tag) => String(tag.id) === tagId);
+  const libraryItems = libraryQuery.data?.results ?? [];
+  const resultsStatus: ResultsStatus =
+    libraryQuery.data === undefined && libraryQuery.isLoading
+      ? 'loading'
+      : libraryQuery.data === undefined && libraryQuery.isError
+        ? 'error'
+        : libraryItems.length === 0
+          ? 'empty'
+          : 'ready';
+  const selectedTag = (tagsQuery.data?.results ?? []).find((tag) => tag.id === tagId);
+  const subjectLinkState = useMemo(() => routeBackState(location, t('nav.library')), [location, t]);
 
   useEffect(() => {
     setDraftKeyword(keyword);
@@ -158,31 +99,26 @@ export function LibraryPage() {
 
   useEffect(() => {
     if (libraryQuery.data && currentPage > totalPages) {
-      setSearchParams((currentParams) => {
-        const nextParams = new URLSearchParams(currentParams);
-        nextParams.set('page', String(totalPages));
-        return nextParams;
-      });
+      void navigate({ replace: true, search: (current) => ({ ...current, page: totalPages }) });
     }
-  }, [currentPage, libraryQuery.data, setSearchParams, totalPages]);
+  }, [currentPage, libraryQuery.data, navigate, totalPages]);
 
-  function updateSearchParam(key: string, value: string) {
-    setSearchParams((currentParams) => {
-      const nextParams = new URLSearchParams(currentParams);
-      if (value) nextParams.set(key, value);
-      else nextParams.delete(key);
-      if (key !== 'page') nextParams.delete('page');
-      return nextParams;
+  function updateSearchParam(key: keyof LibrarySearch, value: string) {
+    void navigate({
+      search: (current) => ({
+        ...current,
+        ...validateLibrarySearch({ ...current, [key]: value || undefined, page: key === 'page' ? value : undefined }),
+      }),
     });
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: SyntheticEvent<HTMLFormElement, SubmitEvent>) {
     event.preventDefault();
     updateSearchParam('keyword', draftKeyword.trim());
   }
 
   function resetFilters() {
-    setSearchParams(new URLSearchParams());
+    void navigate({ search: {} });
   }
 
   function statusLabel(statusValue: string) {
@@ -195,227 +131,126 @@ export function LibraryPage() {
 
   return (
     <Page title={t('library.title')} eyebrow={t('nav.groupLibrary')}>
-      <div className="grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
-        <aside className="grid content-start gap-4">
-          <section className="content-filter-panel">
-            <div className="content-panel-title">
-              <SlidersHorizontal className="size-4 text-neutral-400" />
-              <h2>{t('library.status')}</h2>
-            </div>
-            <div className="grid gap-1">
-              {statusOptions.map((option) => (
-                <button
-                  className={`content-filter-choice ${status === option.value ? 'is-active' : ''}`}
-                  key={option.value || 'all'}
-                  type="button"
-                  onClick={() => updateSearchParam('status', option.value)}
-                >
-                  <span>{option.label}</span>
-                </button>
-              ))}
-            </div>
-          </section>
-
-          <section className="content-filter-panel">
-            <div className="content-panel-title">
-              <TagIcon className="size-4 text-neutral-400" />
-              <h2>{t('library.tags')}</h2>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {(tagsQuery.data?.results ?? []).map((tag) => {
-                const isSelected = tagId === String(tag.id);
-                return (
-                  <span className={`content-tag-chip ${isSelected ? 'is-active' : ''}`} key={tag.id}>
-                    <button
-                      className="px-3 py-1.5 transition hover:bg-white/60 dark:hover:bg-neutral-950/50"
-                      type="button"
-                      onClick={() => updateSearchParam('tag_id', isSelected ? '' : String(tag.id))}
-                    >
-                      {tag.name}
-                    </button>
-                    <button
-                      aria-label={`${t('common.delete')} ${tag.name}`}
-                      className="grid size-8 place-items-center border-l border-current/10 transition hover:bg-white/70 dark:hover:bg-neutral-950/60"
-                      type="button"
-                      onClick={() => setDeleteTagTarget(tag)}
-                    >
-                      <X className="size-3.5" />
-                    </button>
-                  </span>
-                );
-              })}
-              {!tagsQuery.isLoading && (tagsQuery.data?.results.length ?? 0) === 0 ? (
-                <span className="text-sm text-neutral-500 dark:text-neutral-400">{t('library.noTags')}</span>
-              ) : null}
-            </div>
-          </section>
-        </aside>
-
-        <main className="grid content-start gap-5">
-          <form className="content-toolbar" onSubmit={handleSubmit}>
-            <div className="content-toolbar-grid is-library">
-              <div className="content-toolbar-search">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400" />
-                <Input
-                  className="pl-9"
+      <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-x-6">
+        <div className="grid content-start gap-4 lg:col-start-2 lg:row-start-1">
+          <DataToolbar onSubmit={handleSubmit}>
+            <DataToolbarRow className="xl:grid-cols-[minmax(0,1fr)_150px_190px_auto]">
+              <DataToolbarPrimary>
+                <SearchField
+                  aria-label={t('library.searchPlaceholder')}
+                  maxLength={200}
                   value={draftKeyword}
                   placeholder={t('library.searchPlaceholder')}
-                  onChange={(event) => setDraftKeyword(event.target.value)}
+                  onChange={(event) => {
+                    setDraftKeyword(event.target.value);
+                  }}
                 />
-              </div>
+              </DataToolbarPrimary>
               <FilterMenu
                 label={t('search.type')}
                 options={typeOptions}
+                size="lg"
                 value={subjectType}
-                onChange={(value) => updateSearchParam('subject_type', value)}
+                onChange={(value) => {
+                  updateSearchParam('subject_type', value);
+                }}
               />
               <FilterMenu
                 label={t('common.sort')}
                 options={orderingOptions}
+                size="lg"
                 value={ordering}
-                onChange={(value) => updateSearchParam('ordering', value)}
+                onChange={(value) => {
+                  updateSearchParam('ordering', value);
+                }}
               />
-              <Button type="submit" variant="secondary">
+              <Button size="lg" type="submit" variant="secondary">
                 {t('common.search')}
               </Button>
-            </div>
-          </form>
+            </DataToolbarRow>
+          </DataToolbar>
 
-          <div className="content-summary-bar">
-            <div className="content-summary-count">
-              <span className="content-summary-number">{totalCount}</span>
-              <span>{t('common.subjects')}</span>
-              {status ? <Badge variant="secondary">{statusLabel(status)}</Badge> : null}
-              {subjectType ? <Badge variant="secondary">{subjectType}</Badge> : null}
-              {selectedTag ? <Badge variant="secondary">{selectedTag.name}</Badge> : null}
-              {keyword ? <Badge variant="secondary">{keyword}</Badge> : null}
-            </div>
-            <div className="content-summary-side">
-              {libraryQuery.isFetching ? <span>{t('common.loading')}</span> : null}
-              <span className="content-summary-page">
-                {t('common.page')} {currentPage} / {totalPages}
-              </span>
-              {status || subjectType || tagId || keyword || ordering !== '-updated_at' ? (
-                <button
-                  className="font-semibold text-[var(--color-accent-strong)]"
+          <ResultsMeta
+            actions={
+              status || subjectType || tagId !== null || keyword || ordering !== '-updated_at' ? (
+                <Button
+                  className="h-7 px-2 font-semibold text-[var(--ui-accent-text)]"
+                  size="sm"
                   type="button"
+                  variant="ghost"
                   onClick={resetFilters}
                 >
                   {t('common.reset')}
-                </button>
-              ) : null}
-            </div>
-          </div>
+                </Button>
+              ) : null
+            }
+            count={libraryQuery.data?.count}
+            label={t('common.subjects')}
+            pending={libraryQuery.isFetching && !libraryQuery.isLoading}
+            pendingLabel={t('common.loading')}
+          >
+            {status ? <Badge variant="secondary">{statusLabel(status)}</Badge> : null}
+            {subjectType ? <Badge variant="secondary">{subjectType}</Badge> : null}
+            {selectedTag ? <Badge variant="secondary">{selectedTag.name}</Badge> : null}
+            {keyword ? <Badge variant="secondary">{keyword}</Badge> : null}
+          </ResultsMeta>
+        </div>
 
-          {libraryQuery.isLoading ? <LoadingState title={t('library.loading')} /> : null}
-          {libraryQuery.isError ? (
-            <ErrorState title={t('library.errorTitle')} description={t('search.errorBody')} />
-          ) : null}
-          {!libraryQuery.isLoading && !libraryQuery.isError && libraryQuery.data?.results.length === 0 ? (
-            <EmptyState title={t('library.emptyTitle')} description={t('library.emptyBody')} />
-          ) : null}
-
-          <div className="content-list-panel">
-            {(libraryQuery.data?.results ?? []).map((item) => (
-              <Link
-                className="library-list-item"
-                key={item.id}
-                state={routeBackState(location, t('nav.library'))}
-                to={routes.subject(item.subject.id)}
-              >
-                <img
-                  alt=""
-                  className="h-28 w-[72px] rounded-lg bg-neutral-100 object-cover shadow-sm ring-1 ring-neutral-200 dark:bg-neutral-900 dark:ring-neutral-800 max-sm:h-[86px] max-sm:w-[58px]"
-                  loading="lazy"
-                  src={item.subject.image_thumbnail || item.subject.image || coverPlaceholder}
-                />
-                <span className="grid min-w-0 content-center gap-2">
-                  <span className="grid min-w-0 gap-1">
-                    <span className="line-clamp-1 font-semibold text-neutral-950 dark:text-white">
-                      {titleOf(item, t('common.untitledSubject'))}
-                    </span>
-                    {subjectSubtitleOf(item) ? (
-                      <span className="line-clamp-1 text-sm text-neutral-500 dark:text-neutral-400">
-                        {subjectSubtitleOf(item)}
-                      </span>
-                    ) : null}
-                  </span>
-                  <span className="flex min-w-0 flex-wrap gap-1.5">
-                    {subjectMetaOf(item, t('common.episodeUnit')).map((meta) => (
-                      <span
-                        className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400"
-                        key={meta}
-                      >
-                        {meta}
-                      </span>
-                    ))}
-                  </span>
-                  {item.comment ? (
-                    <span className="line-clamp-1 text-sm font-medium text-neutral-600 dark:text-neutral-300">
-                      {item.comment}
-                    </span>
-                  ) : item.subject.description_excerpt ? (
-                    <span className="line-clamp-1 text-sm leading-6 text-neutral-500 dark:text-neutral-400">
-                      {item.subject.description_excerpt}
-                    </span>
-                  ) : null}
-                  {item.watch_start_date || item.watch_end_date ? (
-                    <span className="text-xs text-neutral-400">
-                      {[
-                        item.watch_start_date ? `${t('library.started')} ${formatDate(item.watch_start_date)}` : '',
-                        item.watch_end_date ? `${t('library.finished')} ${formatDate(item.watch_end_date)}` : '',
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </span>
-                  ) : null}
-                </span>
-                <span className="grid justify-items-end gap-2 self-center max-sm:col-start-2 max-sm:justify-items-start">
-                  <Badge variant="secondary">{statusLabel(item.status)}</Badge>
-                  <span className="grid justify-items-end gap-1 text-sm text-neutral-500 dark:text-neutral-400 max-sm:justify-items-start">
-                    {item.rating ? (
-                      <strong className="font-semibold text-neutral-950 dark:text-white">{item.rating}</strong>
-                    ) : null}
-                    <SimpleRatingStars
-                      emptyLabel={t('library.noSimpleRating')}
-                      ratingLabel={t('library.simpleRatingLabel')}
-                      value={item.simple_rating}
-                    />
-                  </span>
-                  {item.updated_at ? (
-                    <span className="text-xs text-neutral-400">{formatDate(item.updated_at)}</span>
-                  ) : null}
-                </span>
-              </Link>
-            ))}
-          </div>
-
-          <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={goToPage} />
-        </main>
-      </div>
-
-      <Dialog open={Boolean(deleteTagTarget)} onOpenChange={(open) => !open && setDeleteTagTarget(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('library.deleteTagTitle')}</DialogTitle>
-            <DialogDescription>
-              {t('library.deleteTagBody')} {deleteTagTarget?.name ? `"${deleteTagTarget.name}"` : ''}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="secondary" onClick={() => setDeleteTagTarget(null)}>
-              {t('common.cancel')}
-            </Button>
-            <Button
-              disabled={deleteTagMutation.isPending}
-              type="button"
-              onClick={() => deleteTagTarget && deleteTagMutation.mutate(deleteTagTarget.id)}
+        <aside className="grid content-start gap-4 lg:col-start-1 lg:row-span-2 lg:row-start-1">
+          <FilterPanel>
+            <FilterPanelHeader>
+              <SlidersHorizontal className="size-4 text-[var(--ui-text-subtle)]" />
+              <h2>{t('library.status')}</h2>
+            </FilterPanelHeader>
+            <ToggleGroup
+              aria-label={t('library.status')}
+              className="grid gap-1 border-0 bg-transparent p-0"
+              orientation="vertical"
+              value={[status || 'all']}
+              onValueChange={(values) => {
+                const nextStatus = values[0];
+                if (nextStatus) updateSearchParam('status', nextStatus === 'all' ? '' : nextStatus);
+              }}
             >
-              {t('common.delete')}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+              {statusOptions.map((option) => (
+                <FilterPanelChoice key={option.value || 'all'} value={option.value || 'all'}>
+                  <span>{option.label}</span>
+                </FilterPanelChoice>
+              ))}
+            </ToggleGroup>
+          </FilterPanel>
+
+          <TagManagerPanel
+            isError={tagsQuery.isError}
+            isLoading={tagsQuery.isLoading}
+            selectedTagId={tagId}
+            tags={tagsQuery.data?.results ?? []}
+            onSelectTag={(nextTagId) => {
+              updateSearchParam('tag_id', nextTagId === null ? '' : String(nextTagId));
+            }}
+          />
+        </aside>
+
+        <div className="grid content-start gap-4 lg:col-start-2 lg:row-start-2">
+          <ResultsState
+            emptyDescription={t('library.emptyBody')}
+            emptyTitle={t('library.emptyTitle')}
+            errorDescription={t('search.errorBody')}
+            errorTitle={t('library.errorTitle')}
+            loadingTitle={t('library.loading')}
+            status={resultsStatus}
+          >
+            <>
+              <ListSurface>
+                {libraryItems.map((item) => (
+                  <UserSubjectListItem detailLinkState={subjectLinkState} item={item} key={item.id} showWatchDates />
+                ))}
+              </ListSurface>
+              <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={goToPage} />
+            </>
+          </ResultsState>
+        </div>
+      </div>
     </Page>
   );
 }

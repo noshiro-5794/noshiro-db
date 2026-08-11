@@ -1,4 +1,4 @@
-import { type ChangeEvent, useMemo, useState } from 'react';
+import { type ChangeEvent, useMemo, useRef, useState } from 'react';
 import {
   Bold,
   Code2,
@@ -18,9 +18,12 @@ import {
 } from 'lucide-react';
 import { useI18n } from '@/shared/i18n';
 import { Button } from '@/shared/ui/Button';
+import { Textarea } from '@/shared/ui/Textarea';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import './review-editor.css';
 
 type MarkdownEditorProps = {
+  maxLength?: number;
   value: string;
   onChange: (value: string) => void;
 };
@@ -45,14 +48,17 @@ function getOutline(value: string) {
     .split('\n')
     .map((line, index) => {
       const match = /^(#{1,3})\s+(.+)$/.exec(line.trim());
-      return match ? { depth: match[1].length, title: match[2], line: index + 1 } : null;
+      const depthMarker = match?.[1];
+      const title = match?.[2];
+      return depthMarker && title ? { depth: depthMarker.length, title, line: index + 1 } : null;
     })
     .filter((item): item is { depth: number; title: string; line: number } => Boolean(item))
     .slice(0, 12);
 }
 
-export function MarkdownEditor({ value, onChange }: MarkdownEditorProps) {
+export function MarkdownEditor({ maxLength, value, onChange }: MarkdownEditorProps) {
   const { t } = useI18n();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [mode, setMode] = useState<EditorMode>('split');
   const toolbarGroups = [
     [
@@ -88,14 +94,17 @@ export function MarkdownEditor({ value, onChange }: MarkdownEditorProps) {
   const outline = useMemo(() => getOutline(value), [value]);
 
   function handleToolbarClick(prefix: string, suffix: string) {
-    const textarea = document.getElementById('review-markdown-editor') as HTMLTextAreaElement | null;
+    const textarea = textareaRef.current;
     if (!textarea) return;
-    const nextValue = insertMarkdown(value, textarea.selectionStart, textarea.selectionEnd, prefix, suffix);
+    const { selectionEnd, selectionStart } = textarea;
+    const insertedValue = insertMarkdown(value, selectionStart, selectionEnd, prefix, suffix);
+    const nextValue = maxLength ? insertedValue.slice(0, maxLength) : insertedValue;
     onChange(nextValue);
     requestAnimationFrame(() => {
       textarea.focus();
-      const cursor = textarea.selectionStart + prefix.length;
-      textarea.setSelectionRange(cursor, cursor);
+      const nextSelectionStart = selectionStart + prefix.length;
+      const nextSelectionEnd = selectionEnd + prefix.length;
+      textarea.setSelectionRange(nextSelectionStart, nextSelectionEnd);
     });
   }
 
@@ -104,7 +113,7 @@ export function MarkdownEditor({ value, onChange }: MarkdownEditorProps) {
   }
 
   function focusLine(lineNumber: number) {
-    const textarea = document.getElementById('review-markdown-editor') as HTMLTextAreaElement | null;
+    const textarea = textareaRef.current;
     if (!textarea) return;
     const offset = value
       .split('\n')
@@ -129,9 +138,12 @@ export function MarkdownEditor({ value, onChange }: MarkdownEditorProps) {
                       aria-label={item.label}
                       key={item.label}
                       size="icon"
+                      tooltip={item.label}
                       type="button"
                       variant="ghost"
-                      onClick={() => handleToolbarClick(item.prefix, item.suffix)}
+                      onClick={() => {
+                        handleToolbarClick(item.prefix, item.suffix);
+                      }}
                     >
                       <Icon className="size-4" />
                     </Button>
@@ -152,28 +164,40 @@ export function MarkdownEditor({ value, onChange }: MarkdownEditorProps) {
             <div className="review-editor-mode">
               <Button
                 aria-label={t('reviewEditor.write')}
+                aria-pressed={mode === 'write'}
                 size="icon"
+                tooltip={t('reviewEditor.write')}
                 type="button"
                 variant={mode === 'write' ? 'secondary' : 'ghost'}
-                onClick={() => setMode('write')}
+                onClick={() => {
+                  setMode('write');
+                }}
               >
                 <PanelLeftClose className="size-4" />
               </Button>
               <Button
                 aria-label={t('reviewEditor.split')}
+                aria-pressed={mode === 'split'}
                 size="icon"
+                tooltip={t('reviewEditor.split')}
                 type="button"
                 variant={mode === 'split' ? 'secondary' : 'ghost'}
-                onClick={() => setMode('split')}
+                onClick={() => {
+                  setMode('split');
+                }}
               >
                 <Split className="size-4" />
               </Button>
               <Button
                 aria-label={t('reviewEditor.preview')}
+                aria-pressed={mode === 'preview'}
                 size="icon"
+                tooltip={t('reviewEditor.preview')}
                 type="button"
                 variant={mode === 'preview' ? 'secondary' : 'ghost'}
-                onClick={() => setMode('preview')}
+                onClick={() => {
+                  setMode('preview');
+                }}
               >
                 <PanelRightClose className="size-4" />
               </Button>
@@ -186,14 +210,16 @@ export function MarkdownEditor({ value, onChange }: MarkdownEditorProps) {
             <span>{t('reviewEditor.outline')}</span>
             <div>
               {outline.map((item) => (
-                <button
+                <Button
                   data-depth={item.depth}
                   key={`${item.line}-${item.title}`}
-                  type="button"
-                  onClick={() => focusLine(item.line)}
+                  variant="unstyled"
+                  onClick={() => {
+                    focusLine(item.line);
+                  }}
                 >
                   {item.title}
-                </button>
+                </Button>
               ))}
             </div>
           </nav>
@@ -209,10 +235,11 @@ export function MarkdownEditor({ value, onChange }: MarkdownEditorProps) {
                 {stats.words} {t('common.words')}
               </span>
             </div>
-            <textarea
+            <Textarea
               aria-label={t('reviewEditor.title')}
               className="review-editor-textarea"
-              id="review-markdown-editor"
+              maxLength={maxLength}
+              ref={textareaRef}
               placeholder={t('reviewEditor.placeholder')}
               spellCheck
               value={value}
@@ -233,7 +260,7 @@ export function MarkdownEditor({ value, onChange }: MarkdownEditorProps) {
               {value.trim() ? (
                 <MarkdownRenderer content={value} />
               ) : (
-                <p className="text-sm text-neutral-500 dark:text-neutral-400">{t('reviewEditor.previewEmpty')}</p>
+                <p className="text-sm text-[var(--ui-text-muted)]">{t('reviewEditor.previewEmpty')}</p>
               )}
             </div>
           </div>

@@ -3,7 +3,7 @@ import type { Locale, MessageKey } from './catalog';
 
 export type I18nState = {
   locale: Locale;
-  setLocale: (locale: Locale) => void;
+  setLocale: (locale: Locale | 'auto') => void;
   t: (key: MessageKey) => string;
 };
 

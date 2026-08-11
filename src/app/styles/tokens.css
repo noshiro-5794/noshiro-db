@@ -1,0 +1,164 @@
+:root {
+  color-scheme: light;
+
+  /* Quiet surfaces. The canvas is distinct from the working surface without looking like a card stack. */
+  --ui-bg-canvas: #f6f6f7;
+  --ui-bg-surface: #fbfbfc;
+  --ui-bg-elevated: #ffffff;
+  --ui-bg-inset: #f2f2f4;
+  --ui-bg-subtle: #eeeef1;
+  --ui-bg-muted: #e7e7eb;
+  --ui-bg-sidebar: #f3f3f5;
+  --ui-border: #dedee3;
+  --ui-border-subtle: #e8e8eb;
+  --ui-border-strong: #c7c7cf;
+  --ui-control-border: #d2d2d8;
+
+  /* Typography. Subtle text is intentionally strong enough for compact UI labels. */
+  --ui-text: #202024;
+  --ui-text-muted: #60616a;
+  --ui-text-subtle: #70717b;
+  --ui-text-placeholder: #8b8c95;
+
+  /* Noshiro accent. Keep it low-frequency: links, selected states and key focus cues. */
+  --ui-accent: #77679f;
+  --ui-accent-hover: #69578f;
+  --ui-accent-text: #5f4d86;
+  --ui-accent-contrast: #ffffff;
+  --ui-accent-solid: #69578f;
+  --ui-accent-solid-hover: #5f4d86;
+  --ui-accent-solid-text: #ffffff;
+  --ui-accent-soft: color-mix(in srgb, var(--ui-accent) 10%, transparent);
+  --ui-accent-border: color-mix(in srgb, var(--ui-accent) 34%, var(--ui-border));
+
+  /* Semantic feedback. */
+  --ui-danger: #c43d43;
+  --ui-danger-hover: #ad3037;
+  --ui-danger-text: #a12f36;
+  --ui-danger-soft: color-mix(in srgb, var(--ui-danger) 10%, transparent);
+  --ui-success: #19714f;
+  --ui-success-text: #176044;
+  --ui-success-soft: color-mix(in srgb, var(--ui-success) 10%, transparent);
+  --ui-warning: #985b12;
+  --ui-warning-text: #7f4d0e;
+  --ui-warning-soft: color-mix(in srgb, var(--ui-warning) 12%, transparent);
+  --ui-info: #35699d;
+  --ui-info-text: #2d5b8b;
+  --ui-info-soft: color-mix(in srgb, var(--ui-info) 10%, transparent);
+
+  /* Overlay and focus contract. All interactive primitives consume these values. */
+  --ui-overlay: rgb(18 18 22 / 52%);
+  --ui-focus: #5f4d86;
+  --ui-focus-halo: color-mix(in srgb, var(--ui-focus) 24%, transparent);
+  --ui-action-primary: #29292e;
+  --ui-action-primary-hover: #3a3a41;
+  --ui-action-primary-text: #ffffff;
+  --ui-shadow-control: 0 1px 2px rgb(20 20 26 / 5%);
+  --ui-shadow-surface: 0 1px 2px rgb(20 20 26 / 4%), 0 4px 12px rgb(20 20 26 / 3%);
+  --ui-shadow-popup: 0 12px 32px rgb(20 20 26 / 12%), 0 2px 8px rgb(20 20 26 / 8%);
+  --ui-shadow-dialog: 0 28px 72px rgb(20 20 26 / 20%), 0 4px 16px rgb(20 20 26 / 10%);
+
+  /* Stable geometry for the workspace and its controls. */
+  --ui-sidebar-width: 248px;
+  --ui-public-header-height: 56px;
+  --ui-mobile-header-height: 48px;
+  --ui-page-topbar-height: 48px;
+  --ui-shell-header-height: 0px;
+  --ui-sticky-page-top: var(--ui-shell-header-height);
+  --ui-sticky-content-top: calc(var(--ui-shell-header-height) + var(--ui-page-topbar-height));
+  /* Compatibility alias for existing page-internal sticky regions. */
+  --ui-topbar-height: var(--ui-sticky-content-top);
+  --ui-layer-sticky-content: 10;
+  --ui-layer-page-topbar: 20;
+  --ui-layer-shell-header: 30;
+  --ui-shell-gap: 10px;
+  --ui-radius-control: 6px;
+  --ui-radius-surface: 8px;
+  --ui-radius-frame: 10px;
+  --ui-radius-pill: 999px;
+  --ui-control-height-xs: 28px;
+  --ui-control-height: 32px;
+  --ui-control-height-lg: 36px;
+  --ui-content-width: 1400px;
+  --ui-transition-fast: 120ms;
+  --ui-transition-standard: 160ms;
+}
+
+:root[data-theme-mode='dark'] {
+  color-scheme: dark;
+
+  --ui-bg-canvas: #111113;
+  --ui-bg-surface: #151518;
+  --ui-bg-elevated: #1c1c20;
+  --ui-bg-inset: #131316;
+  --ui-bg-subtle: #1d1d21;
+  --ui-bg-muted: #25252b;
+  --ui-bg-sidebar: #141416;
+  --ui-border: #2b2b31;
+  --ui-border-subtle: #222228;
+  --ui-border-strong: #414149;
+  --ui-control-border: #37373f;
+
+  --ui-text: #f1f1f3;
+  --ui-text-muted: #a4a4ad;
+  --ui-text-subtle: #898993;
+  --ui-text-placeholder: #777780;
+
+  --ui-accent: #77679f;
+  --ui-accent-hover: #a392c9;
+  --ui-accent-text: #b7a8d9;
+  --ui-accent-contrast: #ffffff;
+  --ui-accent-solid: #a392c9;
+  --ui-accent-solid-hover: #b3a4d4;
+  --ui-accent-solid-text: #17151c;
+  --ui-accent-soft: color-mix(in srgb, var(--ui-accent) 15%, transparent);
+  --ui-accent-border: color-mix(in srgb, var(--ui-accent) 44%, var(--ui-border));
+
+  --ui-danger: #e06b70;
+  --ui-danger-hover: #ed7d81;
+  --ui-danger-text: #f08a8e;
+  --ui-danger-soft: color-mix(in srgb, var(--ui-danger) 15%, transparent);
+  --ui-success: #55b98b;
+  --ui-success-text: #7ad0a5;
+  --ui-success-soft: color-mix(in srgb, var(--ui-success) 15%, transparent);
+  --ui-warning: #d8a04b;
+  --ui-warning-text: #edba70;
+  --ui-warning-soft: color-mix(in srgb, var(--ui-warning) 16%, transparent);
+  --ui-info: #78abe0;
+  --ui-info-text: #9ac5f0;
+  --ui-info-soft: color-mix(in srgb, var(--ui-info) 15%, transparent);
+
+  --ui-overlay: rgb(0 0 0 / 64%);
+  --ui-focus: #b7a8d9;
+  --ui-focus-halo: color-mix(in srgb, var(--ui-focus) 30%, transparent);
+  --ui-action-primary: #f1f1f3;
+  --ui-action-primary-hover: #ffffff;
+  --ui-action-primary-text: #151518;
+  --ui-shadow-control: 0 1px 2px rgb(0 0 0 / 24%);
+  --ui-shadow-surface: 0 1px 2px rgb(0 0 0 / 20%), 0 6px 16px rgb(0 0 0 / 14%);
+  --ui-shadow-popup: 0 16px 40px rgb(0 0 0 / 44%), 0 2px 8px rgb(0 0 0 / 30%);
+  --ui-shadow-dialog: 0 32px 84px rgb(0 0 0 / 58%), 0 4px 18px rgb(0 0 0 / 38%);
+}
+
+[data-app-shell='public'] {
+  --ui-shell-header-height: var(--ui-public-header-height);
+  --ui-sticky-page-top: var(--ui-public-header-height);
+  --ui-sticky-content-top: calc(var(--ui-public-header-height) + var(--ui-page-topbar-height));
+  --ui-topbar-height: calc(var(--ui-public-header-height) + var(--ui-page-topbar-height));
+}
+
+[data-app-shell='workspace'] {
+  --ui-shell-header-height: var(--ui-mobile-header-height);
+  --ui-sticky-page-top: 0px;
+  --ui-sticky-content-top: var(--ui-page-topbar-height);
+  --ui-topbar-height: var(--ui-page-topbar-height);
+}
+
+@media (min-width: 64rem) {
+  [data-app-shell='workspace'] {
+    --ui-shell-header-height: 0px;
+    --ui-sticky-page-top: 0px;
+    --ui-sticky-content-top: var(--ui-page-topbar-height);
+    --ui-topbar-height: var(--ui-page-topbar-height);
+  }
+}

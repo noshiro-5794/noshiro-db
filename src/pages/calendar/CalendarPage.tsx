@@ -1,7 +1,7 @@
+import { placeholderImagePaths } from '@/shared/assets/public-assets';
 import { useMemo, useState } from 'react';
-import { Link, useLocation } from '@/shared/routing/navigation';
+import { Link, useLocation } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
-import { useAuth } from '@/entities/session';
 import { formatWeekday, type Locale, useI18n } from '@/shared/i18n';
 import { calendarImageOf, flattenCalendarGroups, sortCalendarItems } from '@/features/search';
 import { subjectQueries } from '@/entities/subject';
@@ -10,10 +10,12 @@ import { routes } from '@/shared/routing/paths';
 import type { RouteBackState } from '@/shared/routing/route-state';
 import { routeBackState } from '@/shared/routing/route-state';
 import { Seo } from '@/shared/seo/Seo';
-import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/FeedbackState';
+import { Badge } from '@/shared/ui/Badge';
+import { ListSurface, ResultsMeta, ResultsState, type ResultsStatus } from '@/shared/ui/DataView';
 import { Page } from '@/shared/ui/Page';
+import { Toggle, ToggleGroup } from '@/shared/ui/Toggle';
 
-const coverPlaceholder = '/assets/placeholders/subject-cover.png';
+const coverPlaceholder = placeholderImagePaths.subjectCover;
 const weekdays = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
 
 function titleOf(item: CalendarSubjectItem, fallback: string) {
@@ -41,30 +43,33 @@ function CalendarSubjectRow({
 }) {
   return (
     <Link
-      className="grid min-w-0 grid-cols-[72px_minmax(0,1fr)_auto] gap-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-[var(--color-accent-border)] hover:shadow-[var(--shadow-soft)] max-sm:grid-cols-[64px_minmax(0,1fr)]"
+      className="grid min-w-0 grid-cols-[72px_minmax(0,1fr)_auto] gap-4 border-b border-border-subtle p-3 transition-colors last:border-b-0 hover:bg-muted max-sm:grid-cols-[64px_minmax(0,1fr)]"
+      data-slot="calendar-subject-row"
       state={state}
       to={routes.subject(item.subject_id)}
     >
       <img
-        className="h-24 w-[72px] rounded-lg bg-[var(--color-surface-muted)] object-cover max-sm:h-[88px] max-sm:w-16"
+        className="h-24 w-[72px] rounded-sm bg-muted object-cover ring-1 ring-border-subtle max-sm:h-[88px] max-sm:w-16"
         src={calendarImageOf(item) || coverPlaceholder}
         alt={titleOf(item, titleFallback)}
+        decoding="async"
         loading="lazy"
+        referrerPolicy="no-referrer"
       />
       <span className="grid min-w-0 content-center gap-2">
-        <span className="line-clamp-2 text-base font-semibold leading-6 text-[var(--color-text)]">
+        <span className="line-clamp-2 text-base font-semibold leading-6 text-[var(--ui-text)]">
           {titleOf(item, titleFallback)}
         </span>
         {item.display_subtitle ? (
-          <span className="line-clamp-1 text-sm text-neutral-500 dark:text-neutral-400">{item.display_subtitle}</span>
+          <span className="line-clamp-1 text-sm text-[var(--ui-text-muted)]">{item.display_subtitle}</span>
         ) : null}
-        <span className="flex min-w-0 flex-wrap items-center gap-2 text-xs font-medium text-neutral-500 dark:text-neutral-400">
-          <span className="rounded-full bg-[var(--color-surface-muted)] px-2 py-1">{item.subject_type}</span>
+        <span className="flex min-w-0 flex-wrap items-center gap-2 text-xs font-medium text-[var(--ui-text-muted)]">
+          <Badge>{item.subject_type}</Badge>
           <span>{item.weekday_en}</span>
           {item.platform ? <span className="min-w-0 truncate">{item.platform}</span> : null}
         </span>
       </span>
-      <span className="self-center rounded-full bg-[var(--color-surface-muted)] px-3 py-1 text-sm font-semibold text-[var(--color-text-muted)] max-sm:col-start-2 max-sm:w-fit">
+      <span className="self-center text-sm font-semibold tabular-nums text-[var(--ui-text-muted)] max-sm:col-start-2 max-sm:w-fit">
         {formatHeat(item.doing, locale)}
       </span>
     </Link>
@@ -73,7 +78,6 @@ function CalendarSubjectRow({
 
 export function CalendarPage() {
   const { locale, t } = useI18n();
-  const { role } = useAuth();
   const location = useLocation();
   const [selectedWeekday, setSelectedWeekday] = useState<WeekdayEn | ''>('');
   const calendarQuery = useQuery(subjectQueries.calendar());
@@ -88,111 +92,70 @@ export function CalendarPage() {
     return group ? [group] : [];
   }, [groups, selectedWeekday]);
   const visibleItemCount = selectedWeekday ? (findGroup(groups, selectedWeekday)?.items.length ?? 0) : allItems.length;
-  const hottestItems = allItems.slice(0, 5);
+  const resultsStatus: ResultsStatus =
+    calendarQuery.data === undefined && calendarQuery.isLoading
+      ? 'loading'
+      : calendarQuery.data === undefined && calendarQuery.isError
+        ? 'error'
+        : visibleItemCount === 0
+          ? 'empty'
+          : 'ready';
   const subjectLinkState = useMemo(() => routeBackState(location, t('calendar.title')), [location, t]);
 
   return (
-    <Page title={t('calendar.title')} eyebrow={t('nav.groupDiscover')} hideHeader={role === 'guest'} seo={false}>
+    <Page title={t('calendar.title')} eyebrow={t('nav.groupDiscover')} seo={false}>
       <Seo
         title={t('calendar.title')}
         description="Browse the weekly anime calendar, discover airing titles by weekday, and open detailed subject pages."
         path={routes.calendar}
       />
       <div className="grid gap-6 pb-8">
-        <div className="flex flex-wrap gap-2">
+        <ToggleGroup
+          aria-label={t('calendar.title')}
+          className="flex w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          variant="tab"
+          value={[selectedWeekday || 'all']}
+          onValueChange={(values) => {
+            const nextWeekday = values[0];
+            if (nextWeekday) setSelectedWeekday(nextWeekday === 'all' ? '' : nextWeekday);
+          }}
+        >
           {weekdays.map((weekday) => {
-            const isActive = selectedWeekday === weekday;
             const count = weekday ? (findGroup(groups, weekday)?.items.length ?? 0) : allItems.length;
 
             return (
-              <button
-                className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition ${
-                  isActive
-                    ? 'border-[var(--color-border)] bg-[var(--color-surface-elevated)] text-[var(--color-text)] shadow-sm'
-                    : 'border-[var(--color-border)] bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] hover:border-[var(--color-accent-border)] hover:text-[var(--color-text)]'
-                }`}
-                key={weekday || 'all'}
-                type="button"
-                onClick={() => setSelectedWeekday(weekday)}
-              >
+              <Toggle key={weekday || 'all'} value={weekday || 'all'} variant="tab">
                 {weekday ? formatWeekday(locale, weekday) : t('common.all')}
-                <span className="ml-1 opacity-60">{count}</span>
-              </button>
+                <span className="ml-1 tabular-nums text-subtle-foreground">{count}</span>
+              </Toggle>
             );
           })}
-        </div>
+        </ToggleGroup>
 
-        {calendarQuery.isLoading ? <LoadingState title={t('calendar.loading')} /> : null}
-        {calendarQuery.isError ? (
-          <ErrorState title={t('search.errorTitle')} description={t('search.errorBody')} />
-        ) : null}
+        <ResultsMeta
+          count={calendarQuery.data === undefined ? undefined : visibleItemCount}
+          label={t('calendar.visibleItems')}
+          pending={calendarQuery.isFetching && !calendarQuery.isLoading}
+          pendingLabel={t('calendar.loading')}
+        />
 
-        {!calendarQuery.isLoading && !calendarQuery.isError && allItems.length === 0 ? (
-          <EmptyState title={t('calendar.empty')} />
-        ) : null}
-
-        <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-          <aside className="grid content-start gap-3">
-            <section className="content-filter-panel">
-              <span className="text-xs font-semibold uppercase text-neutral-500 dark:text-neutral-400">
-                {t('calendar.overview')}
-              </span>
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <div>
-                  <strong className="text-2xl text-[var(--color-text)]">{allItems.length}</strong>
-                  <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{t('calendar.weeklyItems')}</p>
-                </div>
-                <div>
-                  <strong className="text-2xl text-[var(--color-text)]">{visibleItemCount}</strong>
-                  <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{t('calendar.visibleItems')}</p>
-                </div>
-              </div>
-            </section>
-
-            <section className="content-filter-panel">
-              <span className="text-xs font-semibold uppercase text-neutral-500 dark:text-neutral-400">
-                {t('calendar.trending')}
-              </span>
-              <div className="mt-3 grid gap-2">
-                {hottestItems.map((item) => (
-                  <Link
-                    className="grid min-w-0 grid-cols-[42px_minmax(0,1fr)] gap-2 rounded-lg p-1.5 transition hover:bg-[var(--color-surface-muted)]"
-                    key={item.subject_id}
-                    state={subjectLinkState}
-                    to={routes.subject(item.subject_id)}
-                  >
-                    <img
-                      className="h-14 w-[42px] rounded-md bg-[var(--color-surface-muted)] object-cover"
-                      src={calendarImageOf(item) || coverPlaceholder}
-                      alt={titleOf(item, t('common.untitledSubject'))}
-                      loading="lazy"
-                    />
-                    <span className="grid min-w-0 content-center">
-                      <span className="truncate text-sm font-semibold text-[var(--color-text)]">
-                        {titleOf(item, t('common.untitledSubject'))}
-                      </span>
-                      <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                        {formatHeat(item.doing, locale)}
-                      </span>
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          </aside>
-
+        <ResultsState
+          emptyTitle={t('calendar.empty')}
+          errorDescription={t('calendar.errorBody')}
+          errorTitle={t('calendar.errorTitle')}
+          loadingTitle={t('calendar.loading')}
+          status={resultsStatus}
+        >
           <div className="grid gap-6">
             {visibleGroups.map((group) => (
-              <section className="grid gap-3" key={group.weekday.en}>
-                <div className="flex items-center justify-between gap-3">
-                  <h2 className="text-xl font-semibold tracking-tight text-[var(--color-text)]">
-                    {formatWeekday(locale, group.weekday.en)}
-                  </h2>
-                  <span className="text-sm text-neutral-500 dark:text-neutral-400">
+              <section className="grid gap-2" key={group.weekday.en}>
+                <div className="flex items-center justify-between gap-3 px-1">
+                  <h2 className="text-sm font-semibold text-foreground">{formatWeekday(locale, group.weekday.en)}</h2>
+                  <span className="text-xs tabular-nums text-muted-foreground">
                     {group.items.length} {t('common.items')}
                   </span>
                 </div>
-                <div className="grid gap-3">
+                <ListSurface>
                   {group.items.map((item) => (
                     <CalendarSubjectRow
                       item={item}
@@ -202,11 +165,11 @@ export function CalendarPage() {
                       titleFallback={t('common.untitledSubject')}
                     />
                   ))}
-                </div>
+                </ListSurface>
               </section>
             ))}
           </div>
-        </div>
+        </ResultsState>
       </div>
     </Page>
   );

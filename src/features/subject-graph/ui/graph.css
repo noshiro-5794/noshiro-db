@@ -1,0 +1,208 @@
+@reference '../../../app/styles/global.css';
+
+@layer components {
+  html:has(.graph-fullscreen) {
+    overflow: hidden;
+    scrollbar-gutter: auto;
+  }
+
+  .graph-fullscreen {
+    --ui-bg-canvas: #101012;
+    --ui-bg-surface: #161619;
+    --ui-bg-elevated: #1c1c20;
+    --ui-bg-inset: #121214;
+    --ui-bg-subtle: #202024;
+    --ui-bg-muted: #26262b;
+    --ui-border: #303036;
+    --ui-border-subtle: #26262b;
+    --ui-border-strong: #484850;
+    --ui-control-border: #38383f;
+    --ui-text: #f1f1f3;
+    --ui-text-muted: #a3a3ac;
+    --ui-text-subtle: #85858f;
+    --ui-text-placeholder: #777780;
+    --ui-accent: #77679f;
+    --ui-accent-hover: #a392c9;
+    --ui-accent-text: #b7a8d9;
+    --ui-accent-solid: #a392c9;
+    --ui-accent-solid-hover: #b3a4d4;
+    --ui-accent-solid-text: #17151c;
+    --ui-accent-soft: color-mix(in srgb, var(--ui-accent) 18%, transparent);
+    --ui-accent-border: color-mix(in srgb, var(--ui-accent) 50%, var(--ui-border));
+    --ui-focus: #b7a8d9;
+    --ui-focus-halo: color-mix(in srgb, var(--ui-focus) 30%, transparent);
+    --ui-action-primary: #f1f1f3;
+    --ui-action-primary-hover: #ffffff;
+    --ui-action-primary-text: #151518;
+    --ui-shadow-control: 0 1px 2px rgb(0 0 0 / 28%);
+    --ui-shadow-popup: 0 14px 36px rgb(0 0 0 / 38%), 0 2px 8px rgb(0 0 0 / 24%);
+
+    @apply fixed inset-0 z-[80] min-h-screen w-screen overflow-hidden bg-background text-foreground;
+  }
+
+  .graph-back {
+    @apply absolute left-3 top-3 z-20;
+  }
+
+  .graph-back [data-slot='button'] {
+    @apply size-9 shadow-[var(--ui-shadow-popup)];
+  }
+
+  .graph-state {
+    @apply grid min-h-screen place-items-center bg-background p-6;
+  }
+
+  .graph-state > * {
+    @apply w-full max-w-md;
+  }
+
+  .graph-stage {
+    @apply relative h-screen min-h-screen overflow-hidden bg-background;
+  }
+
+  .graph-stage canvas {
+    @apply relative block size-full cursor-grab;
+    min-height: 100svh;
+    touch-action: none;
+  }
+
+  .graph-stage canvas:active {
+    @apply cursor-grabbing;
+  }
+
+  .graph-inspector {
+    @apply absolute bottom-[4.75rem] right-3 z-10 grid w-[min(420px,calc(100%-1.5rem))] grid-cols-[64px_minmax(0,1fr)] items-start gap-3 rounded-md border border-border bg-surface p-3 shadow-[var(--ui-shadow-popup)] sm:grid-cols-[72px_minmax(0,1fr)];
+  }
+
+  .graph-inspector-media {
+    @apply grid aspect-[3/4] w-full place-items-center overflow-hidden rounded-sm border border-border bg-inset;
+  }
+
+  .graph-inspector-media img {
+    @apply size-full object-cover;
+  }
+
+  .graph-inspector-swatch {
+    @apply size-4 rounded-[3px];
+  }
+
+  .graph-inspector-main {
+    @apply grid min-w-0 gap-1;
+  }
+
+  .graph-inspector-kind {
+    @apply flex items-center gap-1.5 text-[11px] font-medium text-subtle-foreground;
+  }
+
+  .graph-inspector-kind::before {
+    @apply size-1.5 rounded-full;
+    background: var(--graph-node-color);
+    content: '';
+  }
+
+  .graph-inspector-title {
+    @apply line-clamp-2 text-sm font-semibold leading-5 text-foreground;
+  }
+
+  .graph-inspector-description {
+    @apply m-0 line-clamp-2 text-xs leading-5 text-muted-foreground;
+  }
+
+  .graph-inspector-details {
+    @apply mt-1 flex flex-wrap gap-1;
+  }
+
+  .graph-inspector-detail {
+    @apply max-w-full rounded-[4px] border border-border-subtle bg-muted px-1.5 py-1 text-[11px] font-medium leading-none text-muted-foreground;
+  }
+
+  .graph-inspector-action {
+    @apply col-start-2 justify-self-start shadow-none;
+  }
+
+  .graph-toolbar {
+    @apply absolute bottom-3 left-3 z-10 flex items-center gap-0.5 rounded-md border border-border bg-surface p-1 shadow-[var(--ui-shadow-popup)];
+  }
+
+  .graph-scale {
+    @apply min-w-12 px-1.5 text-center text-xs font-medium tabular-nums text-muted-foreground;
+  }
+
+  .graph-toolbar [data-slot='button'] {
+    @apply size-8 border-transparent bg-transparent shadow-none;
+  }
+
+  .graph-data-controls {
+    @apply absolute right-3 top-3 z-20 grid w-[min(288px,calc(100%-4.5rem))] items-stretch gap-3 rounded-md border border-border bg-surface p-3 shadow-[var(--ui-shadow-popup)];
+  }
+
+  .graph-control-block {
+    @apply grid gap-1.5;
+  }
+
+  .graph-control-block-wide {
+    @apply min-w-0;
+  }
+
+  .graph-control-label {
+    @apply text-[11px] font-medium text-subtle-foreground;
+  }
+
+  .graph-mode-switch {
+    @apply grid grid-cols-2 rounded-sm border border-border bg-inset p-0.5;
+  }
+
+  .graph-mode-switch [data-slot='toggle'] {
+    @apply h-7 rounded-sm px-2 text-xs font-medium text-muted-foreground transition-colors duration-[var(--ui-transition-fast)];
+  }
+
+  .graph-mode-switch [data-slot='toggle']:hover {
+    @apply text-foreground;
+  }
+
+  .graph-mode-switch [data-slot='toggle'][data-pressed] {
+    @apply bg-elevated text-foreground shadow-[var(--ui-shadow-control)];
+  }
+
+  .graph-section-toggles {
+    @apply grid grid-cols-2 gap-1;
+  }
+
+  .graph-section-toggles [data-slot='toggle'] {
+    @apply inline-flex h-7 min-w-0 items-center justify-between gap-2 rounded-sm border border-transparent px-2 text-xs font-medium text-muted-foreground transition-colors duration-[var(--ui-transition-fast)];
+  }
+
+  .graph-section-toggles [data-slot='toggle']:hover {
+    @apply bg-muted text-foreground;
+  }
+
+  .graph-section-toggles [data-slot='toggle'][data-pressed] {
+    @apply border-control-border bg-elevated text-foreground shadow-[var(--ui-shadow-control)];
+  }
+
+  .graph-section-count {
+    @apply min-w-5 border-l border-border-subtle pl-1.5 text-right text-[11px] font-medium tabular-nums text-subtle-foreground;
+  }
+
+  .graph-section-toggles [data-slot='toggle'][data-pressed] .graph-section-count {
+    color: currentColor;
+  }
+
+  .graph-control-stats {
+    @apply grid grid-cols-[auto_1fr_auto_1fr] items-baseline gap-x-1.5 border-t border-border-subtle pt-2;
+  }
+
+  .graph-control-stats strong {
+    @apply text-sm font-semibold tabular-nums text-foreground;
+  }
+
+  .graph-control-stats span {
+    @apply text-[11px] font-medium text-subtle-foreground;
+  }
+
+  @media (min-width: 48rem) {
+    .graph-inspector {
+      @apply bottom-3;
+    }
+  }
+}

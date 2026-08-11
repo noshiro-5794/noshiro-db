@@ -4,9 +4,6 @@ export const graphMessages = defineMessages({
   'zh-CN': {
     'graph.title': '知识图谱',
     'graph.description': '将作品、章节、角色、制作人员、关联作品和元数据转化为力导向关系图。',
-    'graph.algorithm': '算法',
-    'graph.algorithmBody':
-      '使用 Fruchterman-Reingold 力导向布局：节点互相排斥，关系边像弹簧一样拉近相关内容，并加入中心引力稳定画面。',
     'graph.nodes': '节点',
     'graph.edges': '关系',
     'graph.subjectNode': '作品',
@@ -37,9 +34,6 @@ export const graphMessages = defineMessages({
     'graph.title': 'Knowledge graph',
     'graph.description':
       'Transforms subject, episodes, characters, staff, related titles, and metadata into a force-directed relation graph.',
-    'graph.algorithm': 'Algorithm',
-    'graph.algorithmBody':
-      'Uses a Fruchterman-Reingold force-directed layout: nodes repel each other, relation edges act like springs, and center gravity stabilizes the scene.',
     'graph.nodes': 'Nodes',
     'graph.edges': 'Edges',
     'graph.subjectNode': 'Subject',
@@ -70,9 +64,6 @@ export const graphMessages = defineMessages({
     'graph.title': '知識グラフ',
     'graph.description':
       '作品、エピソード、キャラクター、スタッフ、関連作品、メタデータを力学モデルの関係グラフに変換します。',
-    'graph.algorithm': 'アルゴリズム',
-    'graph.algorithmBody':
-      'Fruchterman-Reingold の力指向レイアウトを使用します。ノードは反発し、関係エッジはばねのように関連要素を引き寄せ、中心重力で画面を安定させます。',
     'graph.nodes': 'ノード',
     'graph.edges': '関係',
     'graph.subjectNode': '作品',

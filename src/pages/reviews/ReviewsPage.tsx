@@ -1,28 +1,49 @@
-import { type FormEvent, useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useSearchParams } from '@/shared/routing/navigation';
+import { formatDate } from '@/shared/lib/date';
+import { type SyntheticEvent, useEffect, useMemo, useState } from 'react';
+import { getRouteApi, Link, useLocation } from '@tanstack/react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { EyeOff, FileText, PencilLine, Search, Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
-import { libraryMutations, libraryQueries, libraryQueryKeys } from '@/entities/library';
+import { EyeOff, FileText, PencilLine, Trash2 } from 'lucide-react';
+import { toast } from '@/shared/ui/toast';
+import { libraryMutations, libraryQueries } from '@/entities/library';
+import { useAuth } from '@/entities/session';
+import { invalidateReviewViews, ReviewDeleteDialog } from '@/features/reviews';
 import { useI18n } from '@/shared/i18n';
 import type { Review } from '@/shared/api';
 import { routes } from '@/shared/routing/paths';
+import type { ReviewsSearch } from '@/shared/routing/route-search';
 import type { RouteBackState } from '@/shared/routing/route-state';
 import { routeBackState } from '@/shared/routing/route-state';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
-import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/FeedbackState';
+import {
+  ContentRow,
+  ContentRowActions,
+  ContentRowExcerpt,
+  ContentRowHeading,
+  ContentRowMain,
+  ContentRowMedia,
+  ContentRowMeta,
+  ContentRowReference,
+  ContentRowTitle,
+} from '@/shared/ui/ContentRow';
+import {
+  DataToolbar,
+  DataToolbarPrimary,
+  DataToolbarRow,
+  ListSurface,
+  ResultsMeta,
+  ResultsState,
+  SearchField,
+  type ResultsStatus,
+} from '@/shared/ui/DataView';
 import { FilterMenu } from '@/shared/ui/FilterMenu';
-import { Input } from '@/shared/ui/Input';
 import { Page } from '@/shared/ui/Page';
 import { Pagination } from '@/shared/ui/Pagination';
+import { SpoilerText } from '@/shared/ui/SpoilerText';
 
 const pageSize = 12;
-
-function formatDate(value: string | undefined, fallback: string) {
-  if (!value) return fallback;
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(value));
-}
+const reviewsRoute = getRouteApi('/reviews');
+type ReviewOrdering = NonNullable<ReviewsSearch['ordering']>;
 
 function reviewSubjectTitle(
   review: { subject?: { display_title?: string | null; title?: string | null; title_cn?: string | null } },
@@ -39,7 +60,7 @@ function ReviewCard({
 }: {
   review: Review;
   isDeleting: boolean;
-  onDelete: (reviewId: number) => void;
+  onDelete: () => void;
   state: RouteBackState;
 }) {
   const { t } = useI18n();
@@ -47,22 +68,38 @@ function ReviewCard({
   const cover = review.subject?.image_thumbnail || review.subject?.image;
 
   return (
-    <article className="review-showcase-card">
-      <Link
-        className="review-showcase-cover"
-        state={state}
-        to={review.subject ? routes.subject(review.subject.id) : routes.review(review.id)}
-      >
-        {cover ? (
-          <img src={cover} alt="" loading="lazy" />
+    <ContentRow>
+      <ContentRowMedia>
+        {review.subject ? (
+          <Link
+            aria-label={subjectTitle}
+            params={{ subjectId: review.subject.id }}
+            state={state}
+            to="/subjects/$subjectId"
+          >
+            {cover ? (
+              <img alt="" decoding="async" loading="lazy" referrerPolicy="no-referrer" src={cover} />
+            ) : (
+              <span>
+                <FileText className="size-5" />
+              </span>
+            )}
+          </Link>
         ) : (
-          <span>
-            <FileText className="size-5" />
-          </span>
+          <Link
+            aria-label={review.title}
+            params={{ reviewId: String(review.id) }}
+            state={state}
+            to="/reviews/$reviewId"
+          >
+            <span>
+              <FileText className="size-5" />
+            </span>
+          </Link>
         )}
-      </Link>
-      <div className="review-showcase-main">
-        <div className="review-showcase-meta">
+      </ContentRowMedia>
+      <ContentRowMain>
+        <ContentRowMeta>
           <Badge variant={review.is_public ? 'accent' : 'secondary'}>
             {review.is_public ? t('common.public') : t('common.private')}
           </Badge>
@@ -73,20 +110,23 @@ function ReviewCard({
             </Badge>
           ) : null}
           <span>{formatDate(review.updated_at || review.created_at, t('common.noDate'))}</span>
-        </div>
-        <div className="review-showcase-heading">
-          <Link className="review-showcase-title" state={state} to={routes.review(review.id)}>
-            {review.title}
-          </Link>
-          <div className="review-showcase-actions">
+        </ContentRowMeta>
+        <ContentRowHeading>
+          <ContentRowTitle>
+            <Link params={{ reviewId: String(review.id) }} state={state} to="/reviews/$reviewId">
+              {review.title}
+            </Link>
+          </ContentRowTitle>
+          <ContentRowActions>
             <Button
               asChild
               aria-label={`${t('common.edit')} ${review.title}`}
               size="icon"
+              tooltip={t('common.edit')}
               type="button"
               variant="ghost"
             >
-              <Link state={state} to={routes.reviewEdit(review.id)}>
+              <Link params={{ reviewId: String(review.id) }} state={state} to="/reviews/$reviewId/edit">
                 <PencilLine className="size-4" />
               </Link>
             </Button>
@@ -94,39 +134,49 @@ function ReviewCard({
               aria-label={`${t('common.delete')} ${review.title}`}
               disabled={isDeleting}
               size="icon"
+              tooltip={t('common.delete')}
               type="button"
               variant="ghost"
-              onClick={() => onDelete(review.id)}
+              onClick={() => {
+                onDelete();
+              }}
             >
               <Trash2 className="size-4" />
             </Button>
-          </div>
-        </div>
+          </ContentRowActions>
+        </ContentRowHeading>
         {review.subject ? (
-          <Link className="review-showcase-subject" state={state} to={routes.subject(review.subject.id)}>
-            <span>{subjectTitle}</span>
-            {review.subject.subject_type ? <small>{review.subject.subject_type}</small> : null}
-          </Link>
+          <ContentRowReference>
+            <Link params={{ subjectId: review.subject.id }} state={state} to="/subjects/$subjectId">
+              <span>{subjectTitle}</span>
+              {review.subject.subject_type ? <small>{review.subject.subject_type}</small> : null}
+            </Link>
+          </ContentRowReference>
         ) : null}
-        <p className={`review-showcase-body ${review.is_spoiler ? 'is-spoiler' : ''}`}>
-          {review.content || t('common.noContent')}
-        </p>
-      </div>
-    </article>
+        <ContentRowExcerpt>
+          <SpoilerText isSpoiler={review.is_spoiler} revealLabel={t('common.revealSpoiler')}>
+            {review.content || t('common.noContent')}
+          </SpoilerText>
+        </ContentRowExcerpt>
+      </ContentRowMain>
+    </ContentRow>
   );
 }
 
 export function ReviewsPage() {
   const { t } = useI18n();
+  const auth = useAuth();
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const keyword = searchParams.get('keyword') ?? '';
-  const ordering = searchParams.get('ordering') ?? '-created_at';
-  const currentPage = Math.max(1, Number(searchParams.get('page') ?? '1') || 1);
+  const navigate = reviewsRoute.useNavigate();
+  const search = reviewsRoute.useSearch();
+  const keyword = search.keyword ?? '';
+  const ordering = search.ordering ?? '-created_at';
+  const currentPage = search.page ?? 1;
   const routeState = routeBackState(location, t('nav.reviews'));
   const [draftKeyword, setDraftKeyword] = useState(keyword);
+  const [deleteTarget, setDeleteTarget] = useState<Review | null>(null);
   const queryClient = useQueryClient();
-  const orderingOptions = [
+  const orderingOptions: Array<{ label: string; value: ReviewOrdering }> = [
     { label: t('reviews.sortNewest'), value: '-created_at' },
     { label: t('reviews.sortOldest'), value: 'created_at' },
     { label: t('reviews.sortRecentlyCreated'), value: '-id' },
@@ -135,8 +185,8 @@ export function ReviewsPage() {
 
   const query = useMemo(
     () => ({
-      keyword: keyword || undefined,
-      ordering: ordering as 'created_at' | '-created_at' | 'id' | '-id',
+      ...(keyword ? { keyword } : {}),
+      ordering,
       page: currentPage,
       page_size: pageSize,
     }),
@@ -145,13 +195,27 @@ export function ReviewsPage() {
   const reviewsQuery = useQuery(libraryQueries.reviews(query));
   const deleteReviewMutation = useMutation({
     ...libraryMutations.deleteReview(),
+    onError: () => toast.error(t('common.requestFailed')),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: libraryQueryKeys.reviews() });
+      setDeleteTarget(null);
+      await invalidateReviewViews(queryClient, {
+        includeComments: true,
+        userId: auth.profile?.user_id,
+      });
       toast.success(t('reviews.deleted'));
     },
   });
+  const reviews = reviewsQuery.data?.results ?? [];
   const totalCount = reviewsQuery.data?.count ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const resultsStatus: ResultsStatus =
+    reviewsQuery.data === undefined && reviewsQuery.isLoading
+      ? 'loading'
+      : reviewsQuery.data === undefined && reviewsQuery.isError
+        ? 'error'
+        : reviews.length === 0
+          ? 'empty'
+          : 'ready';
 
   useEffect(() => {
     setDraftKeyword(keyword);
@@ -159,101 +223,103 @@ export function ReviewsPage() {
 
   useEffect(() => {
     if (reviewsQuery.data && currentPage > totalPages) {
-      setSearchParams((currentParams) => {
-        const nextParams = new URLSearchParams(currentParams);
-        nextParams.set('page', String(totalPages));
-        return nextParams;
-      });
+      void navigate({ replace: true, search: (current) => ({ ...current, page: totalPages }) });
     }
-  }, [currentPage, reviewsQuery.data, setSearchParams, totalPages]);
+  }, [currentPage, navigate, reviewsQuery.data, totalPages]);
 
-  function updateSearchParam(key: string, value: string) {
-    setSearchParams((currentParams) => {
-      const nextParams = new URLSearchParams(currentParams);
-      if (value) nextParams.set(key, value);
-      else nextParams.delete(key);
-      if (key !== 'page') nextParams.delete('page');
-      return nextParams;
+  function updateOrdering(value: ReviewOrdering) {
+    void navigate({ search: (current) => ({ ...current, ordering: value, page: undefined }) });
+  }
+
+  function handleSubmit(event: SyntheticEvent<HTMLFormElement, SubmitEvent>) {
+    event.preventDefault();
+    void navigate({
+      search: (current) => ({ ...current, keyword: draftKeyword.trim() || undefined, page: undefined }),
     });
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    updateSearchParam('keyword', draftKeyword.trim());
-  }
-
   function goToPage(page: number) {
-    updateSearchParam('page', String(Math.min(Math.max(page, 1), totalPages)));
+    void navigate({ search: (current) => ({ ...current, page: Math.min(Math.max(page, 1), totalPages) }) });
   }
 
   return (
     <Page title={t('reviews.title')} eyebrow={t('nav.groupLibrary')}>
       <div className="grid gap-5">
-        <form className="content-toolbar" onSubmit={handleSubmit}>
-          <div className="content-toolbar-grid is-review">
-            <div className="content-toolbar-search">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400" />
-              <Input
-                className="pl-9"
+        <DataToolbar onSubmit={handleSubmit}>
+          <DataToolbarRow className="lg:grid-cols-[minmax(0,1fr)_190px_auto]">
+            <DataToolbarPrimary>
+              <SearchField
+                aria-label={t('reviews.searchPlaceholder')}
+                maxLength={200}
                 value={draftKeyword}
                 placeholder={t('reviews.searchPlaceholder')}
-                onChange={(event) => setDraftKeyword(event.target.value)}
+                onChange={(event) => {
+                  setDraftKeyword(event.target.value);
+                }}
               />
-            </div>
+            </DataToolbarPrimary>
             <FilterMenu
               label={t('common.sort')}
               options={orderingOptions}
+              size="lg"
               value={ordering}
-              onChange={(value) => updateSearchParam('ordering', value)}
+              onChange={updateOrdering}
             />
-            <Button type="submit" variant="secondary">
+            <Button size="lg" type="submit" variant="secondary">
               {t('common.search')}
             </Button>
-          </div>
-        </form>
+          </DataToolbarRow>
+        </DataToolbar>
 
-        <div className="content-summary-bar">
-          <div className="content-summary-count">
-            <span className="content-summary-number">{totalCount}</span>
-            <span>{t('common.reviews')}</span>
-          </div>
-          <div className="content-summary-side">
-            {reviewsQuery.isFetching ? <span>{t('common.loading')}</span> : null}
-            <span className="content-summary-page">
-              {t('common.page')} {currentPage} / {totalPages}
-            </span>
-          </div>
-        </div>
+        <ResultsMeta
+          count={reviewsQuery.data?.count}
+          label={t('common.reviews')}
+          pending={reviewsQuery.isFetching && !reviewsQuery.isLoading}
+          pendingLabel={t('common.loading')}
+        />
 
-        {reviewsQuery.isLoading ? <LoadingState title={t('reviews.loading')} /> : null}
-        {reviewsQuery.isError ? (
-          <ErrorState title={t('reviews.errorTitle')} description={t('search.errorBody')} />
-        ) : null}
-        {!reviewsQuery.isLoading && !reviewsQuery.isError && reviewsQuery.data?.results.length === 0 ? (
-          <EmptyState
-            title={t('reviews.emptyTitle')}
-            description={t('reviews.emptyBody')}
-            action={
-              <Button asChild size="sm" type="button" variant="secondary">
-                <Link to={routes.search}>{t('nav.search')}</Link>
-              </Button>
-            }
-          />
-        ) : null}
+        <ResultsState
+          emptyAction={
+            <Button asChild size="sm" type="button" variant="secondary">
+              <Link to={routes.search}>{t('nav.search')}</Link>
+            </Button>
+          }
+          emptyDescription={t('reviews.emptyBody')}
+          emptyTitle={t('reviews.emptyTitle')}
+          errorDescription={t('search.errorBody')}
+          errorTitle={t('reviews.errorTitle')}
+          loadingTitle={t('reviews.loading')}
+          status={resultsStatus}
+        >
+          <>
+            <ListSurface>
+              {reviews.map((review) => (
+                <ReviewCard
+                  key={review.id}
+                  review={review}
+                  isDeleting={deleteReviewMutation.isPending && deleteReviewMutation.variables === review.id}
+                  state={routeState}
+                  onDelete={() => {
+                    setDeleteTarget(review);
+                  }}
+                />
+              ))}
+            </ListSurface>
+            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={goToPage} />
+          </>
+        </ResultsState>
 
-        <div className="review-list">
-          {(reviewsQuery.data?.results ?? []).map((review) => (
-            <ReviewCard
-              key={review.id}
-              review={review}
-              isDeleting={deleteReviewMutation.isPending}
-              state={routeState}
-              onDelete={(reviewId) => deleteReviewMutation.mutate(reviewId)}
-            />
-          ))}
-        </div>
-
-        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={goToPage} />
+        <ReviewDeleteDialog
+          isPending={deleteReviewMutation.isPending}
+          open={deleteTarget !== null}
+          reviewTitle={deleteTarget?.title}
+          onConfirm={() => {
+            if (deleteTarget && !deleteReviewMutation.isPending) deleteReviewMutation.mutate(deleteTarget.id);
+          }}
+          onOpenChange={(open) => {
+            if (!open) setDeleteTarget(null);
+          }}
+        />
       </div>
     </Page>
   );

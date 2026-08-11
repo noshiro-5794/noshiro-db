@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { I18nContext } from './i18n-context-value';
 import { messages, type Locale, type MessageKey } from './catalog';
 
@@ -33,7 +33,13 @@ function detectSystemLocale() {
 }
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocale] = useState<Locale>(detectSystemLocale);
+  const preferenceRef = useRef<Locale | 'auto'>('auto');
+  const [locale, setLocaleState] = useState<Locale>(detectSystemLocale);
+
+  const setLocale = useCallback((nextLocale: Locale | 'auto') => {
+    preferenceRef.current = nextLocale;
+    setLocaleState(nextLocale === 'auto' ? detectSystemLocale() : nextLocale);
+  }, []);
 
   useEffect(() => {
     document.documentElement.lang = locale;
@@ -41,11 +47,13 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     function handleLanguageChange() {
-      setLocale(detectSystemLocale());
+      if (preferenceRef.current === 'auto') setLocaleState(detectSystemLocale());
     }
 
     window.addEventListener('languagechange', handleLanguageChange);
-    return () => window.removeEventListener('languagechange', handleLanguageChange);
+    return () => {
+      window.removeEventListener('languagechange', handleLanguageChange);
+    };
   }, []);
 
   const value = useMemo(
@@ -54,7 +62,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       setLocale,
       t: (key: MessageKey) => messages[locale][key],
     }),
-    [locale],
+    [locale, setLocale],
   );
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;

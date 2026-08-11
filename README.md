@@ -11,7 +11,7 @@ Modern React frontend for **Noshiro DB**, a personal anime and galgame database 
 - TanStack Router
 - TanStack Query
 - Tailwind CSS v4
-- Radix UI primitives
+- Base UI primitives
 - hCaptcha protected email-code flows
 
 ## Features
@@ -69,6 +69,7 @@ VITE_API_BASE_URL=
 ```
 
 Change `API_PROXY_TARGET` to `http://127.0.0.1:8008` only when developing against a local backend. Production builds do not use this proxy and continue to call `https://api.noshiro.moe` directly.
+The development proxy preserves the refresh cookie's `HttpOnly`, `SameSite`, and path restrictions while adapting its production-only `Secure` attribute for Vite's HTTP origin, including LAN and IPv6 development URLs.
 
 If hCaptcha is enabled in the backend, set:
 
@@ -90,10 +91,12 @@ pnpm format
 pnpm typecheck
 pnpm lint
 pnpm test
+pnpm test:e2e
 pnpm test:watch
 pnpm build
 pnpm preview
 pnpm check
+pnpm check:dead-code
 pnpm check:dependencies
 ```
 

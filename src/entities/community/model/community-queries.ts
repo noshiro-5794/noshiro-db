@@ -48,10 +48,15 @@ export const communityQueryKeys = {
   posts: () => [...communityQueryKeys.all, 'posts'] as const,
   postList: (query: CommunityPostListQuery = {}) => [...communityQueryKeys.posts(), 'list', query] as const,
   postDetail: (postId: number) => [...communityQueryKeys.posts(), 'detail', postId] as const,
-  postComments: (postId: number, query: PageQuery = {}) =>
-    [...communityQueryKeys.posts(), 'comments', postId, query] as const,
   comments: () => [...communityQueryKeys.all, 'comments'] as const,
-  commentList: (query: CommunityCommentListQuery) => [...communityQueryKeys.comments(), 'list', query] as const,
+  commentTarget: (targetType: CommunityTargetType, targetId: number) =>
+    [...communityQueryKeys.comments(), 'target', targetType, targetId] as const,
+  commentList: (query: CommunityCommentListQuery) =>
+    [
+      ...communityQueryKeys.commentTarget(query.target_type, query.target_id),
+      'list',
+      { page: query.page, page_size: query.page_size },
+    ] as const,
   bookmarks: (query: CommunityBookmarkListQuery = {}) => [...communityQueryKeys.all, 'bookmarks', query] as const,
   notifications: () => [...communityQueryKeys.all, 'notifications'] as const,
   notificationList: (query: CommunityNotificationListQuery = {}) =>
@@ -66,82 +71,92 @@ export const communityQueries = {
   myFollowing: (query: PageQuery = {}) =>
     queryOptions({
       queryKey: communityQueryKeys.myFollowing(query),
-      queryFn: () => communityFollowsApi.listMyFollowing(query),
+      queryFn: ({ signal }) => communityFollowsApi.listMyFollowing(query, { signal }),
     }),
   myFollowers: (query: PageQuery = {}) =>
     queryOptions({
       queryKey: communityQueryKeys.myFollowers(query),
-      queryFn: () => communityFollowsApi.listMyFollowers(query),
+      queryFn: ({ signal }) => communityFollowsApi.listMyFollowers(query, { signal }),
     }),
   userFollowing: (userId: number, query: PageQuery = {}) =>
     queryOptions({
       queryKey: communityQueryKeys.userFollowing(userId, query),
-      queryFn: () => communityFollowsApi.listUserFollowing(userId, query),
+      queryFn: ({ signal }) => communityFollowsApi.listUserFollowing(userId, query, { signal }),
     }),
   userFollowers: (userId: number, query: PageQuery = {}) =>
     queryOptions({
       queryKey: communityQueryKeys.userFollowers(userId, query),
-      queryFn: () => communityFollowsApi.listUserFollowers(userId, query),
+      queryFn: ({ signal }) => communityFollowsApi.listUserFollowers(userId, query, { signal }),
     }),
   blocks: (query: PageQuery = {}) =>
     queryOptions({
       queryKey: communityQueryKeys.blocks(query),
-      queryFn: () => communityRelationshipsApi.listBlocks(query),
+      queryFn: ({ signal }) => communityRelationshipsApi.listBlocks(query, { signal }),
     }),
   mutes: (query: PageQuery = {}) =>
     queryOptions({
       queryKey: communityQueryKeys.mutes(query),
-      queryFn: () => communityRelationshipsApi.listMutes(query),
+      queryFn: ({ signal }) => communityRelationshipsApi.listMutes(query, { signal }),
     }),
   myActivities: (query: CommunityActivityListQuery = {}) =>
     queryOptions({
       queryKey: communityQueryKeys.myActivities(query),
-      queryFn: () => communityActivitiesApi.listMine(query),
+      queryFn: ({ signal }) => communityActivitiesApi.listMine(query, { signal }),
     }),
   publicActivities: (query: CommunityActivityListQuery = {}) =>
     queryOptions({
       queryKey: communityQueryKeys.publicActivities(query),
-      queryFn: () => communityActivitiesApi.listPublic(query),
+      queryFn: ({ signal }) => communityActivitiesApi.listPublic(query, { signal }),
     }),
   feed: (query: CommunityActivityListQuery = {}) =>
-    queryOptions({ queryKey: communityQueryKeys.feed(query), queryFn: () => communityActivitiesApi.listFeed(query) }),
+    queryOptions({
+      queryKey: communityQueryKeys.feed(query),
+      queryFn: ({ signal }) => communityActivitiesApi.listFeed(query, { signal }),
+    }),
   userActivities: (userId: number, query: CommunityActivityListQuery = {}) =>
     queryOptions({
       queryKey: communityQueryKeys.userActivities(userId, query),
-      queryFn: () => communityActivitiesApi.listUser(userId, query),
+      queryFn: ({ signal }) => communityActivitiesApi.listUser(userId, query, { signal }),
     }),
   posts: (query: CommunityPostListQuery = {}) =>
-    queryOptions({ queryKey: communityQueryKeys.postList(query), queryFn: () => communityPostsApi.list(query) }),
-  post: (postId: number) =>
-    queryOptions({ queryKey: communityQueryKeys.postDetail(postId), queryFn: () => communityPostsApi.get(postId) }),
-  postComments: (postId: number, query: PageQuery = {}) =>
     queryOptions({
-      queryKey: communityQueryKeys.postComments(postId, query),
-      queryFn: () => communityPostsApi.listComments(postId, query),
+      queryKey: communityQueryKeys.postList(query),
+      queryFn: ({ signal }) => communityPostsApi.list(query, { signal }),
+    }),
+  post: (postId: number) =>
+    queryOptions({
+      queryKey: communityQueryKeys.postDetail(postId),
+      queryFn: ({ signal }) => communityPostsApi.get(postId, { signal }),
     }),
   comments: (query: CommunityCommentListQuery) =>
-    queryOptions({ queryKey: communityQueryKeys.commentList(query), queryFn: () => communityCommentsApi.list(query) }),
+    queryOptions({
+      queryKey: communityQueryKeys.commentList(query),
+      queryFn: ({ signal }) => communityCommentsApi.list(query, { signal }),
+    }),
   bookmarks: (query: CommunityBookmarkListQuery = {}) =>
     queryOptions({
       queryKey: communityQueryKeys.bookmarks(query),
-      queryFn: () => communityInteractionsApi.listBookmarks(query),
+      queryFn: ({ signal }) => communityInteractionsApi.listBookmarks(query, { signal }),
     }),
   notifications: (query: CommunityNotificationListQuery = {}) =>
     queryOptions({
       queryKey: communityQueryKeys.notificationList(query),
-      queryFn: () => communityNotificationsApi.list(query),
+      queryFn: ({ signal }) => communityNotificationsApi.list(query, { signal }),
     }),
   unreadCount: () =>
     queryOptions({
       queryKey: communityQueryKeys.unreadCount(),
-      queryFn: () => communityNotificationsApi.unreadCount(),
+      queryFn: ({ signal }) => communityNotificationsApi.unreadCount({ signal }),
     }),
   myReports: (query: CommunityReportListQuery = {}) =>
-    queryOptions({ queryKey: communityQueryKeys.myReports(query), queryFn: () => communityReportsApi.listMine(query) }),
+    queryOptions({
+      queryKey: communityQueryKeys.myReports(query),
+      queryFn: ({ signal }) => communityReportsApi.listMine(query, { signal }),
+    }),
   staffReports: (query: CommunityReportListQuery = {}) =>
     queryOptions({
       queryKey: communityQueryKeys.staffReports(query),
-      queryFn: () => communityReportsApi.listStaff(query),
+      queryFn: ({ signal }) => communityReportsApi.listStaff(query, { signal }),
     }),
 };
 
@@ -151,14 +166,14 @@ export const communityMutations = {
   block: () =>
     mutationOptions({
       mutationFn: ({ targetUserId, reason }: { targetUserId: number; reason?: string }) =>
-        communityRelationshipsApi.block(targetUserId, { reason }),
+        communityRelationshipsApi.block(targetUserId, reason === undefined ? {} : { reason }),
     }),
   unblock: () =>
     mutationOptions({ mutationFn: (targetUserId: number) => communityRelationshipsApi.unblock(targetUserId) }),
   mute: () =>
     mutationOptions({
       mutationFn: ({ targetUserId, reason }: { targetUserId: number; reason?: string }) =>
-        communityRelationshipsApi.mute(targetUserId, { reason }),
+        communityRelationshipsApi.mute(targetUserId, reason === undefined ? {} : { reason }),
     }),
   unmute: () =>
     mutationOptions({ mutationFn: (targetUserId: number) => communityRelationshipsApi.unmute(targetUserId) }),
@@ -169,16 +184,6 @@ export const communityMutations = {
         communityPostsApi.update(postId, body),
     }),
   deletePost: () => mutationOptions({ mutationFn: (postId: number) => communityPostsApi.delete(postId) }),
-  createPostComment: () =>
-    mutationOptions({
-      mutationFn: ({
-        postId,
-        body,
-      }: {
-        postId: number;
-        body: Omit<CommunityCommentBody, 'target_type' | 'target_id'>;
-      }) => communityPostsApi.createComment(postId, body),
-    }),
   createComment: () =>
     mutationOptions({
       mutationFn: (body: CommunityCommentBody & { target_type: CommunityTargetType; target_id: number }) =>
@@ -211,6 +216,18 @@ export const communityMutations = {
         reaction_type?: CommunityReactionType;
       }) => communityInteractionsApi.unreact(body),
     }),
+  setReaction: () =>
+    mutationOptions({
+      mutationFn: ({
+        active,
+        ...body
+      }: {
+        active: boolean;
+        target_type: CommunityTargetType;
+        target_id: number;
+        reaction_type?: CommunityReactionType;
+      }) => (active ? communityInteractionsApi.react(body) : communityInteractionsApi.unreact(body)),
+    }),
   bookmark: () =>
     mutationOptions({
       mutationFn: (body: { target_type: CommunityTargetType; target_id: number }) =>
@@ -220,6 +237,11 @@ export const communityMutations = {
     mutationOptions({
       mutationFn: (body: { target_type: CommunityTargetType; target_id: number }) =>
         communityInteractionsApi.unbookmark(body),
+    }),
+  setBookmark: () =>
+    mutationOptions({
+      mutationFn: ({ active, ...body }: { active: boolean; target_type: CommunityTargetType; target_id: number }) =>
+        active ? communityInteractionsApi.bookmark(body) : communityInteractionsApi.unbookmark(body),
     }),
   markNotificationRead: () =>
     mutationOptions({ mutationFn: (notificationId: number) => communityNotificationsApi.markRead(notificationId) }),
