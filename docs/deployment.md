@@ -79,6 +79,13 @@ In 1Panel, set the static website rewrite or OpenResty config to:
 location / {
     try_files $uri $uri/ /index.html;
 }
+
+add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://js.hcaptcha.com https://*.hcaptcha.com; style-src 'self' 'unsafe-inline' https://*.hcaptcha.com; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://api.noshiro.moe https://api.bgm.tv https://*.hcaptcha.com; frame-src https://*.hcaptcha.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests" always;
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header X-Frame-Options "DENY" always;
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
 ```
 
 Without this fallback, direct visits or refreshes on nested routes will return `404 Not Found openresty`.
@@ -102,9 +109,10 @@ Keep development and backend process ports private:
 Make sure the backend production settings allow the deployment domain:
 
 - allowed hosts include `api.noshiro.moe`
-- trusted CSRF origins include `https://noshiro.moe` and `https://api.noshiro.moe`
-- CORS allowed origins include `https://noshiro.moe`
-- if refresh tokens or session cookies are stored in cookies, cross-subdomain cookies must use `Secure` and `SameSite=None`, or a suitable shared cookie domain such as `.noshiro.moe`
+- CORS allowed origins include only `https://noshiro.moe`, with credentialed requests enabled
+- the refresh cookie is host-only for `api.noshiro.moe`, `HttpOnly`, `Secure`, and `SameSite=Lax` or stricter; a shared `.noshiro.moe` cookie domain is unnecessary
+- cookie-authenticated refresh and logout endpoints validate `Origin` against an explicit allowlist; CORS response headers and `SameSite` alone are not a substitute for server-side CSRF enforcement
+- trusted CSRF origins include `https://noshiro.moe` only for endpoints that actually use Django CSRF validation
 - uploaded media/static backend files have their own serving strategy
 - calendar cover images may be served from MinIO/CDN URLs when the backend has mirrored them successfully; otherwise Bangumi image URLs can still appear as fallback data
 

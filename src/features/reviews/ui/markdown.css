@@ -1,0 +1,78 @@
+@reference '../../../app/styles/global.css';
+
+@layer components {
+  .markdown-body {
+    @apply mx-auto grid w-full max-w-3xl gap-4 text-[0.97rem] leading-7;
+    color: var(--ui-text);
+  }
+
+  .markdown-body :where(h1, h2, h3) {
+    @apply m-0 pt-2 font-semibold tracking-normal;
+  }
+
+  .markdown-body h1 {
+    @apply text-2xl leading-tight;
+  }
+
+  .markdown-body h2 {
+    @apply border-b pb-2 text-xl leading-tight;
+    border-color: color-mix(in srgb, var(--ui-border) 72%, transparent);
+  }
+
+  .markdown-body h3 {
+    @apply text-lg leading-tight;
+  }
+
+  .markdown-body :where(p, ul, ol, blockquote, pre, table) {
+    @apply m-0;
+  }
+
+  .markdown-body :where(ul, ol) {
+    @apply grid gap-1 pl-5;
+  }
+
+  .markdown-body ul {
+    @apply list-disc;
+  }
+
+  .markdown-body ol {
+    @apply list-decimal;
+  }
+
+  .markdown-body a {
+    @apply font-semibold underline underline-offset-4;
+    color: var(--ui-accent-text);
+  }
+
+  .markdown-body blockquote {
+    @apply rounded-r-sm border-l-4 py-2 pl-4;
+    color: var(--ui-text-muted);
+    border-color: color-mix(in srgb, var(--ui-accent-border) 76%, var(--ui-border));
+    background: color-mix(in srgb, var(--ui-bg-subtle) 44%, transparent);
+  }
+
+  .markdown-body :where(code) {
+    @apply rounded-sm px-1.5 py-0.5 text-[0.88em];
+    background: var(--ui-bg-subtle);
+  }
+
+  .markdown-body pre {
+    @apply overflow-x-auto rounded-sm border p-4;
+    border-color: color-mix(in srgb, var(--ui-border) 72%, transparent);
+    background: color-mix(in srgb, var(--ui-bg-subtle) 70%, transparent);
+  }
+
+  .markdown-body pre code {
+    @apply bg-transparent p-0;
+  }
+
+  .markdown-body table {
+    @apply block w-full overflow-x-auto rounded-sm text-sm;
+    border-collapse: collapse;
+  }
+
+  .markdown-body :where(th, td) {
+    @apply border px-3 py-2 text-left;
+    border-color: var(--ui-border);
+  }
+}

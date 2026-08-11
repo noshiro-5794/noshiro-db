@@ -12,7 +12,7 @@ import { reviewsMessages } from './catalogs/reviews';
 import { searchMessages } from './catalogs/search';
 import { subjectMessages } from './catalogs/subject';
 
-export { localeLabels, locales, type Locale } from './define-messages';
+export { locales, type Locale } from './define-messages';
 
 export const messages = {
   'zh-CN': {

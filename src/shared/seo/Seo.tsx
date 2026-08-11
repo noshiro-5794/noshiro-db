@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useLocation } from '@/shared/routing/navigation';
+import { useLocation } from '@tanstack/react-router';
 import { env } from '@/shared/config/env';
 import type { Locale } from '@/shared/i18n';
 import { useI18n } from '@/shared/i18n';
@@ -8,7 +8,7 @@ const siteName = 'Noshiro DB';
 const defaultTitle = siteName;
 const defaultDescription =
   'Explore anime and galgames, browse weekly anime, and keep track of marks, reviews, and collections.';
-const defaultImage = '/icons/icon-512.png';
+const defaultImage = '/assets/social/og-image.png';
 
 const htmlLangByLocale: Record<Locale, string> = {
   'zh-CN': 'zh-CN',
@@ -17,10 +17,10 @@ const htmlLangByLocale: Record<Locale, string> = {
 };
 
 type SeoProps = {
-  title?: string;
-  description?: string;
-  image?: string | null;
-  path?: string;
+  title?: string | undefined;
+  description?: string | undefined;
+  image?: string | null | undefined;
+  path?: string | undefined;
   noindex?: boolean;
   type?: 'website' | 'article';
 };
@@ -41,7 +41,7 @@ function ensureMeta(selector: string, attributes: Record<string, string>) {
   }
 
   Object.entries(attributes).forEach(([key, value]) => {
-    element?.setAttribute(key, value);
+    element.setAttribute(key, value);
   });
 }
 
@@ -68,7 +68,7 @@ export function Seo({ description, image, noindex = false, path, title, type = '
   useEffect(() => {
     const resolvedTitle = title && title !== siteName ? `${title} | ${siteName}` : defaultTitle;
     const resolvedDescription = compactDescription(description);
-    const resolvedUrl = absoluteUrl(path ?? `${location.pathname}${location.search}`);
+    const resolvedUrl = absoluteUrl(path ?? `${location.pathname}${location.searchStr}`);
     const resolvedImage = absoluteUrl(image || defaultImage);
 
     document.documentElement.lang = htmlLangByLocale[locale];
@@ -90,7 +90,7 @@ export function Seo({ description, image, noindex = false, path, title, type = '
     ensureMeta('meta[name="twitter:title"]', { name: 'twitter:title', content: resolvedTitle });
     ensureMeta('meta[name="twitter:description"]', { name: 'twitter:description', content: resolvedDescription });
     ensureMeta('meta[name="twitter:image"]', { name: 'twitter:image', content: resolvedImage });
-  }, [description, image, locale, location.pathname, location.search, noindex, path, title, type]);
+  }, [description, image, locale, location.pathname, location.searchStr, noindex, path, title, type]);
 
   return null;
 }

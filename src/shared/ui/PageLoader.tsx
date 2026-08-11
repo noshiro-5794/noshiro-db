@@ -4,9 +4,9 @@ export function PageLoader() {
   const { t } = useI18n();
 
   return (
-    <div className="grid min-h-screen place-items-center bg-[var(--color-bg)] text-[var(--color-text)]">
+    <div className="grid min-h-[50vh] place-items-center bg-[var(--ui-bg-canvas)] text-[var(--ui-text)]">
       <span
-        className="size-5 animate-spin rounded-full border-2 border-[var(--color-border)] border-t-[var(--color-text-muted)]"
+        className="size-5 animate-spin rounded-full border-2 border-[var(--ui-border)] border-t-[var(--ui-text-muted)]"
         aria-label={t('common.loading')}
         role="status"
       />

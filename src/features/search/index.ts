@@ -1,21 +1,10 @@
 export {
   calendarImageOf,
-  calendarItemToSubjectSummary,
   filterCalendarItems,
   flattenCalendarGroups,
   sortCalendarItems,
-  type CalendarSearchFilters,
 } from './model/calendar-search';
-export {
-  episodeRangeOptions,
-  orderingOptions,
-  platformOptions,
-  safetyOptions,
-  seasonOptions,
-  subjectTypeOptions,
-  type EpisodeRangeFilter,
-  type PlatformFilter,
-  type SafetyFilter,
-  type SeasonFilter,
-  type SubjectTypeFilter,
-} from './model/search-options';
+export { safetyOptions, subjectTypeOptions, type SafetyFilter, type SubjectTypeFilter } from './model/search-options';
+export { buildSubjectSearchQuery, usesSubjectDatabaseSearch } from './model/search-request';
+export { SearchFilters } from './ui/SearchFilters';
+export { SearchResultsGrid } from './ui/SearchResultsGrid';

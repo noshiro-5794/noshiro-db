@@ -1,86 +1,126 @@
-import type * as React from 'react';
-import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
+import type { ComponentProps } from 'react';
+import { Menu } from '@base-ui/react/menu';
 import { Check } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
 
-const DropdownMenu = DropdownMenuPrimitive.Root;
-const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
+const DropdownMenu = Menu.Root;
+
+function DropdownMenuGroup(props: ComponentProps<typeof Menu.Group>) {
+  return <Menu.Group data-slot="dropdown-menu-group" {...props} />;
+}
+
+function DropdownMenuTrigger(props: ComponentProps<typeof Menu.Trigger>) {
+  return <Menu.Trigger data-slot="dropdown-menu-trigger" {...props} />;
+}
+
+type DropdownMenuContentProps = ComponentProps<typeof Menu.Popup> &
+  Pick<ComponentProps<typeof Menu.Positioner>, 'align' | 'alignOffset' | 'collisionAvoidance' | 'side' | 'sideOffset'>;
 
 function DropdownMenuContent({
   align = 'start',
+  alignOffset,
   className,
-  sideOffset = 8,
+  collisionAvoidance,
+  side = 'bottom',
+  sideOffset = 6,
   ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
+}: DropdownMenuContentProps) {
   return (
-    <DropdownMenuPrimitive.Portal>
-      <DropdownMenuPrimitive.Content
+    <Menu.Portal>
+      <Menu.Positioner
         align={align}
-        className={cn(
-          'z-[120] min-w-44 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-1.5 text-[var(--color-text)] shadow-[var(--shadow-hover)] outline-none',
-          className,
-        )}
+        alignOffset={alignOffset}
+        className="z-50 outline-none"
+        collisionAvoidance={collisionAvoidance}
+        side={side}
         sideOffset={sideOffset}
-        {...props}
-      />
-    </DropdownMenuPrimitive.Portal>
+      >
+        <Menu.Popup
+          className={cn(
+            'min-w-44 origin-[var(--transform-origin)] overflow-hidden rounded-sm border border-border bg-elevated p-1 text-foreground shadow-[var(--ui-shadow-popup)] outline-none transition-[opacity,transform] duration-[var(--ui-transition-fast)] data-[ending-style]:scale-[0.985] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.985] data-[starting-style]:opacity-0',
+            className,
+          )}
+          data-slot="dropdown-menu-content"
+          {...props}
+        />
+      </Menu.Positioner>
+    </Menu.Portal>
   );
 }
 
-function DropdownMenuItem({
-  className,
-  inset,
-  ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Item> & { inset?: boolean }) {
+type DropdownMenuItemProps = ComponentProps<typeof Menu.Item> & {
+  inset?: boolean;
+};
+
+function DropdownMenuItem({ className, inset, ...props }: DropdownMenuItemProps) {
   return (
-    <DropdownMenuPrimitive.Item
+    <Menu.Item
       className={cn(
-        'relative flex cursor-default select-none items-center rounded-lg px-3 py-2 text-sm outline-none transition focus:bg-[var(--color-surface-muted)] focus:text-[var(--color-text)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+        'relative flex min-h-8 cursor-default select-none items-center rounded-sm px-2.5 py-1.5 text-[13px] outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-45 data-[highlighted]:bg-muted data-[highlighted]:text-foreground',
         inset && 'pl-8',
         className,
       )}
+      data-slot="dropdown-menu-item"
       {...props}
     />
   );
 }
 
-function DropdownMenuCheckboxItem({
-  checked,
-  children,
-  className,
-  ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.CheckboxItem>) {
+function DropdownMenuLabel({ className, ...props }: ComponentProps<typeof Menu.GroupLabel>) {
   return (
-    <DropdownMenuPrimitive.CheckboxItem
-      checked={checked}
-      className={cn(
-        'relative flex cursor-default select-none items-center rounded-lg py-2 pl-8 pr-3 text-sm outline-none transition focus:bg-[var(--color-surface-muted)] focus:text-[var(--color-text)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
-        className,
-      )}
+    <Menu.GroupLabel
+      className={cn('px-2.5 py-1.5 text-[11px] font-medium text-subtle-foreground', className)}
+      data-slot="dropdown-menu-label"
       {...props}
-    >
-      <span className="absolute left-2 flex size-4 items-center justify-center">
-        <DropdownMenuPrimitive.ItemIndicator>
-          <Check className="size-4" />
-        </DropdownMenuPrimitive.ItemIndicator>
-      </span>
-      {children}
-    </DropdownMenuPrimitive.CheckboxItem>
+    />
   );
 }
 
-const DropdownMenuSeparator = ({
-  className,
-  ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Separator>) => (
-  <DropdownMenuPrimitive.Separator className={cn('-mx-1 my-1 h-px bg-[var(--color-border)]', className)} {...props} />
-);
+function DropdownMenuSeparator({ className, ...props }: ComponentProps<typeof Menu.Separator>) {
+  return (
+    <Menu.Separator
+      className={cn('-mx-1 my-1 h-px bg-border-subtle', className)}
+      data-slot="dropdown-menu-separator"
+      {...props}
+    />
+  );
+}
+
+function DropdownMenuRadioGroup({ ...props }: ComponentProps<typeof Menu.RadioGroup>) {
+  return <Menu.RadioGroup data-slot="dropdown-menu-radio-group" {...props} />;
+}
+
+function DropdownMenuRadioItem({ children, className, ...props }: ComponentProps<typeof Menu.RadioItem>) {
+  return (
+    <Menu.RadioItem
+      className={cn(
+        'relative flex min-h-8 cursor-default select-none items-center justify-between gap-3 rounded-sm px-2.5 py-1.5 text-[13px] outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-45 data-[highlighted]:bg-muted data-[highlighted]:text-foreground',
+        className,
+      )}
+      data-slot="dropdown-menu-radio-item"
+      {...props}
+    >
+      <span className="min-w-0 truncate">{children}</span>
+      <span
+        className="grid size-4 shrink-0 place-items-center text-[var(--ui-accent-text)]"
+        data-slot="dropdown-menu-radio-item-indicator"
+      >
+        <Menu.RadioItemIndicator>
+          <Check className="size-3.5" strokeWidth={2.25} />
+        </Menu.RadioItemIndicator>
+      </span>
+    </Menu.RadioItem>
+  );
+}
 
 export {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 };
