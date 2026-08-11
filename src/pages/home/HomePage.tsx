@@ -35,7 +35,7 @@ export function HomePage() {
   }
 
   return (
-    <Page title={role === 'admin' ? t('home.adminTitle') : t('nav.home')} eyebrow={t('nav.groupOverview')} seo={false}>
+    <Page title={t('nav.home')} eyebrow={t('nav.groupOverview')} seo={false}>
       <Seo
         title="Noshiro DB"
         description="Explore anime and galgames, browse weekly anime, and keep track of marks, reviews, and collections."

@@ -4,8 +4,6 @@ export type ThemeMode = 'light' | 'dark';
 export type ThemePreference = 'auto' | ThemeMode;
 
 export type ThemeState = {
-  accentColor: string;
-  setAccentColor: (color: string) => void;
   mode: ThemeMode;
   preference: ThemePreference;
   setMode: (mode: ThemePreference) => void;

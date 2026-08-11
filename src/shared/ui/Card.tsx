@@ -1,29 +1,52 @@
-import * as React from 'react';
+import type { ComponentProps } from 'react';
 import { cn } from '@/shared/lib/cn';
 
-function Card({ className, ...props }: React.ComponentProps<'div'>) {
+type CardProps = ComponentProps<'div'> & {
+  size?: 'default' | 'sm';
+};
+
+function Card({ className, size = 'default', ...props }: CardProps) {
   return (
     <div
-      className={cn('rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm', className)}
+      className={cn('group/card flex flex-col rounded-md border border-border bg-surface text-foreground', className)}
+      data-size={size}
+      data-slot="card"
       {...props}
     />
   );
 }
 
-function CardHeader({ className, ...props }: React.ComponentProps<'div'>) {
-  return <div className={cn('grid gap-1.5 p-5', className)} {...props} />;
+function CardHeader({ className, ...props }: ComponentProps<'div'>) {
+  return (
+    <div
+      className={cn(
+        'grid auto-rows-min items-start gap-1 px-4 pb-3 pt-4 group-data-[size=sm]/card:px-3 group-data-[size=sm]/card:pb-2.5 group-data-[size=sm]/card:pt-3',
+        className,
+      )}
+      data-slot="card-header"
+      {...props}
+    />
+  );
 }
 
-function CardTitle({ className, ...props }: React.ComponentProps<'h3'>) {
-  return <h3 className={cn('text-base font-semibold tracking-tight text-[var(--color-text)]', className)} {...props} />;
+function CardTitle({ className, ...props }: ComponentProps<'h2'>) {
+  return (
+    <h2
+      className={cn('text-sm font-semibold leading-5 text-foreground', className)}
+      data-slot="card-title"
+      {...props}
+    />
+  );
 }
 
-function CardDescription({ className, ...props }: React.ComponentProps<'p'>) {
-  return <p className={cn('text-sm text-[var(--color-text-muted)]', className)} {...props} />;
+function CardContent({ className, ...props }: ComponentProps<'div'>) {
+  return (
+    <div
+      className={cn('px-4 pb-4 group-data-[size=sm]/card:px-3 group-data-[size=sm]/card:pb-3', className)}
+      data-slot="card-content"
+      {...props}
+    />
+  );
 }
 
-function CardContent({ className, ...props }: React.ComponentProps<'div'>) {
-  return <div className={cn('p-5 pt-0', className)} {...props} />;
-}
-
-export { Card, CardContent, CardDescription, CardHeader, CardTitle };
+export { Card, CardContent, CardHeader, CardTitle };

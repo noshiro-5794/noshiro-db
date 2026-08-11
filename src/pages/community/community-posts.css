@@ -1,0 +1,100 @@
+@reference '../../app/styles/global.css';
+
+@layer components {
+  .activity-hub-grid {
+    @apply grid gap-6 xl:grid-cols-[minmax(0,1fr)_280px];
+  }
+
+  .activity-stream-column {
+    @apply min-w-0;
+  }
+
+  .activity-stream-frame {
+    @apply min-w-0;
+  }
+
+  .activity-feed-bar {
+    @apply sticky z-10 flex flex-col gap-2 border-b border-border-subtle px-3 py-3 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between;
+    top: var(--ui-topbar-height);
+    background: color-mix(in srgb, var(--ui-bg-surface) 92%, transparent);
+  }
+
+  .activity-feed-tabs {
+    @apply grid w-full grid-cols-3 sm:flex sm:w-auto;
+    background: transparent;
+  }
+
+  .activity-feed-tabs [data-slot='toggle'] {
+    @apply min-w-0 flex-1 px-2 sm:min-w-20 sm:flex-none sm:px-3;
+  }
+
+  .activity-feed-filter {
+    @apply w-full sm:w-[210px];
+  }
+
+  .activity-stream-content,
+  .activity-timeline-list {
+    @apply min-w-0;
+  }
+
+  .activity-right-rail {
+    @apply grid content-start gap-5 xl:sticky xl:self-start;
+    top: calc(var(--ui-topbar-height) + 20px);
+  }
+
+  .community-side-panel {
+    @apply grid gap-3;
+  }
+
+  .community-side-panel + .community-side-panel {
+    @apply border-t border-border-subtle pt-5;
+  }
+
+  .community-side-title {
+    @apply text-sm font-semibold text-foreground;
+  }
+
+  .community-side-body {
+    @apply mt-1 text-xs leading-5 text-muted-foreground;
+  }
+
+  .community-user-list {
+    @apply grid gap-0.5;
+  }
+
+  .community-user-row {
+    @apply flex min-w-0 items-center justify-between gap-2 rounded-sm text-foreground transition-colors hover:bg-muted;
+  }
+
+  .community-user-main {
+    @apply flex min-w-0 flex-1 items-center gap-2.5 px-2 py-2;
+  }
+
+  .community-user-main img {
+    @apply size-8 shrink-0 rounded-full bg-muted object-cover;
+  }
+
+  .community-user-main strong {
+    @apply block truncate text-[13px] font-medium;
+  }
+
+  .community-user-main small {
+    @apply mt-0.5 block max-w-44 truncate text-xs text-muted-foreground;
+  }
+
+  .activity-load-more {
+    @apply flex justify-center border-t border-border-subtle px-4 py-3 text-sm text-muted-foreground;
+  }
+
+  .community-side-footer {
+    @apply pt-1;
+  }
+
+  .community-shortcut-list {
+    @apply grid gap-0.5;
+  }
+
+  .community-shortcut-link {
+    @apply inline-flex h-9 items-center gap-2.5 rounded-sm px-2 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground;
+  }
+}

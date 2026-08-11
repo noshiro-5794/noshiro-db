@@ -34,6 +34,7 @@ export type SubjectSummary = {
     provider?: string;
     id?: string;
   };
+  source_id?: string | number;
   content?: {
     series?: boolean;
     episodes?: number | null;
@@ -41,7 +42,7 @@ export type SubjectSummary = {
   };
   updated_at?: ISODateString;
   created_at?: ISODateString;
-} & Record<string, unknown>;
+};
 
 export type SubjectDetail = SubjectSummary & {
   summary?: string;
@@ -63,7 +64,7 @@ export type SubjectEpisode = {
   duration?: string | null;
   date: DateString | null;
   description?: string;
-} & Record<string, unknown>;
+};
 
 export type SubjectStaff = {
   id: number;
@@ -74,11 +75,17 @@ export type SubjectStaff = {
   gender?: string;
   birth?: unknown;
   career?: unknown;
+  image?: string | null;
+  images?: {
+    poster?: string | null;
+    thumbnail?: string | null;
+    original?: string | null;
+  };
   image_original?: string | null;
   image_thumbnail?: string | null;
   infobox?: unknown;
   type?: string | null;
-} & Record<string, unknown>;
+};
 
 export type SubjectCharacter = {
   id: number;
@@ -89,25 +96,23 @@ export type SubjectCharacter = {
   gender?: string;
   birth?: unknown;
   blood_type?: string;
+  image?: string | null;
+  images?: {
+    poster?: string | null;
+    thumbnail?: string | null;
+    original?: string | null;
+  };
   image_original?: string | null;
   image_thumbnail?: string | null;
   infobox?: unknown;
   type?: string | null;
   actors?: SubjectStaff[];
-} & Record<string, unknown>;
+};
 
 export type SubjectRelation = {
   direction?: 'outgoing' | 'incoming' | OpenString;
   relation: string;
   subject: SubjectSummary;
-} & Record<string, unknown>;
-
-export type SubjectRelationList = {
-  items?: SubjectRelation[];
-  outgoing: SubjectRelation[];
-  incoming: SubjectRelation[];
-  outgoing_count?: number;
-  incoming_count?: number;
 };
 
 export type CalendarSubjectItem = {
@@ -120,7 +125,13 @@ export type CalendarSubjectItem = {
   display_subtitle?: string;
   date?: DateString | null;
   image_url?: string | null;
+  image?: string | null;
   image_thumbnail: string | null;
+  images?: {
+    poster?: string | null;
+    thumbnail?: string | null;
+    original?: string | null;
+  };
   platform: string | null;
   nsfw: boolean;
   weekday_en: WeekdayEn;

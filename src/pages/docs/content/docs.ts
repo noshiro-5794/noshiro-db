@@ -1,12 +1,12 @@
 import type { Locale } from '@/shared/i18n';
 
-export type DocsSection = {
+type DocsSection = {
   id: string;
   title: string;
   body: string[];
 };
 
-export type DocsPageContent = {
+type DocsPageContent = {
   slug: string;
   title: string;
   description: string;
