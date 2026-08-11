@@ -18,7 +18,19 @@ export default tseslint.config(
     ignores: ['coverage', 'dist', 'node_modules'],
   },
   {
-    extends: [js.configs.recommended, ...tseslint.configs.recommendedTypeChecked],
+    extends: [js.configs.recommended, ...tseslint.configs.strictTypeChecked],
+    files: ['e2e/**/*.ts'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      globals: globals.node,
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+  {
+    extends: [js.configs.recommended, ...tseslint.configs.strictTypeChecked],
     files: ['src/**/*.{ts,tsx}'],
     languageOptions: {
       ecmaVersion: 'latest',
@@ -37,6 +49,7 @@ export default tseslint.config(
       // Existing forms intentionally synchronize server data into editable local drafts.
       'react-hooks/set-state-in-effect': 'off',
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+      '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
       'no-restricted-imports': architectureImports(),
     },
   },
@@ -86,7 +99,7 @@ export default tseslint.config(
     },
   },
   {
-    extends: [js.configs.recommended, ...tseslint.configs.recommendedTypeChecked],
+    extends: [js.configs.recommended, ...tseslint.configs.strictTypeChecked],
     files: ['*.ts'],
     languageOptions: {
       ecmaVersion: 'latest',

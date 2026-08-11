@@ -1,7 +1,8 @@
-import { type FormEvent, useState } from 'react';
+import { type SyntheticEvent, useId, useState } from 'react';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { useI18n } from '@/shared/i18n';
 import { Button } from '@/shared/ui/Button';
+import { Field, FieldLabel } from '@/shared/ui/Field';
 import { Input } from '@/shared/ui/Input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/Popover';
 
@@ -13,6 +14,7 @@ type PaginationProps = {
 
 export function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) {
   const { t } = useI18n();
+  const jumpPageId = useId();
   const [jumpPage, setJumpPage] = useState(String(currentPage));
   const [isJumpOpen, setIsJumpOpen] = useState(false);
 
@@ -22,10 +24,10 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
     onPageChange(Math.min(Math.max(page, 1), totalPages));
   }
 
-  function handleJumpSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleJumpSubmit(event: SyntheticEvent<HTMLFormElement, SubmitEvent>) {
     event.preventDefault();
     const nextPage = Number(jumpPage);
-    if (!Number.isFinite(nextPage)) return;
+    if (!Number.isInteger(nextPage)) return;
     goToPage(nextPage);
     setIsJumpOpen(false);
   }
@@ -38,89 +40,114 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
   }
 
   return (
-    <div className="pagination-bar">
-      <div className="pagination-bar-side">
+    <nav
+      aria-label={t('common.pagination')}
+      className="mt-3 grid grid-cols-[auto_minmax(4rem,1fr)_auto] items-center gap-1"
+      data-slot="pagination"
+    >
+      <div className="flex min-w-0 items-center gap-0.5">
         <Button
-          className="pagination-bar-button"
+          className="hidden size-8 text-[var(--ui-text-muted)] sm:inline-flex"
           aria-label={t('common.firstPage')}
           disabled={currentPage <= 1}
           size="icon"
+          tooltip={t('common.firstPage')}
           type="button"
           variant="ghost"
-          onClick={() => goToPage(1)}
+          onClick={() => {
+            goToPage(1);
+          }}
         >
           <ChevronsLeft className="size-4" />
         </Button>
         <Button
-          className="pagination-bar-button"
+          className="size-8 text-[var(--ui-text-muted)]"
           aria-label={t('common.previousPage')}
           disabled={currentPage <= 1}
           size="icon"
+          tooltip={t('common.previousPage')}
           type="button"
           variant="ghost"
-          onClick={() => goToPage(currentPage - 1)}
+          onClick={() => {
+            goToPage(currentPage - 1);
+          }}
         >
           <ChevronLeft className="size-4" />
         </Button>
       </div>
       <Popover open={isJumpOpen} onOpenChange={handleJumpOpenChange}>
-        <PopoverTrigger asChild>
-          <button className="pagination-bar-status" type="button" aria-label={t('common.jumpToPage')}>
-            <span>
-              {t('common.page')} {currentPage}
-            </span>
-            <span>
-              {t('common.of')} {totalPages}
-            </span>
-          </button>
+        <PopoverTrigger
+          render={
+            <Button
+              className="h-8 min-w-0 gap-1 px-2 text-xs tabular-nums"
+              size="sm"
+              type="button"
+              variant="ghost"
+              aria-label={t('common.jumpToPage')}
+            />
+          }
+        >
+          <span>
+            {t('common.page')} {currentPage}
+          </span>
+          <span>
+            {t('common.of')} {totalPages}
+          </span>
         </PopoverTrigger>
         <PopoverContent className="w-[min(15rem,calc(100vw-1.5rem))] p-3" side="top">
           <form className="grid gap-3" onSubmit={handleJumpSubmit}>
-            <label className="grid gap-1.5">
-              <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">
-                {t('common.jumpToPage')}
-              </span>
+            <Field>
+              <FieldLabel htmlFor={jumpPageId}>{t('common.jumpToPage')}</FieldLabel>
               <Input
-                className="h-10 rounded-lg px-3"
+                className="px-3"
+                id={jumpPageId}
                 inputMode="numeric"
                 max={totalPages}
                 min={1}
+                step={1}
                 type="number"
                 value={jumpPage}
-                aria-label={t('common.pageNumber')}
-                onChange={(event) => setJumpPage(event.target.value)}
+                onChange={(event) => {
+                  setJumpPage(event.target.value);
+                }}
               />
-            </label>
+            </Field>
             <Button className="h-9" size="sm" type="submit">
               {t('common.apply')}
             </Button>
           </form>
         </PopoverContent>
       </Popover>
-      <div className="pagination-bar-side justify-end">
+      <div className="flex min-w-0 items-center justify-end gap-0.5">
         <Button
-          className="pagination-bar-button"
+          className="size-8 text-[var(--ui-text-muted)]"
           aria-label={t('common.nextPage')}
           disabled={currentPage >= totalPages}
           size="icon"
+          tooltip={t('common.nextPage')}
           type="button"
           variant="ghost"
-          onClick={() => goToPage(currentPage + 1)}
+          onClick={() => {
+            goToPage(currentPage + 1);
+          }}
         >
           <ChevronRight className="size-4" />
         </Button>
         <Button
-          className="pagination-bar-button"
+          className="hidden size-8 text-[var(--ui-text-muted)] sm:inline-flex"
           aria-label={t('common.lastPage')}
           disabled={currentPage >= totalPages}
           size="icon"
+          tooltip={t('common.lastPage')}
           type="button"
           variant="ghost"
-          onClick={() => goToPage(totalPages)}
+          onClick={() => {
+            goToPage(totalPages);
+          }}
         >
           <ChevronsRight className="size-4" />
         </Button>
       </div>
-    </div>
+    </nav>
   );
 }

@@ -29,7 +29,7 @@ VITE_API_BASE_URL=
 VITE_HCAPTCHA_SITE_KEY=
 ```
 
-The proxy keeps the browser on the local origin and avoids weakening production CORS/CSRF policy. To develop against the sibling backend repository instead, set `API_PROXY_TARGET=http://127.0.0.1:8008`.
+The proxy keeps the browser on the local origin and avoids weakening production CORS/CSRF policy. Because Vite serves HTTP by default, it removes only the production cookie's `Secure` attribute on proxied development responses; `HttpOnly`, `SameSite=Lax`, and the `/api/users/` path restriction remain intact. This allows refresh sessions to work through localhost, LAN, and IPv6 development URLs without changing the production backend policy. To develop against the sibling backend repository instead, set `API_PROXY_TARGET=http://127.0.0.1:8008`.
 
 ## Scripts
 
@@ -39,12 +39,18 @@ pnpm format
 pnpm typecheck
 pnpm lint
 pnpm test
+pnpm test:e2e
 pnpm test:watch
 pnpm build
 pnpm preview
 pnpm check
+pnpm check:dead-code
 pnpm check:dependencies
 ```
+
+Brand, platform, placeholder, and social images are authored outside the repository and committed as
+versioned production assets under `public/`. When changing the app icon, update its SVG, PNG, ICO,
+maskable, and Apple Touch variants together so every platform receives the same release.
 
 ## Remote Development
 
@@ -88,7 +94,10 @@ Run these commands before committing:
 
 ```bash
 pnpm check
+pnpm check:dependencies
 ```
+
+`pnpm check` runs formatting, strict TypeScript, ESLint, unit tests, dead-code analysis, browser tests, and a production build. Install the Chromium test runtime once with `pnpm exec playwright install chromium` when Playwright cannot use a system browser.
 
 ## Git Hygiene
 

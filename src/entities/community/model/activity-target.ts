@@ -38,7 +38,7 @@ export function activityTargetHref(
     (activity.activity_type === 'user_subject_created' || activity.activity_type === 'user_subject_updated') &&
     activity.subject?.id
   ) {
-    return routes.subject(String(activity.subject.id));
+    return routes.subject(activity.subject.id);
   }
   if (activity.activity_type === 'user_followed' && activity.target_user?.id)
     return routes.userProfile(activity.target_user.id);
@@ -46,7 +46,7 @@ export function activityTargetHref(
   if (activity.post?.id) return routes.communityPost(activity.post.id);
   if (activity.review?.id) return routes.review(activity.review.id);
   if (activity.collection?.id) return collectionHref(activity, fallback, ownerId);
-  if (activity.subject?.id) return routes.subject(String(activity.subject.id));
+  if (activity.subject?.id) return routes.subject(activity.subject.id);
   if (activity.target_user?.id) return routes.userProfile(activity.target_user.id);
   return fallback;
 }

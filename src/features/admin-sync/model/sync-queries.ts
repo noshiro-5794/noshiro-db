@@ -13,13 +13,13 @@ export const syncQueries = {
   incrementalStatus: () =>
     queryOptions({
       queryKey: syncQueryKeys.incrementalStatus(),
-      queryFn: () => syncApi.getIncrementalStatus(),
+      queryFn: ({ signal }) => syncApi.getIncrementalStatus({ signal }),
     }),
 
   jobs: (query: PageQuery & { status?: string; job_type?: string } = {}) =>
     queryOptions({
       queryKey: syncQueryKeys.jobsList(query),
-      queryFn: () => syncApi.getJobs(query),
+      queryFn: ({ signal }) => syncApi.getJobs(query, { signal }),
     }),
 };
 

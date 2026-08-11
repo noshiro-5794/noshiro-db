@@ -1,5 +1,5 @@
-import { type FormEvent, useCallback, useState } from 'react';
-import { Link, Navigate, useLocation, useNavigate } from '@/shared/routing/navigation';
+import { type SyntheticEvent, useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import { KeyRound, LockKeyhole, Mail } from 'lucide-react';
 import { env } from '@/shared/config/env';
 import { authApi } from '@/entities/session';
@@ -10,19 +10,18 @@ import { formatCodeCooldownLabel, useCodeCooldown } from '@/features/auth';
 import { useI18n } from '@/shared/i18n';
 import { routes } from '@/shared/routing/paths';
 import { formDataString } from '@/shared/forms/form-data';
+import { getErrorMessage } from '@/shared/lib/error';
 import { returnTargetFromState } from '@/shared/routing/route-state';
 import { Button } from '@/shared/ui/Button';
-
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
-}
+import { Toggle, ToggleGroup } from '@/shared/ui/Toggle';
 
 export function LoginPage() {
   const { t } = useI18n();
   const auth = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const returnTo = returnTargetFromState(location.state, routes.home);
+  const returnTo =
+    location.pathname === routes.login ? returnTargetFromState(location.state, routes.home) : location.href;
   const [mode, setMode] = useState<'password' | 'code'>('password');
   const [email, setEmail] = useState('');
   const [captchaToken, setCaptchaToken] = useState('');
@@ -30,11 +29,19 @@ export function LoginPage() {
   const [isSendingCode, setIsSendingCode] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const { isCoolingDown, remainingSeconds, startCooldown } = useCodeCooldown(60);
-  const handleCaptchaChange = useCallback((token: string) => setCaptchaToken(token), []);
+  const handleCaptchaChange = (token: string) => {
+    setCaptchaToken(token);
+    if (token) setErrorMessage('');
+  };
+  const handleCaptchaError = () => {
+    setErrorMessage(t('auth.captchaUnavailable'));
+  };
 
-  if (auth.isAuthenticated) {
-    return <Navigate replace to={returnTo} />;
-  }
+  useEffect(() => {
+    if (!auth.isAuthenticated) return;
+
+    void navigate({ href: returnTo, replace: true });
+  }, [auth.isAuthenticated, navigate, returnTo]);
 
   async function handleSendCode() {
     const trimmedEmail = email.trim();
@@ -53,19 +60,21 @@ export function LoginPage() {
       await authApi.sendCode({
         email: trimmedEmail,
         purpose: 'login',
-        hcaptcha_token: captchaToken || undefined,
+        ...(captchaToken ? { hcaptcha_token: captchaToken } : {}),
       });
-      setCaptchaResetSignal((value) => value + 1);
-      setCaptchaToken('');
       startCooldown();
     } catch (error) {
       setErrorMessage(getErrorMessage(error, t('common.requestFailed')));
     } finally {
+      if (env.hcaptchaSiteKey) {
+        setCaptchaResetSignal((value) => value + 1);
+        setCaptchaToken('');
+      }
       setIsSendingCode(false);
     }
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: SyntheticEvent<HTMLFormElement, SubmitEvent>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const email = formDataString(formData, 'email').trim();
@@ -79,46 +88,33 @@ export function LoginPage() {
         const code = formDataString(formData, 'code').trim();
         await auth.loginWithCode({ email, code });
       }
-      void navigate(returnTo, { replace: true });
     } catch (error) {
       setErrorMessage(getErrorMessage(error, t('common.requestFailed')));
     }
   }
 
+  if (auth.isAuthenticated) return null;
+
   return (
     <AuthPageLayout title={t('login.title')}>
       <form className="grid gap-5" onSubmit={(event) => void handleSubmit(event)}>
         <div className="motion-rise grid justify-items-center text-center">
-          <img className="size-12 rounded-2xl" src="/brand/icon.svg" alt="" aria-hidden="true" />
-          <h1 className="mt-5 text-2xl font-semibold tracking-tight text-neutral-950 dark:text-white">
-            {t('login.title')}
-          </h1>
+          <img className="size-12 rounded-lg" src="/brand/icon.svg" alt="" aria-hidden="true" />
+          <h1 className="mt-5 text-2xl font-semibold tracking-normal text-[var(--ui-text)]">{t('login.title')}</h1>
         </div>
 
-        <div className="motion-rise motion-delay-1 grid grid-cols-2 rounded-full bg-neutral-200/70 p-1 text-sm font-semibold dark:bg-neutral-900">
-          <button
-            className={`rounded-full px-3 py-2 transition ${
-              mode === 'password'
-                ? 'bg-white text-neutral-950 shadow-sm dark:bg-neutral-800 dark:text-white'
-                : 'text-neutral-500 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white'
-            }`}
-            type="button"
-            onClick={() => setMode('password')}
-          >
-            {t('login.passwordMode')}
-          </button>
-          <button
-            className={`rounded-full px-3 py-2 transition ${
-              mode === 'code'
-                ? 'bg-white text-neutral-950 shadow-sm dark:bg-neutral-800 dark:text-white'
-                : 'text-neutral-500 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white'
-            }`}
-            type="button"
-            onClick={() => setMode('code')}
-          >
-            {t('login.codeMode')}
-          </button>
-        </div>
+        <ToggleGroup
+          aria-label={t('login.title')}
+          className="motion-rise motion-delay-1 grid grid-cols-2"
+          value={[mode]}
+          onValueChange={(values) => {
+            const nextMode = values[0];
+            if (nextMode === 'password' || nextMode === 'code') setMode(nextMode);
+          }}
+        >
+          <Toggle value="password">{t('login.passwordMode')}</Toggle>
+          <Toggle value="code">{t('login.codeMode')}</Toggle>
+        </ToggleGroup>
 
         <div className="motion-rise motion-delay-2 grid gap-4">
           <AuthField
@@ -126,11 +122,14 @@ export function LoginPage() {
             icon={<Mail className="size-4" />}
             label={t('auth.email')}
             name="email"
+            maxLength={254}
             placeholder="name@example.com"
             required
             type="email"
             value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            onChange={(event) => {
+              setEmail(event.target.value);
+            }}
           />
           {mode === 'password' ? (
             <div className="grid gap-2">
@@ -144,7 +143,7 @@ export function LoginPage() {
                 type="password"
               />
               <Link
-                className="justify-self-end text-sm font-semibold text-[var(--color-accent-strong)]"
+                className="justify-self-end text-sm font-semibold text-[var(--ui-accent-text)]"
                 to={routes.resetPassword}
               >
                 {t('auth.forgotPassword')}
@@ -160,8 +159,10 @@ export function LoginPage() {
               ) : (
                 <HCaptchaBox
                   resetSignal={captchaResetSignal}
+                  retryLabel={t('common.retry')}
                   siteKey={env.hcaptchaSiteKey}
                   onChange={handleCaptchaChange}
+                  onError={handleCaptchaError}
                 />
               )}
               <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
@@ -170,6 +171,10 @@ export function LoginPage() {
                   icon={<KeyRound className="size-4" />}
                   label={t('auth.code')}
                   name="code"
+                  inputMode="numeric"
+                  maxLength={6}
+                  minLength={6}
+                  pattern="[0-9]{6}"
                   placeholder="000000"
                   required
                   type="text"
@@ -193,7 +198,7 @@ export function LoginPage() {
         </div>
 
         {errorMessage ? (
-          <p className="motion-rise rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/30 dark:text-red-300">
+          <p className="motion-rise rounded-lg bg-[var(--ui-danger-soft)] px-3 py-2 text-sm text-[var(--ui-danger-text)]">
             {errorMessage}
           </p>
         ) : null}
@@ -202,10 +207,10 @@ export function LoginPage() {
           {auth.loading ? t('auth.loading') : t('auth.login')}
         </Button>
 
-        <p className="motion-rise motion-delay-4 text-center text-sm text-neutral-500 dark:text-neutral-400">
+        <p className="motion-rise motion-delay-4 text-center text-sm text-[var(--ui-text-muted)]">
           {t('login.switchText')}{' '}
           <Link
-            className="font-semibold text-neutral-950 hover:text-[var(--color-accent-strong)] dark:text-white"
+            className="font-semibold text-[var(--ui-text)] hover:text-[var(--ui-accent-text)]"
             state={{ returnTo }}
             to={routes.register}
           >

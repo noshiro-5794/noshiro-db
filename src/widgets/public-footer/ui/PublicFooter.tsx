@@ -1,4 +1,4 @@
-import { Link } from '@/shared/routing/navigation';
+import { Link } from '@tanstack/react-router';
 import { useI18n } from '@/shared/i18n';
 import { routes } from '@/shared/routing/paths';
 
@@ -29,16 +29,16 @@ export function PublicFooter({ variant = 'public' }: PublicFooterProps) {
     <footer
       className={
         isCompact
-          ? 'border-t border-[color-mix(in_srgb,var(--color-border)_58%,transparent)]'
-          : 'border-t border-[color-mix(in_srgb,var(--color-border)_58%,transparent)] bg-[var(--color-bg)]'
+          ? 'border-t border-[color-mix(in_srgb,var(--ui-border)_58%,transparent)]'
+          : 'border-t border-[color-mix(in_srgb,var(--ui-border)_58%,transparent)] bg-[var(--ui-bg-canvas)]'
       }
     >
       <div
-        className={`mx-auto flex max-w-6xl flex-col-reverse gap-4 px-5 text-xs text-[var(--color-text-muted)] ${isCompact ? 'py-5' : 'py-7'} lg:flex-row lg:items-center lg:justify-between`}
+        className={`mx-auto flex max-w-6xl flex-col-reverse gap-4 px-5 text-xs text-[var(--ui-text-muted)] ${isCompact ? 'py-5' : 'py-7'} lg:flex-row lg:items-center lg:justify-between`}
       >
         <div className="flex min-w-0 items-center gap-2">
           <Link
-            className="inline-flex shrink-0 text-[var(--color-text-muted)] transition hover:text-[var(--color-text)]"
+            className="inline-flex shrink-0 text-[var(--ui-text-muted)] transition hover:text-[var(--ui-text)]"
             to={routes.home}
             aria-label="Noshiro DB"
           >
@@ -51,7 +51,7 @@ export function PublicFooter({ variant = 'public' }: PublicFooterProps) {
           {footerLinks.map((item) => {
             if (item.type === 'route') {
               return (
-                <Link className="transition hover:text-[var(--color-text)]" key={item.label} to={item.to}>
+                <Link className="transition hover:text-[var(--ui-text)]" key={item.label} to={item.to}>
                   {item.label}
                 </Link>
               );
@@ -59,7 +59,7 @@ export function PublicFooter({ variant = 'public' }: PublicFooterProps) {
 
             return (
               <a
-                className="transition hover:text-[var(--color-text)]"
+                className="transition hover:text-[var(--ui-text)]"
                 href={item.href}
                 key={item.label}
                 rel="noreferrer"

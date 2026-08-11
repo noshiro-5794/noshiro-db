@@ -1,23 +1,34 @@
-import * as React from 'react';
-import { cva, type VariantProps } from 'class-variance-authority';
+import type { ComponentProps } from 'react';
 import { cn } from '@/shared/lib/cn';
 
-const badgeVariants = cva('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold', {
-  variants: {
-    variant: {
-      default: 'bg-[var(--color-text)] text-[var(--color-bg)]',
-      secondary: 'bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]',
-      accent: 'bg-[var(--color-accent-soft)] text-[var(--color-accent-strong)]',
-      danger: 'bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-300',
-    },
-  },
-  defaultVariants: {
-    variant: 'secondary',
-  },
-});
+type BadgeVariant = 'default' | 'secondary' | 'accent' | 'danger' | 'success' | 'warning';
 
-function Badge({ className, variant, ...props }: React.ComponentProps<'span'> & VariantProps<typeof badgeVariants>) {
-  return <span className={cn(badgeVariants({ variant, className }))} {...props} />;
+const variantClasses: Record<BadgeVariant, string> = {
+  default: 'border-[var(--ui-action-primary)] bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)]',
+  secondary: 'border-[var(--ui-border)] bg-[var(--ui-bg-subtle)] text-[var(--ui-text-muted)]',
+  accent:
+    'border-[color-mix(in_srgb,var(--ui-accent)_24%,var(--ui-border))] bg-[var(--ui-accent-soft)] text-[var(--ui-accent-text)]',
+  danger:
+    'border-[color-mix(in_srgb,var(--ui-danger)_24%,var(--ui-border))] bg-[var(--ui-danger-soft)] text-[var(--ui-danger-text)]',
+  success:
+    'border-[color-mix(in_srgb,var(--ui-success)_24%,var(--ui-border))] bg-[var(--ui-success-soft)] text-[var(--ui-success-text)]',
+  warning:
+    'border-[color-mix(in_srgb,var(--ui-warning)_28%,var(--ui-border))] bg-[var(--ui-warning-soft)] text-[var(--ui-warning-text)]',
+};
+
+function Badge({ className, variant = 'secondary', ...props }: ComponentProps<'span'> & { variant?: BadgeVariant }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex min-h-5 w-fit shrink-0 items-center gap-1 rounded-sm border px-1.5 py-0.5 text-[11px] font-medium leading-none [&_svg]:size-3 [&_svg]:shrink-0',
+        variantClasses[variant],
+        className,
+      )}
+      data-slot="badge"
+      data-variant={variant}
+      {...props}
+    />
+  );
 }
 
 export { Badge };

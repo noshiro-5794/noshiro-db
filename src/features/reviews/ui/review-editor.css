@@ -1,0 +1,132 @@
+@reference '../../../app/styles/global.css';
+
+@layer components {
+  .review-editor-page {
+    @apply grid gap-4;
+  }
+
+  .review-editor-document {
+    @apply grid gap-4 border-b border-border-subtle px-1 pb-4 lg:grid-cols-[minmax(0,1fr)_auto];
+  }
+
+  .review-editor-flags {
+    @apply flex flex-wrap items-start gap-2 lg:justify-end;
+  }
+
+  .review-workbench {
+    @apply grid items-start gap-4;
+  }
+
+  .review-editor {
+    @apply overflow-clip rounded-md border border-border bg-surface shadow-[var(--ui-shadow-control)];
+  }
+
+  .review-editor-toolbar {
+    @apply sticky top-[var(--ui-sticky-content-top)] z-[var(--ui-layer-sticky-content)] flex min-h-11 items-center justify-between gap-3 border-b border-border bg-[color-mix(in_srgb,var(--ui-bg-surface)_92%,transparent)] px-2 py-1.5 backdrop-blur-xl max-md:flex-col max-md:items-stretch;
+  }
+
+  .review-editor-toolgroups {
+    @apply flex min-w-0 items-center overflow-x-auto;
+  }
+
+  .review-editor-toolgroup {
+    @apply flex items-center gap-0.5;
+  }
+
+  .review-editor-toolgroup + .review-editor-toolgroup {
+    @apply ml-1.5 border-l border-border-subtle pl-1.5;
+  }
+
+  .review-editor-mode {
+    @apply flex flex-shrink-0 items-center gap-0.5 rounded-sm bg-muted p-0.5 max-md:w-fit;
+  }
+
+  .review-editor-actions {
+    @apply flex flex-shrink-0 items-center gap-2 max-md:justify-between;
+  }
+
+  .review-editor-status {
+    @apply flex items-center gap-2 px-1 text-xs font-medium tabular-nums text-muted-foreground max-sm:hidden;
+  }
+
+  .review-editor-status span + span {
+    @apply border-l border-border pl-2;
+  }
+
+  .review-editor-outlinebar {
+    @apply flex min-h-9 items-center gap-3 border-b border-border-subtle bg-[color-mix(in_srgb,var(--ui-bg-subtle)_28%,transparent)] px-3 py-1.5 max-md:flex-col max-md:items-start;
+  }
+
+  .review-editor-outlinebar > span {
+    @apply flex-shrink-0 text-xs font-semibold text-muted-foreground;
+  }
+
+  .review-editor-outlinebar > div {
+    @apply flex min-w-0 flex-1 items-center gap-1 overflow-x-auto;
+  }
+
+  .review-editor-outlinebar button {
+    @apply max-w-52 flex-shrink-0 truncate rounded-sm px-2.5 py-1 text-xs font-semibold text-muted-foreground transition-colors;
+  }
+
+  .review-editor-outlinebar button:hover {
+    color: var(--ui-accent-text);
+    background: var(--ui-accent-soft);
+  }
+
+  .review-editor-outlinebar button[data-depth='2'] {
+    @apply opacity-85;
+  }
+
+  .review-editor-outlinebar button[data-depth='3'] {
+    @apply opacity-70;
+  }
+
+  .review-editor-grid {
+    @apply grid min-h-[68vh] lg:grid-cols-2;
+  }
+
+  .review-editor-grid.is-write,
+  .review-editor-grid.is-preview {
+    @apply lg:grid-cols-1;
+  }
+
+  .review-editor-grid.is-write .review-editor-preview,
+  .review-editor-grid.is-preview .review-editor-write {
+    @apply hidden;
+  }
+
+  .review-editor-pane {
+    @apply grid min-h-[68vh] grid-rows-[auto_1fr] overflow-hidden;
+  }
+
+  .review-editor-write {
+    @apply border-r border-border;
+  }
+
+  .review-editor-grid.is-write .review-editor-write,
+  .review-editor-grid.is-preview .review-editor-write {
+    @apply border-r-0;
+  }
+
+  .review-editor-pane-header {
+    @apply flex h-9 items-center justify-between gap-3 border-b border-border-subtle bg-[color-mix(in_srgb,var(--ui-bg-subtle)_48%,transparent)] px-4 text-xs font-medium text-muted-foreground;
+  }
+
+  .review-editor-pane-header span {
+    @apply inline-flex min-w-0 items-center gap-2 truncate;
+  }
+
+  .review-editor-textarea {
+    @apply min-h-full resize-none border-0 bg-transparent p-4 text-[0.96rem] leading-7 text-foreground outline-none;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+  }
+
+  .review-editor-textarea::placeholder {
+    color: var(--ui-text-placeholder);
+  }
+
+  .review-editor-preview-body {
+    @apply overflow-auto p-4;
+  }
+}

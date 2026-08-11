@@ -10,13 +10,13 @@ export type UserSubject = {
   simple_rating: number | null;
   rating: DecimalString | null;
   comment: string;
-  watch_start_date: DateString;
-  watch_end_date: DateString;
+  watch_start_date: DateString | null;
+  watch_end_date: DateString | null;
   is_public: boolean;
   created_at?: ISODateString;
   updated_at?: ISODateString;
   subject: Pick<SubjectSummary, 'id' | 'title'> & Partial<SubjectSummary>;
-} & Record<string, unknown>;
+};
 
 export type Tag = {
   id: number;
@@ -37,13 +37,14 @@ export type Review = {
   reaction_count?: number;
   created_at?: ISODateString;
   updated_at?: ISODateString;
-  subject?: SubjectSummary;
+  subject?: Pick<SubjectSummary, 'id' | 'title' | 'title_cn' | 'subject_type' | 'date' | 'nsfw'> &
+    Partial<SubjectSummary>;
   user?: PublicUserSummary;
   viewer_state?: {
     has_liked: boolean;
     has_bookmarked: boolean;
   };
-} & Record<string, unknown>;
+};
 
 export type ProgressSummary = {
   subject_id?: UUID;
@@ -77,7 +78,7 @@ export type Collection = {
     has_liked: boolean;
     has_bookmarked: boolean;
   };
-} & Record<string, unknown>;
+};
 
 export type CollectionItem = {
   id: number;
@@ -88,4 +89,4 @@ export type CollectionItem = {
   subject: SubjectSummary;
   order: number;
   relation: string;
-} & Record<string, unknown>;
+};

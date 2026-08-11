@@ -1,39 +1,49 @@
-import { type FormEvent, useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from '@/shared/routing/navigation';
+import { type SyntheticEvent, useEffect, useMemo, useState } from 'react';
+import { getRouteApi, Link, useLocation } from '@tanstack/react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, FileText, Lock, Save, ShieldAlert, Sparkles } from 'lucide-react';
-import { libraryMutations, libraryQueries, libraryQueryKeys } from '@/entities/library';
+import { libraryMutations, libraryQueries } from '@/entities/library';
+import { useAuth } from '@/entities/session';
 import { useI18n } from '@/shared/i18n';
-import { MarkdownEditor } from '@/features/reviews';
+import { invalidateReviewViews, MarkdownEditor } from '@/features/reviews';
 import { subjectQueries } from '@/entities/subject';
 import { routes } from '@/shared/routing/paths';
+import { resolvedRouteHref } from '@/shared/routing/resolved-href';
+import { parseIntegerParam } from '@/shared/routing/search-params';
+import { parseUuid } from '@/shared/lib/validation';
 import { backTargetFromState } from '@/shared/routing/route-state';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import { ErrorState, LoadingState } from '@/shared/ui/FeedbackState';
 import { Input } from '@/shared/ui/Input';
 import { Page } from '@/shared/ui/Page';
-import { toast } from 'sonner';
+import { Toggle } from '@/shared/ui/Toggle';
+import { toast } from '@/shared/ui/toast';
 
 type ReviewRouteParams = {
   reviewId?: string;
 };
 
+type ReviewEditorPageProps = ReviewRouteParams & {
+  onCreated: (reviewId: number, backTarget: string) => void;
+  subjectIdParam?: string | undefined;
+};
+
+const newReviewRoute = getRouteApi('/reviews/new');
+const editReviewRoute = getRouteApi('/reviews/$reviewId/edit');
+
 function parseReviewId(value?: string) {
   if (!value || value === 'new') return null;
-  const reviewId = Number(value);
-  return Number.isInteger(reviewId) && reviewId > 0 ? reviewId : null;
+  return parseIntegerParam(value, { min: 1 });
 }
 
-export function ReviewEditorPage() {
+function ReviewEditorPage({ onCreated, reviewId: reviewIdParam, subjectIdParam }: ReviewEditorPageProps) {
   const { t } = useI18n();
-  const { reviewId: reviewIdParam } = useParams<ReviewRouteParams>();
+  const auth = useAuth();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const reviewId = parseReviewId(reviewIdParam);
-  const subjectId = searchParams.get('subjectId') ?? '';
+  const subjectId = parseUuid(subjectIdParam) ?? '';
   const isEditing = reviewId !== null;
 
   const reviewQuery = useQuery({
@@ -58,27 +68,18 @@ export function ReviewEditorPage() {
 
   const createReviewMutation = useMutation({
     ...libraryMutations.createReview(),
+    onError: () => toast.error(t('common.requestFailed')),
     onSuccess: async (review) => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: libraryQueryKeys.reviews() }),
-        subject?.id
-          ? queryClient.invalidateQueries({ queryKey: libraryQueryKeys.subjectReviews(subject.id) })
-          : Promise.resolve(),
-      ]);
+      await invalidateReviewViews(queryClient, { userId: auth.profile?.user_id });
       toast.success(t('reviewEditor.created'));
-      void navigate(routes.reviewEdit(review.id), { replace: true, state: { from: backTarget } });
+      onCreated(review.id, backTarget);
     },
   });
   const updateReviewMutation = useMutation({
     ...libraryMutations.updateReview(),
-    onSuccess: async (review) => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: libraryQueryKeys.reviews() }),
-        queryClient.invalidateQueries({ queryKey: libraryQueryKeys.reviewDetail(review.id) }),
-        review.subject?.id
-          ? queryClient.invalidateQueries({ queryKey: libraryQueryKeys.subjectReviews(review.subject.id) })
-          : Promise.resolve(),
-      ]);
+    onError: () => toast.error(t('common.requestFailed')),
+    onSuccess: async () => {
+      await invalidateReviewViews(queryClient, { userId: auth.profile?.user_id });
       toast.success(t('reviewEditor.saved'));
     },
   });
@@ -98,10 +99,10 @@ export function ReviewEditorPage() {
     setIsSpoiler(reviewQuery.data.is_spoiler);
   }, [reviewQuery.data]);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: SyntheticEvent<HTMLFormElement, SubmitEvent>) {
     event.preventDefault();
     const payload = {
-      title: title.trim() || titlePlaceholder,
+      title: (title.trim() || titlePlaceholder).slice(0, 256),
       content,
       is_public: isPublic,
       is_spoiler: isSpoiler,
@@ -137,7 +138,7 @@ export function ReviewEditorPage() {
       actions={
         <>
           <Button asChild variant="ghost">
-            <Link to={backTarget}>
+            <Link {...resolvedRouteHref(backTarget)}>
               <ArrowLeft className="size-4" /> {t('common.back')}
             </Link>
           </Button>
@@ -173,35 +174,69 @@ export function ReviewEditorPage() {
                 ) : null}
               </div>
               <Input
-                className="h-12 rounded-none bg-transparent px-0 text-xl font-semibold shadow-none ring-0 focus:ring-0"
+                aria-label={t('reviewEditor.titlePlaceholder')}
+                className="h-12 rounded-none border-0 bg-transparent px-0 text-xl font-semibold shadow-none ring-0 hover:border-transparent focus:border-transparent focus:ring-0"
+                maxLength={256}
                 placeholder={titlePlaceholder}
                 value={title}
-                onChange={(event) => setTitle(event.target.value)}
+                onChange={(event) => {
+                  setTitle(event.target.value);
+                }}
               />
             </div>
             <div className="review-editor-flags">
-              <button
-                className={isPublic ? 'is-active' : ''}
-                type="button"
-                onClick={() => setIsPublic((value) => !value)}
-              >
+              <Toggle pressed={isPublic} onPressedChange={setIsPublic}>
                 <Lock className="size-4" />
                 {isPublic ? t('common.public') : t('common.private')}
-              </button>
-              <button
-                className={isSpoiler ? 'is-active' : ''}
-                type="button"
-                onClick={() => setIsSpoiler((value) => !value)}
-              >
+              </Toggle>
+              <Toggle pressed={isSpoiler} onPressedChange={setIsSpoiler}>
                 <ShieldAlert className="size-4" />
                 {t('common.spoiler')}
-              </button>
+              </Toggle>
             </div>
           </section>
 
-          <MarkdownEditor value={content} onChange={setContent} />
+          <MarkdownEditor maxLength={20_000} value={content} onChange={setContent} />
         </form>
       )}
     </Page>
+  );
+}
+
+export function NewReviewPage() {
+  const { subjectId } = newReviewRoute.useSearch();
+  const navigate = newReviewRoute.useNavigate();
+
+  return (
+    <ReviewEditorPage
+      subjectIdParam={subjectId}
+      onCreated={(reviewId, backTarget) =>
+        void navigate({
+          params: { reviewId: String(reviewId) },
+          replace: true,
+          state: { from: backTarget },
+          to: '/reviews/$reviewId/edit',
+        })
+      }
+    />
+  );
+}
+
+export function EditReviewPage() {
+  const { reviewId } = editReviewRoute.useParams();
+  const navigate = editReviewRoute.useNavigate();
+
+  return (
+    <ReviewEditorPage
+      reviewId={reviewId}
+      onCreated={(createdReviewId, backTarget) =>
+        void navigate({
+          params: { reviewId: String(createdReviewId) },
+          replace: true,
+          state: { from: backTarget },
+          to: '/reviews/$reviewId/edit',
+        })
+      }
+    />
   );
 }

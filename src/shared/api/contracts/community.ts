@@ -16,9 +16,9 @@ export type ActivityType =
 
 export type CommunityVisibility = 'public' | 'followers' | 'private' | (string & {});
 
-export type CommunityFeedPolicy = 'hidden' | 'normal' | 'featured' | (string & {});
+type CommunityFeedPolicy = 'hidden' | 'normal' | 'featured' | (string & {});
 
-export type CommunityPostType = 'status' | 'subject' | (string & {});
+type CommunityPostType = 'status' | 'subject' | (string & {});
 
 export type CommunityTargetType = 'activity' | 'post' | 'comment' | 'review' | 'collection' | (string & {});
 
@@ -50,7 +50,7 @@ export type CommunityPostSummary = {
     has_bookmarked: boolean;
     is_following_author: boolean;
   };
-} & Record<string, unknown>;
+};
 
 export type CommunityCommentSummary = {
   id: number;
@@ -73,30 +73,31 @@ export type CommunityCommentSummary = {
     has_liked: boolean;
     is_following_author: boolean;
   };
-} & Record<string, unknown>;
+};
 
 export type Activity = {
   id: number;
   activity_type: ActivityType;
   created_at: ISODateString;
   reaction_count?: number;
+  reply_count?: number;
   message?: string;
   visibility?: CommunityVisibility;
   feed_policy?: CommunityFeedPolicy;
   group_key?: string;
   dedupe_key?: string;
-  user?: PublicUserSummary;
+  user?: PublicUserSummary | null;
   subject?: SubjectSummary;
   review?: Review;
   collection?: Collection;
   collection_item?: CollectionItem;
   post?: CommunityPostSummary;
   comment?: CommunityCommentSummary;
-  target_user?: PublicUserSummary;
+  target_user?: PublicUserSummary | null;
   viewer_state?: {
     has_liked: boolean;
   };
-} & Record<string, unknown>;
+};
 
 export type CommunityReaction = {
   id: number;
@@ -128,44 +129,42 @@ export type CommunityNotification = {
   id: number;
   notification_type: string;
   actor: PublicUserSummary | null;
-  target:
-    | ({
-        type: CommunityTargetType;
-        id: number;
-        author?: PublicUserSummary | null;
-        owner?: PublicUserSummary | null;
-        user?: PublicUserSummary | null;
-        target_user?: PublicUserSummary | null;
-        parent_id?: number | null;
-        post?: {
-          type: 'post';
-          id: number;
-          author?: PublicUserSummary | null;
-        };
-        review?: {
-          type: 'review';
-          id: number;
-          author?: PublicUserSummary | null;
-        };
-        collection?: {
-          type: 'collection';
-          id: number;
-          owner?: PublicUserSummary | null;
-        };
-        activity?: {
-          type: 'activity';
-          id: number;
-          user?: PublicUserSummary | null;
-        };
-        subject?: {
-          id: UUID;
-        };
-        comment?: {
-          type: 'comment';
-          id: number;
-        };
-      } & Record<string, unknown>)
-    | null;
+  target: {
+    type: CommunityTargetType;
+    id: number;
+    author?: PublicUserSummary | null;
+    owner?: PublicUserSummary | null;
+    user?: PublicUserSummary | null;
+    target_user?: PublicUserSummary | null;
+    parent_id?: number | null;
+    post?: {
+      type: 'post';
+      id: number;
+      author?: PublicUserSummary | null;
+    };
+    review?: {
+      type: 'review';
+      id: number;
+      author?: PublicUserSummary | null;
+    };
+    collection?: {
+      type: 'collection';
+      id: number;
+      owner?: PublicUserSummary | null;
+    };
+    activity?: {
+      type: 'activity';
+      id: number;
+      user?: PublicUserSummary | null;
+    };
+    subject?: {
+      id: UUID;
+    };
+    comment?: {
+      type: 'comment';
+      id: number;
+    };
+  } | null;
   metadata: Record<string, unknown>;
   is_read: boolean;
   read_at: ISODateString | null;
@@ -174,6 +173,10 @@ export type CommunityNotification = {
 
 export type CommunityNotificationUnreadCount = {
   unread_count: number;
+};
+
+export type CommunityNotificationReadAllResult = {
+  updated_count: number;
 };
 
 export type CommunityRelationship = {

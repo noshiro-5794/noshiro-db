@@ -5,6 +5,8 @@
 # Build, test, and TypeScript output
 /dist/
 /coverage/
+/playwright-report/
+/test-results/
 *.tsbuildinfo
 
 # Local environment files
@@ -32,3 +34,6 @@ pnpm-debug.log*
 # Local agent/tooling state
 .agents/
 .codex/
+
+# Local design references
+/tmp/

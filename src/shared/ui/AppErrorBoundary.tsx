@@ -1,9 +1,11 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { AlertTriangle, RotateCcw } from 'lucide-react';
+import { useI18n } from '@/shared/i18n';
 import { Button } from '@/shared/ui/Button';
 
 type AppErrorBoundaryProps = {
   children: ReactNode;
+  resetKey: string;
 };
 
 type AppErrorBoundaryState = {
@@ -23,31 +25,45 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
     console.error('Unhandled React error', error, errorInfo);
   }
 
+  override componentDidUpdate(previousProps: AppErrorBoundaryProps) {
+    if (this.state.error && previousProps.resetKey !== this.props.resetKey) {
+      this.setState({ error: null });
+    }
+  }
+
   override render() {
     if (this.state.error) {
       return (
-        <main className="grid min-h-dvh place-items-center bg-[var(--color-bg)] px-6 py-16 text-[var(--color-text)]">
-          <section className="grid w-full max-w-lg justify-items-center text-center">
-            <div className="grid size-12 place-items-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]">
-              <AlertTriangle className="size-5" />
-            </div>
-            <p className="mt-6 text-xs font-semibold uppercase text-neutral-400">Application error</p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Something went wrong</h1>
-            <p className="mt-4 max-w-md text-sm leading-6 text-[var(--color-text-muted)]">
-              The current view failed while rendering. Try reloading this view, or return to a stable route from the
-              navigation.
-            </p>
-            <div className="mt-8">
-              <Button type="button" variant="secondary" onClick={() => this.setState({ error: null })}>
-                <RotateCcw className="size-4" />
-                Try again
-              </Button>
-            </div>
-          </section>
-        </main>
+        <AppErrorFallback
+          onReset={() => {
+            this.setState({ error: null });
+          }}
+        />
       );
     }
 
     return this.props.children;
   }
+}
+
+function AppErrorFallback({ onReset }: { onReset: () => void }) {
+  const { t } = useI18n();
+
+  return (
+    <main className="grid min-h-[50vh] place-items-center px-6 py-16 text-[var(--ui-text)]">
+      <section className="grid w-full max-w-lg justify-items-center text-center">
+        <div className="grid size-12 place-items-center rounded-full border border-[var(--ui-border)] bg-[var(--ui-bg-subtle)] text-[var(--ui-danger-text)]">
+          <AlertTriangle className="size-5" />
+        </div>
+        <h1 className="mt-5 text-2xl font-semibold tracking-normal">{t('error.title')}</h1>
+        <p className="mt-3 max-w-md text-sm leading-6 text-[var(--ui-text-muted)]">{t('error.description')}</p>
+        <div className="mt-8">
+          <Button type="button" variant="secondary" onClick={onReset}>
+            <RotateCcw className="size-4" />
+            {t('common.retry')}
+          </Button>
+        </div>
+      </section>
+    </main>
+  );
 }

@@ -1,5 +1,5 @@
-import { type FormEvent, useCallback, useState } from 'react';
-import { Link, useNavigate } from '@/shared/routing/navigation';
+import { type SyntheticEvent, useCallback, useState } from 'react';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { KeyRound, LockKeyhole, Mail } from 'lucide-react';
 import { env } from '@/shared/config/env';
 import { authApi } from '@/entities/session';
@@ -10,11 +10,8 @@ import { formatCodeCooldownLabel, useCodeCooldown } from '@/features/auth';
 import { useI18n } from '@/shared/i18n';
 import { routes } from '@/shared/routing/paths';
 import { formDataString } from '@/shared/forms/form-data';
+import { getErrorMessage } from '@/shared/lib/error';
 import { Button } from '@/shared/ui/Button';
-
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
-}
 
 export function ResetPasswordPage() {
   const { t } = useI18n();
@@ -27,7 +24,13 @@ export function ResetPasswordPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const { isCoolingDown, remainingSeconds, startCooldown } = useCodeCooldown(60);
-  const handleCaptchaChange = useCallback((token: string) => setCaptchaToken(token), []);
+  const handleCaptchaChange = useCallback((token: string) => {
+    setCaptchaToken(token);
+    if (token) setErrorMessage('');
+  }, []);
+  const handleCaptchaError = useCallback(() => {
+    setErrorMessage(t('auth.captchaUnavailable'));
+  }, [t]);
 
   async function handleSendCode() {
     const trimmedEmail = email.trim();
@@ -46,19 +49,21 @@ export function ResetPasswordPage() {
       await authApi.sendCode({
         email: trimmedEmail,
         purpose: 'reset_password',
-        hcaptcha_token: captchaToken || undefined,
+        ...(captchaToken ? { hcaptcha_token: captchaToken } : {}),
       });
-      setCaptchaResetSignal((value) => value + 1);
-      setCaptchaToken('');
       startCooldown();
     } catch (error) {
       setErrorMessage(getErrorMessage(error, t('common.requestFailed')));
     } finally {
+      if (env.hcaptchaSiteKey) {
+        setCaptchaResetSignal((value) => value + 1);
+        setCaptchaToken('');
+      }
       setIsSendingCode(false);
     }
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: SyntheticEvent<HTMLFormElement, SubmitEvent>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const nextPassword = formDataString(formData, 'new_password');
@@ -76,7 +81,7 @@ export function ResetPasswordPage() {
         code: formDataString(formData, 'code').trim(),
         new_password: nextPassword,
       });
-      void navigate(auth.isAuthenticated ? routes.settings : routes.login, { replace: true });
+      void navigate({ replace: true, to: auth.isAuthenticated ? '/settings' : '/login' });
     } catch (error) {
       setErrorMessage(getErrorMessage(error, t('common.requestFailed')));
     } finally {
@@ -88,8 +93,8 @@ export function ResetPasswordPage() {
     <AuthPageLayout title={t('auth.resetPassword')}>
       <form className="grid gap-5" onSubmit={(event) => void handleSubmit(event)}>
         <div className="motion-rise grid justify-items-center text-center">
-          <img className="size-12 rounded-2xl" src="/brand/icon.svg" alt="" aria-hidden="true" />
-          <h1 className="mt-5 text-2xl font-semibold tracking-tight text-neutral-950 dark:text-white">
+          <img className="size-12 rounded-lg" src="/brand/icon.svg" alt="" aria-hidden="true" />
+          <h1 className="mt-5 text-2xl font-semibold tracking-normal text-[var(--ui-text)]">
             {t('auth.resetPassword')}
           </h1>
         </div>
@@ -100,11 +105,14 @@ export function ResetPasswordPage() {
             icon={<Mail className="size-4" />}
             label={t('auth.email')}
             name="email"
+            maxLength={254}
             placeholder="name@example.com"
             required
             type="email"
             value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            onChange={(event) => {
+              setEmail(event.target.value);
+            }}
           />
           {isCoolingDown ? (
             <CaptchaSentStatus
@@ -114,8 +122,10 @@ export function ResetPasswordPage() {
           ) : (
             <HCaptchaBox
               resetSignal={captchaResetSignal}
+              retryLabel={t('common.retry')}
               siteKey={env.hcaptchaSiteKey}
               onChange={handleCaptchaChange}
+              onError={handleCaptchaError}
             />
           )}
           <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
@@ -124,6 +134,10 @@ export function ResetPasswordPage() {
               icon={<KeyRound className="size-4" />}
               label={t('auth.code')}
               name="code"
+              inputMode="numeric"
+              maxLength={6}
+              minLength={6}
+              pattern="[0-9]{6}"
               placeholder="000000"
               required
               type="text"
@@ -147,6 +161,7 @@ export function ResetPasswordPage() {
             icon={<LockKeyhole className="size-4" />}
             label={t('auth.newPassword')}
             name="new_password"
+            minLength={8}
             placeholder={t('auth.password')}
             required
             type="password"
@@ -156,6 +171,7 @@ export function ResetPasswordPage() {
             icon={<LockKeyhole className="size-4" />}
             label={t('auth.confirmPassword')}
             name="confirm_password"
+            minLength={8}
             placeholder={t('auth.password')}
             required
             type="password"
@@ -163,7 +179,7 @@ export function ResetPasswordPage() {
         </div>
 
         {errorMessage ? (
-          <p className="motion-rise rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/30 dark:text-red-300">
+          <p className="motion-rise rounded-lg bg-[var(--ui-danger-soft)] px-3 py-2 text-sm text-[var(--ui-danger-text)]">
             {errorMessage}
           </p>
         ) : null}
@@ -171,11 +187,8 @@ export function ResetPasswordPage() {
         <Button className="motion-rise motion-delay-2 w-full" disabled={isSubmitting} size="lg" type="submit">
           {isSubmitting ? t('auth.loading') : t('auth.resetPassword')}
         </Button>
-        <p className="motion-rise motion-delay-3 text-center text-sm text-neutral-500 dark:text-neutral-400">
-          <Link
-            className="font-semibold text-neutral-950 hover:text-[var(--color-accent-strong)] dark:text-white"
-            to={routes.login}
-          >
+        <p className="motion-rise motion-delay-3 text-center text-sm text-[var(--ui-text-muted)]">
+          <Link className="font-semibold text-[var(--ui-text)] hover:text-[var(--ui-accent-text)]" to={routes.login}>
             {t('auth.backToLogin')}
           </Link>
         </p>

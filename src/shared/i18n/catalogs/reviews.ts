@@ -3,7 +3,6 @@ import { defineMessages } from '../define-messages';
 export const reviewsMessages = defineMessages({
   'zh-CN': {
     'reviews.title': '文章',
-    'reviews.description': '你的 Markdown 文章和草稿。',
     'reviews.searchPlaceholder': '搜索你的文章',
     'reviews.loading': '正在加载文章',
     'reviews.errorTitle': '无法加载文章。',
@@ -23,7 +22,6 @@ export const reviewsMessages = defineMessages({
     'reviewEditor.titlePlaceholder': '文章标题',
     'reviewEditor.newTitle': '新文章',
     'reviewEditor.editTitle': '编辑文章',
-    'reviewEditor.description': 'Markdown 写作，实时预览。',
     'reviewEditor.noSubjectTitle': '没有选择作品。',
     'reviewEditor.noSubjectBody': '请从作品页创建文章，以便正确关联作品。',
     'reviewEditor.titleForSubject': '关于这部作品的想法',
@@ -54,7 +52,6 @@ export const reviewsMessages = defineMessages({
   },
   'en-US': {
     'reviews.title': 'Reviews',
-    'reviews.description': 'Your long-form Markdown reviews and drafts.',
     'reviews.searchPlaceholder': 'Search your reviews',
     'reviews.loading': 'Loading reviews',
     'reviews.errorTitle': 'Unable to load reviews.',
@@ -74,7 +71,6 @@ export const reviewsMessages = defineMessages({
     'reviewEditor.titlePlaceholder': 'Review title',
     'reviewEditor.newTitle': 'New review',
     'reviewEditor.editTitle': 'Edit review',
-    'reviewEditor.description': 'Write with Markdown and preview the result in real time.',
     'reviewEditor.noSubjectTitle': 'No subject selected.',
     'reviewEditor.noSubjectBody': 'Create a review from a subject page so the review can be linked correctly.',
     'reviewEditor.titleForSubject': 'Thoughts on this subject',
@@ -105,7 +101,6 @@ export const reviewsMessages = defineMessages({
   },
   'ja-JP': {
     'reviews.title': 'レビュー',
-    'reviews.description': '長文 Markdown レビューと下書き。',
     'reviews.searchPlaceholder': '自分のレビューを検索',
     'reviews.loading': 'レビューを読み込み中',
     'reviews.errorTitle': 'レビューを読み込めません。',
@@ -125,7 +120,6 @@ export const reviewsMessages = defineMessages({
     'reviewEditor.titlePlaceholder': 'レビュータイトル',
     'reviewEditor.newTitle': '新規レビュー',
     'reviewEditor.editTitle': 'レビューを編集',
-    'reviewEditor.description': 'Markdown で書きながら、結果をリアルタイムで確認できます。',
     'reviewEditor.noSubjectTitle': '作品が選択されていません。',
     'reviewEditor.noSubjectBody': 'レビューを正しく紐づけるため、作品ページから作成してください。',
     'reviewEditor.titleForSubject': 'この作品についての感想',

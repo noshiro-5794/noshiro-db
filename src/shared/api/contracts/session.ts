@@ -7,7 +7,7 @@ export type AccessTokenPayload = {
 };
 
 export type CurrentUserProfile = {
-  user_id: string;
+  user_id: number;
   email: string;
   is_staff: boolean;
   is_superuser: boolean;
@@ -16,7 +16,6 @@ export type CurrentUserProfile = {
   bio?: string;
   language?: 'auto' | 'en-US' | 'zh-CN' | 'ja-JP';
   appearance?: 'auto' | 'light' | 'dark';
-  theme_color: string | null;
 };
 
 export type ProfileStats = {

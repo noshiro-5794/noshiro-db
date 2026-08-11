@@ -15,6 +15,13 @@ function readApiProxyTarget(value: string | undefined) {
   return url.origin;
 }
 
+function allowRefreshCookieOnHttpDevelopmentOrigin(header: string) {
+  return header
+    .split(';')
+    .filter((part) => part.trim().toLowerCase() !== 'secure')
+    .join(';');
+}
+
 export default defineConfig(({ mode }) => {
   const configEnv = loadEnv(mode, process.cwd(), 'API_PROXY_TARGET');
   const apiProxyTarget = readApiProxyTarget(configEnv.API_PROXY_TARGET);
@@ -32,6 +39,16 @@ export default defineConfig(({ mode }) => {
           target: apiProxyTarget,
           changeOrigin: true,
           cookieDomainRewrite: '',
+          configure(proxy) {
+            proxy.on('proxyRes', (proxyResponse) => {
+              const setCookie = proxyResponse.headers['set-cookie'];
+              if (!setCookie) return;
+
+              // Vite serves HTTP by default. Browsers reject the production Secure cookie
+              // on LAN, IPv6, and custom development hosts even though the proxy is same-origin.
+              proxyResponse.headers['set-cookie'] = setCookie.map(allowRefreshCookieOnHttpDevelopmentOrigin);
+            });
+          },
           ...(apiProxyTarget === defaultApiProxyTarget
             ? {
                 headers: {

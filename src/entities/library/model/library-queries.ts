@@ -1,4 +1,4 @@
-import { mutationOptions, queryOptions } from '@tanstack/react-query';
+import { infiniteQueryOptions, mutationOptions, queryOptions } from '@tanstack/react-query';
 import {
   collectionsApi,
   progressApi,
@@ -10,8 +10,9 @@ import {
   type CreateUserSubjectBody,
   type ReviewListQuery,
   type UserSubjectListQuery,
+  type UserSubjectWriteBody,
 } from '../api/library-api';
-import type { PageQuery, RatingDetail, Review, UUID, UserSubject } from '@/shared/api';
+import { getNextApiPageParam, type PageQuery, type RatingDetail, type Review, type UUID } from '@/shared/api';
 
 export const libraryQueryKeys = {
   all: ['library'] as const,
@@ -25,7 +26,8 @@ export const libraryQueryKeys = {
   subjectTags: (subjectId: UUID) => [...libraryQueryKeys.tags(), 'subject', subjectId] as const,
   ratingDetails: (subjectId: UUID) => [...libraryQueryKeys.all, 'rating-details', subjectId] as const,
   reviews: () => [...libraryQueryKeys.all, 'reviews'] as const,
-  reviewList: (query: ReviewListQuery = {}) => [...libraryQueryKeys.reviews(), 'list', query] as const,
+  reviewLists: () => [...libraryQueryKeys.reviews(), 'list'] as const,
+  reviewList: (query: ReviewListQuery = {}) => [...libraryQueryKeys.reviewLists(), query] as const,
   subjectReviews: (subjectId: UUID) => [...libraryQueryKeys.reviews(), 'subject', subjectId] as const,
   publicSubjectReviews: (subjectId: UUID, query: ReviewListQuery = {}) =>
     [...libraryQueryKeys.reviews(), 'subject-public', subjectId, query] as const,
@@ -34,99 +36,111 @@ export const libraryQueryKeys = {
   collections: () => [...libraryQueryKeys.all, 'collections'] as const,
   collectionList: (query: CollectionListQuery = {}) => [...libraryQueryKeys.collections(), 'list', query] as const,
   collectionDetail: (collectionId: number) => [...libraryQueryKeys.collections(), 'detail', collectionId] as const,
-  collectionItems: (collectionId: number, query: PageQuery = {}) =>
-    [...libraryQueryKeys.collections(), 'items', collectionId, query] as const,
+  collectionItems: (collectionId: number) => [...libraryQueryKeys.collections(), 'items', collectionId] as const,
+  collectionItemList: (collectionId: number, query: PageQuery = {}) =>
+    [...libraryQueryKeys.collectionItems(collectionId), 'list', query] as const,
+  collectionItemInfinite: (collectionId: number, pageSize: number) =>
+    [...libraryQueryKeys.collectionItems(collectionId), 'infinite', pageSize] as const,
 };
 
 export const libraryQueries = {
   userSubjects: (query: UserSubjectListQuery = {}) =>
     queryOptions({
       queryKey: libraryQueryKeys.userSubjectList(query),
-      queryFn: () => userSubjectsApi.listMine(query),
+      queryFn: ({ signal }) => userSubjectsApi.listMine(query, { signal }),
     }),
 
   userSubject: (userSubjectId: number) =>
     queryOptions({
       queryKey: libraryQueryKeys.userSubjectDetail(userSubjectId),
-      queryFn: () => userSubjectsApi.getMine(userSubjectId),
+      queryFn: ({ signal }) => userSubjectsApi.getMine(userSubjectId, { signal }),
     }),
 
   subjectContext: (subjectId: UUID) =>
     queryOptions({
       queryKey: libraryQueryKeys.subjectContext(subjectId),
-      queryFn: () => userSubjectsApi.getContext(subjectId),
+      queryFn: ({ signal }) => userSubjectsApi.getContext(subjectId, { signal }),
     }),
 
   progress: (subjectId: UUID) =>
     queryOptions({
       queryKey: libraryQueryKeys.progress(subjectId),
-      queryFn: () => progressApi.get(subjectId),
+      queryFn: ({ signal }) => progressApi.get(subjectId, { signal }),
     }),
 
   tags: () =>
     queryOptions({
       queryKey: libraryQueryKeys.tagList(),
-      queryFn: () => tagsApi.listMine(),
+      queryFn: ({ signal }) => tagsApi.listMine({}, { signal }),
     }),
 
   subjectTags: (subjectId: UUID) =>
     queryOptions({
       queryKey: libraryQueryKeys.subjectTags(subjectId),
-      queryFn: () => tagsApi.getForSubject(subjectId),
+      queryFn: ({ signal }) => tagsApi.getForSubject(subjectId, { signal }),
     }),
 
   ratingDetails: (subjectId: UUID) =>
     queryOptions({
       queryKey: libraryQueryKeys.ratingDetails(subjectId),
-      queryFn: () => ratingDetailsApi.getForSubject(subjectId),
+      queryFn: ({ signal }) => ratingDetailsApi.getForSubject(subjectId, { signal }),
     }),
 
   reviews: (query: ReviewListQuery = {}) =>
     queryOptions({
       queryKey: libraryQueryKeys.reviewList(query),
-      queryFn: () => reviewsApi.listMine(query),
+      queryFn: ({ signal }) => reviewsApi.listMine(query, { signal }),
     }),
 
   subjectReviews: (subjectId: UUID) =>
     queryOptions({
       queryKey: libraryQueryKeys.subjectReviews(subjectId),
-      queryFn: () => reviewsApi.listForSubject(subjectId),
+      queryFn: ({ signal }) => reviewsApi.listForSubject(subjectId, { signal }),
     }),
 
   publicSubjectReviews: (subjectId: UUID, query: ReviewListQuery = {}) =>
     queryOptions({
       queryKey: libraryQueryKeys.publicSubjectReviews(subjectId, query),
-      queryFn: () => reviewsApi.listPublicForSubject(subjectId, query),
+      queryFn: ({ signal }) => reviewsApi.listPublicForSubject(subjectId, query, { signal }),
     }),
 
   review: (reviewId: number) =>
     queryOptions({
       queryKey: libraryQueryKeys.reviewDetail(reviewId),
-      queryFn: () => reviewsApi.getMine(reviewId),
+      queryFn: ({ signal }) => reviewsApi.getMine(reviewId, { signal }),
     }),
 
   publicReview: (reviewId: number) =>
     queryOptions({
       queryKey: libraryQueryKeys.publicReviewDetail(reviewId),
-      queryFn: () => reviewsApi.getPublic(reviewId),
+      queryFn: ({ signal }) => reviewsApi.getPublic(reviewId, { signal }),
     }),
 
   collections: (query: CollectionListQuery = {}) =>
     queryOptions({
       queryKey: libraryQueryKeys.collectionList(query),
-      queryFn: () => collectionsApi.listMine(query),
+      queryFn: ({ signal }) => collectionsApi.listMine(query, { signal }),
     }),
 
   collection: (collectionId: number) =>
     queryOptions({
       queryKey: libraryQueryKeys.collectionDetail(collectionId),
-      queryFn: () => collectionsApi.getMine(collectionId),
+      queryFn: ({ signal }) => collectionsApi.getMine(collectionId, { signal }),
     }),
 
   collectionItems: (collectionId: number, query: PageQuery = {}) =>
     queryOptions({
-      queryKey: libraryQueryKeys.collectionItems(collectionId, query),
-      queryFn: () => collectionsApi.listItems(collectionId, query),
+      queryKey: libraryQueryKeys.collectionItemList(collectionId, query),
+      queryFn: ({ signal }) => collectionsApi.listItems(collectionId, query, { signal }),
+    }),
+
+  collectionItemsInfinite: (collectionId: number, pageSize = 64) =>
+    infiniteQueryOptions({
+      queryKey: libraryQueryKeys.collectionItemInfinite(collectionId, pageSize),
+      initialPageParam: 1,
+      queryFn: ({ pageParam, signal }) =>
+        collectionsApi.listItems(collectionId, { page: pageParam, page_size: pageSize }, { signal }),
+      getNextPageParam: getNextApiPageParam,
     }),
 };
 
@@ -138,13 +152,8 @@ export const libraryMutations = {
 
   updateUserSubject: () =>
     mutationOptions({
-      mutationFn: ({
-        userSubjectId,
-        body,
-      }: {
-        userSubjectId: number;
-        body: Partial<Omit<UserSubject, 'id' | 'subject'>>;
-      }) => userSubjectsApi.updateMine(userSubjectId, body),
+      mutationFn: ({ userSubjectId, body }: { userSubjectId: number; body: UserSubjectWriteBody }) =>
+        userSubjectsApi.updateMine(userSubjectId, body),
     }),
 
   deleteUserSubject: () =>

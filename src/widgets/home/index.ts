@@ -1,1 +1,2 @@
-export { GuestHome, SessionCheckingHome, UserHome } from './ui/HomePanels';
+export { GuestHome, SessionCheckingHome } from './ui/GuestHome';
+export { UserHome } from './ui/UserHome';

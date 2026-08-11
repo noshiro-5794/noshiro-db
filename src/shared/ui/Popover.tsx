@@ -1,33 +1,51 @@
-import type * as React from 'react';
-import * as PopoverPrimitive from '@radix-ui/react-popover';
+import type { ComponentProps } from 'react';
+import { Popover as BasePopover } from '@base-ui/react/popover';
 import { cn } from '@/shared/lib/cn';
 
-const Popover = PopoverPrimitive.Root;
-const PopoverTrigger = PopoverPrimitive.Trigger;
+const Popover = BasePopover.Root;
+
+function PopoverTrigger(props: ComponentProps<typeof BasePopover.Trigger>) {
+  return <BasePopover.Trigger data-slot="popover-trigger" {...props} />;
+}
+
+type PopoverContentProps = ComponentProps<typeof BasePopover.Popup> &
+  Pick<
+    ComponentProps<typeof BasePopover.Positioner>,
+    'align' | 'alignOffset' | 'collisionAvoidance' | 'side' | 'sideOffset'
+  >;
 
 function PopoverContent({
   align = 'center',
+  alignOffset,
   children,
   className,
-  sideOffset = 8,
+  collisionAvoidance,
+  side = 'bottom',
+  sideOffset = 6,
   ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Content>) {
+}: PopoverContentProps) {
   return (
-    <PopoverPrimitive.Portal>
-      <PopoverPrimitive.Content
+    <BasePopover.Portal>
+      <BasePopover.Positioner
         align={align}
-        className={cn(
-          'z-50 w-72 overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_82%,transparent)] bg-[color-mix(in_srgb,var(--color-surface-elevated)_94%,transparent)] p-4 text-[var(--color-text)] shadow-[var(--shadow-hover)] outline-none backdrop-blur-xl',
-          className,
-        )}
-        collisionPadding={16}
+        alignOffset={alignOffset}
+        className="z-50 outline-none"
+        collisionAvoidance={collisionAvoidance}
+        side={side}
         sideOffset={sideOffset}
-        {...props}
       >
-        {children}
-        <PopoverPrimitive.Arrow className="fill-[var(--color-surface-elevated)]" height={8} width={14} />
-      </PopoverPrimitive.Content>
-    </PopoverPrimitive.Portal>
+        <BasePopover.Popup
+          className={cn(
+            'w-72 origin-[var(--transform-origin)] overflow-hidden rounded-sm border border-border bg-elevated p-4 text-foreground shadow-[var(--ui-shadow-popup)] outline-none transition-[opacity,transform] duration-[var(--ui-transition-fast)] data-[ending-style]:scale-[0.985] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.985] data-[starting-style]:opacity-0',
+            className,
+          )}
+          data-slot="popover-content"
+          {...props}
+        >
+          {children}
+        </BasePopover.Popup>
+      </BasePopover.Positioner>
+    </BasePopover.Portal>
   );
 }
 

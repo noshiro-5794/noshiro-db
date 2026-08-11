@@ -3,7 +3,6 @@ import { defineMessages } from '../define-messages';
 export const adminMessages = defineMessages({
   'zh-CN': {
     'admin.title': '管理',
-    'admin.description': '同步、维护和审核工具。',
     'admin.syncTitle': '同步控制台',
     'admin.syncDescription': '运行索引、日历，或按 Bangumi ID 同步单个作品。',
     'admin.bangumiSubject': 'Bangumi 作品 ID',
@@ -38,12 +37,12 @@ export const adminMessages = defineMessages({
     'admin.jobCalendar': '放送日历',
     'admin.jobIncremental': '增量同步',
     'admin.invalidBangumiId': '请输入有效的 Bangumi 作品 ID。',
+    'admin.invalidBatchSize': '批量大小必须是 1 至 100000 之间的整数。',
     'admin.reportsTitle': '社区审核',
     'admin.reportsDescription': '社区接口已提供举报、隐藏和锁定能力，可继续扩展审核队列。',
   },
   'en-US': {
     'admin.title': 'Admin',
-    'admin.description': 'Staff tools for sync, maintenance, and moderation.',
     'admin.syncTitle': 'Sync console',
     'admin.syncDescription': 'Run index sync, calendar sync, or sync one subject by Bangumi ID.',
     'admin.bangumiSubject': 'Bangumi subject ID',
@@ -78,13 +77,13 @@ export const adminMessages = defineMessages({
     'admin.jobCalendar': 'Calendar',
     'admin.jobIncremental': 'Incremental',
     'admin.invalidBangumiId': 'Enter a valid Bangumi subject ID.',
+    'admin.invalidBatchSize': 'Batch size must be an integer from 1 to 100000.',
     'admin.reportsTitle': 'Community moderation',
     'admin.reportsDescription':
       'Report, hide, and lock APIs are available in community endpoints. A moderation queue can be expanded here later.',
   },
   'ja-JP': {
     'admin.title': '管理',
-    'admin.description': '同期、メンテナンス、モデレーション用の管理ツール。',
     'admin.syncTitle': '同期コンソール',
     'admin.syncDescription': 'インデックス同期、カレンダー同期、Bangumi ID 指定の単体同期を実行できます。',
     'admin.bangumiSubject': 'Bangumi 作品 ID',
@@ -119,6 +118,7 @@ export const adminMessages = defineMessages({
     'admin.jobCalendar': 'カレンダー',
     'admin.jobIncremental': '増分同期',
     'admin.invalidBangumiId': '有効な Bangumi 作品 ID を入力してください。',
+    'admin.invalidBatchSize': 'バッチサイズは 1 から 100000 までの整数を入力してください。',
     'admin.reportsTitle': 'コミュニティモデレーション',
     'admin.reportsDescription':
       '通報、非表示、ロックなどの API はコミュニティ側にあります。モデレーションキューは今後ここに拡張できます。',
