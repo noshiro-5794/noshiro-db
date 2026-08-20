@@ -9,4 +9,4 @@ Disallow: /settings
 Disallow: /notifications
 Disallow: /bookmarks
 
-Sitemap: https://noshiro.moe/sitemap.xml
+Sitemap: https://app.noshiro.moe/sitemap.xml
