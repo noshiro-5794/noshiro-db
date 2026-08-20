@@ -35,7 +35,7 @@ function SearchPoster({
   title: string;
 }) {
   return (
-    <Link className="group grid min-w-0 gap-2" params={{ subjectId }} state={state} to="/subjects/$subjectId">
+    <Link className="group grid min-w-0 gap-2" params={{ subjectId }} state={state} to="/entities/$subjectId">
       <div className="relative aspect-[2/3] overflow-hidden rounded-md bg-muted ring-1 ring-border transition-[background-color,box-shadow] duration-[var(--ui-transition-fast)] group-hover:bg-[var(--ui-bg-muted)] group-hover:ring-[var(--ui-border-strong)]">
         <img
           alt={title}

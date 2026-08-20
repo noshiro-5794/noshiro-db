@@ -192,7 +192,7 @@ export function CollectionItemRail({
               <span>{index + 1}</span>
               <GripVertical className="size-4 cursor-grab" aria-label={t('collections.dragHandle')} />
             </div>
-            <Link className="collection-rail-poster" to={routes.subject(item.subject.id)}>
+            <Link className="collection-rail-poster" to={routes.entity(item.subject.id)}>
               {collectionItemImage(item) ? (
                 <img
                   alt=""
@@ -206,7 +206,7 @@ export function CollectionItemRail({
               )}
             </Link>
             <div className="collection-rail-body">
-              <Link className="collection-rail-title" to={routes.subject(item.subject.id)}>
+              <Link className="collection-rail-title" to={routes.entity(item.subject.id)}>
                 {collectionItemTitle(item, t('common.untitledSubject'))}
               </Link>
               <p>{collectionItemSubtitle(item, t('common.noMetadata'))}</p>

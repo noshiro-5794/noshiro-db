@@ -25,7 +25,7 @@ describe('save mark changes', () => {
 
     await saveMarkChanges({ subjectId, userSubjectId: null, draft }, operations);
 
-    expect(operations.create).toHaveBeenCalledWith({ subject_id: subjectId, ...draft.body });
+    expect(operations.create).toHaveBeenCalledWith({ entity_id: subjectId, ...draft.body });
     expect(operations.update).not.toHaveBeenCalled();
     expect(operations.replaceTags).toHaveBeenCalledWith({ subjectId, tagNames: draft.tagNames });
     expect(operations.replaceRatingDetails).toHaveBeenCalledWith({ subjectId, details: draft.ratingDetails });

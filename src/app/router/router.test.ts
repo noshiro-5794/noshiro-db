@@ -10,7 +10,7 @@ describe('application router', () => {
     ['/reviews/12', { reviewId: '12' }],
     ['/users/7/collections/9', { collectionId: '9', userId: '7' }],
     ['/reviews/12/edit', { reviewId: '12' }],
-    ['/subjects/550e8400-e29b-41d4-a716-446655440000/graph', { subjectId: '550e8400-e29b-41d4-a716-446655440000' }],
+    ['/entities/550e8400-e29b-41d4-a716-446655440000/graph', { subjectId: '550e8400-e29b-41d4-a716-446655440000' }],
   ])('matches %s with typed path parameters', async (href, expectedParams) => {
     const router = createAppRouter(createMemoryHistory({ initialEntries: [href] }));
 
@@ -45,7 +45,7 @@ describe('application router', () => {
     expect(router.routesByPath[protectedPath].options.component?.name).toBe('AuthenticatedRoute');
   });
 
-  it.each(['/community/posts/0', '/users/not-a-number', '/reviews/-3', '/subjects/not-a-uuid'])(
+  it.each(['/community/posts/0', '/users/not-a-number', '/reviews/-3', '/entities/not-a-uuid'])(
     'rejects invalid path parameters for %s',
     async (href) => {
       const router = createAppRouter(createMemoryHistory({ initialEntries: [href] }));

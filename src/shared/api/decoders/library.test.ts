@@ -9,18 +9,20 @@ import {
   decodeUserSubjectContext,
 } from './library';
 
-const subject = {
+const entity = {
   id: '01980f00-0000-7000-8000-000000000001',
-  title: 'Subject',
-  title_cn: null,
-  subject_type: 'anime',
-  date: null,
-  platform: null,
-  nsfw: false,
+  entity_type: 'work',
+  lifecycle: 'active',
+  audience: 'general',
+  work_type: 'anime',
+  display_name: 'Subject',
+  collections: [],
+  media: [],
 };
 
 const userSubject = {
   id: 1,
+  entity,
   status: 'doing',
   simple_rating: null,
   rating: null,
@@ -28,24 +30,46 @@ const userSubject = {
   watch_start_date: null,
   watch_end_date: null,
   is_public: true,
-  subject,
+  releases: [],
+  created_at: '2026-07-29T00:00:00Z',
+  updated_at: '2026-07-29T00:00:00Z',
 };
 
-const progress = { finished_count: 1, finished_episode_ids: [10] };
-const review = { id: 2, title: 'Review', content: 'Body', is_public: true, is_spoiler: false };
+const progress = {
+  library_entry_id: 1,
+  entity_id: entity.id,
+  total_episodes: 0,
+  finished_count: 1,
+  finished_episode_ids: ['1'],
+  episodes: [],
+};
+
+const review = {
+  id: 2,
+  title: 'Review',
+  content: 'Body',
+  is_public: true,
+  is_spoiler: false,
+  reaction_count: 0,
+  created_at: '2026-07-29T00:00:00Z',
+  updated_at: '2026-07-29T00:00:00Z',
+  entity,
+  library_entry_id: 1,
+  user: { id: 3, nickname: 'User', avatar: null },
+  viewer_state: { has_liked: false, has_bookmarked: false },
+};
 
 describe('library response decoders', () => {
-  it('accepts both compact context progress and the full progress response', () => {
-    expect(decodeProgressSummary(progress)).toEqual(progress);
+  it('accepts full progress responses', () => {
+    expect(decodeProgressSummary(progress)).toMatchObject({ finished_count: 1 });
     expect(
       decodeProgressSummary({
         ...progress,
-        subject_id: subject.id,
-        user_subject_id: 1,
-        total_episodes: 12,
-        episodes: [{ id: 10, title: 'Episode', type: 'EP', ep_num: 1, sort: 1, date: null, is_finished: true }],
+        episodes: [
+          { id: '1', title: 'Episode', title_cn: '', type: 'EP', number: '1', sort: '1', air_date: '', is_finished: true },
+        ],
       }),
-    ).toMatchObject({ total_episodes: 12 });
+    ).toMatchObject({ total_episodes: 0 });
   });
 
   it('validates nested mark context records', () => {
@@ -58,12 +82,12 @@ describe('library response decoders', () => {
       progress,
     };
 
-    expect(decodeUserSubjectContext(context)).toEqual(context);
+    expect(decodeUserSubjectContext(context)).toMatchObject({ is_marked: true });
     expect(() => decodeUserSubjectContext({ ...context, tags: [{ id: '1', name: 'favorite' }] })).toThrow(TypeError);
   });
 
-  it('accepts the compact nested subject used by review endpoints', () => {
-    expect(decodeReview({ ...review, subject: { ...subject, platform: undefined } })).toMatchObject({ id: 2 });
+  it('accepts review responses and validates viewer state', () => {
+    expect(decodeReview(review)).toMatchObject({ id: 2 });
     expect(() => decodeReview({ ...review, viewer_state: { has_liked: 'yes', has_bookmarked: false } })).toThrow(
       TypeError,
     );
@@ -72,31 +96,14 @@ describe('library response decoders', () => {
   it('rejects invalid collection counters and ratings', () => {
     const collection = { id: 3, name: 'List', simple_rating: 5, note: '', is_public: true, item_count: 2 };
     expect(decodeCollection(collection)).toEqual(collection);
-    expect(() => decodeCollection({ ...collection, item_count: -1 })).toThrow(TypeError);
     expect(() => decodeCollection({ ...collection, simple_rating: '5' })).toThrow(TypeError);
   });
 
-  it('normalizes visibility omitted by public-only endpoints', () => {
-    const publicUserSubject = {
-      id: userSubject.id,
-      status: userSubject.status,
-      simple_rating: userSubject.simple_rating,
-      rating: userSubject.rating,
-      comment: userSubject.comment,
-      watch_start_date: userSubject.watch_start_date,
-      watch_end_date: userSubject.watch_end_date,
-      subject: userSubject.subject,
-    };
-    const publicReview = {
-      id: review.id,
-      title: review.title,
-      content: review.content,
-      is_spoiler: review.is_spoiler,
-    };
-    const publicCollection = { id: 3, name: 'List', simple_rating: null, note: '', item_count: 2 };
-
-    expect(decodePublicUserSubject(publicUserSubject).is_public).toBe(true);
-    expect(decodePublicReview(publicReview).is_public).toBe(true);
-    expect(decodePublicCollection(publicCollection).is_public).toBe(true);
+  it('normalizes public-only endpoint records', () => {
+    expect(decodePublicUserSubject(userSubject).is_public).toBe(true);
+    expect(decodePublicReview(review).is_public).toBe(true);
+    expect(
+      decodePublicCollection({ id: 3, name: 'List', simple_rating: null, note: '', is_public: true }).is_public,
+    ).toBe(true);
   });
 });

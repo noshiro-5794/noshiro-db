@@ -8,7 +8,7 @@ type SaveMarkInput = {
 };
 
 type SaveMarkOperations = {
-  create: (body: ParsedMarkDraft['body'] & { subject_id: UUID }) => Promise<unknown>;
+  create: (body: ParsedMarkDraft['body'] & { entity_id: UUID }) => Promise<unknown>;
   update: (input: { userSubjectId: number; body: ParsedMarkDraft['body'] }) => Promise<unknown>;
   replaceTags: (input: { subjectId: UUID; tagNames: string[] }) => Promise<unknown>;
   replaceRatingDetails: (input: { subjectId: UUID; details: ParsedMarkDraft['ratingDetails'] }) => Promise<unknown>;
@@ -29,7 +29,7 @@ async function captureOperation(operation: () => Promise<void>): Promise<Operati
 export async function saveMarkChanges(input: SaveMarkInput, operations: SaveMarkOperations) {
   const writeResult = await captureOperation(async () => {
     if (input.userSubjectId === null) {
-      await operations.create({ subject_id: input.subjectId, ...input.draft.body });
+      await operations.create({ entity_id: input.subjectId, ...input.draft.body });
     } else {
       await operations.update({ userSubjectId: input.userSubjectId, body: input.draft.body });
     }

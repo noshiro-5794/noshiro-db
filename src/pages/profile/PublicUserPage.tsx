@@ -205,7 +205,7 @@ export function PublicUserPage() {
               <Link
                 className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-[var(--ui-accent-text)]"
                 params={{ userId: String(profile.id) }}
-                to="/users/$userId/subjects"
+                to="/users/$userId/entities"
               >
                 {t('home.viewAll')} <ArrowRight className="size-4" />
               </Link>
@@ -261,7 +261,7 @@ export function PublicUserPage() {
           </DetailSection>
 
           <DetailSection
-            meta={`${activitiesQuery.data?.count ?? 0} ${t('common.items')}`}
+            meta={`${activities.length} ${t('common.items')}`}
             title={t('profile.publicActivity')}
             titleId="profile-public-activity"
           >

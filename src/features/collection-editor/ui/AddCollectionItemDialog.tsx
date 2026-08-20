@@ -70,7 +70,7 @@ export function AddCollectionItemDialog({
             <ul className="m-0 grid list-none gap-2 p-0">
               {(searchQuery.data?.results ?? []).map((item) => {
                 const title = userSubjectTitle(item, t('common.untitledSubject'));
-                const isAdding = addMutation.isPending && addMutation.variables.body.user_subject_id === item.id;
+                const isAdding = addMutation.isPending && addMutation.variables.body.library_entry_id === item.id;
 
                 return (
                   <li className="min-w-0" key={item.id}>
@@ -99,7 +99,7 @@ export function AddCollectionItemDialog({
                         onClick={() => {
                           addMutation.mutate({
                             collectionId,
-                            body: { user_subject_id: item.id, order: itemCount + 1 },
+                            body: { library_entry_id: item.id, order: itemCount + 1 },
                           });
                         }}
                       >

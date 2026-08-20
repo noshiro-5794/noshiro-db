@@ -12,7 +12,6 @@ import {
   decodeTag,
   decodeTags,
   decodeUserSubject,
-  decodeUserSubjectContext,
   encodePath,
 } from '@/shared/api';
 import type {
@@ -51,7 +50,7 @@ export type UserSubjectWriteBody = {
 };
 
 export type CreateUserSubjectBody = UserSubjectWriteBody & {
-  subject_id: UUID;
+  entity_id: UUID;
   status: UserSubjectStatus;
 };
 
@@ -65,153 +64,258 @@ export type CollectionListQuery = PageQuery & {
   ordering?: 'id' | '-id' | 'name' | '-name' | 'simple_rating' | '-simple_rating' | 'item_count' | '-item_count';
 };
 
+async function findLibraryEntry(entityId: UUID, context: ApiRequestContext = {}) {
+  for (let page = 1; page <= 50; page += 1) {
+    const response = await userSubjectsApi.listMine({ page, page_size: 100 }, context);
+    const entry = response.results.find((item) => item.subject.id === entityId);
+    if (entry) return entry;
+    if (!response.next || response.results.length === 0) return null;
+  }
+
+  return null;
+}
+
 export const userSubjectsApi = {
   listMine: (query: UserSubjectListQuery = {}, context: ApiRequestContext = {}) =>
-    api.get<ApiPage<UserSubject>>('/api/users/me/subjects/', {
+    api.get<ApiPage<UserSubject>>('/api/v1/users/me/library/entries/', {
       ...context,
       decode: (value) => decodeApiPage(value, decodeUserSubject),
-      query,
+      query: {
+        ...(query.page === undefined ? {} : { page: query.page }),
+        ...(query.page_size === undefined ? {} : { page_size: query.page_size }),
+        ...(query.status === undefined ? {} : { status: query.status }),
+      },
     }),
 
   createMine: (body: CreateUserSubjectBody) =>
-    api.post<UserSubject, CreateUserSubjectBody>('/api/users/me/subjects/', body, { decode: decodeUserSubject }),
+    api.post<UserSubject, CreateUserSubjectBody>('/api/v1/users/me/library/entries/', body, { decode: decodeUserSubject }),
 
   getMine: (userSubjectId: number, context: ApiRequestContext = {}) =>
-    api.get<UserSubject>(`/api/users/me/subjects/${encodePath(userSubjectId)}/`, {
+    api.get<UserSubject>(`/api/v1/users/me/library/entries/${encodePath(userSubjectId)}/`, {
       ...context,
       decode: decodeUserSubject,
     }),
 
-  getContext: (subjectId: UUID, context: ApiRequestContext = {}) =>
-    api.get<UserSubjectContext>(`/api/users/me/subjects/${encodePath(subjectId)}/context/`, {
-      ...context,
-      decode: decodeUserSubjectContext,
-    }),
+  getContext: async (subjectId: UUID, context: ApiRequestContext = {}): Promise<UserSubjectContext> => {
+    const page = await userSubjectsApi.listMine({ page_size: 100 }, context);
+    const entry = page.results.find((item) => item.subject.id === subjectId) ?? null;
+    if (!entry) {
+      return {
+        is_marked: false,
+        user_subject: null,
+        tags: [],
+        rating_details: [],
+        reviews: [],
+        progress: {
+          subject_id: subjectId,
+          user_subject_id: null,
+          total_episodes: 0,
+          finished_count: 0,
+          finished_episode_ids: [],
+          episodes: [],
+        },
+      };
+    }
+
+    const [tags, ratingDetails, reviews, progress] = await Promise.all([
+      tagsApi.getForEntry(entry.id, context),
+      ratingDetailsApi.getForEntry(entry.id, context),
+      reviewsApi.listForEntry(entry.id, context),
+      progressApi.getForEntry(entry.id, context),
+    ]);
+
+    return {
+      is_marked: true,
+      user_subject: entry,
+      tags,
+      rating_details: ratingDetails,
+      reviews,
+      progress,
+    };
+  },
 
   updateMine: (userSubjectId: number, body: UserSubjectWriteBody) =>
-    api.patch<UserSubject, typeof body>(`/api/users/me/subjects/${encodePath(userSubjectId)}/`, body, {
+    api.patch<UserSubject, typeof body>(`/api/v1/users/me/library/entries/${encodePath(userSubjectId)}/`, body, {
       decode: decodeUserSubject,
     }),
 
-  deleteMine: (userSubjectId: number) => api.delete<unknown>(`/api/users/me/subjects/${encodePath(userSubjectId)}/`),
+  deleteMine: (userSubjectId: number) => api.delete<unknown>(`/api/v1/users/me/library/entries/${encodePath(userSubjectId)}/`),
 };
 
 export const progressApi = {
-  get: (subjectId: UUID, context: ApiRequestContext = {}) =>
-    api.get<ProgressSummary>(`/api/users/me/subjects/${encodePath(subjectId)}/episodes/progress/`, {
+  getForEntry: (entryId: number, context: ApiRequestContext = {}) =>
+    api.get<ProgressSummary>(`/api/v1/users/me/library/entries/${encodePath(entryId)}/episodes/progress/`, {
       ...context,
       decode: decodeProgressSummary,
     }),
 
-  replaceFinishedEpisodes: (subjectId: UUID, finishedEpisodeIds: number[]) =>
-    api.put<ProgressSummary, { finished_episode_ids: number[] }>(
-      `/api/users/me/subjects/${encodePath(subjectId)}/episodes/progress/`,
+  get: async (subjectId: UUID, context: ApiRequestContext = {}) => {
+    const entry = await findLibraryEntry(subjectId, context);
+    if (!entry) {
+      return {
+        subject_id: subjectId,
+        user_subject_id: null,
+        total_episodes: 0,
+        finished_count: 0,
+        finished_episode_ids: [],
+        episodes: [],
+      } satisfies ProgressSummary;
+    }
+    return progressApi.getForEntry(entry.id, context);
+  },
+
+  replaceFinishedEpisodes: (subjectId: UUID, finishedEpisodeIds: string[]) =>
+    findLibraryEntry(subjectId).then(async (entry) => {
+      if (!entry) throw new TypeError('Library entry not found');
+      return progressApi.replaceFinishedEpisodesForEntry(entry.id, finishedEpisodeIds);
+    }),
+
+  replaceFinishedEpisodesForEntry: (entryId: number, finishedEpisodeIds: string[]) =>
+    api.put<ProgressSummary, { finished_episode_ids: string[] }>(
+      `/api/v1/users/me/library/entries/${encodePath(entryId)}/episodes/progress/`,
       { finished_episode_ids: finishedEpisodeIds },
       { decode: decodeProgressSummary },
     ),
 
-  setEpisodeFinished: (subjectId: UUID, episodeId: number, isFinished: boolean) =>
-    api.patch<ProgressSummary, { is_finished: boolean }>(
-      `/api/users/me/subjects/${encodePath(subjectId)}/episodes/${encodePath(episodeId)}/progress/`,
-      { is_finished: isFinished },
-      { decode: decodeProgressSummary },
-    ),
+  setEpisodeFinished: async (subjectId: UUID, episodeId: number | string, isFinished: boolean) => {
+    const entry = await findLibraryEntry(subjectId);
+    if (!entry) throw new TypeError('Library entry not found');
+    return isFinished
+      ? api.put<ProgressSummary>(`/api/v1/users/me/library/entries/${encodePath(entry.id)}/episodes/${encodePath(episodeId)}/progress/`, undefined, {
+          decode: decodeProgressSummary,
+        })
+      : api.delete<ProgressSummary>(`/api/v1/users/me/library/entries/${encodePath(entry.id)}/episodes/${encodePath(episodeId)}/progress/`, {
+          decode: decodeProgressSummary,
+        });
+  },
 };
 
 export const tagsApi = {
   listMine: (query: PageQuery = {}, context: ApiRequestContext = {}) =>
-    api.get<ApiPage<Tag>>('/api/users/me/tags/', {
+    api.get<ApiPage<Tag>>('/api/v1/users/me/tags/', {
       ...context,
       decode: (value) => decodeApiPage(value, decodeTag),
       query,
     }),
 
   createOrReuse: (body: { name: string }) =>
-    api.post<Tag, typeof body>('/api/users/me/tags/', body, { decode: decodeTag }),
+    api.post<Tag, typeof body>('/api/v1/users/me/tags/', body, { decode: decodeTag }),
 
   update: (tagId: number, body: { name: string }) =>
-    api.patch<Tag, typeof body>(`/api/users/me/tags/${encodePath(tagId)}/`, body, { decode: decodeTag }),
+    api.patch<Tag, typeof body>(`/api/v1/users/me/tags/${encodePath(tagId)}/`, body, { decode: decodeTag }),
 
-  getForSubject: (subjectId: UUID, context: ApiRequestContext = {}) =>
-    api.get<Tag[]>(`/api/users/me/subjects/${encodePath(subjectId)}/tags/`, { ...context, decode: decodeTags }),
+  getForEntry: (entryId: number, context: ApiRequestContext = {}) =>
+    api.get<Tag[]>(`/api/v1/users/me/library/entries/${encodePath(entryId)}/tags/`, { ...context, decode: decodeTags }),
+
+  getForSubject: async (subjectId: UUID, context: ApiRequestContext = {}) => {
+    const entry = await findLibraryEntry(subjectId, context);
+    if (!entry) return [];
+    return tagsApi.getForEntry(entry.id, context);
+  },
 
   replaceForSubject: (subjectId: UUID, body: { tag_ids?: number[]; tag_names?: string[] }) =>
-    api.put<Tag[], typeof body>(`/api/users/me/subjects/${encodePath(subjectId)}/tags/`, body, {
-      decode: decodeTags,
+    findLibraryEntry(subjectId).then((entry) => {
+      if (!entry) throw new TypeError('Library entry not found');
+      return api.put<Tag[], typeof body>(`/api/v1/users/me/library/entries/${encodePath(entry.id)}/tags/`, body, {
+        decode: decodeTags,
+      });
     }),
 
-  delete: (tagId: number) => api.delete<unknown>(`/api/users/me/tags/${encodePath(tagId)}/`),
+  delete: (tagId: number) => api.delete<unknown>(`/api/v1/users/me/tags/${encodePath(tagId)}/`),
 };
 
 export const ratingDetailsApi = {
-  getForSubject: (subjectId: UUID, context: ApiRequestContext = {}) =>
-    api.get<RatingDetail[]>(`/api/users/me/subjects/${encodePath(subjectId)}/rating-details/`, {
+  getForEntry: (entryId: number, context: ApiRequestContext = {}) =>
+    api.get<RatingDetail[]>(`/api/v1/users/me/library/entries/${encodePath(entryId)}/rating-details/`, {
       ...context,
       decode: decodeRatingDetails,
     }),
 
+  getForSubject: async (subjectId: UUID, context: ApiRequestContext = {}) => {
+    const entry = await findLibraryEntry(subjectId, context);
+    if (!entry) return [];
+    return ratingDetailsApi.getForEntry(entry.id, context);
+  },
+
   replaceForSubject: (subjectId: UUID, details: RatingDetail[]) =>
-    api.put<RatingDetail[], { details: RatingDetail[] }>(
-      `/api/users/me/subjects/${encodePath(subjectId)}/rating-details/`,
-      { details },
-      { decode: decodeRatingDetails },
-    ),
+    findLibraryEntry(subjectId).then((entry) => {
+      if (!entry) throw new TypeError('Library entry not found');
+      return api.put<RatingDetail[], { details: RatingDetail[] }>(
+        `/api/v1/users/me/library/entries/${encodePath(entry.id)}/rating-details/`,
+        { details },
+        { decode: decodeRatingDetails },
+      );
+    }),
 };
 
 export const reviewsApi = {
   listMine: (query: ReviewListQuery = {}, context: ApiRequestContext = {}) =>
-    api.get<ApiPage<Review>>('/api/users/me/reviews/', {
+    api.get<ApiPage<Review>>('/api/v1/users/me/reviews/', {
       ...context,
       decode: (value) => decodeApiPage(value, decodeReview),
       query,
     }),
 
-  listForSubject: (subjectId: UUID, context: ApiRequestContext = {}) =>
-    api.get<Review[]>(`/api/users/me/subjects/${encodePath(subjectId)}/reviews/`, {
+  listForEntry: (entryId: number, context: ApiRequestContext = {}) =>
+    api.get<Review[]>(`/api/v1/users/me/library/entries/${encodePath(entryId)}/reviews/`, {
       ...context,
       decode: decodeReviews,
     }),
 
+  listForSubject: async (subjectId: UUID, context: ApiRequestContext = {}) => {
+    const entry = await findLibraryEntry(subjectId, context);
+    if (!entry) return [];
+    return reviewsApi.listForEntry(entry.id, context);
+  },
+
   listPublicForSubject: (subjectId: UUID, query: ReviewListQuery = {}, context: ApiRequestContext = {}) =>
-    api.get<ApiPage<Review>>(`/api/users/subjects/${encodePath(subjectId)}/reviews/`, {
+    api.get<ApiPage<Review>>(`/api/v1/users/entities/${encodePath(subjectId)}/reviews/`, {
       ...context,
       decode: (value) => decodeApiPage(value, decodePublicReview),
-      query,
+      query: {
+        ...(query.page === undefined ? {} : { page: query.page }),
+        ...(query.page_size === undefined ? {} : { page_size: query.page_size }),
+      },
     }),
 
   createForSubject: (
     subjectId: UUID,
     body: { title: string; content: string; is_public?: boolean; is_spoiler?: boolean },
   ) =>
-    api.post<Review, typeof body>(`/api/users/me/subjects/${encodePath(subjectId)}/reviews/`, body, {
-      decode: decodeReview,
+    findLibraryEntry(subjectId).then((entry) => {
+      if (!entry) throw new TypeError('Library entry not found');
+      return api.post<Review, typeof body>(
+        `/api/v1/users/me/library/entries/${encodePath(entry.id)}/reviews/`,
+        body,
+        { decode: decodeReview },
+      );
     }),
 
   getMine: (reviewId: number, context: ApiRequestContext = {}) =>
-    api.get<Review>(`/api/users/me/reviews/${encodePath(reviewId)}/`, { ...context, decode: decodeReview }),
+    api.get<Review>(`/api/v1/users/me/reviews/${encodePath(reviewId)}/`, { ...context, decode: decodeReview }),
 
   getPublic: (reviewId: number, context: ApiRequestContext = {}) =>
-    api.get<Review>(`/api/users/reviews/${encodePath(reviewId)}/`, { ...context, decode: decodePublicReview }),
+    api.get<Review>(`/api/v1/users/reviews/${encodePath(reviewId)}/`, { ...context, decode: decodePublicReview }),
 
   updateMine: (reviewId: number, body: Partial<Pick<Review, 'title' | 'content' | 'is_public' | 'is_spoiler'>>) =>
-    api.patch<Review, typeof body>(`/api/users/me/reviews/${encodePath(reviewId)}/`, body, { decode: decodeReview }),
+    api.patch<Review, typeof body>(`/api/v1/users/me/reviews/${encodePath(reviewId)}/`, body, { decode: decodeReview }),
 
-  deleteMine: (reviewId: number) => api.delete<unknown>(`/api/users/me/reviews/${encodePath(reviewId)}/`),
+  deleteMine: (reviewId: number) => api.delete<unknown>(`/api/v1/users/me/reviews/${encodePath(reviewId)}/`),
 };
 
 export const collectionsApi = {
   listMine: (query: CollectionListQuery = {}, context: ApiRequestContext = {}) =>
-    api.get<ApiPage<Collection>>('/api/users/me/collections/', {
+    api.get<ApiPage<Collection>>('/api/v1/users/me/collections/', {
       ...context,
       decode: (value) => decodeApiPage(value, decodeCollection),
       query,
     }),
 
   createMine: (body: { name: string; simple_rating?: number; note?: string; is_public?: boolean }) =>
-    api.post<Collection, typeof body>('/api/users/me/collections/', body, { decode: decodeCollection }),
+    api.post<Collection, typeof body>('/api/v1/users/me/collections/', body, { decode: decodeCollection }),
 
   getMine: (collectionId: number, context: ApiRequestContext = {}) =>
-    api.get<Collection>(`/api/users/me/collections/${encodePath(collectionId)}/`, {
+    api.get<Collection>(`/api/v1/users/me/collections/${encodePath(collectionId)}/`, {
       ...context,
       decode: decodeCollection,
     }),
@@ -220,12 +324,12 @@ export const collectionsApi = {
     collectionId: number,
     body: Partial<Pick<Collection, 'name' | 'simple_rating' | 'note' | 'is_public'>>,
   ) =>
-    api.patch<Collection, typeof body>(`/api/users/me/collections/${encodePath(collectionId)}/`, body, {
+    api.patch<Collection, typeof body>(`/api/v1/users/me/collections/${encodePath(collectionId)}/`, body, {
       decode: decodeCollection,
     }),
 
   listItems: (collectionId: number, query: PageQuery = {}, context: ApiRequestContext = {}) =>
-    api.get<ApiPage<CollectionItem>>(`/api/users/me/collections/${encodePath(collectionId)}/items/`, {
+    api.get<ApiPage<CollectionItem>>(`/api/v1/users/me/collections/${encodePath(collectionId)}/items/`, {
       ...context,
       decode: (value) => decodeApiPage(value, decodeCollectionItem),
       query,
@@ -233,31 +337,31 @@ export const collectionsApi = {
 
   addItem: (
     collectionId: number,
-    body: { subject_id?: UUID; user_subject_id?: number; order?: number; relation?: string },
+    body: { library_entry_id?: number; order?: number; relation?: string },
   ) =>
-    api.post<CollectionItem, typeof body>(`/api/users/me/collections/${encodePath(collectionId)}/items/`, body, {
+    api.post<CollectionItem, typeof body>(`/api/v1/users/me/collections/${encodePath(collectionId)}/items/`, body, {
       decode: decodeCollectionItem,
     }),
 
   replaceItems: (
     collectionId: number,
-    items: Array<{ subject_id?: UUID; user_subject_id?: number; order?: number; relation?: string }>,
+    items: Array<{ library_entry_id?: number; order?: number; relation?: string }>,
   ) =>
     api.put<CollectionItem[], { items: typeof items }>(
-      `/api/users/me/collections/${encodePath(collectionId)}/items/`,
+      `/api/v1/users/me/collections/${encodePath(collectionId)}/items/`,
       { items },
       { decode: decodeCollectionItems },
     ),
 
   updateItems: (collectionId: number, items: Array<{ id: number; order?: number; relation?: string }>) =>
     api.patch<CollectionItem[], { items: typeof items }>(
-      `/api/users/me/collections/${encodePath(collectionId)}/items/`,
+      `/api/v1/users/me/collections/${encodePath(collectionId)}/items/`,
       { items },
       { decode: decodeCollectionItems },
     ),
 
   deleteItem: (collectionId: number, itemId: number) =>
-    api.delete<unknown>(`/api/users/me/collections/${encodePath(collectionId)}/items/${encodePath(itemId)}/`),
+    api.delete<unknown>(`/api/v1/users/me/collections/${encodePath(collectionId)}/items/${encodePath(itemId)}/`),
 
-  deleteMine: (collectionId: number) => api.delete<unknown>(`/api/users/me/collections/${encodePath(collectionId)}/`),
+  deleteMine: (collectionId: number) => api.delete<unknown>(`/api/v1/users/me/collections/${encodePath(collectionId)}/`),
 };

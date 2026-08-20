@@ -1,6 +1,8 @@
 import type {
   Collection,
   CollectionItem,
+  EpisodeProgress,
+  LibraryEntry,
   ProgressSummary,
   RatingDetail,
   Review,
@@ -9,6 +11,7 @@ import type {
   UserSubjectContext,
 } from '../contracts/library';
 import type { PublicUserSummary } from '../contracts/user';
+import { subjectSummaryFromEntity } from './subject';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -18,16 +21,8 @@ function isInteger(value: unknown, minimum = Number.MIN_SAFE_INTEGER): value is 
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= minimum;
 }
 
-function isOptionalString(value: unknown) {
-  return value === undefined || typeof value === 'string';
-}
-
 function isNullableString(value: unknown) {
   return value === null || typeof value === 'string';
-}
-
-function isOptionalNonNegativeInteger(value: unknown) {
-  return value === undefined || isInteger(value, 0);
 }
 
 function isPublicUserSummary(value: unknown): value is PublicUserSummary {
@@ -39,28 +34,6 @@ function isPublicUserSummary(value: unknown): value is PublicUserSummary {
   );
 }
 
-function isReviewSubject(value: unknown): value is NonNullable<Review['subject']> {
-  return (
-    isRecord(value) &&
-    typeof value['id'] === 'string' &&
-    Boolean(value['id']) &&
-    typeof value['title'] === 'string' &&
-    isNullableString(value['title_cn']) &&
-    typeof value['subject_type'] === 'string' &&
-    isNullableString(value['date']) &&
-    typeof value['nsfw'] === 'boolean' &&
-    (value['image_thumbnail'] === undefined || isNullableString(value['image_thumbnail']))
-  );
-}
-
-function isSubjectSummary(value: unknown): value is UserSubject['subject'] {
-  return (
-    isReviewSubject(value) &&
-    isNullableString(value['platform']) &&
-    (value['image'] === undefined || isNullableString(value['image']))
-  );
-}
-
 function isTag(value: unknown): value is Tag {
   return isRecord(value) && isInteger(value['id'], 1) && typeof value['name'] === 'string';
 }
@@ -69,25 +42,31 @@ function isRatingDetail(value: unknown): value is RatingDetail {
   return isRecord(value) && typeof value['key'] === 'string' && typeof value['value'] === 'string';
 }
 
-function isUserSubjectBase(value: unknown): value is CollectionItem['user_subject'] & Record<string, unknown> {
-  return (
-    isRecord(value) &&
-    isInteger(value['id'], 1) &&
-    typeof value['status'] === 'string' &&
-    (value['simple_rating'] === null || isInteger(value['simple_rating'], 1)) &&
-    isNullableString(value['rating']) &&
-    typeof value['comment'] === 'string' &&
-    isNullableString(value['watch_start_date']) &&
-    isNullableString(value['watch_end_date']) &&
-    typeof value['is_public'] === 'boolean'
-  );
+function isLibraryEntry(value: unknown): value is LibraryEntry & Record<string, unknown> {
+  if (
+    !isRecord(value) ||
+    !isInteger(value['id'], 1) ||
+    typeof value['status'] !== 'string' ||
+    (value['simple_rating'] !== null && !isInteger(value['simple_rating'], 1)) ||
+    !isNullableString(value['rating']) ||
+    typeof value['comment'] !== 'string' ||
+    !isNullableString(value['watch_start_date']) ||
+    !isNullableString(value['watch_end_date']) ||
+    typeof value['is_public'] !== 'boolean' ||
+    !Array.isArray(value['releases'])
+  ) {
+    return false;
+  }
+
+  const entity = value['entity'];
+  return isRecord(entity) && typeof entity['id'] === 'string' && Boolean(entity['id']);
 }
 
-function isUserSubject(value: unknown): value is UserSubject {
-  return isUserSubjectBase(value) && isSubjectSummary(value['subject']);
+function isReviewEntity(value: unknown): boolean {
+  return isRecord(value) && typeof value['id'] === 'string' && Boolean(value['id']);
 }
 
-function isReview(value: unknown): value is Review {
+function isReview(value: unknown): value is Review & Record<string, unknown> {
   if (
     !isRecord(value) ||
     !isInteger(value['id'], 1) ||
@@ -95,82 +74,63 @@ function isReview(value: unknown): value is Review {
     typeof value['content'] !== 'string' ||
     typeof value['is_public'] !== 'boolean' ||
     typeof value['is_spoiler'] !== 'boolean' ||
-    !isOptionalNonNegativeInteger(value['reaction_count']) ||
-    !isOptionalString(value['created_at']) ||
-    !isOptionalString(value['updated_at']) ||
-    (value['subject'] !== undefined && !isReviewSubject(value['subject'])) ||
-    (value['user'] !== undefined && !isPublicUserSummary(value['user']))
+    !isInteger(value['reaction_count'], 0) ||
+    typeof value['created_at'] !== 'string' ||
+    typeof value['updated_at'] !== 'string' ||
+    !isReviewEntity(value['entity']) ||
+    !isInteger(value['library_entry_id'], 0) ||
+    !isPublicUserSummary(value['user']) ||
+    !isRecord(value['viewer_state']) ||
+    typeof value['viewer_state']['has_liked'] !== 'boolean' ||
+    typeof value['viewer_state']['has_bookmarked'] !== 'boolean'
   ) {
     return false;
   }
 
-  const viewerState = value['viewer_state'];
-  return (
-    viewerState === undefined ||
-    (isRecord(viewerState) &&
-      typeof viewerState['has_liked'] === 'boolean' &&
-      typeof viewerState['has_bookmarked'] === 'boolean')
-  );
+  return true;
 }
 
 function isProgressEpisode(value: unknown) {
   return (
     isRecord(value) &&
-    isInteger(value['id'], 1) &&
+    typeof value['id'] === 'string' &&
     typeof value['title'] === 'string' &&
     typeof value['type'] === 'string' &&
-    (value['ep_num'] === null || isInteger(value['ep_num'])) &&
-    (value['sort'] === null || isInteger(value['sort'])) &&
-    isNullableString(value['date']) &&
     typeof value['is_finished'] === 'boolean'
   );
 }
 
-function isProgressSummary(value: unknown): value is ProgressSummary {
+function isProgressSummary(value: unknown): value is EpisodeProgress & Record<string, unknown> {
   return (
     isRecord(value) &&
-    (value['subject_id'] === undefined || typeof value['subject_id'] === 'string') &&
-    (value['user_subject_id'] === undefined ||
-      value['user_subject_id'] === null ||
-      isInteger(value['user_subject_id'], 1)) &&
-    isOptionalNonNegativeInteger(value['total_episodes']) &&
+    isInteger(value['library_entry_id'], 0) &&
+    typeof value['entity_id'] === 'string' &&
+    isInteger(value['total_episodes'], 0) &&
     isInteger(value['finished_count'], 0) &&
     Array.isArray(value['finished_episode_ids']) &&
-    value['finished_episode_ids'].every((episodeId) => isInteger(episodeId, 1)) &&
-    (value['episodes'] === undefined ||
-      (Array.isArray(value['episodes']) && value['episodes'].every(isProgressEpisode)))
+    value['finished_episode_ids'].every((id) => typeof id === 'string') &&
+    Array.isArray(value['episodes']) &&
+    value['episodes'].every(isProgressEpisode)
   );
 }
 
 function isCollection(value: unknown): value is Collection {
-  if (
-    !isRecord(value) ||
-    !isInteger(value['id'], 1) ||
-    typeof value['name'] !== 'string' ||
-    (value['simple_rating'] !== null && !isInteger(value['simple_rating'], 1)) ||
-    typeof value['note'] !== 'string' ||
-    typeof value['is_public'] !== 'boolean' ||
-    !isOptionalNonNegativeInteger(value['item_count']) ||
-    !isOptionalNonNegativeInteger(value['reaction_count'])
-  ) {
-    return false;
-  }
-
-  const viewerState = value['viewer_state'];
-  return (
-    viewerState === undefined ||
-    (isRecord(viewerState) &&
-      typeof viewerState['has_liked'] === 'boolean' &&
-      typeof viewerState['has_bookmarked'] === 'boolean')
-  );
-}
-
-function isCollectionItem(value: unknown): value is CollectionItem {
   return (
     isRecord(value) &&
     isInteger(value['id'], 1) &&
-    isUserSubjectBase(value['user_subject']) &&
-    isSubjectSummary(value['subject']) &&
+    typeof value['name'] === 'string' &&
+    (value['simple_rating'] === null || isInteger(value['simple_rating'], 1)) &&
+    typeof value['note'] === 'string' &&
+    typeof value['is_public'] === 'boolean'
+  );
+}
+
+function isCollectionItem(value: unknown): value is CollectionItem & Record<string, unknown> {
+  return (
+    isRecord(value) &&
+    isInteger(value['id'], 1) &&
+    isInteger(value['library_entry_id'], 0) &&
+    isReviewEntity(value['entity']) &&
     isInteger(value['order'], 0) &&
     typeof value['relation'] === 'string'
   );
@@ -191,37 +151,102 @@ export const decodeTags = (value: unknown) => decodeArray(value, decodeTag, 'Inv
 const decodeRatingDetail = (value: unknown) => decodeValue(value, isRatingDetail, 'Invalid rating detail response');
 export const decodeRatingDetails = (value: unknown) =>
   decodeArray(value, decodeRatingDetail, 'Invalid rating detail list response');
-export const decodeUserSubject = (value: unknown) => decodeValue(value, isUserSubject, 'Invalid user subject response');
-export const decodeReview = (value: unknown) => decodeValue(value, isReview, 'Invalid review response');
+
+export const decodeUserSubject = (value: unknown) => {
+  const entry = decodeValue(value, isLibraryEntry, 'Invalid library entry response');
+  const subject = subjectSummaryFromEntity(entry.entity as import('../contracts/entity').EntitySummary);
+  return {
+    ...entry,
+    subject,
+  } as unknown as UserSubject;
+};
+
+export const decodeReview = (value: unknown) => {
+  const review = decodeValue(value, isReview, 'Invalid review response');
+  return {
+    ...review,
+    subject: subjectSummaryFromEntity(review.entity as import('../contracts/entity').EntitySummary),
+  } as unknown as Review;
+};
+
 export const decodeReviews = (value: unknown) => decodeArray(value, decodeReview, 'Invalid review list response');
-export const decodeProgressSummary = (value: unknown) =>
-  decodeValue(value, isProgressSummary, 'Invalid progress response');
+
+export const decodeProgressSummary = (value: unknown) => {
+  const progress = decodeValue(value, isProgressSummary, 'Invalid progress response');
+  return {
+    subject_id: progress.entity_id,
+    user_subject_id: progress.library_entry_id,
+    entity_id: progress.entity_id,
+    library_entry_id: progress.library_entry_id,
+    total_episodes: progress.total_episodes,
+    finished_count: progress.finished_count,
+    finished_episode_ids: progress.finished_episode_ids,
+    episodes: progress.episodes!.map((episode) => ({
+      id: episode.id,
+      title: episode.title,
+      title_cn: episode.title_cn,
+      type: episode.type,
+      number: episode.number,
+      sort: episode.sort,
+      disc: 0,
+      duration: '',
+      raw_duration: '',
+      air_date: episode.air_date,
+      comment_count: 0,
+      description: '',
+      provenance: null,
+      ep_num: episode.number === '' ? null : Number(episode.number),
+      date: episode.air_date,
+      is_finished: episode.is_finished,
+    })),
+  } satisfies ProgressSummary;
+};
+
 export const decodeCollection = (value: unknown) => decodeValue(value, isCollection, 'Invalid collection response');
-export const decodeCollectionItem = (value: unknown) =>
-  decodeValue(value, isCollectionItem, 'Invalid collection item response');
+export const decodeCollectionItem = (value: unknown) => {
+  const item = decodeValue(value, isCollectionItem, 'Invalid collection item response');
+  const subject = subjectSummaryFromEntity(item.entity);
+  return {
+    ...item,
+    subject,
+    user_subject: {
+      id: item.library_entry_id,
+      entity: item.entity,
+      status: 'wish',
+      simple_rating: null,
+      rating: null,
+      comment: '',
+      watch_start_date: null,
+      watch_end_date: null,
+      is_public: true,
+      releases: [],
+      created_at: new Date(0).toISOString(),
+      updated_at: new Date(0).toISOString(),
+      subject,
+    },
+  } satisfies CollectionItem;
+};
 export const decodeCollectionItems = (value: unknown) =>
   decodeArray(value, decodeCollectionItem, 'Invalid collection item list response');
 
 export function decodePublicUserSubject(value: unknown): UserSubject {
-  if (!isRecord(value) || value['is_public'] !== undefined) return decodeUserSubject(value);
-  return decodeUserSubject({ ...value, is_public: true });
+  const userSubject = decodeUserSubject(value);
+  return userSubject;
 }
 
 export function decodePublicReview(value: unknown): Review {
-  if (!isRecord(value) || value['is_public'] !== undefined) return decodeReview(value);
-  return decodeReview({ ...value, is_public: true });
+  return decodeReview(value);
 }
 
 export function decodePublicCollection(value: unknown): Collection {
-  if (!isRecord(value) || value['is_public'] !== undefined) return decodeCollection(value);
-  return decodeCollection({ ...value, is_public: true });
+  return decodeCollection(value);
 }
 
 function isUserSubjectContext(value: unknown): value is UserSubjectContext {
   return (
     isRecord(value) &&
     typeof value['is_marked'] === 'boolean' &&
-    (value['user_subject'] === null || isUserSubject(value['user_subject'])) &&
+    (value['user_subject'] === null || isLibraryEntry(value['user_subject'])) &&
     Array.isArray(value['tags']) &&
     value['tags'].every(isTag) &&
     Array.isArray(value['rating_details']) &&

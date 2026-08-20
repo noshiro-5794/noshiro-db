@@ -92,7 +92,7 @@ export function UserSubjectListItem({
     <Link
       className="grid min-w-0 grid-cols-[56px_minmax(0,1fr)_auto] gap-3 border-b border-border-subtle p-3 transition-colors last:border-b-0 hover:bg-muted max-sm:grid-cols-[48px_minmax(0,1fr)] max-sm:gap-2.5"
       data-slot="user-subject-row"
-      to={routes.subject(item.subject.id)}
+      to={routes.entity(item.subject.id)}
       {...(detailLinkState === undefined ? {} : { state: detailLinkState })}
     >
       <img

@@ -46,7 +46,7 @@ function CalendarSubjectRow({
       className="grid min-w-0 grid-cols-[72px_minmax(0,1fr)_auto] gap-4 border-b border-border-subtle p-3 transition-colors last:border-b-0 hover:bg-muted max-sm:grid-cols-[64px_minmax(0,1fr)]"
       data-slot="calendar-subject-row"
       state={state}
-      to={routes.subject(item.subject_id)}
+      to={routes.entity(item.subject_id)}
     >
       <img
         className="h-24 w-[72px] rounded-sm bg-muted object-cover ring-1 ring-border-subtle max-sm:h-[88px] max-sm:w-16"

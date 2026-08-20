@@ -103,7 +103,7 @@ export function UserActivityFeed() {
               subject={
                 activity.subject?.id
                   ? {
-                      href: routes.subject(activity.subject.id),
+                      href: routes.entity(activity.subject.id),
                       title:
                         activity.subject.display_title ||
                         activity.subject.title ||
