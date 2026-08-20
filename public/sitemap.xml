@@ -1,52 +1,52 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://noshiro.moe/</loc>
+    <loc>https://app.noshiro.moe/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://noshiro.moe/search</loc>
+    <loc>https://app.noshiro.moe/search</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://noshiro.moe/calendar</loc>
+    <loc>https://app.noshiro.moe/calendar</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://noshiro.moe/docs/introduction</loc>
+    <loc>https://app.noshiro.moe/docs/introduction</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://noshiro.moe/docs/community</loc>
+    <loc>https://app.noshiro.moe/docs/community</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://noshiro.moe/docs/privacy</loc>
+    <loc>https://app.noshiro.moe/docs/privacy</loc>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
   </url>
   <url>
-    <loc>https://noshiro.moe/docs/security</loc>
+    <loc>https://app.noshiro.moe/docs/security</loc>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
   </url>
   <url>
-    <loc>https://noshiro.moe/docs/terms</loc>
+    <loc>https://app.noshiro.moe/docs/terms</loc>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
   </url>
   <url>
-    <loc>https://noshiro.moe/docs/status</loc>
+    <loc>https://app.noshiro.moe/docs/status</loc>
     <changefreq>monthly</changefreq>
     <priority>0.4</priority>
   </url>
   <url>
-    <loc>https://noshiro.moe/docs/owner</loc>
+    <loc>https://app.noshiro.moe/docs/owner</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>

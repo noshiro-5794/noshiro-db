@@ -3,7 +3,7 @@
   "private": true,
   "description": "React frontend for the Noshiro DB anime and galgame catalog",
   "license": "MIT",
-  "homepage": "https://noshiro.moe",
+  "homepage": "https://app.noshiro.moe",
   "repository": {
     "type": "git",
     "url": "https://github.com/noshiro-5794/noshiro-db-frontend.git"
