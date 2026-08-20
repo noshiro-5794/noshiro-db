@@ -25,6 +25,6 @@ export const env = {
     : import.meta.env.DEV
       ? ''
       : 'https://api.noshiro.moe',
-  siteUrl: readOrigin('VITE_SITE_URL', import.meta.env.VITE_SITE_URL, 'https://noshiro.moe'),
+  siteUrl: readOrigin('VITE_SITE_URL', import.meta.env.VITE_SITE_URL, 'https://app.noshiro.moe'),
   hcaptchaSiteKey: import.meta.env.VITE_HCAPTCHA_SITE_KEY?.trim() ?? '',
 };
