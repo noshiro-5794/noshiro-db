@@ -13,9 +13,12 @@ export type CurrentUserProfile = {
   is_superuser: boolean;
   nickname: string;
   avatar: string | null;
-  bio?: string;
-  language?: 'auto' | 'en-US' | 'zh-CN' | 'ja-JP';
-  appearance?: 'auto' | 'light' | 'dark';
+  bio: string;
+  language: 'auto' | 'en-US' | 'zh-CN' | 'ja-JP' | null;
+  appearance: 'auto' | 'light' | 'dark' | null;
+  theme_color: string;
+  show_adult_content: boolean;
+  adult_content_confirmed_at: string | null;
 };
 
 export type ProfileStats = {

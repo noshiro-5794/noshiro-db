@@ -4,8 +4,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function isOptionalString(value: unknown) {
-  return value === undefined || typeof value === 'string';
+function isNullableString(value: unknown) {
+  return value === null || typeof value === 'string';
 }
 
 function isOneOf<TValue extends string>(value: unknown, values: readonly TValue[]): value is TValue {
@@ -58,9 +58,12 @@ export function decodeCurrentUserProfile(value: unknown): CurrentUserProfile {
     typeof value['is_staff'] !== 'boolean' ||
     typeof value['is_superuser'] !== 'boolean' ||
     (value['avatar'] !== null && typeof value['avatar'] !== 'string') ||
-    !isOptionalString(value['bio']) ||
-    (value['language'] !== undefined && !isOneOf(value['language'], ['auto', 'en-US', 'zh-CN', 'ja-JP'])) ||
-    (value['appearance'] !== undefined && !isOneOf(value['appearance'], ['auto', 'light', 'dark']))
+    typeof value['bio'] !== 'string' ||
+    (value['language'] !== null && !isOneOf(value['language'], ['auto', 'en-US', 'zh-CN', 'ja-JP'])) ||
+    (value['appearance'] !== null && !isOneOf(value['appearance'], ['auto', 'light', 'dark'])) ||
+    typeof value['theme_color'] !== 'string' ||
+    typeof value['show_adult_content'] !== 'boolean' ||
+    !isNullableString(value['adult_content_confirmed_at'])
   ) {
     throw new TypeError('Invalid current user profile response');
   }
@@ -72,9 +75,12 @@ export function decodeCurrentUserProfile(value: unknown): CurrentUserProfile {
     is_superuser: value['is_superuser'],
     nickname: value['nickname'],
     avatar: value['avatar'],
-    ...(value['bio'] === undefined ? {} : { bio: value['bio'] }),
-    ...(value['language'] === undefined ? {} : { language: value['language'] }),
-    ...(value['appearance'] === undefined ? {} : { appearance: value['appearance'] }),
+    bio: value['bio'],
+    language: value['language'],
+    appearance: value['appearance'],
+    theme_color: value['theme_color'],
+    show_adult_content: value['show_adult_content'],
+    adult_content_confirmed_at: value['adult_content_confirmed_at'],
   };
 }
 

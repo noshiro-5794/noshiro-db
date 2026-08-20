@@ -10,6 +10,19 @@ const subject: SubjectDetail = {
   date: '2026-01-01',
   platform: 'TV',
   nsfw: false,
+  entity_type: 'work',
+  lifecycle: 'active',
+  audience: 'general',
+  work_type: 'anime',
+  display_name: 'Subject',
+  collections: [],
+  media: [],
+  names: [],
+  descriptions: [],
+  facts: [],
+  external_links: [],
+  content_ratings: [],
+  sources: [],
   episode_count: 1,
   staff_count: 1,
   character_count: 1,
@@ -17,16 +30,47 @@ const subject: SubjectDetail = {
 };
 
 const episode: SubjectEpisode = {
-  id: 1,
+  id: '1',
   title: 'Episode 1',
+  title_cn: '',
   type: 'EP',
+  number: '1',
+  sort: '1',
+  disc: 0,
+  duration: '',
+  raw_duration: '',
+  air_date: '',
+  comment_count: 0,
+  description: '',
+  provenance: null,
   ep_num: 1,
-  sort: 1,
   date: null,
 };
 
-const staff: SubjectStaff = { id: 10, name: 'Actor' };
-const character: SubjectCharacter = { id: 20, name: 'Character', role: 'Main', actors: [staff] };
+const staff: SubjectStaff = {
+  id: '10',
+  name: 'Actor',
+  entity_type: 'contributor',
+  lifecycle: 'active',
+  audience: 'general',
+  work_type: null,
+  display_name: 'Actor',
+  collections: [],
+  media: [],
+};
+const character: SubjectCharacter = {
+  id: '20',
+  name: 'Character',
+  role: 'Main',
+  entity_type: 'character',
+  lifecycle: 'active',
+  audience: 'general',
+  work_type: null,
+  display_name: 'Character',
+  collections: [],
+  media: [],
+  actors: [staff],
+};
 const relation: SubjectRelation = {
   relation: 'sequel',
   subject: {
@@ -37,6 +81,13 @@ const relation: SubjectRelation = {
     date: null,
     platform: null,
     nsfw: false,
+    entity_type: 'work',
+    lifecycle: 'active',
+    audience: 'general',
+    work_type: 'anime',
+    display_name: 'Related',
+    collections: [],
+    media: [],
   },
 };
 
@@ -98,11 +149,20 @@ describe('buildGraph', () => {
 
   it('caps extreme graphs while preserving high-value nodes and valid edges', () => {
     const episodes = Array.from({ length: 1_000 }, (_, index): SubjectEpisode => ({
-      id: index + 1,
+      id: String(index + 1),
       title: `Episode ${index + 1}`,
+      title_cn: '',
       type: 'EP',
+      number: String(index + 1),
+      sort: String(index + 1),
+      disc: 0,
+      duration: '',
+      raw_duration: '',
+      air_date: '',
+      comment_count: 0,
+      description: '',
+      provenance: null,
       ep_num: index + 1,
-      sort: index + 1,
       date: null,
     }));
     const result = buildGraph({

@@ -163,7 +163,7 @@ export function buildGraph({
     type: 'subject',
     size: 46,
     image: imageOf(subject),
-    href: isOpenableSubjectType(subject.subject_type) ? routes.subject(subject.id) : undefined,
+    href: isOpenableSubjectType(subject.subject_type) ? routes.entity(subject.id) : undefined,
   });
 
   if (sections.meta) {
@@ -264,11 +264,13 @@ export function buildGraph({
         related.platform,
         related.date,
         related.content?.episodes ? `${related.content.episodes} episodes` : null,
+        relation.evidence?.length ? `${relation.evidence.length} evidence` : null,
+        relation.evidence?.slice(0, 3).map((item) => item.provider),
       ]),
       type: 'relation',
       size: related.subject_type === subject.subject_type ? 30 : 24,
       image: imageOf(related),
-      href: isOpenableSubjectType(related.subject_type) ? routes.subject(related.id) : undefined,
+      href: isOpenableSubjectType(related.subject_type) ? routes.entity(related.id) : undefined,
     });
     addEdge(edges, rootId, id, relation.relation || 'related', 0.9);
   }

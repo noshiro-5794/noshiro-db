@@ -163,14 +163,21 @@ export const libraryMutations = {
 
   replaceProgress: () =>
     mutationOptions({
-      mutationFn: ({ subjectId, finishedEpisodeIds }: { subjectId: UUID; finishedEpisodeIds: number[] }) =>
+      mutationFn: ({ subjectId, finishedEpisodeIds }: { subjectId: UUID; finishedEpisodeIds: string[] }) =>
         progressApi.replaceFinishedEpisodes(subjectId, finishedEpisodeIds),
     }),
 
   setEpisodeFinished: () =>
     mutationOptions({
-      mutationFn: ({ subjectId, episodeId, isFinished }: { subjectId: UUID; episodeId: number; isFinished: boolean }) =>
-        progressApi.setEpisodeFinished(subjectId, episodeId, isFinished),
+      mutationFn: ({
+        subjectId,
+        episodeId,
+        isFinished,
+      }: {
+        subjectId: UUID;
+        episodeId: string | number;
+        isFinished: boolean;
+      }) => progressApi.setEpisodeFinished(subjectId, episodeId, isFinished),
     }),
 
   replaceTags: () =>
@@ -252,7 +259,7 @@ export const libraryMutations = {
         body,
       }: {
         collectionId: number;
-        body: { subject_id?: UUID; user_subject_id?: number; order?: number; relation?: string };
+        body: { library_entry_id?: number; order?: number; relation?: string };
       }) => collectionsApi.addItem(collectionId, body),
     }),
 

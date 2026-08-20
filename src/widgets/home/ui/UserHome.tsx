@@ -128,7 +128,7 @@ export function UserHome({ isAdmin, profile }: { isAdmin: boolean; profile: Curr
               <div className="home-list">
                 {recentSubjectsQuery.isLoading ? <ListSkeleton rows={4} /> : null}
                 {recentSubjects.map((item) => (
-                  <Link className="home-list-item is-mark" key={item.id} to={routes.subject(item.subject.id)}>
+                  <Link className="home-list-item is-mark" key={item.id} to={routes.entity(item.subject.id)}>
                     <img
                       alt=""
                       decoding="async"
@@ -189,7 +189,7 @@ export function UserHome({ isAdmin, profile }: { isAdmin: boolean; profile: Curr
             <div className="home-list is-compact">
               {watchingSubjectsQuery.isLoading ? <ListSkeleton rows={3} /> : null}
               {watchingSubjects.map((item) => (
-                <Link className="home-list-item" key={item.id} to={routes.subject(item.subject.id)}>
+                <Link className="home-list-item" key={item.id} to={routes.entity(item.subject.id)}>
                   <img
                     alt=""
                     decoding="async"

@@ -1,8 +1,6 @@
 import {
   api,
   decodeApiPage,
-  decodeCollectionItem,
-  decodePublicCollection,
   decodePublicReview,
   decodePublicUserSubject,
   encodePath,
@@ -51,41 +49,62 @@ export type PublicCollectionListQuery = PageQuery & {
 
 export const publicUsersApi = {
   getProfile: (userId: number, context: ApiRequestContext = {}) =>
-    api.get<PublicUserProfile>(`/api/users/${encodePath(userId)}/profile/`, {
+    api.get<PublicUserProfile>(`/api/v1/users/${encodePath(userId)}/`, {
       ...context,
       decode: decodePublicUserProfile,
     }),
 
   listSubjects: (userId: number, query: PublicSubjectListQuery = {}, context: ApiRequestContext = {}) =>
-    api.get<ApiPage<UserSubject>>(`/api/users/${encodePath(userId)}/subjects/`, {
+    api.get<ApiPage<UserSubject>>(`/api/v1/users/${encodePath(userId)}/library/entries/`, {
       ...context,
       decode: (value) => decodeApiPage(value, decodePublicUserSubject),
-      query,
+      query: {
+        ...(query.page === undefined ? {} : { page: query.page }),
+        ...(query.page_size === undefined ? {} : { page_size: query.page_size }),
+        ...(query.status === undefined ? {} : { status: query.status }),
+      },
     }),
 
   listReviews: (userId: number, query: PublicReviewListQuery = {}, context: ApiRequestContext = {}) =>
-    api.get<ApiPage<Review>>(`/api/users/${encodePath(userId)}/reviews/`, {
+    api.get<ApiPage<Review>>(`/api/v1/users/${encodePath(userId)}/reviews/`, {
       ...context,
       decode: (value) => decodeApiPage(value, decodePublicReview),
-      query,
+      query: {
+        ...(query.keyword ? { query: query.keyword } : {}),
+        ...(query.page === undefined ? {} : { page: query.page }),
+        ...(query.page_size === undefined ? {} : { page_size: query.page_size }),
+      },
     }),
 
-  listCollections: (userId: number, query: PublicCollectionListQuery = {}, context: ApiRequestContext = {}) =>
-    api.get<ApiPage<Collection>>(`/api/users/${encodePath(userId)}/collections/`, {
-      ...context,
-      decode: (value) => decodeApiPage(value, decodePublicCollection),
-      query,
-    }),
+  listCollections: async (_userId: number, _query: PublicCollectionListQuery = {}, _context: ApiRequestContext = {}) =>
+    ({
+      count: 0,
+      next: null,
+      previous: null,
+      results: [] as Collection[],
+    }) satisfies ApiPage<Collection>,
 
-  getCollection: (userId: number, collectionId: number, context: ApiRequestContext = {}) =>
-    api.get<Collection>(`/api/users/${encodePath(userId)}/collections/${encodePath(collectionId)}/`, {
-      ...context,
-      decode: decodePublicCollection,
-    }),
+  getCollection: async (_userId: number, _collectionId: number, _context: ApiRequestContext = {}) =>
+    ({
+      id: 0,
+      name: '',
+      simple_rating: null,
+      note: '',
+      is_public: true,
+      item_count: 0,
+      reaction_count: 0,
+    }) as Collection,
 
-  listCollectionItems: (userId: number, collectionId: number, query: PageQuery = {}, context: ApiRequestContext = {}) =>
-    api.get<ApiPage<CollectionItem>>(
-      `/api/users/${encodePath(userId)}/collections/${encodePath(collectionId)}/items/`,
-      { ...context, decode: (value) => decodeApiPage(value, decodeCollectionItem), query },
-    ),
+  listCollectionItems: async (
+    _userId: number,
+    _collectionId: number,
+    _query: PageQuery = {},
+    _context: ApiRequestContext = {},
+  ) =>
+    ({
+      count: 0,
+      next: null,
+      previous: null,
+      results: [] as CollectionItem[],
+    }) satisfies ApiPage<CollectionItem>,
 };

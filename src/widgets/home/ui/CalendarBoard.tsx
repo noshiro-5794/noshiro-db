@@ -45,7 +45,7 @@ function HeroCalendarItem({
       className="grid overflow-hidden rounded-[var(--ui-radius-surface)] border border-[var(--ui-border)] bg-[var(--ui-bg-surface)] transition-colors hover:border-[var(--ui-border-strong)]"
       data-slot="calendar-featured-item"
       state={state}
-      to={routes.subject(item.subject_id)}
+      to={routes.entity(item.subject_id)}
     >
       <img
         className="aspect-[3/4] w-full bg-[var(--ui-bg-subtle)] object-cover"
@@ -84,7 +84,7 @@ function CompactCalendarItem({
       className="grid h-24 min-w-0 grid-cols-[50px_minmax(0,1fr)] gap-2.5 rounded-[var(--ui-radius-control)] border border-transparent p-2 transition-colors hover:border-[var(--ui-border-subtle)] hover:bg-[var(--ui-bg-surface)]"
       data-slot="calendar-compact-item"
       state={state}
-      to={routes.subject(item.subject_id)}
+      to={routes.entity(item.subject_id)}
     >
       <img
         className="h-full w-[50px] rounded-[var(--ui-radius-control)] bg-[var(--ui-bg-subtle)] object-cover"

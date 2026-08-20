@@ -1,7 +1,7 @@
 export { api, apiRequest, ApiError, setAccessToken, setAccessTokenRefresher, setSessionExpiredHandler } from './client';
 export type { ApiRequestContext } from './client';
 export { encodePath } from './path';
-export { collectApiPages, decodeApiPage, getNextApiPageParam } from './pagination';
+export { collectApiPages, decodeApiPage, decodeCursorPage, getNextCursorPageParam, getNextApiPageParam } from './pagination';
 export {
   decodeActivity,
   decodeCommunityBookmark,
@@ -32,6 +32,8 @@ export {
   decodeUserSubjectContext,
 } from './decoders/library';
 export {
+  decodeCalendarEvents,
+  decodeCalendarEventsToGroups,
   decodeCalendarGroups,
   decodeSubjectCharacter,
   decodeSubjectDetail,
@@ -42,6 +44,7 @@ export {
   decodeSubjectSummary,
 } from './decoders/subject';
 export type * from './contracts/common';
+export type * from './contracts/entity';
 export type * from './contracts/community';
 export type * from './contracts/library';
 export type * from './contracts/session';

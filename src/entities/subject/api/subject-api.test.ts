@@ -23,7 +23,7 @@ describe('indexApi.getBangumiSubject', () => {
 
     await expect(indexApi.getBangumiSubject(4255)).resolves.toMatchObject({ id: 4255, name: 'Noshiro' });
     expect(fetchMock).toHaveBeenCalledOnce();
-    expect(fetchMock.mock.calls[0]?.[0]).toBe('https://api.bgm.tv/v0/subjects/4255');
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('https://api.bgm.tv/v0/entities/4255');
     expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ referrerPolicy: 'no-referrer' });
   });
 

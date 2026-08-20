@@ -22,7 +22,7 @@ import { Button } from '@/shared/ui/Button';
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/FeedbackState';
 import { Toggle, ToggleGroup } from '@/shared/ui/Toggle';
 
-const subjectGraphRoute = getRouteApi('/subjects/$subjectId/graph');
+const entityGraphRoute = getRouteApi('/entities/$subjectId/graph');
 
 function subjectTitle(subject: SubjectDetail | undefined, fallback: string) {
   return subject?.display_title || subject?.title || subject?.title_cn || fallback;
@@ -30,7 +30,7 @@ function subjectTitle(subject: SubjectDetail | undefined, fallback: string) {
 
 export function SubjectGraphPage() {
   const { t } = useI18n();
-  const params = subjectGraphRoute.useParams();
+  const params = entityGraphRoute.useParams();
   const subjectId = parseUuid(params.subjectId) ?? '';
   const [mode, setMode] = useState<GraphMode>('balanced');
   const [sections, setSections] = useState<GraphSections>(defaultGraphSections);
@@ -72,12 +72,12 @@ export function SubjectGraphPage() {
         title={`${subjectTitle(subject, t('subject.title'))} · ${t('graph.title')}`}
         description={subject?.description_excerpt || subject?.summary || t('graph.description')}
         image={subject?.images?.poster || subject?.image || subject?.image_thumbnail}
-        path={subjectId ? routes.subjectGraph(subjectId) : undefined}
+        path={subjectId ? routes.entityGraph(subjectId) : undefined}
       />
       <div className="graph-back" data-slot="graph-back">
         <Button asChild aria-label={t('common.back')} size="icon" tooltip={t('common.back')} variant="secondary">
           {subjectId ? (
-            <Link params={{ subjectId }} to="/subjects/$subjectId">
+            <Link params={{ subjectId }} to="/entities/$subjectId">
               <ArrowLeft className="size-4" />
             </Link>
           ) : (

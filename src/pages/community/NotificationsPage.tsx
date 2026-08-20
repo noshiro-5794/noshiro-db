@@ -1,6 +1,7 @@
 import { formatDate } from '@/shared/lib/date';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getRouteApi, Link } from '@tanstack/react-router';
+import { Link } from '@tanstack/react-router';
 import { Bell, CheckCheck } from 'lucide-react';
 import { communityQueries } from '@/entities/community';
 import { useMarkNotificationsReadMutation } from '@/features/community';
@@ -11,19 +12,16 @@ import { resolvedRouteHref } from '@/shared/routing/resolved-href';
 import { Button } from '@/shared/ui/Button';
 import { ListSurface, ResultsMeta, ResultsState, type ResultsStatus } from '@/shared/ui/DataView';
 import { Page } from '@/shared/ui/Page';
-import { Pagination } from '@/shared/ui/Pagination';
 
 const pageSize = 24;
-const notificationsRoute = getRouteApi('/notifications');
-
 export function NotificationsPage() {
   const { t } = useI18n();
-  const navigate = notificationsRoute.useNavigate();
-  const { page: currentPage = 1 } = notificationsRoute.useSearch();
-  const notificationsQuery = useQuery(communityQueries.notifications({ page: currentPage, page_size: pageSize }));
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const notificationsQuery = useQuery(
+    communityQueries.notifications({ ...(cursor === undefined ? {} : { cursor }), page_size: pageSize }),
+  );
   const markReadMutation = useMarkNotificationsReadMutation();
   const notifications = notificationsQuery.data?.results ?? [];
-  const totalPages = Math.max(1, Math.ceil((notificationsQuery.data?.count ?? 0) / pageSize));
   const resultsStatus: ResultsStatus =
     notificationsQuery.data === undefined && notificationsQuery.isLoading
       ? 'loading'
@@ -32,10 +30,6 @@ export function NotificationsPage() {
         : notifications.length === 0
           ? 'empty'
           : 'ready';
-
-  function goToPage(page: number) {
-    void navigate({ search: (current) => ({ ...current, page }) });
-  }
 
   function markReadIfNeeded(notification: CommunityNotification) {
     if (!notification.is_read && !markReadMutation.isPending) {
@@ -62,7 +56,7 @@ export function NotificationsPage() {
     >
       <div className="grid gap-4">
         <ResultsMeta
-          count={notificationsQuery.data?.count}
+          count={notifications.length}
           label={t('community.notificationsTitle')}
           pending={notificationsQuery.isFetching && !notificationsQuery.isLoading}
           pendingLabel={t('common.loading')}
@@ -147,7 +141,18 @@ export function NotificationsPage() {
                 );
               })}
             </ListSurface>
-            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={goToPage} />
+            {notificationsQuery.data?.next ? (
+              <Button
+                disabled={notificationsQuery.isFetching}
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  if (notificationsQuery.data?.next) setCursor(notificationsQuery.data.next);
+                }}
+              >
+                {t('community.loadMore')}
+              </Button>
+            ) : null}
           </>
         </ResultsState>
       </div>
