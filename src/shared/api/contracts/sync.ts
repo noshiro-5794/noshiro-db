@@ -1,6 +1,39 @@
 import type { ISODateString, OpenString, UUID } from './common';
 import type { SubjectType } from './subject';
 
+export type ImportJobProvider = 'bangumi' | 'vndb' | OpenString;
+export type ImportJobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | OpenString;
+
+export type ImportJobProgress = {
+  current_label: string;
+  total: number;
+  processed: number;
+  synced: number;
+  skipped: number;
+  failed: number;
+};
+
+export type ImportJob = {
+  id: UUID;
+  provider: ImportJobProvider;
+  external_id: string | null;
+  status: ImportJobStatus;
+  parameters: Record<string, unknown>;
+  result: Record<string, unknown> | null;
+  error: string | null;
+  progress: ImportJobProgress;
+  created_at: ISODateString;
+  started_at: ISODateString | null;
+  finished_at: ISODateString | null;
+  updated_at: ISODateString;
+};
+
+export type ImportJobCreate = {
+  provider: 'vndb';
+  external_id: string;
+  include_related?: boolean;
+};
+
 export type SyncTaskStatus = {
   task_name: string;
   shard: string;

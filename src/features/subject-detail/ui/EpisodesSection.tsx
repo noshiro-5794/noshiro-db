@@ -38,15 +38,15 @@ export function EpisodesSection({
   const otherChaptersTitleId = useId();
   const [episodePage, setEpisodePage] = useState(1);
   const [otherEpisodePage, setOtherEpisodePage] = useState(1);
-  const [selectedEpisodeId, setSelectedEpisodeId] = useState<number | null>(null);
-  const [pendingEpisodeId, setPendingEpisodeId] = useState<number | null>(null);
+  const [selectedEpisodeId, setSelectedEpisodeId] = useState<string | null>(null);
+  const [pendingEpisodeId, setPendingEpisodeId] = useState<string | null>(null);
   const episodeMutationInFlight = useRef(false);
   const episodesQuery = useQuery(
     subjectQueries.episodes(subject.id, { page: episodePage, page_size: episodePageSize, type: 'EP' }),
   );
   const otherEpisodesQuery = useQuery(subjectQueries.allEpisodes(subject.id));
   const selectedEpisodeQuery = useQuery({
-    ...subjectQueries.episode(subject.id, selectedEpisodeId ?? 0),
+    ...subjectQueries.episode(subject.id, selectedEpisodeId ?? ''),
     enabled: selectedEpisodeId !== null,
   });
   const setEpisodeFinishedMutation = useMutation(libraryMutations.setEpisodeFinished());
@@ -64,7 +64,7 @@ export function EpisodesSection({
   );
   const selectedEpisode = selectedEpisodeQuery.data ?? selectedEpisodePreview;
 
-  async function handleEpisodeToggle(episodeId: number, isFinished: boolean) {
+  async function handleEpisodeToggle(episodeId: string, isFinished: boolean) {
     if (episodeMutationInFlight.current) return;
     episodeMutationInFlight.current = true;
     setPendingEpisodeId(episodeId);
@@ -87,7 +87,7 @@ export function EpisodesSection({
     }
   }
 
-  function handleProgressClick(episodeId: number, isFinished: boolean) {
+  function handleProgressClick(episodeId: string, isFinished: boolean) {
     if (!isAuthenticated) {
       toast.info(t('subject.loginToTrackProgress'));
       return;

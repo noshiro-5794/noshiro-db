@@ -8,7 +8,7 @@ import { useAuth } from '@/entities/session';
 import { communityActivitiesApi } from '@/entities/community';
 import { ActivityTimelineItem, CreatePostDialog } from '@/features/community';
 import { communityQueries, communityQueryKeys } from '@/entities/community';
-import { getNextApiPageParam } from '@/shared/api';
+import { getNextCursorPageParam } from '@/shared/api';
 import { useI18n } from '@/shared/i18n';
 import type { CommunityPostsSearch } from '@/shared/routing/route-search';
 import { routes } from '@/shared/routing/paths';
@@ -51,7 +51,7 @@ export function CommunityPostsPage() {
     queryKey: [...communityQueryKeys.activities(), 'stream', scope, activityFilter, pageSize] as const,
     queryFn: ({ pageParam, signal }) => {
       const query = {
-        page: pageParam,
+        ...(pageParam === undefined ? {} : { cursor: pageParam }),
         page_size: pageSize,
         ordering: '-created_at' as const,
         ...(activityFilter === 'all' ? {} : { activity_type: activityFilter }),
@@ -60,8 +60,8 @@ export function CommunityPostsPage() {
       if (scope === 'mine') return communityActivitiesApi.listMine(query, { signal });
       return communityActivitiesApi.listFeed({ ...query, include_self: true }, { signal });
     },
-    initialPageParam: 1,
-    getNextPageParam: getNextApiPageParam,
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: getNextCursorPageParam,
   });
   const followingQuery = useQuery(communityQueries.myFollowing({ page_size: 6 }));
 

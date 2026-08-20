@@ -21,7 +21,7 @@ function PostSubjectCard({ post }: { post: CommunityPostSummary }) {
   return (
     <Link
       className="mt-5 grid grid-cols-[56px_minmax(0,1fr)] gap-3 rounded-sm border border-border bg-muted p-3 transition-colors hover:border-[var(--ui-accent-border)]"
-      to={routes.subject(post.subject.id)}
+      to={routes.entity(post.subject.id)}
     >
       <img
         className="h-20 w-14 rounded-sm bg-muted object-cover"

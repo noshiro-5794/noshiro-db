@@ -12,6 +12,9 @@ const profile: CurrentUserProfile = {
   is_superuser: false,
   language: 'en-US',
   appearance: 'light',
+  theme_color: '#66ccff',
+  show_adult_content: false,
+  adult_content_confirmed_at: null,
 };
 
 describe('patchSessionProfile', () => {

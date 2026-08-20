@@ -23,9 +23,9 @@ describe('MarkdownRenderer', () => {
   });
 
   it('keeps internal links in the current window', () => {
-    const markup = render('[internal](/subjects/1)');
+    const markup = render('[internal](/entities/1)');
 
-    expect(markup).toContain('href="/subjects/1"');
+    expect(markup).toContain('href="/entities/1"');
     expect(markup).not.toContain('target="_blank"');
   });
 

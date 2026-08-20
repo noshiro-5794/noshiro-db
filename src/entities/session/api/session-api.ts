@@ -17,64 +17,64 @@ export const authApi = {
   sendCode: (
     body: { email: string; purpose: SendCodePurpose; hcaptcha_token?: string },
     context: ApiRequestContext = {},
-  ) => api.post<unknown, typeof body>('/api/users/send-code/', body, { ...context, skipAuth: true }),
+  ) => api.post<unknown, typeof body>('/api/v1/auth/verification-codes/', body, { ...context, skipAuth: true }),
 
   register: (
     body: { email: string; password: string; nickname: string; code: string },
     context: ApiRequestContext = {},
   ) =>
-    api.post<AccessTokenPayload, typeof body>('/api/users/register/', body, {
+    api.post<AccessTokenPayload, typeof body>('/api/v1/auth/registrations/', body, {
       ...context,
       decode: decodeAccessTokenPayload,
       skipAuth: true,
     }),
 
   loginWithPassword: (body: { email: string; password: string }, context: ApiRequestContext = {}) =>
-    api.post<AccessTokenPayload, typeof body>('/api/users/login/password/', body, {
+    api.post<AccessTokenPayload, typeof body>('/api/v1/auth/sessions/password/', body, {
       ...context,
       decode: decodeAccessTokenPayload,
       skipAuth: true,
     }),
 
   loginWithCode: (body: { email: string; code: string }, context: ApiRequestContext = {}) =>
-    api.post<AccessTokenPayload, typeof body>('/api/users/login/code/', body, {
+    api.post<AccessTokenPayload, typeof body>('/api/v1/auth/sessions/code/', body, {
       ...context,
       decode: decodeAccessTokenPayload,
       skipAuth: true,
     }),
 
   refreshToken: (context: ApiRequestContext = {}) =>
-    api.post<AccessTokenPayload>('/api/users/token/refresh/', undefined, {
+    api.post<AccessTokenPayload>('/api/v1/auth/sessions/refresh/', undefined, {
       ...context,
       decode: decodeAccessTokenPayload,
       skipAuth: true,
     }),
 
-  logout: (context: ApiRequestContext = {}) => api.post<unknown>('/api/users/logout/', undefined, context),
+  logout: (context: ApiRequestContext = {}) => api.post<unknown>('/api/v1/auth/session/', undefined, context),
 
   resetPassword: (body: { email: string; code: string; new_password: string }) =>
-    api.post<unknown, typeof body>('/api/users/password/reset/', body, { skipAuth: true }),
+    api.post<unknown, typeof body>('/api/v1/auth/password-resets/', body, { skipAuth: true }),
 };
 
 export const profileApi = {
   getMe: (context: ApiRequestContext = {}) =>
-    api.get<CurrentUserProfile>('/api/users/me/profile/', { ...context, decode: decodeCurrentUserProfile }),
+    api.get<CurrentUserProfile>('/api/v1/users/me/profile/', { ...context, decode: decodeCurrentUserProfile }),
 
   updateMe: (body: Partial<Pick<CurrentUserProfile, 'nickname' | 'bio'>>) =>
-    api.patch<CurrentUserProfile, typeof body>('/api/users/me/profile/', body, { decode: decodeCurrentUserProfile }),
+    api.patch<CurrentUserProfile, typeof body>('/api/v1/users/me/profile/', body, { decode: decodeCurrentUserProfile }),
 
   getSettings: (context: ApiRequestContext = {}) =>
-    api.get<CurrentUserProfile>('/api/users/me/settings/', { ...context, decode: decodeCurrentUserProfile }),
+    api.get<CurrentUserProfile>('/api/v1/users/me/settings/', { ...context, decode: decodeCurrentUserProfile }),
 
   updateSettings: (body: Partial<Pick<CurrentUserProfile, 'language' | 'appearance'>>) =>
-    api.patch<CurrentUserProfile, typeof body>('/api/users/me/settings/', body, { decode: decodeCurrentUserProfile }),
+    api.patch<CurrentUserProfile, typeof body>('/api/v1/users/me/settings/', body, { decode: decodeCurrentUserProfile }),
 
   getStats: (query: { year?: number; timezone?: string } = {}, context: ApiRequestContext = {}) =>
-    api.get<ProfileStats>('/api/users/me/profile/stats/', { ...context, decode: decodeProfileStats, query }),
+    api.get<ProfileStats>('/api/v1/users/me/profile/stats/', { ...context, decode: decodeProfileStats, query }),
 
   uploadAvatar: (avatar: File) => {
     const body = new FormData();
     body.set('avatar', avatar);
-    return api.post<{ avatar: string }, FormData>('/api/users/me/avatar/', body, { decode: decodeAvatarUpload });
+    return api.post<{ avatar: string }, FormData>('/api/v1/users/me/avatar/', body, { decode: decodeAvatarUpload });
   },
 };

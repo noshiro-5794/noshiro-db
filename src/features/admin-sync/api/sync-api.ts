@@ -1,56 +1,28 @@
-import { api, encodePath } from '@/shared/api';
-import {
-  decodeBangumiSubjectResult,
-  decodeCalendarRunResult,
-  decodeIncrementalRunResult,
-  decodeIncrementalStatus,
-  decodeSubjectResyncResult,
-  decodeSyncJobPage,
-} from './sync-decoders';
-import type {
-  ApiPage,
-  ApiRequestContext,
-  CalendarSyncResult,
-  IncrementalSyncRunResult,
-  PageQuery,
-  QueuedTask,
-  SubjectResyncResult,
-  SyncJob,
-  SyncTaskStatus,
-  UUID,
-} from '@/shared/api';
+import { api, decodeCursorPage, encodePath } from '@/shared/api';
+import type { ApiRequestContext, CursorPage, ImportJob, ImportJobCreate } from '@/shared/api';
+import { decodeImportJob } from './sync-decoders';
 
-export const syncApi = {
-  getIncrementalStatus: (context: ApiRequestContext = {}) =>
-    api.get<{ tasks: SyncTaskStatus[] }>('/api/sync/incremental/status/', {
+export const operationsApi = {
+  listImportJobs: (
+    query: { cursor?: string; page_size?: number; provider?: string; status?: string } = {},
+    context: ApiRequestContext = {},
+  ) =>
+    api.get<CursorPage<ImportJob>>('/api/v1/operations/import-jobs/', {
       ...context,
-      decode: decodeIncrementalStatus,
+      decode: (value) => decodeCursorPage(value, decodeImportJob),
+      query,
     }),
 
-  getJobs: (query: PageQuery & { status?: string; job_type?: string } = {}, context: ApiRequestContext = {}) =>
-    api.get<ApiPage<SyncJob>>('/api/sync/jobs/', { ...context, decode: decodeSyncJobPage, query }),
-
-  runIncremental: (body: { run_async?: boolean; batch_size?: number; task_name?: string } = {}) =>
-    api.post<IncrementalSyncRunResult, typeof body>('/api/sync/incremental/run/', body, {
-      decode: decodeIncrementalRunResult,
+  getImportJob: (jobId: string, context: ApiRequestContext = {}) =>
+    api.get<ImportJob>(`/api/v1/operations/import-jobs/${encodePath(jobId)}/`, {
+      ...context,
+      decode: decodeImportJob,
     }),
 
-  runCalendar: (body: { run_async?: boolean; sync_subject_details?: boolean } = {}) =>
-    api.post<QueuedTask | CalendarSyncResult, typeof body>('/api/sync/calendar/run/', body, {
-      decode: decodeCalendarRunResult,
+  createImportJob: (body: ImportJobCreate) =>
+    api.post<ImportJob, ImportJobCreate>('/api/v1/operations/import-jobs/', body, {
+      decode: decodeImportJob,
     }),
-
-  syncBangumiSubject: (body: { bangumi_id: number; run_async?: boolean }) =>
-    api.post<(QueuedTask & { bangumi_id: number }) | SubjectResyncResult, typeof body>(
-      '/api/sync/subjects/bangumi/',
-      body,
-      { decode: decodeBangumiSubjectResult },
-    ),
-
-  resyncSubject: (subjectId: UUID, body: { run_async?: boolean } = {}) =>
-    api.post<(QueuedTask & { subject_id: UUID }) | SubjectResyncResult, typeof body>(
-      `/api/sync/subjects/${encodePath(subjectId)}/resync/`,
-      body,
-      { decode: decodeSubjectResyncResult },
-    ),
 };
+
+export const syncApi = operationsApi;

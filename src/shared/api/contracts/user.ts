@@ -9,7 +9,7 @@ export type PublicUserSummary = {
 export type PublicUserProfile = PublicUserSummary & {
   bio: string;
   stats: {
-    subject_count: number;
+    library_entry_count: number;
     review_count: number;
     collection_count: number;
     following_count: number;

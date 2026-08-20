@@ -11,6 +11,7 @@ import type {
   CommunityReport,
 } from '../contracts/community';
 import type { FollowRelation, PublicUserSummary } from '../contracts/user';
+import { subjectSummaryFromEntity } from './subject';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -183,14 +184,31 @@ export const decodeFollowRelation = (value: unknown) =>
   decodeValue(value, isFollowRelation, 'Invalid follow relation response');
 export const decodeCommunityRelationship = (value: unknown) =>
   decodeValue(value, isRelationship, 'Invalid community relationship response');
-export const decodeActivity = (value: unknown) => decodeValue(value, isActivity, 'Invalid activity response');
-export const decodeCommunityPost = (value: unknown) => decodeValue(value, isPost, 'Invalid community post response');
+export const decodeActivity = (value: unknown) => {
+  const activity = decodeValue(value, isActivity, 'Invalid activity response');
+  return {
+    ...activity,
+    ...(activity.entity ? { subject: subjectSummaryFromEntity(activity.entity) } : {}),
+  };
+};
+export const decodeCommunityPost = (value: unknown) => {
+  const post = decodeValue(value, isPost, 'Invalid community post response');
+  return {
+    ...post,
+    ...(post.entity ? { subject: subjectSummaryFromEntity(post.entity) } : {}),
+  };
+};
 export const decodeCommunityComment = (value: unknown) =>
   decodeValue(value, isComment, 'Invalid community comment response');
 export const decodeCommunityReaction = (value: unknown) =>
   decodeValue(value, isReaction, 'Invalid community reaction response');
-export const decodeCommunityBookmark = (value: unknown) =>
-  decodeValue(value, isBookmark, 'Invalid community bookmark response');
+export const decodeCommunityBookmark = (value: unknown) => {
+  const bookmark = decodeValue(value, isBookmark, 'Invalid community bookmark response');
+  return {
+    ...bookmark,
+    ...(bookmark.target?.entity ? { target: { ...bookmark.target, subject: subjectSummaryFromEntity(bookmark.target.entity) } } : {}),
+  };
+};
 export const decodeCommunityNotification = (value: unknown) =>
   decodeValue(value, isNotification, 'Invalid community notification response');
 export const decodeCommunityReport = (value: unknown) =>

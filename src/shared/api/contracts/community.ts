@@ -1,5 +1,6 @@
 import type { ISODateString, UUID } from './common';
 import type { Collection, CollectionItem, Review } from './library';
+import type { EntitySummary } from './entity';
 import type { SubjectSummary } from './subject';
 import type { PublicUserSummary } from './user';
 
@@ -45,6 +46,7 @@ export type CommunityPostSummary = {
   updated_at?: ISODateString;
   author?: PublicUserSummary | null;
   subject?: Pick<SubjectSummary, 'id' | 'title' | 'title_cn' | 'subject_type' | 'image_thumbnail' | 'nsfw'> | null;
+  entity?: EntitySummary | null;
   viewer_state?: {
     has_liked: boolean;
     has_bookmarked: boolean;
@@ -88,6 +90,7 @@ export type Activity = {
   dedupe_key?: string;
   user?: PublicUserSummary | null;
   subject?: SubjectSummary;
+  entity?: EntitySummary;
   review?: Review;
   collection?: Collection;
   collection_item?: CollectionItem;
@@ -118,6 +121,7 @@ export type CommunityBookmark = {
     body?: string;
     author?: PublicUserSummary | null;
     subject?: Pick<SubjectSummary, 'id' | 'title' | 'title_cn' | 'subject_type' | 'image_thumbnail'> | null;
+    entity?: EntitySummary | null;
     is_spoiler?: boolean;
     simple_rating?: number | null;
     created_at?: ISODateString;

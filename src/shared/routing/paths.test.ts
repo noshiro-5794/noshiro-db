@@ -3,7 +3,7 @@ import { routes } from './paths';
 
 describe('route builders', () => {
   it('encodes path parameters', () => {
-    expect(routes.subject('subject/id')).toBe('/subjects/subject%2Fid');
+    expect(routes.entity('subject/id')).toBe('/entities/subject%2Fid');
     expect(routes.userCollection('42', 'collection id')).toBe('/users/42/collections/collection%20id');
   });
 

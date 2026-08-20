@@ -103,7 +103,7 @@ export function RelationsSection({
                           <Link
                             className="group grid min-h-24 grid-cols-[52px_minmax(0,1fr)] items-center gap-3 rounded-sm border border-border bg-surface p-2.5 text-left transition-colors hover:border-[var(--ui-border-strong)] hover:bg-muted"
                             state={detailLinkState}
-                            to={routes.subject(item.subject.id)}
+                            to={routes.entity(item.subject.id)}
                           >
                             {content}
                           </Link>

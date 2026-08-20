@@ -143,7 +143,7 @@ const routeTree = rootRoute.addChildren([
   route('/users/$userId/followers', FollowersPage, validatePaginationSearch, requireUserId),
   route('/users/$userId/following', FollowingPage, validatePaginationSearch, requireUserId),
   route('/users/$userId/reviews', PublicReviewsPage, validatePublicReviewsSearch, requireUserId),
-  route('/users/$userId/subjects', PublicSubjectsPage, validatePublicSubjectsSearch, requireUserId),
+  route('/users/$userId/entities', PublicSubjectsPage, validatePublicSubjectsSearch, requireUserId),
   route('/users/$userId/collections', PublicCollectionsPage, validatePublicCollectionsSearch, requireUserId),
   route(
     '/users/$userId/collections/$collectionId',
@@ -163,8 +163,8 @@ const routeTree = rootRoute.addChildren([
   route('/reviews/$reviewId/edit', authenticated(EditReviewPage), validateEmptySearch, requireReviewId),
   // Public reviews are readable without a session; private reviews still resolve through the authenticated API.
   route('/reviews/$reviewId', ReviewViewerPage, validateEmptySearch, requireReviewId),
-  route('/subjects/$subjectId/graph', SubjectGraphPage, validateEmptySearch, requireSubjectId),
-  route('/subjects/$subjectId', SubjectPage, validateEmptySearch, requireSubjectId),
+  route('/entities/$subjectId/graph', SubjectGraphPage, validateEmptySearch, requireSubjectId),
+  route('/entities/$subjectId', SubjectPage, validateEmptySearch, requireSubjectId),
 ]);
 
 export function createAppRouter(history?: RouterHistory) {

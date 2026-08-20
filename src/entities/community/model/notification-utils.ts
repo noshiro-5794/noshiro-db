@@ -37,7 +37,7 @@ export function notificationHref(notification: CommunityNotification) {
         target.user?.id ? routes.userProfile(target.user.id) : routes.home,
         `comment-${target.comment.id}`,
       );
-    if (target.subject?.id) return routes.subject(target.subject.id);
+    if (target.subject?.id) return routes.entity(target.subject.id);
     if (target.target_user?.id) return routes.userProfile(target.target_user.id);
     if (target.user?.id) return routes.userProfile(target.user.id);
     return routes.home;
@@ -65,7 +65,7 @@ export function notificationHref(notification: CommunityNotification) {
     return target.collection.owner?.id
       ? routes.userCollection(target.collection.owner.id, target.collection.id)
       : routes.collections;
-  if (target.subject?.id) return routes.subject(target.subject.id);
+  if (target.subject?.id) return routes.entity(target.subject.id);
   if (target.user?.id) return routes.userProfile(target.user.id);
   if (target.target_user?.id) return routes.userProfile(target.target_user.id);
 

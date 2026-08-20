@@ -1,4 +1,4 @@
-import type { ApiPage, PageQuery } from './contracts/common';
+import type { ApiPage, CursorPage, PageQuery } from './contracts/common';
 
 export type CollectApiPagesOptions = {
   pageSize: number;
@@ -46,6 +46,41 @@ export function decodeApiPage<T>(value: unknown, decodeItem: (item: unknown) => 
     ...page,
     results: page.results.map((item) => decodeItem(item)),
   };
+}
+
+function assertCursorPageShape(value: unknown): asserts value is CursorPage<unknown> {
+  if (typeof value !== 'object' || value === null) {
+    throw new TypeError('Cursor paginated API returned an invalid page');
+  }
+
+  const { next, previous, results } = value as Record<string, unknown>;
+  if (
+    !Array.isArray(results) ||
+    (next !== null && typeof next !== 'string') ||
+    (previous !== null && typeof previous !== 'string')
+  ) {
+    throw new TypeError('Cursor paginated API returned an invalid page');
+  }
+}
+
+export function decodeCursorPage<T>(value: unknown, decodeItem: (item: unknown) => T): CursorPage<T> {
+  assertCursorPageShape(value);
+  return {
+    next: value.next,
+    previous: value.previous,
+    results: value.results.map(decodeItem),
+  };
+}
+
+export function getNextCursorPageParam<T>(
+  lastPage: CursorPage<T>,
+  pages: Array<CursorPage<T>>,
+  _lastPageParam?: string | undefined,
+) {
+  const maxPages = 100;
+  assertCursorPageShape(lastPage);
+  if (!lastPage.next || pages.length >= maxPages || lastPage.results.length === 0) return undefined;
+  return lastPage.next;
 }
 
 export function getNextApiPageParam<T>(

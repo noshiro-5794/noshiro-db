@@ -1,6 +1,16 @@
 import type {
+  CalendarEvent,
   CalendarGroup,
   CalendarSubjectItem,
+  EntityCharacter,
+  EntityCredit,
+  EntityDetail,
+  EntityEpisode,
+  EntityMedia,
+  EntityRelation,
+  EntitySummary,
+  FieldProvenance,
+  FactEvidence,
   SubjectCharacter,
   SubjectDetail,
   SubjectEpisode,
@@ -16,120 +26,288 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function isString(value: unknown): value is string {
+  return typeof value === 'string';
+}
+
+function isNullableString(value: unknown): value is string | null {
+  return value === null || typeof value === 'string';
+}
+
 function isInteger(value: unknown, minimum = Number.MIN_SAFE_INTEGER): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= minimum;
 }
 
-function isNullableString(value: unknown) {
-  return value === null || typeof value === 'string';
+function isFieldProvenance(value: unknown): value is FieldProvenance {
+  return (
+    isRecord(value) &&
+    typeof value['provider'] === 'string' &&
+    typeof value['namespace'] === 'string' &&
+    typeof value['external_id'] === 'string' &&
+    isNullableString(value['observation_id']) &&
+    isNullableString(value['revision_id']) &&
+    isNullableString(value['observed_at'])
+  );
 }
 
-function isOptionalNullableString(value: unknown) {
-  return value === undefined || isNullableString(value);
+function isEntityMedia(value: unknown): value is EntityMedia {
+  return (
+    isRecord(value) &&
+    typeof value['url'] === 'string' &&
+    typeof value['purpose'] === 'string' &&
+    typeof value['safety'] === 'string' &&
+    (value['provenance'] === null || isFieldProvenance(value['provenance']))
+  );
 }
 
-function isWeekday(value: unknown): value is WeekdayEn {
-  return typeof value === 'string' && weekdays.some((weekday) => weekday === value);
-}
-
-function isSubjectSummary(value: unknown): value is SubjectSummary & Record<string, unknown> {
+function isEntitySummary(value: unknown): value is EntitySummary & Record<string, unknown> {
   return (
     isRecord(value) &&
     typeof value['id'] === 'string' &&
     Boolean(value['id']) &&
-    typeof value['title'] === 'string' &&
-    isNullableString(value['title_cn']) &&
-    typeof value['subject_type'] === 'string' &&
-    isNullableString(value['date']) &&
-    isNullableString(value['platform']) &&
-    typeof value['nsfw'] === 'boolean' &&
-    isOptionalNullableString(value['image_thumbnail'])
+    typeof value['entity_type'] === 'string' &&
+    typeof value['lifecycle'] === 'string' &&
+    typeof value['audience'] === 'string' &&
+    (value['work_type'] === null || typeof value['work_type'] === 'string') &&
+    typeof value['display_name'] === 'string' &&
+    Array.isArray(value['collections']) &&
+    value['collections'].every(isString) &&
+    Array.isArray(value['media']) &&
+    value['media'].every(isEntityMedia)
   );
 }
 
-function isSubjectDetail(value: unknown): value is SubjectDetail {
+function isEntityDetail(value: unknown): value is EntityDetail {
   return (
-    isSubjectSummary(value) &&
-    isInteger(value['episode_count'], 0) &&
-    isInteger(value['staff_count'], 0) &&
-    isInteger(value['character_count'], 0)
+    isEntitySummary(value) &&
+    Array.isArray(value['names']) &&
+    Array.isArray(value['descriptions']) &&
+    Array.isArray(value['facts']) &&
+    Array.isArray(value['external_links']) &&
+    Array.isArray(value['content_ratings']) &&
+    Array.isArray(value['sources'])
   );
 }
 
-function isSubjectEpisode(value: unknown): value is SubjectEpisode {
+function mediaByPurpose(media: EntityMedia[], purpose: string) {
+  return media.find((item) => item.purpose.toLowerCase() === purpose.toLowerCase())?.url ?? null;
+}
+
+function firstMediaUrl(media: EntityMedia[]) {
+  return media[0]?.url ?? null;
+}
+
+function buildSubjectImages(media: EntityMedia[]) {
+  const poster = mediaByPurpose(media, 'poster') ?? mediaByPurpose(media, 'cover') ?? firstMediaUrl(media);
+  const thumbnail = mediaByPurpose(media, 'thumbnail') ?? poster;
+  const original = mediaByPurpose(media, 'original') ?? poster;
+
+  return {
+    poster,
+    thumbnail,
+    original,
+  };
+}
+
+function buildSubjectSummary(value: EntitySummary): SubjectSummary {
+  const subjectType = value.work_type ?? value.entity_type;
+  const images = buildSubjectImages(value.media);
+  const nsfw = value.audience === 'adult';
+  const platform = null;
+  const sourceId = undefined;
+  const displayMeta = [value.work_type, value.entity_type, value.lifecycle, value.audience].filter(
+    (item): item is string => typeof item === 'string' && Boolean(item),
+  );
+
+  return {
+    ...value,
+    title: value.display_name,
+    title_cn: null,
+    display_title: value.display_name,
+    display_meta: displayMeta,
+    ...(value.collections[0] ? { display_subtitle: value.collections[0] } : {}),
+    subject_type: subjectType,
+    date: null,
+    platform,
+    nsfw,
+    ...(images.poster ? { image: images.poster } : {}),
+    ...(images.thumbnail ? { image_thumbnail: images.thumbnail } : {}),
+    images,
+    ...(images.original ? { image_original: images.original } : {}),
+    ...(sourceId === undefined ? {} : { source_id: sourceId }),
+  };
+}
+
+export const subjectSummaryFromEntity = buildSubjectSummary;
+
+function preferredName(names: Array<{ text: string; language: string; kind: string }>) {
   return (
-    isRecord(value) &&
-    isInteger(value['id'], 1) &&
-    typeof value['title'] === 'string' &&
-    typeof value['type'] === 'string' &&
-    (value['ep_num'] === null || isInteger(value['ep_num'])) &&
-    (value['sort'] === null || isInteger(value['sort'])) &&
-    isNullableString(value['date']) &&
-    isOptionalNullableString(value['duration']) &&
-    (value['description'] === undefined || typeof value['description'] === 'string')
+    names.find((name) => /^zh\b/iu.test(name.language))?.text ??
+    names.find((name) => ['official', 'original'].includes(name.kind))?.text ??
+    names[0]?.text ??
+    null
   );
 }
 
-function isSubjectStaff(value: unknown): value is SubjectStaff {
-  return (
-    isRecord(value) &&
-    isInteger(value['id'], 1) &&
-    typeof value['name'] === 'string' &&
-    (value['role'] === undefined || isNullableString(value['role'])) &&
-    (value['description'] === undefined || typeof value['description'] === 'string') &&
-    isOptionalNullableString(value['image_original']) &&
-    isOptionalNullableString(value['image_thumbnail'])
-  );
+function buildSubjectDetail(value: EntityDetail): SubjectDetail {
+  const summary = buildSubjectSummary(value);
+  const firstDescription = value.descriptions.find((description) => description.is_official) ?? value.descriptions[0];
+  const descriptionText = firstDescription?.text;
+  const titleCn = preferredName(value.names as Array<{ text: string; language: string; kind: string }>);
+
+  return {
+    ...summary,
+    names: value.names,
+    descriptions: value.descriptions,
+    facts: value.facts,
+    external_links: value.external_links,
+    content_ratings: value.content_ratings,
+    sources: value.sources,
+    title_cn: titleCn ?? summary.title_cn,
+    ...(descriptionText ? { summary: descriptionText } : {}),
+    ...(descriptionText ? { description: descriptionText } : {}),
+    ...(descriptionText ? { description_excerpt: descriptionText.slice(0, 240) } : {}),
+    episode_count: 0,
+    staff_count: 0,
+    character_count: 0,
+    infobox: value.facts.map((fact) => ({ key: fact.predicate, value: fact.value })),
+    tags: value.collections,
+    ...(value.sources[0] ? { source: { provider: value.sources[0].provider, id: value.sources[0].external_id } } : {}),
+    ...(value.sources[0] ? { source_id: value.sources[0].external_id } : {}),
+  };
 }
 
-function isSubjectCharacter(value: unknown): value is SubjectCharacter {
-  return (
-    isRecord(value) &&
-    isInteger(value['id'], 1) &&
-    typeof value['name'] === 'string' &&
-    (value['role'] === undefined || isNullableString(value['role'])) &&
-    (value['description'] === undefined || typeof value['description'] === 'string') &&
-    isOptionalNullableString(value['image_original']) &&
-    isOptionalNullableString(value['image_thumbnail']) &&
-    (value['actors'] === undefined || (Array.isArray(value['actors']) && value['actors'].every(isSubjectStaff)))
-  );
+function toNullableDecimal(value: string): number | null {
+  if (value === '') return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
 }
 
-function isSubjectRelation(value: unknown): value is SubjectRelation {
-  return (
-    isRecord(value) &&
-    (value['direction'] === undefined || value['direction'] === 'outgoing' || value['direction'] === 'incoming') &&
-    typeof value['relation'] === 'string' &&
-    isSubjectSummary(value['subject'])
-  );
+function decodeEntityEpisode(value: unknown): SubjectEpisode {
+  if (
+    !isRecord(value) ||
+    typeof value['id'] !== 'string' ||
+    typeof value['title'] !== 'string' ||
+    typeof value['title_cn'] !== 'string' ||
+    typeof value['type'] !== 'string' ||
+    typeof value['number'] !== 'string' ||
+    typeof value['sort'] !== 'string' ||
+    typeof value['air_date'] !== 'string'
+  ) {
+    throw new TypeError('Invalid entity episode response');
+  }
+
+  return {
+    ...(value as unknown as EntityEpisode),
+    ep_num: toNullableDecimal(value['number']),
+    date: value['air_date'],
+  };
 }
 
-function isCalendarItem(value: unknown): value is CalendarSubjectItem {
-  return (
-    isRecord(value) &&
-    typeof value['subject_id'] === 'string' &&
-    Boolean(value['subject_id']) &&
-    typeof value['subject_type'] === 'string' &&
-    typeof value['title'] === 'string' &&
-    isNullableString(value['title_cn']) &&
-    isOptionalNullableString(value['date']) &&
-    isNullableString(value['image_thumbnail']) &&
-    isNullableString(value['platform']) &&
-    typeof value['nsfw'] === 'boolean' &&
-    isWeekday(value['weekday_en']) &&
-    isInteger(value['doing'], 0)
-  );
+function decodeEntityCredit(value: unknown): SubjectStaff {
+  if (!isRecord(value) || !isEntitySummary(value['contributor'])) {
+    throw new TypeError('Invalid entity credit response');
+  }
+
+  const contributor = buildSubjectSummary(value['contributor'] as EntitySummary);
+  return {
+    ...contributor,
+    name: contributor.display_name,
+    role: typeof value['role'] === 'string' ? value['role'] : null,
+    type: typeof value['credited_as'] === 'string' ? value['credited_as'] : null,
+  };
 }
 
-function isCalendarGroup(value: unknown): value is CalendarGroup {
-  return (
-    isRecord(value) &&
-    isRecord(value['weekday']) &&
-    (value['weekday']['id'] === null || isInteger(value['weekday']['id'], 1)) &&
-    isWeekday(value['weekday']['en']) &&
-    Array.isArray(value['items']) &&
-    value['items'].every(isCalendarItem)
-  );
+function decodeEntityCharacter(value: unknown): SubjectCharacter {
+  if (!isRecord(value) || !isEntitySummary(value['character'])) {
+    throw new TypeError('Invalid entity character response');
+  }
+
+  const character = buildSubjectSummary(value['character'] as EntitySummary);
+  return {
+    ...character,
+    name: character.display_name,
+    role: typeof value['role'] === 'string' ? value['role'] : null,
+    type: character.entity_type,
+    actors: [],
+  };
+}
+
+function decodeEntityRelation(value: unknown): SubjectRelation {
+  if (!isRecord(value) || typeof value['relation_type'] !== 'string' || !isEntitySummary(value['target'])) {
+    throw new TypeError('Invalid entity relation response');
+  }
+
+  return {
+    relation: value['relation_type'],
+    subject: buildSubjectSummary(value['target'] as EntitySummary),
+    ...(Array.isArray(value['evidence']) ? { evidence: value['evidence'] as FactEvidence[] } : {}),
+  };
+}
+
+function weekdayFromNumber(value: number | null): WeekdayEn | null {
+  if (value === null || !Number.isInteger(value) || value < 1 || value > 7) return null;
+  return weekdays[value - 1] ?? null;
+}
+
+function calendarEventToItem(value: CalendarEvent): CalendarSubjectItem {
+  const weekday = weekdayFromNumber(value.weekday);
+  return {
+    subject_id: value.work_id,
+    subject_type: 'anime',
+    title: value.raw_value,
+    title_cn: null,
+    display_title: value.raw_value,
+    date: value.starts_at?.slice(0, 10) ?? null,
+    image_url: null,
+    image: null,
+    image_thumbnail: null,
+    platform: value.region || value.timezone,
+    nsfw: false,
+    weekday_en: weekday ?? 'Mon',
+    doing: 0,
+  };
+}
+
+export function decodeCalendarEvents(value: unknown): CalendarEvent[] {
+  if (
+    !Array.isArray(value) ||
+    !value.every(
+      (item) =>
+        isRecord(item) &&
+        isInteger(item['id'], 0) &&
+        typeof item['work_id'] === 'string' &&
+        isNullableString(item['episode_id']) &&
+        isNullableString(item['starts_at']) &&
+        typeof item['timezone'] === 'string' &&
+        typeof item['region'] === 'string' &&
+        (item['weekday'] === null || (isInteger(item['weekday']) && item['weekday'] >= 1 && item['weekday'] <= 7)) &&
+        typeof item['precision'] === 'string' &&
+        typeof item['raw_value'] === 'string',
+    )
+  ) {
+    throw new TypeError('Invalid calendar events response');
+  }
+
+  return value as unknown as CalendarEvent[];
+}
+
+export function decodeCalendarEventsToGroups(value: unknown): CalendarGroup[] {
+  const events = decodeCalendarEvents(value);
+  const groups = new Map<WeekdayEn, CalendarSubjectItem[]>();
+
+  for (const event of events) {
+    const item = calendarEventToItem(event);
+    const weekday = item.weekday_en;
+    const items = groups.get(weekday) ?? [];
+    items.push(item);
+    groups.set(weekday, items);
+  }
+
+  return weekdays.map((weekday) => ({
+    weekday: { id: weekdays.indexOf(weekday) + 1, en: weekday },
+    items: groups.get(weekday) ?? [],
+  }));
 }
 
 function decodeValue<T>(value: unknown, predicate: (candidate: unknown) => candidate is T, message: string): T {
@@ -137,34 +315,22 @@ function decodeValue<T>(value: unknown, predicate: (candidate: unknown) => candi
   return value;
 }
 
-function decodeArray<T>(value: unknown, decodeItem: (item: unknown) => T, message: string): T[] {
-  if (!Array.isArray(value)) throw new TypeError(message);
-  return value.map(decodeItem);
-}
-
 export const decodeSubjectSummary = (value: unknown) =>
-  decodeValue(value, isSubjectSummary, 'Invalid subject summary response');
+  buildSubjectSummary(decodeValue(value, isEntitySummary, 'Invalid entity summary response'));
 export const decodeSubjectDetail = (value: unknown) =>
-  decodeValue(value, isSubjectDetail, 'Invalid subject detail response');
-export const decodeSubjectEpisode = (value: unknown) =>
-  decodeValue(value, isSubjectEpisode, 'Invalid subject episode response');
-export const decodeSubjectStaff = (value: unknown) =>
-  decodeValue(value, isSubjectStaff, 'Invalid subject staff response');
-export const decodeSubjectCharacter = (value: unknown) =>
-  decodeValue(value, isSubjectCharacter, 'Invalid subject character response');
-export const decodeSubjectRelation = (value: unknown) =>
-  decodeValue(value, isSubjectRelation, 'Invalid subject relation response');
+  buildSubjectDetail(decodeValue(value, isEntityDetail, 'Invalid entity detail response'));
+export const decodeSubjectEpisode = decodeEntityEpisode;
+export const decodeSubjectStaff = decodeEntityCredit;
+export const decodeSubjectCharacter = decodeEntityCharacter;
+export const decodeSubjectRelation = decodeEntityRelation;
 
 export function decodeSubjectStaffRoles(value: unknown): { roles: string[] } {
-  if (!isRecord(value) || !Array.isArray(value['roles']) || !value['roles'].every((role) => typeof role === 'string')) {
-    throw new TypeError('Invalid subject staff roles response');
+  if (!isRecord(value) || !Array.isArray(value['roles']) || !value['roles'].every(isString)) {
+    throw new TypeError('Invalid staff roles response');
   }
   return { roles: value['roles'] };
 }
 
-export const decodeCalendarGroups = (value: unknown) =>
-  decodeArray(
-    value,
-    (group) => decodeValue(group, isCalendarGroup, 'Invalid calendar group'),
-    'Invalid calendar response',
-  );
+export const decodeCalendarGroups = decodeCalendarEventsToGroups;
+
+export type { EntityCharacter, EntityCredit, EntityRelation };

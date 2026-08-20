@@ -7,50 +7,72 @@ import {
   decodeSubjectStaffRoles,
 } from './subject';
 
-const subject = {
+const entity = {
   id: '01980f00-0000-7000-8000-000000000001',
-  title: 'Subject',
-  title_cn: null,
-  subject_type: 'anime',
-  date: null,
-  platform: null,
-  nsfw: false,
+  entity_type: 'work',
+  lifecycle: 'active',
+  audience: 'general',
+  work_type: 'anime',
+  display_name: 'Subject',
+  collections: [],
+  media: [],
+};
+
+const detail = {
+  ...entity,
+  names: [],
+  descriptions: [],
+  facts: [],
+  external_links: [],
+  content_ratings: [],
+  sources: [],
 };
 
 describe('subject response decoders', () => {
-  it('validates detail counters and episode identifiers', () => {
-    expect(decodeSubjectDetail({ ...subject, episode_count: 12, staff_count: 3, character_count: 4 })).toMatchObject({
-      episode_count: 12,
-    });
-    expect(() => decodeSubjectDetail({ ...subject, episode_count: -1, staff_count: 3, character_count: 4 })).toThrow(
-      TypeError,
-    );
-    expect(decodeSubjectEpisode({ id: 1, title: 'Episode', type: 'EP', ep_num: 1, sort: 1, date: null })).toMatchObject(
-      { id: 1 },
-    );
+  it('validates detail and episode identifiers', () => {
+    expect(decodeSubjectDetail(detail)).toMatchObject({ id: entity.id });
+    expect(() => decodeSubjectDetail({ ...detail, id: '' })).toThrow(TypeError);
+    expect(
+      decodeSubjectEpisode({
+        id: '1',
+        title: 'Episode',
+        title_cn: '',
+        type: 'EP',
+        number: '1',
+        sort: '1',
+        disc: 0,
+        duration: '',
+        raw_duration: '',
+        air_date: '',
+        comment_count: 0,
+        description: '',
+        provenance: null,
+      }),
+    ).toMatchObject({ id: '1', ep_num: 1 });
   });
 
-  it('validates relation direction and staff role lists', () => {
-    expect(decodeSubjectRelation({ direction: 'outgoing', relation: 'sequel', subject })).toMatchObject({
-      relation: 'sequel',
-    });
-    expect(() => decodeSubjectRelation({ direction: 'sideways', relation: 'sequel', subject })).toThrow(TypeError);
+  it('validates relation and staff role lists', () => {
+    expect(decodeSubjectRelation({ relation_type: 'sequel', target: entity, qualifiers: {}, evidence: [] })).toMatchObject(
+      { relation: 'sequel' },
+    );
+    expect(() => decodeSubjectRelation({ relation_type: 1, target: entity })).toThrow(TypeError);
     expect(decodeSubjectStaffRoles({ roles: ['director', 'writer'] })).toEqual({ roles: ['director', 'writer'] });
   });
 
-  it('validates calendar grouping and weekday consistency', () => {
-    const item = {
-      subject_id: subject.id,
-      subject_type: 'anime',
-      title: 'Subject',
-      title_cn: null,
-      image_thumbnail: null,
-      platform: null,
-      nsfw: false,
-      weekday_en: 'Mon',
-      doing: 3,
+  it('validates calendar events and weekday consistency', () => {
+    const event = {
+      id: 1,
+      work_id: entity.id,
+      episode_id: null,
+      starts_at: '2026-07-29T00:00:00Z',
+      timezone: 'UTC',
+      region: 'JP',
+      weekday: 1,
+      precision: 'day',
+      raw_value: 'Subject',
+      provenance: null,
     };
-    expect(decodeCalendarGroups([{ weekday: { id: 1, en: 'Mon' }, items: [item] }])).toHaveLength(1);
-    expect(() => decodeCalendarGroups([{ weekday: { id: 8, en: 'Someday' }, items: [item] }])).toThrow(TypeError);
+    expect(decodeCalendarGroups([event])).toHaveLength(7);
+    expect(() => decodeCalendarGroups([{ ...event, weekday: 8 }])).toThrow(TypeError);
   });
 });

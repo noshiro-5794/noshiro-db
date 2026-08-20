@@ -94,7 +94,7 @@ export function ActivityTimelineItem({
           ) : null}
 
           {targetSubject?.id ? (
-            <Link className="activity-subject-preview" to={routes.subject(targetSubject.id)}>
+            <Link className="activity-subject-preview" to={routes.entity(targetSubject.id)}>
               {cover ? (
                 <img alt="" decoding="async" loading="lazy" referrerPolicy="no-referrer" src={cover} />
               ) : (

@@ -33,6 +33,9 @@ describe('session response decoders', () => {
         bio: 'Hello',
         language: 'zh-CN',
         appearance: 'dark',
+        theme_color: '#66ccff',
+        show_adult_content: false,
+        adult_content_confirmed_at: null,
         ignored_server_field: 'not propagated',
       }),
     ).toEqual({
@@ -45,6 +48,9 @@ describe('session response decoders', () => {
       bio: 'Hello',
       language: 'zh-CN',
       appearance: 'dark',
+      theme_color: '#66ccff',
+      show_adult_content: false,
+      adult_content_confirmed_at: null,
     });
   });
 
@@ -56,6 +62,12 @@ describe('session response decoders', () => {
       is_superuser: false,
       nickname: 'User',
       avatar: null,
+      bio: '',
+      language: null,
+      appearance: null,
+      theme_color: '',
+      show_adult_content: false,
+      adult_content_confirmed_at: null,
     };
 
     expect(() => decodeCurrentUserProfile({ ...base, is_staff: 'false' })).toThrow(TypeError);

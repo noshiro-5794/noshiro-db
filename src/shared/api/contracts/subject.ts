@@ -1,13 +1,55 @@
-import type { DateString, ISODateString, OpenString, UUID } from './common';
+import type { DateString, ISODateString, UUID } from './common';
+import type {
+  EntityDetail,
+  EntitySummary,
+  WorkType,
+  EntityCharacter,
+  EntityCredit,
+  EntityEpisode,
+  EntityRelease,
+  FactEvidence,
+} from './entity';
 
-export type PrimarySubjectType = 'anime' | 'galgame';
+export type {
+  CalendarEvent,
+  EntityAudience,
+  EntityCharacter,
+  EntityContentRating,
+  EntityCredit,
+  EntityDescription,
+  EntityDetail,
+  EntityEpisode,
+  EntityEvidence,
+  EntityExternalLink,
+  EntityFact,
+  EntityKind,
+  EntityLifecycle,
+  EntityMedia,
+  EntityMetric,
+  EntityName,
+  EntityRelation,
+  EntityRelease,
+  EntitySafety,
+  EntitySource,
+  EntitySummary,
+  FactEvidence,
+  FieldProvenance,
+  IndexCollection,
+  WorkType,
+} from './entity';
 
-export type SubjectType = PrimarySubjectType | (string & {});
+export type PrimarySubjectType = Extract<WorkType, 'anime' | 'galgame'>;
+export type SubjectType = string;
 
 export type WeekdayEn = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
 
-export type SubjectSummary = {
-  id: UUID;
+export type SubjectImages = {
+  poster?: string | null;
+  thumbnail?: string | null;
+  original?: string | null;
+};
+
+export type SubjectSummary = EntitySummary & {
   title: string;
   title_cn: string | null;
   title_original?: string;
@@ -22,11 +64,7 @@ export type SubjectSummary = {
   nsfw: boolean;
   image?: string | null;
   image_thumbnail?: string | null;
-  images?: {
-    poster?: string | null;
-    thumbnail?: string | null;
-    original?: string | null;
-  };
+  images?: SubjectImages;
   image_original?: string | null;
   description?: string;
   description_excerpt?: string;
@@ -44,10 +82,8 @@ export type SubjectSummary = {
   created_at?: ISODateString;
 };
 
-export type SubjectDetail = SubjectSummary & {
+export type SubjectDetail = EntityDetail & SubjectSummary & {
   summary?: string;
-  description?: string;
-  image_original?: string | null;
   episode_count: number;
   staff_count: number;
   character_count: number;
@@ -55,19 +91,12 @@ export type SubjectDetail = SubjectSummary & {
   tags?: string[];
 };
 
-export type SubjectEpisode = {
-  id: number;
-  title: string;
-  type: string;
+export type SubjectEpisode = EntityEpisode & {
   ep_num: number | null;
-  sort: number | null;
-  duration?: string | null;
   date: DateString | null;
-  description?: string;
 };
 
-export type SubjectStaff = {
-  id: number;
+export type SubjectStaff = EntitySummary & {
   name: string;
   name_cn?: string | null;
   role?: string | null;
@@ -76,19 +105,14 @@ export type SubjectStaff = {
   birth?: unknown;
   career?: unknown;
   image?: string | null;
-  images?: {
-    poster?: string | null;
-    thumbnail?: string | null;
-    original?: string | null;
-  };
+  images?: SubjectImages;
   image_original?: string | null;
   image_thumbnail?: string | null;
   infobox?: unknown;
   type?: string | null;
 };
 
-export type SubjectCharacter = {
-  id: number;
+export type SubjectCharacter = EntitySummary & {
   name: string;
   name_cn?: string | null;
   role?: string | null;
@@ -97,11 +121,7 @@ export type SubjectCharacter = {
   birth?: unknown;
   blood_type?: string;
   image?: string | null;
-  images?: {
-    poster?: string | null;
-    thumbnail?: string | null;
-    original?: string | null;
-  };
+  images?: SubjectImages;
   image_original?: string | null;
   image_thumbnail?: string | null;
   infobox?: unknown;
@@ -110,9 +130,10 @@ export type SubjectCharacter = {
 };
 
 export type SubjectRelation = {
-  direction?: 'outgoing' | 'incoming' | OpenString;
+  direction?: 'outgoing' | 'incoming' | string;
   relation: string;
   subject: SubjectSummary;
+  evidence?: FactEvidence[];
 };
 
 export type CalendarSubjectItem = {
@@ -127,11 +148,7 @@ export type CalendarSubjectItem = {
   image_url?: string | null;
   image?: string | null;
   image_thumbnail: string | null;
-  images?: {
-    poster?: string | null;
-    thumbnail?: string | null;
-    original?: string | null;
-  };
+  images?: SubjectImages;
   platform: string | null;
   nsfw: boolean;
   weekday_en: WeekdayEn;
@@ -145,3 +162,7 @@ export type CalendarGroup = {
   };
   items: CalendarSubjectItem[];
 };
+
+export type EntityStaff = EntityCredit;
+export type EntityStaffCharacter = EntityCharacter;
+export type EntityReleaseRelation = EntityRelease;

@@ -30,7 +30,7 @@ import { Button } from '@/shared/ui/Button';
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/FeedbackState';
 import { Page } from '@/shared/ui/Page';
 
-const subjectRoute = getRouteApi('/subjects/$subjectId');
+const subjectRoute = getRouteApi('/entities/$subjectId');
 
 export function SubjectPage() {
   const { t } = useI18n();
@@ -105,7 +105,7 @@ export function SubjectPage() {
           type="button"
           variant="secondary"
         >
-          <Link params={{ subjectId: subject.id }} title={t('subject.graph')} to="/subjects/$subjectId/graph">
+          <Link params={{ subjectId: subject.id }} title={t('subject.graph')} to="/entities/$subjectId/graph">
             <Network className="size-4" />
           </Link>
         </Button>
@@ -115,7 +115,7 @@ export function SubjectPage() {
         title={titleOf(subject, t('common.untitledSubject'))}
         description={seoDescriptionOf(subject)}
         image={seoImageOf(subject)}
-        path={routes.subject(subject.id)}
+        path={routes.entity(subject.id)}
       />
       <SubjectSectionNav />
       <div className="grid items-start gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">

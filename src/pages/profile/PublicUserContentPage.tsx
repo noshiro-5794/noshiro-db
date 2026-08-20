@@ -8,7 +8,7 @@ import {
 } from '@/shared/routing/route-search';
 
 const publicReviewsRoute = getRouteApi('/users/$userId/reviews');
-const publicSubjectsRoute = getRouteApi('/users/$userId/subjects');
+const publicSubjectsRoute = getRouteApi('/users/$userId/entities');
 const publicCollectionsRoute = getRouteApi('/users/$userId/collections');
 
 export function PublicReviewsPage() {

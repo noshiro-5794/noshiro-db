@@ -198,7 +198,7 @@ export function SearchShowcase() {
                 state={subjectLinkState}
                 subtitle={subject.display_subtitle || subject.subject_type}
                 title={subjectTitleOf(subject, t('common.untitledSubject'))}
-                to={routes.subject(subject.id)}
+                to={routes.entity(subject.id)}
               />
             ))
           : calendarItems.map((item) => (
@@ -211,7 +211,7 @@ export function SearchShowcase() {
                 state={subjectLinkState}
                 subtitle={item.display_subtitle || item.subject_type}
                 title={titleOf(item, t('common.untitledSubject'))}
-                to={routes.subject(item.subject_id)}
+                to={routes.entity(item.subject_id)}
               />
             ))}
       </div>

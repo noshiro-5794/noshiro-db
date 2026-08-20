@@ -60,7 +60,7 @@ export function ProfileActivityTimeline({
                   <Link
                     className="mt-3 grid min-w-0 grid-cols-[36px_minmax(0,1fr)] items-center gap-2.5 border-l-2 border-border px-2 py-1.5 transition-colors hover:border-[var(--ui-accent-border)] hover:bg-muted"
                     data-slot="profile-activity-subject"
-                    to={routes.subject(activity.subject.id)}
+                    to={routes.entity(activity.subject.id)}
                   >
                     <img
                       alt=""

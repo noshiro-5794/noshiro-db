@@ -63,7 +63,7 @@ function ReviewEditorPage({ onCreated, reviewId: reviewIdParam, subjectIdParam }
   const subject = reviewQuery.data?.subject ?? subjectQuery.data;
   const subjectTitle = subject?.display_title || subject?.title || t('common.untitledSubject');
   const canCreate = !isEditing && Boolean(subjectId);
-  const fallbackBackTarget = subject?.id ? routes.subject(subject.id) : routes.reviews;
+  const fallbackBackTarget = subject?.id ? routes.entity(subject.id) : routes.reviews;
   const backTarget = backTargetFromState(location, fallbackBackTarget);
 
   const createReviewMutation = useMutation({

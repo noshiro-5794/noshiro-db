@@ -13,7 +13,7 @@ const subjectQueryKeys = {
   detail: (subjectId: UUID) => [...subjectQueryKeys.details(), subjectId] as const,
   episodes: (subjectId: UUID, query?: object) =>
     [...subjectQueryKeys.detail(subjectId), 'episodes', query ?? 'default'] as const,
-  episode: (subjectId: UUID, episodeId: number) =>
+  episode: (subjectId: UUID, episodeId: string | number) =>
     [...subjectQueryKeys.detail(subjectId), 'episodes', episodeId] as const,
   staff: (subjectId: UUID, query?: SubjectStaffQuery) =>
     [...subjectQueryKeys.detail(subjectId), 'staff', query ?? 'default'] as const,
@@ -47,10 +47,14 @@ export const subjectQueries = {
       queryFn: ({ signal }) => indexApi.listSubjectEpisodes(subjectId, query, { signal }),
     }),
 
-  episode: (subjectId: UUID, episodeId: number) =>
+  episode: (subjectId: UUID, episodeId: string | number) =>
     queryOptions({
       queryKey: subjectQueryKeys.episode(subjectId, episodeId),
-      queryFn: ({ signal }) => indexApi.getSubjectEpisode(subjectId, episodeId, { signal }),
+      queryFn: async ({ signal }) => {
+        const episode = await indexApi.getSubjectEpisode(subjectId, episodeId, { signal });
+        if (!episode) throw new TypeError('Episode not found');
+        return episode;
+      },
     }),
 
   allEpisodes: (subjectId: UUID) =>

@@ -118,7 +118,7 @@ function BookmarkCard({
         <Link
           aria-label={subject ? subjectTitle : title}
           state={state}
-          {...resolvedRouteHref(subject ? routes.subject(subject.id) : href)}
+          {...resolvedRouteHref(subject ? routes.entity(subject.id) : href)}
         >
           {canShowCollectionCover && author?.id ? (
             <BookmarkCollectionCover collectionId={bookmark.target_id} userId={author.id} />
@@ -198,7 +198,7 @@ function BookmarkCard({
 
         {subject ? (
           <ContentRowReference>
-            <Link params={{ subjectId: subject.id }} state={state} to="/subjects/$subjectId">
+            <Link params={{ subjectId: subject.id }} state={state} to="/entities/$subjectId">
               <span>{subjectTitle}</span>
               {subject.subject_type ? <small>{subject.subject_type}</small> : null}
             </Link>

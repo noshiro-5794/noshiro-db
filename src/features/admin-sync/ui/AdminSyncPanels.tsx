@@ -5,8 +5,8 @@ import type {
   IncrementalSyncRunResult,
   QueuedTask,
   SubjectResyncResult,
-  SyncJob,
   SyncTaskStatus,
+  ImportJob,
 } from '@/shared/api';
 import { useI18n } from '@/shared/i18n';
 import { cn } from '@/shared/lib/cn';
@@ -14,7 +14,6 @@ import { formatDateTime, formatTime } from '@/shared/lib/date';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import { ListSurface } from '@/shared/ui/DataView';
-import { Pagination } from '@/shared/ui/Pagination';
 
 export type AdminSyncResult =
   | {
@@ -37,14 +36,8 @@ function getIncrementalResults(data: Exclude<IncrementalSyncRunResult, QueuedTas
   return 'results' in data ? data.results : [data];
 }
 
-function jobTypeLabel(jobType: string, t: ReturnType<typeof useI18n>['t']) {
-  const labels: Record<string, string> = {
-    subject_bangumi: t('admin.jobSubjectBangumi'),
-    subject_resync: t('admin.jobSubjectResync'),
-    calendar: t('admin.jobCalendar'),
-    incremental: t('admin.jobIncremental'),
-  };
-  return labels[jobType] ?? jobType.replaceAll('_', ' ');
+function jobTypeLabel(job: ImportJob) {
+  return job.provider || job.id;
 }
 
 function jobStatusVariant(status: string): 'accent' | 'danger' | 'secondary' | 'success' {
@@ -54,9 +47,9 @@ function jobStatusVariant(status: string): 'accent' | 'danger' | 'secondary' | '
   return 'secondary';
 }
 
-function jobProgress(job: SyncJob) {
-  if (job.total_count <= 0) return job.status === 'succeeded' ? 100 : 0;
-  return Math.max(0, Math.min(100, Math.round((job.processed_count / job.total_count) * 100)));
+function jobProgress(job: ImportJob) {
+  if (job.progress.total <= 0) return job.status === 'succeeded' ? 100 : 0;
+  return Math.max(0, Math.min(100, Math.round((job.progress.processed / job.progress.total) * 100)));
 }
 
 export function AdminResultPanel({ result }: { result: AdminSyncResult | null }) {
@@ -210,19 +203,18 @@ export function AdminStatusList({ tasks }: { tasks: SyncTaskStatus[] }) {
 }
 
 export function AdminSyncJobList({
-  currentPage,
   isRefreshing,
   jobs,
+  hasNextPage,
+  onLoadMore,
   onRefresh,
-  onPageChange,
-  totalPages,
 }: {
-  currentPage: number;
+  cursor?: string;
+  hasNextPage: boolean;
   isRefreshing: boolean;
-  jobs: SyncJob[];
+  jobs: ImportJob[];
+  onLoadMore: () => void;
   onRefresh: () => void;
-  onPageChange: (page: number) => void;
-  totalPages: number;
 }) {
   const { t } = useI18n();
 
@@ -252,7 +244,7 @@ export function AdminSyncJobList({
         <ListSurface data-slot="admin-sync-runs">
           {jobs.map((job) => {
             const percent = jobProgress(job);
-            const jobLabel = jobTypeLabel(job.job_type, t);
+            const jobLabel = jobTypeLabel(job);
             return (
               <article
                 className="grid min-w-0 gap-3 border-b border-border-subtle px-3 py-3 last:border-b-0 sm:px-4"
@@ -266,7 +258,7 @@ export function AdminSyncJobList({
                       <Badge variant={jobStatusVariant(job.status)}>{job.status}</Badge>
                     </div>
                     <p className="m-0 mt-0.5 truncate text-xs text-muted-foreground">
-                      {job.current_label || job.celery_task_id || job.id}
+                      {job.progress.current_label || job.id}
                     </p>
                   </div>
                   <time className="shrink-0 text-xs text-subtle-foreground" dateTime={job.updated_at}>
@@ -290,8 +282,8 @@ export function AdminSyncJobList({
                   </div>
                   <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
                     <span className="tabular-nums">
-                      {job.processed_count}
-                      {job.total_count > 0 ? ` / ${job.total_count}` : ''} {t('admin.processed')}
+                      {job.progress.processed}
+                      {job.progress.total > 0 ? ` / ${job.progress.total}` : ''} {t('admin.processed')}
                     </span>
                     <span className="tabular-nums text-subtle-foreground">{percent}%</span>
                   </div>
@@ -299,13 +291,13 @@ export function AdminSyncJobList({
 
                 <div className="flex min-w-0 flex-wrap gap-x-4 gap-y-1 border-t border-border-subtle pt-2 text-xs text-muted-foreground">
                   <span className="tabular-nums">
-                    <strong className="font-medium text-foreground">{job.synced_count}</strong> {t('admin.synced')}
+                    <strong className="font-medium text-foreground">{job.progress.synced}</strong> {t('admin.synced')}
                   </span>
                   <span className="tabular-nums">
-                    <strong className="font-medium text-foreground">{job.skipped_count}</strong> {t('admin.skipped')}
+                    <strong className="font-medium text-foreground">{job.progress.skipped}</strong> {t('admin.skipped')}
                   </span>
-                  <span className={cn('tabular-nums', job.failed_count > 0 && 'text-[var(--ui-danger-text)]')}>
-                    <strong className="font-medium">{job.failed_count}</strong> {t('admin.failed')}
+                  <span className={cn('tabular-nums', job.progress.failed > 0 && 'text-[var(--ui-danger-text)]')}>
+                    <strong className="font-medium">{job.progress.failed}</strong> {t('admin.failed')}
                   </span>
                   <span className="sm:ml-auto">
                     {job.started_at ? `${t('admin.started')} ${formatTime(job.started_at)}` : t('admin.waiting')}
@@ -322,7 +314,11 @@ export function AdminSyncJobList({
           })}
         </ListSurface>
       )}
-      <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={onPageChange} />
+      {hasNextPage ? (
+        <Button disabled={isRefreshing} size="sm" type="button" variant="secondary" onClick={onLoadMore}>
+          {t('community.loadMore')}
+        </Button>
+      ) : null}
     </section>
   );
 }

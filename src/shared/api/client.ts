@@ -6,10 +6,21 @@ type QueryPrimitive = string | number | boolean;
 export type QueryParams = Record<string, QueryPrimitive | QueryPrimitive[] | null | undefined>;
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
-export type ApiEnvelope<T> = {
+type ApiEnvelope<T> = {
   code: number;
   message: string;
   data: T;
+};
+
+type ProblemDetails = {
+  type?: string | undefined;
+  title?: string | undefined;
+  status?: number | undefined;
+  detail?: string | undefined;
+  instance?: string | undefined;
+  trace_id?: string | undefined;
+  code?: string | undefined;
+  errors?: unknown;
 };
 
 type ApiResponseDecoder<TData> = (value: unknown) => TData;
@@ -50,15 +61,41 @@ export function setSessionExpiredHandler(handler: (() => void) | null) {
 
 export class ApiError extends Error {
   readonly status: number;
-  readonly code: number;
+  readonly code: string | number | null;
+  readonly type: string | null;
+  readonly title: string | null;
+  readonly detail: string | null;
+  readonly instance: string | null;
+  readonly traceId: string | null;
+  readonly errors: unknown;
   readonly data: unknown;
   readonly url: string;
 
-  constructor(message: string, options: { status: number; code: number; data: unknown; url: string }) {
+  constructor(
+    message: string,
+    options: {
+      status: number;
+      code?: string | number | null;
+      data?: unknown;
+      url: string;
+      type?: string | null;
+      title?: string | null;
+      detail?: string | null;
+      instance?: string | null;
+      traceId?: string | null;
+      errors?: unknown;
+    },
+  ) {
     super(message);
     this.name = 'ApiError';
     this.status = options.status;
-    this.code = options.code;
+    this.code = options.code ?? null;
+    this.type = options.type ?? null;
+    this.title = options.title ?? null;
+    this.detail = options.detail ?? null;
+    this.instance = options.instance ?? null;
+    this.traceId = options.traceId ?? null;
+    this.errors = options.errors;
     this.data = options.data;
     this.url = options.url;
   }
@@ -94,6 +131,59 @@ function parseEnvelope(text: string): ApiEnvelope<unknown> | null {
   } catch {
     return null;
   }
+}
+
+function parseProblemDetails(value: unknown): ProblemDetails | null {
+  if (!isRecord(value) || typeof value['status'] !== 'number') {
+    return null;
+  }
+
+  const optionalString = (key: string): string | undefined => {
+    const candidate = value[key];
+    return typeof candidate === 'string' ? candidate : undefined;
+  };
+
+  return {
+    ...(optionalString('type') === undefined ? {} : { type: optionalString('type') }),
+    ...(optionalString('title') === undefined ? {} : { title: optionalString('title') }),
+    status: value['status'],
+    ...(optionalString('detail') === undefined ? {} : { detail: optionalString('detail') }),
+    ...(optionalString('instance') === undefined ? {} : { instance: optionalString('instance') }),
+    ...(optionalString('trace_id') === undefined ? {} : { trace_id: optionalString('trace_id') }),
+    ...(optionalString('code') === undefined ? {} : { code: optionalString('code') }),
+    ...(value['errors'] === undefined ? {} : { errors: value['errors'] }),
+  };
+}
+
+function parseSuccessPayload(text: string): { kind: 'empty' | 'payload'; data: unknown } | null {
+  if (!text) return { kind: 'empty', data: null };
+
+  try {
+    const value: unknown = JSON.parse(text);
+    if (isRecord(value) && typeof value['code'] === 'number' && typeof value['message'] === 'string' && Object.hasOwn(value, 'data')) {
+      return { kind: 'payload', data: value['data'] };
+    }
+    return { kind: 'payload', data: value };
+  } catch {
+    return null;
+  }
+}
+
+function errorPayload(text: string): {
+  problem: ProblemDetails | null;
+  legacy: ApiEnvelope<unknown> | null;
+} {
+  let value: unknown = null;
+  try {
+    value = text ? JSON.parse(text) : null;
+  } catch {
+    value = null;
+  }
+
+  return {
+    problem: parseProblemDetails(value),
+    legacy: parseEnvelope(text),
+  };
 }
 
 function isBodyInit(value: unknown): value is BodyInit {
@@ -226,13 +316,13 @@ export async function apiRequest<TData, TBody = unknown>(path: string, options: 
   });
 
   const responseText = await response.text();
-  const payload = parseEnvelope(responseText);
+  const parsedSuccess = parseSuccessPayload(responseText);
 
   if (response.status === 204) {
     return null as TData;
   }
 
-  if (!response.ok || !payload || payload.code !== 0) {
+  if (!response.ok || parsedSuccess === null) {
     if (response.status === 401 && requestAccessToken && accessToken === requestAccessToken) {
       if (retryOnUnauthorized && accessTokenRefresher) {
         await refreshAccessTokenOnce();
@@ -248,21 +338,35 @@ export async function apiRequest<TData, TBody = unknown>(path: string, options: 
       }
     }
 
-    throw new ApiError(
-      (payload?.message ?? response.statusText) || (response.ok ? 'Invalid API response' : 'Request failed'),
-      {
-        status: response.status,
-        code: payload?.code ?? -1,
-        data: payload?.data ?? (responseText.slice(0, 1600) || null),
-        url,
-      },
-    );
+    const { problem, legacy } = errorPayload(responseText);
+    const data = problem ? null : legacy?.data ?? (responseText.slice(0, 1600) || null);
+    const message =
+      problem?.detail ||
+      problem?.title ||
+      legacy?.message ||
+      response.statusText ||
+      (response.ok ? 'Invalid API response' : 'Request failed');
+
+    throw new ApiError(message, {
+      status: response.status,
+      code: problem?.code ?? legacy?.code ?? (problem ? null : -1),
+      data,
+      url,
+      type: problem?.type ?? null,
+      title: problem?.title ?? null,
+      detail: problem?.detail ?? null,
+      instance: problem?.instance ?? null,
+      traceId: problem?.trace_id ?? null,
+      errors: problem?.errors,
+    });
   }
 
-  if (!decode) return payload.data as TData;
+  const payloadData = parsedSuccess.kind === 'empty' ? null : parsedSuccess.data;
+
+  if (!decode) return payloadData as TData;
 
   try {
-    return decode(payload.data);
+    return decode(payloadData);
   } catch {
     throw new ApiError('Invalid API response data', {
       status: response.status,

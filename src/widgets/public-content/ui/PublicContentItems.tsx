@@ -82,7 +82,7 @@ export function PublicReviewItem({ review }: { review: Review }) {
       subject={
         review.subject
           ? {
-              href: routes.subject(review.subject.id),
+              href: routes.entity(review.subject.id),
               title: reviewSubjectTitle(review, t('common.untitledSubject')),
             }
           : undefined
@@ -161,7 +161,7 @@ export function PublicCollectionItemCard({ item }: { item: CollectionItem }) {
       <Link
         aria-label={collectionSubjectTitle(item, t('common.untitledSubject'))}
         className="block aspect-[2/3] overflow-hidden rounded-sm border border-border bg-muted transition-[border-color,box-shadow] hover:border-[var(--ui-accent-border)] hover:shadow-[var(--ui-shadow-surface)]"
-        to={routes.subject(item.subject.id)}
+        to={routes.entity(item.subject.id)}
       >
         <img
           alt=""
@@ -176,7 +176,7 @@ export function PublicCollectionItemCard({ item }: { item: CollectionItem }) {
         <h3 className="m-0 text-sm font-semibold leading-5 text-foreground">
           <Link
             className="line-clamp-2 transition-colors hover:text-[var(--ui-accent-text)]"
-            to={routes.subject(item.subject.id)}
+            to={routes.entity(item.subject.id)}
           >
             {collectionSubjectTitle(item, t('common.untitledSubject'))}
           </Link>

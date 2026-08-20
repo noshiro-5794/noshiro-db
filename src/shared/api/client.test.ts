@@ -63,7 +63,7 @@ describe('API client', () => {
     },
   );
 
-  it('rejects a malformed success envelope', async () => {
+  it('accepts a raw JSON success body', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(JSON.stringify({ code: 0, value: 'missing data and message' }), {
         headers: { 'Content-Type': 'application/json' },
@@ -73,11 +73,7 @@ describe('API client', () => {
 
     const request = api.get('/api/items/');
 
-    await expect(request).rejects.toMatchObject({
-      code: -1,
-      message: 'Invalid API response',
-      status: 200,
-    } satisfies Partial<ApiError>);
+    await expect(request).resolves.toEqual({ code: 0, value: 'missing data and message' });
   });
 
   it('converts response decoder failures into a safe API error', async () => {

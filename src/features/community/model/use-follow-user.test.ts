@@ -13,7 +13,7 @@ const profile: PublicUserProfile = {
     follower_count: 2,
     following_count: 0,
     review_count: 0,
-    subject_count: 0,
+    library_entry_count: 0,
   },
 };
 
