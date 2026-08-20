@@ -1,7 +1,7 @@
 import {
   api,
   decodeApiPage,
-  decodeCalendarGroups,
+  decodeCalendarEventsToGroups,
   decodeSubjectCharacter,
   decodeSubjectDetail,
   decodeSubjectEpisode,
@@ -28,6 +28,9 @@ import type {
 } from '@/shared/api';
 
 export type SubjectListQuery = PageQuery & {
+  query?: string;
+  scope?: string;
+  collection?: string;
   keyword?: string;
   source_id?: string;
   subject_type?: PrimarySubjectType;
@@ -169,7 +172,7 @@ async function getBangumiSubject(subjectId: number, context: ApiRequestContext =
   let response: Response;
 
   try {
-    response = await fetch(`https://api.bgm.tv/v0/subjects/${encodeURIComponent(String(subjectId))}`, {
+    response = await fetch(`https://api.bgm.tv/v0/entities/${encodeURIComponent(String(subjectId))}`, {
       headers: {
         Accept: 'application/json',
       },
@@ -216,14 +219,14 @@ async function getBangumiSubject(subjectId: number, context: ApiRequestContext =
 
 export const indexApi = {
   listSubjects: (query: SubjectListQuery = {}, context: ApiRequestContext = {}) =>
-    api.get<ApiPage<SubjectSummary>>('/api/index/subjects/', {
+    api.get<ApiPage<SubjectSummary>>('/api/v1/index/entities/', {
       ...context,
       decode: (value) => decodeApiPage(value, decodeSubjectSummary),
       query,
     }),
 
   getSubject: (subjectId: UUID, context: ApiRequestContext = {}) =>
-    api.get<SubjectDetail>(`/api/index/subjects/${encodePath(subjectId)}/`, {
+    api.get<SubjectDetail>(`/api/v1/index/entities/${encodePath(subjectId)}/`, {
       ...context,
       decode: decodeSubjectDetail,
     }),
@@ -233,47 +236,88 @@ export const indexApi = {
     query: SubjectEpisodeQuery = { page_size: 96 },
     context: ApiRequestContext = {},
   ) =>
-    api.get<ApiPage<SubjectEpisode>>(`/api/index/subjects/${encodePath(subjectId)}/episodes/`, {
+    api.get<ApiPage<SubjectEpisode>>(`/api/v1/index/entities/${encodePath(subjectId)}/episodes/`, {
       ...context,
       decode: (value) => decodeApiPage(value, decodeSubjectEpisode),
       query,
     }),
 
-  getSubjectEpisode: (subjectId: UUID, episodeId: number, context: ApiRequestContext = {}) =>
-    api.get<SubjectEpisode>(`/api/index/subjects/${encodePath(subjectId)}/episodes/${encodePath(episodeId)}/`, {
-      ...context,
-      decode: decodeSubjectEpisode,
-    }),
+  getSubjectEpisode: (subjectId: UUID, episodeId: string | number, context: ApiRequestContext = {}) =>
+    indexApi
+      .listSubjectEpisodes(subjectId, { page: 1, page_size: 100 }, context)
+      .then((page) => page.results.find((episode) => episode.id === String(episodeId)) ?? null),
 
   listSubjectStaff: (subjectId: UUID, query: SubjectStaffQuery = {}, context: ApiRequestContext = {}) =>
-    api.get<ApiPage<SubjectStaff>>(`/api/index/subjects/${encodePath(subjectId)}/staff/`, {
-      ...context,
-      decode: (value) => decodeApiPage(value, decodeSubjectStaff),
-      query,
-    }),
+    api
+      .get<SubjectStaff[]>(`/api/v1/index/entities/${encodePath(subjectId)}/credits/`, {
+        ...context,
+        decode: (value) => {
+          if (!Array.isArray(value)) throw new TypeError('Invalid entity credits response');
+          return value.map(decodeSubjectStaff);
+        },
+      })
+      .then((staff) => {
+        const role = query.role;
+        const filtered = role ? staff.filter((item) => item.role === role) : staff;
+        const page = query.page ?? 1;
+        const pageSize = query.page_size ?? (filtered.length || 1);
+        const start = (page - 1) * pageSize;
+        return {
+          count: filtered.length,
+          next: null,
+          previous: null,
+          results: filtered.slice(start, start + pageSize),
+        };
+      }),
 
   listSubjectStaffRoles: (subjectId: UUID, context: ApiRequestContext = {}) =>
-    api.get<{ roles: string[] }>(`/api/index/subjects/${encodePath(subjectId)}/staff/roles/`, {
-      ...context,
-      decode: decodeSubjectStaffRoles,
-    }),
+    indexApi
+      .listSubjectStaff(subjectId, { page: 1, page_size: 1_000 }, context)
+      .then((page) =>
+        decodeSubjectStaffRoles({
+          roles: [
+            ...new Set(
+              page.results
+                .map((item) => item.role)
+                .filter((role): role is string => typeof role === 'string' && Boolean(role)),
+            ),
+          ],
+        }),
+      ),
 
   listSubjectCharacters: (subjectId: UUID, query: PageQuery = {}, context: ApiRequestContext = {}) =>
-    api.get<ApiPage<SubjectCharacter>>(`/api/index/subjects/${encodePath(subjectId)}/characters/`, {
+    api.get<ApiPage<SubjectCharacter>>(`/api/v1/index/entities/${encodePath(subjectId)}/characters/`, {
       ...context,
       decode: (value) => decodeApiPage(value, decodeSubjectCharacter),
       query,
     }),
 
   listSubjectRelations: (subjectId: UUID, query: PageQuery = {}, context: ApiRequestContext = {}) =>
-    api.get<ApiPage<SubjectRelation>>(`/api/index/subjects/${encodePath(subjectId)}/relations/`, {
-      ...context,
-      decode: (value) => decodeApiPage(value, decodeSubjectRelation),
-      query,
-    }),
+    api
+      .get<SubjectRelation[]>(`/api/v1/index/entities/${encodePath(subjectId)}/relations/`, {
+        ...context,
+        decode: (value) => {
+          if (!Array.isArray(value)) throw new TypeError('Invalid entity relations response');
+          return value.map(decodeSubjectRelation);
+        },
+      })
+      .then((relations) => {
+        const page = query.page ?? 1;
+        const pageSize = query.page_size ?? (relations.length || 1);
+        const start = (page - 1) * pageSize;
+        return {
+          count: relations.length,
+          next: null,
+          previous: null,
+          results: relations.slice(start, start + pageSize),
+        };
+      }),
 
-  getCalendar: (query: { weekday_en?: WeekdayEn } = {}, context: ApiRequestContext = {}) =>
-    api.get<CalendarGroup[]>('/api/index/calendar/', { ...context, decode: decodeCalendarGroups, query }),
+  getCalendar: (_query: { weekday_en?: WeekdayEn } = {}, context: ApiRequestContext = {}) =>
+    api.get<CalendarGroup[]>('/api/v1/index/calendar/events/', {
+      ...context,
+      decode: decodeCalendarEventsToGroups,
+    }),
 
   getBangumiSubject,
 };

@@ -19,7 +19,7 @@ export function NotificationBell() {
     refetchInterval: 60_000,
   });
   const notificationPreviewQuery = useQuery({
-    ...communityQueries.notifications({ page: 1, page_size: 5 }),
+    ...communityQueries.notifications({ page_size: 5 }),
     refetchInterval: 60_000,
   });
   const markReadMutation = useMarkNotificationsReadMutation();

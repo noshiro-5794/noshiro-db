@@ -2,6 +2,7 @@ import { decodeApiPage } from '@/shared/api';
 import type {
   ApiPage,
   CalendarSyncResult,
+  ImportJob,
   IncrementalSyncResult,
   IncrementalSyncRunResult,
   QueuedTask,
@@ -114,6 +115,54 @@ function isSyncJob(value: unknown): value is SyncJob {
 
 function invalidSyncResponse(): never {
   throw new TypeError('Invalid administrator sync response');
+}
+
+export function decodeImportJob(value: unknown): ImportJob {
+  if (
+    !isRecord(value) ||
+    !isString(value['id']) ||
+    !isString(value['provider']) ||
+    !isNullableString(value['external_id']) ||
+    !isString(value['status']) ||
+    !isRecord(value['parameters']) ||
+    (value['result'] !== null && !isRecord(value['result'])) ||
+    !isNullableString(value['error']) ||
+    !isRecord(value['progress']) ||
+    !isString(value['progress']['current_label']) ||
+    !isInteger(value['progress']['total']) ||
+    !isInteger(value['progress']['processed']) ||
+    !isInteger(value['progress']['synced']) ||
+    !isInteger(value['progress']['skipped']) ||
+    !isInteger(value['progress']['failed']) ||
+    !isString(value['created_at']) ||
+    !isNullableString(value['started_at']) ||
+    !isNullableString(value['finished_at']) ||
+    !isString(value['updated_at'])
+  ) {
+    throw new TypeError('Invalid import job response');
+  }
+
+  return {
+    id: value['id'],
+    provider: value['provider'],
+    external_id: value['external_id'],
+    status: value['status'],
+    parameters: value['parameters'],
+    result: value['result'],
+    error: value['error'],
+    progress: {
+      current_label: value['progress']['current_label'],
+      total: value['progress']['total'],
+      processed: value['progress']['processed'],
+      synced: value['progress']['synced'],
+      skipped: value['progress']['skipped'],
+      failed: value['progress']['failed'],
+    },
+    created_at: value['created_at'],
+    started_at: value['started_at'],
+    finished_at: value['finished_at'],
+    updated_at: value['updated_at'],
+  };
 }
 
 export function decodeIncrementalStatus(value: unknown): { tasks: SyncTaskStatus[] } {

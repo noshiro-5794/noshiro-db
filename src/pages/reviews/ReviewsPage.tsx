@@ -75,7 +75,7 @@ function ReviewCard({
             aria-label={subjectTitle}
             params={{ subjectId: review.subject.id }}
             state={state}
-            to="/subjects/$subjectId"
+            to="/entities/$subjectId"
           >
             {cover ? (
               <img alt="" decoding="async" loading="lazy" referrerPolicy="no-referrer" src={cover} />
@@ -147,7 +147,7 @@ function ReviewCard({
         </ContentRowHeading>
         {review.subject ? (
           <ContentRowReference>
-            <Link params={{ subjectId: review.subject.id }} state={state} to="/subjects/$subjectId">
+            <Link params={{ subjectId: review.subject.id }} state={state} to="/entities/$subjectId">
               <span>{subjectTitle}</span>
               {review.subject.subject_type ? <small>{review.subject.subject_type}</small> : null}
             </Link>

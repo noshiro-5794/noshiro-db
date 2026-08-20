@@ -63,7 +63,7 @@ export function ReviewViewerPage() {
     retry: false,
   });
   const review = myReviewQuery.data ?? publicReview;
-  const fallbackBackTarget = review?.subject ? routes.subject(review.subject.id) : routes.reviews;
+  const fallbackBackTarget = review?.subject ? routes.entity(review.subject.id) : routes.reviews;
   const backTarget = backTargetFromState(location, fallbackBackTarget);
   const isOwnReview = Boolean(
     myReviewQuery.data || (review?.user?.id && auth.profile?.user_id && review.user.id === auth.profile.user_id),
@@ -170,7 +170,7 @@ export function ReviewViewerPage() {
             review.subject ? (
               <Link
                 className="font-medium text-[var(--ui-accent-text)] hover:underline"
-                to={routes.subject(review.subject.id)}
+                to={routes.entity(review.subject.id)}
               >
                 {review.subject.display_title || review.subject.title}
               </Link>

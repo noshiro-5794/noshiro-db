@@ -15,6 +15,12 @@ export type ApiPage<T> = {
   results: T[];
 };
 
+export type CursorPage<T> = {
+  next: string | null;
+  previous: string | null;
+  results: T[];
+};
+
 export type PageQuery = {
   page?: number;
   page_size?: number;

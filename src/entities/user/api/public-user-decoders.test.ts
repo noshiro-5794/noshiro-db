@@ -7,7 +7,7 @@ const profile = {
   avatar: '',
   bio: 'Hello',
   stats: {
-    subject_count: 3,
+    library_entry_count: 3,
     review_count: 2,
     collection_count: 1,
     following_count: 4,

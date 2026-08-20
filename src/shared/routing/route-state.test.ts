@@ -12,7 +12,7 @@ type LegacyRouteLocation = Extract<RouteLocation, { pathname: string }>;
 function location(overrides: Partial<LegacyRouteLocation> = {}): LegacyRouteLocation {
   return {
     hash: '#section',
-    pathname: '/subjects/1',
+    pathname: '/entities/1',
     search: '?tab=details',
     state: null,
     ...overrides,
@@ -23,9 +23,9 @@ describe('route state', () => {
   it('preserves the complete current route', () => {
     const current = location();
 
-    expect(currentRoutePath(current)).toBe('/subjects/1?tab=details#section');
+    expect(currentRoutePath(current)).toBe('/entities/1?tab=details#section');
     expect(routeBackState(current, 'Subject')).toEqual({
-      from: '/subjects/1?tab=details#section',
+      from: '/entities/1?tab=details#section',
       fromLabel: 'Subject',
     });
   });
@@ -49,7 +49,7 @@ describe('route state', () => {
   });
 
   it('does not navigate back to the current route', () => {
-    const current = location({ state: { from: '/subjects/1?tab=details#section' } });
+    const current = location({ state: { from: '/entities/1?tab=details#section' } });
 
     expect(backTargetFromState(current, '/search')).toBe('/search');
   });

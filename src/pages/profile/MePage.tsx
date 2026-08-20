@@ -9,7 +9,7 @@ import { communityActivitiesApi } from '@/entities/community';
 import { communityQueryKeys } from '@/entities/community';
 import { publicUserQueries } from '@/entities/user';
 import { ContributionCalendar, ProfileActivityTimeline } from '@/features/profile-dashboard';
-import { getNextApiPageParam } from '@/shared/api';
+import { getNextCursorPageParam } from '@/shared/api';
 import { formatDate } from '@/shared/lib/date';
 import { routes } from '@/shared/routing/paths';
 import { Avatar } from '@/shared/ui/Avatar';
@@ -63,11 +63,15 @@ export function MePage() {
     ] as const,
     queryFn: ({ pageParam, signal }) =>
       communityActivitiesApi.listMine(
-        { page: pageParam, page_size: activityPageSize, ordering: '-created_at' },
+        {
+          ...(pageParam === undefined ? {} : { cursor: pageParam }),
+          page_size: activityPageSize,
+          ordering: '-created_at',
+        },
         { signal },
       ),
-    initialPageParam: 1,
-    getNextPageParam: getNextApiPageParam,
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: getNextCursorPageParam,
     enabled: auth.isAuthenticated,
   });
   const reviewsQuery = useQuery({

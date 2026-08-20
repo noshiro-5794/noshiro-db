@@ -21,7 +21,7 @@ export function decodePublicUserProfile(value: unknown): PublicUserProfile {
     (value['avatar'] !== null && typeof value['avatar'] !== 'string') ||
     typeof value['bio'] !== 'string' ||
     typeof value['is_following'] !== 'boolean' ||
-    !isNonNegativeInteger(stats['subject_count']) ||
+    !isNonNegativeInteger(stats['library_entry_count']) ||
     !isNonNegativeInteger(stats['review_count']) ||
     !isNonNegativeInteger(stats['collection_count']) ||
     !isNonNegativeInteger(stats['following_count']) ||
@@ -37,7 +37,7 @@ export function decodePublicUserProfile(value: unknown): PublicUserProfile {
     bio: value['bio'],
     is_following: value['is_following'],
     stats: {
-      subject_count: stats['subject_count'],
+      library_entry_count: stats['library_entry_count'],
       review_count: stats['review_count'],
       collection_count: stats['collection_count'],
       following_count: stats['following_count'],

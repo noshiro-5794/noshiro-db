@@ -60,7 +60,7 @@ export function CreatePostDialog() {
     }
     createPostMutation.mutate({
       content: normalizedContent,
-      ...(normalizedSubjectId ? { subject_id: normalizedSubjectId } : {}),
+      ...(normalizedSubjectId ? { entity_id: normalizedSubjectId } : {}),
       visibility,
       is_spoiler: isSpoiler,
       is_nsfw: isNsfw,

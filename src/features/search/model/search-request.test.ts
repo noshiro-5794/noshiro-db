@@ -5,9 +5,6 @@ describe('subject search request', () => {
   it('uses calendar browsing for display-only filters', () => {
     expect(usesSubjectDatabaseSearch({ subject_type: 'anime', ordering: 'title', nsfw: false })).toBe(false);
     expect(buildSubjectSearchQuery({ subject_type: 'anime', ordering: 'title', nsfw: false }, 30)).toEqual({
-      subject_type: 'anime',
-      ordering: 'title',
-      nsfw: false,
       page: 1,
       page_size: 30,
     });
@@ -29,23 +26,13 @@ describe('subject search request', () => {
 
     expect(usesSubjectDatabaseSearch(search)).toBe(true);
     expect(buildSubjectSearchQuery(search, 30)).toEqual({
-      episodes_max: 24,
-      episodes_min: 13,
-      keyword: 'visual novel',
-      nsfw: false,
-      ordering: '-date',
+      query: 'visual novel',
       page: 3,
       page_size: 30,
-      platform: 'PC',
-      season: 'winter',
-      source_id: '123',
-      subject_type: 'galgame',
-      year: 2025,
     });
   });
 
-  it('maps open-ended episode ranges without inventing a maximum', () => {
-    expect(buildSubjectSearchQuery({ episodes: 'long' }, 20)).toMatchObject({ episodes_min: 25 });
-    expect(buildSubjectSearchQuery({ episodes: 'long' }, 20)).not.toHaveProperty('episodes_max');
+  it('omits empty keyword queries', () => {
+    expect(buildSubjectSearchQuery({ keyword: '  ' }, 20)).toEqual({ page: 1, page_size: 20 });
   });
 });
