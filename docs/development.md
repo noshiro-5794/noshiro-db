@@ -29,7 +29,7 @@ VITE_API_BASE_URL=
 VITE_HCAPTCHA_SITE_KEY=
 ```
 
-The proxy keeps the browser on the local origin and avoids weakening production CORS/CSRF policy. Because Vite serves HTTP by default, it removes only the production cookie's `Secure` attribute on proxied development responses; `HttpOnly`, `SameSite=Lax`, and the `/api/users/` path restriction remain intact. This allows refresh sessions to work through localhost, LAN, and IPv6 development URLs without changing the production backend policy. To develop against the sibling backend repository instead, set `API_PROXY_TARGET=http://127.0.0.1:8008`.
+The proxy keeps the browser on the local origin and avoids weakening production CORS/CSRF policy. Because Vite serves HTTP by default, it removes only the production cookie's `Secure` attribute on proxied development responses; `HttpOnly`, `SameSite=Lax`, and the `/api/v1/` path prefix remain intact. This allows refresh sessions to work through localhost, LAN, and IPv6 development URLs without changing the production backend policy. To develop against the sibling backend repository instead, set `API_PROXY_TARGET=http://127.0.0.1:8008`.
 
 ## Scripts
 
@@ -76,9 +76,10 @@ If the forwarded frontend port refuses connections, confirm the Vite server is r
 
 ## API Contract Notes
 
-- Auth, profile, subject marks, progress, tags, reviews, collections, and public profile APIs live under `/api/users/`.
-- Community follow, follower, activity, feed, notification, bookmark, reaction, comment, and report flows live under `/api/community/`.
-- Admin sync APIs live under `/api/admin/` or the backend sync/admin route group, depending on backend deployment.
+- Auth, profile, library entries, progress, tags, reviews, collections, and public profile APIs live under `/api/v1/users/`.
+- Community follow, follower, activity, feed, notification, bookmark, reaction, comment, and report flows live under `/api/v1/community/`.
+- Index and entity data live under `/api/v1/index/`.
+- Admin/import operations live under `/api/v1/operations/import-jobs/`.
 - Transport contracts live in `src/shared/api/contracts/`. Domain API clients and query definitions stay in their
   owning entity or feature slice.
 
