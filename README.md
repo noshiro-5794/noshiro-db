@@ -122,15 +122,16 @@ slice public APIs; see the architecture guide for ownership details.
 
 ## Deployment Notes
 
-The frontend is a static Vite SPA. Production deployment serves `dist/` from `https://noshiro.moe/`, while the backend API is expected at `https://api.noshiro.moe`.
+The frontend is a static Vite SPA. Production deployment serves `dist/` from `https://app.noshiro.moe/`, while the backend API is expected at `https://api.noshiro.moe`.
 
-Set production API base without an extra `/api` suffix:
+Set production API base without an extra `/api` or `/api/v1` suffix:
 
 ```text
+VITE_SITE_URL=https://app.noshiro.moe
 VITE_API_BASE_URL=https://api.noshiro.moe
 ```
 
-The static server must fall back nested routes to `index.html`; otherwise refreshing routes like `/search`, `/calendar`, or `/subjects/<id>` returns an OpenResty 404.
+The static server must fall back nested routes to `index.html`; otherwise refreshing routes like `/search`, `/calendar`, or `/entities/<id>` returns a static-hosting 404.
 
 ## Quality Gates
 
