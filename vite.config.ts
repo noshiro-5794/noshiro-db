@@ -52,7 +52,7 @@ export default defineConfig(({ mode }) => {
           ...(apiProxyTarget === defaultApiProxyTarget
             ? {
                 headers: {
-                  Origin: 'https://noshiro.moe',
+                  Origin: 'https://app.noshiro.moe',
                 },
               }
             : {}),
