@@ -65,8 +65,10 @@ definitions remain in their entity or feature slice.
 
 The backend resource split is mirrored by the frontend:
 
-- `/api/users/` owns auth, profile, marks, progress, tags, reviews, collections, and public profile resources.
-- `/api/community/` owns follows, activities, posts, notifications, bookmarks, reactions, comments, and reports.
+- `/api/v1/users/` owns auth, profile, library entries, progress, tags, reviews, and collections.
+- `/api/v1/community/` owns follows, activities, posts, notifications, bookmarks, reactions, comments, and reports.
+- `/api/v1/index/` owns entity, episode, credit, character, relation, release, metric, evidence, and calendar resources.
+- `/api/v1/operations/import-jobs/` owns async import jobs.
 - administrative synchronization routes are owned by `features/admin-sync`.
 
 ## Routing
