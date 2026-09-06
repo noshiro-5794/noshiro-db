@@ -261,8 +261,6 @@ class VNDBClient:
         items: list[dict] = []
         while True:
             filters: list = ["vn", "=", ["id", "=", vndb_id]]
-            if endpoint == "staff":
-                filters = ["and", filters, ["ismain", "=", 1]]
             data = self.query(
                 endpoint,
                 filters=filters,
@@ -283,6 +281,8 @@ class VNDBClient:
         work = self.fetch_vn(vndb_id)
         if not include_related:
             return VNDBImportBatch(work=work)
+        staff_ids = self._embedded_staff_ids(work)
+        contributors = self._fetch_staff_details(work) if staff_ids else ()
         return VNDBImportBatch(
             work=work,
             releases=tuple(
@@ -299,15 +299,39 @@ class VNDBClient:
                     fields=self.CHARACTER_FIELDS,
                 )
             ),
-            contributors=tuple(
-                self.fetch_related(
-                    "staff",
-                    vndb_id=vndb_id,
-                    fields=self.STAFF_FIELDS,
-                )
-            ),
+            contributors=contributors,
             related_fetched=True,
         )
+
+    @classmethod
+    def _embedded_staff_ids(cls, work: dict[str, Any]) -> tuple[int, ...]:
+        """Staff ids referenced by a VN payload (staff and voice-actor entries).
+
+        ``/staff`` accepts only scalar ``id`` filters and has no ``vn`` filter,
+        so per-id detail fetches are driven from ids the work already embeds.
+        """
+        ids: list[int] = []
+        for item in work.get("staff") or []:
+            if isinstance(item, dict) and isinstance(item.get("id"), int):
+                ids.append(item["id"])
+        for entry in work.get("va") or []:
+            staff = (entry or {}).get("staff") if isinstance(entry, dict) else None
+            if isinstance(staff, dict) and isinstance(staff.get("id"), int):
+                ids.append(staff["id"])
+        return tuple(dict.fromkeys(ids))
+
+    def _fetch_staff_details(self, work: dict[str, Any]) -> tuple[dict[str, Any], ...]:
+        details: list[dict[str, Any]] = []
+        for staff_id in self._embedded_staff_ids(work):
+            data = self.query(
+                "staff",
+                filters=["id", "=", staff_id],
+                fields=self.STAFF_FIELDS,
+                results=1,
+            )
+            if data.get("results"):
+                details.append(data["results"][0])
+        return tuple(details)
 
     def close(self) -> None:
         if self._client is not None:

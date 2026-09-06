@@ -203,3 +203,36 @@ def test_anilist_delta_discovery_uses_updated_watermark() -> None:
     assert page.watermark == "1700000000"
     variables = http_client.post.call_args.kwargs["json"]["variables"]
     assert variables == {"page": 2, "perPage": 25, "updatedAfter": 1690000000}
+
+
+def test_vndb_embedded_staff_ids_are_unique() -> None:
+    from apps.sync.providers.vndb import VNDBClient
+
+    work = {
+        "staff": [{"id": 1}, {"id": 2}, {"x": 1}],
+        "va": [{"staff": {"id": 2}}, {"staff": {"id": 3}}, {"nope": 1}],
+    }
+    assert VNDBClient._embedded_staff_ids(work) == (1, 2, 3)
+
+
+def test_vndb_staff_details_fetch_by_scalar_id() -> None:
+    from apps.sync.providers.vndb import VNDBClient
+
+    client = VNDBClient(Mock())
+    work = {
+        "staff": [{"id": 7}],
+        "va": [{"staff": {"id": 8}}],
+    }
+    with patch.object(
+        client,
+        "query",
+        side_effect=[
+            {"results": [{"id": 7, "name": "A"}], "more": False},
+            {"results": [{"id": 8, "name": "B"}], "more": False},
+        ],
+    ) as query:
+        details = client._fetch_staff_details(work)
+
+    assert [item["id"] for item in details] == [7, 8]
+    calls = [call.kwargs["filters"] for call in query.call_args_list]
+    assert calls == [["id", "=", 7], ["id", "=", 8]]
