@@ -85,3 +85,23 @@ def test_invalid_policy_value_is_rejected() -> None:
 def test_enable_and_disable_are_mutually_exclusive() -> None:
     with pytest.raises(CommandError, match="mutually exclusive"):
         _run("bangumi", "--enable", "--disable", "--apply")
+
+
+def test_dry_run_plans_diff_on_existing_provider_without_changes() -> None:
+    Provider.objects.create(
+        slug="bangumi",
+        name="Bangumi",
+        storage_policy=Provider.UsagePolicy.UNKNOWN,
+    )
+
+    output = _run(
+        "bangumi",
+        "--policy",
+        "storage=allowed",
+        "--enable",
+    )
+
+    assert "exists" in output
+    assert "storage" in output and "allowed" in output
+    provider = Provider.objects.get(slug="bangumi")
+    assert provider.storage_policy == Provider.UsagePolicy.UNKNOWN
