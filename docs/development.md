@@ -126,6 +126,11 @@ python src/manage.py sync_campaign vndb \
 python src/manage.py sync_campaign anilist \
   --campaign-type incremental --ai-mode off \
   --idempotency-key smoke-anilist-delta-1
+
+# VNDB full in bounded, resumable discovery chunks (e.g. 1 page of 20 per step).
+python src/manage.py sync_campaign vndb \
+  --ai-mode off --page-size 20 --max-pages 1 \
+  --idempotency-key vndb-batch-0001
 ```
 
 Campaigns created through the admin API (`POST /operations/sync/`) are executed
