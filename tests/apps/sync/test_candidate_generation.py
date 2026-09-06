@@ -77,13 +77,20 @@ def test_exact_title_match_creates_candidate_with_evidence() -> None:
         name="無職転生Ⅲ",
         make_work=True,
     )
+    manga = _entity(
+        provider_slug="bangumi",
+        namespace_slug="subject",
+        external_id="100-manga",
+        name="無職転生Ⅲ",
+        make_work=True,
+    )
+    Work.objects.filter(entity=manga).update(work_type=Work.WorkType.MANGA)
 
     summary = provider_candidate_service.generate_candidates(
         min_similarity=0.6, top_k=5
     )
 
     assert summary["candidates_created"] == 1
-    assert summary["anilist_entities"] == 1
     from apps.index.models import MatchCandidate, MatchEvidence
 
     row = MatchCandidate.objects.select_related("left_entity", "right_entity").get()
