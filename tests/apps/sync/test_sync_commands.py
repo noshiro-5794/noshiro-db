@@ -108,9 +108,19 @@ def test_sync_campaign_command_reports_status() -> None:
     ):
         service.create_campaign.return_value = fake
         service.run.return_value = fake
-        output = _run("sync_campaign", "vndb", ai_mode="off", idempotency_key="key-1")
+        output = _run(
+            "sync_campaign",
+            "vndb",
+            ai_mode="off",
+            idempotency_key="key-1",
+            max_pages=2,
+            discovery_pages_per_step=1,
+        )
 
     assert "Campaign 00000000-0000-0000-0000-000000000001 vndb: completed" in output
+    created_params = service.create_campaign.call_args.kwargs["parameters"]
+    assert created_params["max_pages"] == 2
+    assert created_params["discovery_pages_per_step"] == 1
 
 
 def test_incremental_sync_status_reports_task_states() -> None:

@@ -31,6 +31,19 @@ class Command(BaseCommand):
             help="Optional cap for AI processing; zero processes every successful item.",
         )
         parser.add_argument("--max-items", type=int)
+        parser.add_argument(
+            "--max-pages",
+            type=int,
+            help=(
+                "Cap discovery at this many pages per campaign step for bounded, "
+                "resumable batch runs (truncates discovery and proceeds to fetch)."
+            ),
+        )
+        parser.add_argument(
+            "--discovery-pages-per-step",
+            type=int,
+            help="Pages of discovery consumed per invocation (default 1).",
+        )
 
     def handle(self, *args, **options):
         provider = options["provider"]
@@ -39,6 +52,10 @@ class Command(BaseCommand):
             "page_size": options["page_size"],
             "ai_sample_size": options["ai_sample_size"],
         }
+        if options["max_pages"] is not None:
+            parameters["max_pages"] = options["max_pages"]
+        if options["discovery_pages_per_step"] is not None:
+            parameters["discovery_pages_per_step"] = options["discovery_pages_per_step"]
         key = options["idempotency_key"] or campaign_idempotency_key(
             provider_slug=provider,
             campaign_type=campaign_type,
