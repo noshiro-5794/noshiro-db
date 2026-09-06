@@ -236,3 +236,39 @@ def test_vndb_staff_details_fetch_by_scalar_id() -> None:
     assert [item["id"] for item in details] == [7, 8]
     calls = [call.kwargs["filters"] for call in query.call_args_list]
     assert calls == [["id", "=", 7], ["id", "=", 8]]
+
+
+def test_vndb_release_resolution_is_always_json() -> None:
+    from unittest.mock import patch
+
+    from apps.index.models import Predicate
+    from apps.sync.services.vndb_service import VNDBImportService
+
+    captured = []
+
+    def fake_record_fact(
+        *, entity, observation, slug, name, value, value_type, **kwargs
+    ):
+        captured.append((slug, value_type, value))
+        return None
+
+    with patch(
+        "apps.sync.services.vndb_service.knowledge_ingestion_service.record_fact",
+        side_effect=fake_record_fact,
+    ):
+        VNDBImportService()._upsert_release_resolution(
+            entity=None,
+            observation=None,
+            data={"resolution": "1920x1080"},
+        )
+        VNDBImportService()._upsert_release_resolution(
+            entity=None,
+            observation=None,
+            data={"resolution": ["640x480", "1920x1080"]},
+        )
+
+    assert [(slug, value_type) for slug, value_type, _ in captured] == [
+        ("release-resolution", Predicate.ValueType.JSON),
+        ("release-resolution", Predicate.ValueType.JSON),
+    ]
+    assert captured[0][2] == {"value": "1920x1080"}

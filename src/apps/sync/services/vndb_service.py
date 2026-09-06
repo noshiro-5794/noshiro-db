@@ -1087,7 +1087,6 @@ class VNDBImportService:
         for field in (
             "languages",
             "media",
-            "resolution",
             "voiced",
             "engine",
             "freeware",
@@ -1111,6 +1110,32 @@ class VNDBImportService:
                 name=f"Release {field.replace('_', ' ').title()}",
                 value_type=value_type,
             )
+        self._upsert_release_resolution(
+            entity=entity,
+            observation=observation,
+            data=data,
+        )
+
+    def _upsert_release_resolution(self, *, entity, observation, data) -> None:
+        """Persist release resolution with a stable JSON predicate type.
+
+        VNDB returns resolution either as a list of strings or a single string,
+        which previously created a type conflict for the same predicate slug.
+        """
+        value = data.get("resolution")
+        if value is None or value == "" or value == []:
+            return
+        if isinstance(value, str):
+            value = {"value": value}
+        knowledge_ingestion_service.record_fact(
+            entity=entity,
+            observation=observation,
+            slug="release-resolution",
+            name="Release Resolution",
+            value=value,
+            value_type=Predicate.ValueType.JSON,
+            json_pointer="/resolution",
+        )
 
     def _upsert_character_facts(self, *, entity, observation, data) -> None:
         for field in (
