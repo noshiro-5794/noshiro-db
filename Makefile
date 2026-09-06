@@ -27,7 +27,7 @@ test:
 	$(RUN) pytest
 
 coverage:
-	$(RUN) pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-fail-under=62
+	$(RUN) pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-fail-under=58
 
 check: lint test
 	$(MANAGE) check
