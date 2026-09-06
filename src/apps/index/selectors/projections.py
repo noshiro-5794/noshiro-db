@@ -1,6 +1,13 @@
 from django.db.models import Prefetch
 
-from apps.index.models import ContentSafety, Entity, EntityName, IndexMembership, Work
+from apps.index.models import (
+    ContentSafety,
+    Entity,
+    EntityName,
+    EntityRedirect,
+    IndexMembership,
+    Work,
+)
 from apps.index.selectors.current import (
     current_content_ratings,
     current_entity_descriptions,
@@ -302,6 +309,33 @@ def entity_detail(
             "provider_record__external_id",
         )
     ]
+    memberships = list(
+        IndexMembership.objects.filter(
+            entity_id__in=entity_resolution_service.cluster_ids(root),
+            listing_state=IndexMembership.State.LISTED,
+        )
+        .select_related("collection")
+        .order_by("collection__slug", "entity_id")
+    )
+    data["memberships"] = [
+        {
+            "collection": membership.collection.slug,
+            "name": membership.collection.name,
+            "listing_state": membership.listing_state,
+            "inclusion_reason": membership.inclusion_reason,
+        }
+        for membership in memberships
+    ]
+    redirects = list(
+        EntityRedirect.objects.filter(
+            target_entity_id__in=entity_resolution_service.cluster_ids(root),
+            is_active=True,
+        ).order_by("source_entity_id")
+    )
+    data["merged_from"] = [
+        {"entity_id": str(redirect.source_entity_id)} for redirect in redirects
+    ]
+    data["is_merged"] = bool(redirects) or len(data["sources"]) > 1
     return data
 
 
