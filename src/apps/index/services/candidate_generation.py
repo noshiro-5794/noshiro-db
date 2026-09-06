@@ -116,6 +116,7 @@ class ProviderCandidateService:
                 JOIN provider p ON p.id = pn.provider_id AND p.slug = 'bangumi'
                 JOIN work w ON w.entity_id = en.entity_id
                 WHERE btrim(en.text) <> ''
+                  AND w.work_type = 'anime'
                   AND similarity(en.text, %s) >= %s
                 ORDER BY sim DESC, en.entity_id
                 LIMIT %s
