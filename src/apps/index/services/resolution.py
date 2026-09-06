@@ -144,6 +144,7 @@ class EntityResolutionService:
         )
         status_by_outcome = {
             MatchDecision.Outcome.BIND: MatchCandidate.Status.ACCEPTED,
+            MatchDecision.Outcome.GROUP: MatchCandidate.Status.GROUPED,
             MatchDecision.Outcome.REJECT: MatchCandidate.Status.REJECTED,
             MatchDecision.Outcome.ABSTAIN: MatchCandidate.Status.ABSTAINED,
         }
@@ -162,6 +163,9 @@ class EntityResolutionService:
                 "source_entity_id": str(source.id),
                 "canonical_entity_id": str(target.id),
             }
+            decision.save(update_fields=["decision_data", "updated_at"])
+        elif outcome == MatchDecision.Outcome.GROUP:
+            decision.decision_data = {"grouped_entities": True, "merged": False}
             decision.save(update_fields=["decision_data", "updated_at"])
         return decision
 

@@ -7,7 +7,7 @@ from typing import Any
 from apps.ai.exceptions import InvalidAIProposal
 
 ENTITY_MATCHING_USE_CASE = "entity_matching"
-ENTITY_MATCHING_DECISIONS = frozenset({"bind", "reject", "abstain"})
+ENTITY_MATCHING_DECISIONS = frozenset({"bind", "reject", "abstain", "group"})
 
 
 def ai_input_hash(payload: dict[str, Any]) -> str:
@@ -26,7 +26,7 @@ def validate_matching_output(output: dict[str, Any]) -> dict[str, Any]:
     raw_confidence = output.get("confidence")
     if decision not in ENTITY_MATCHING_DECISIONS:
         raise InvalidAIProposal(
-            "AI proposal decision must be bind, reject, or abstain."
+            "AI proposal decision must be bind, group, reject, or abstain."
         )
     if not isinstance(reason, str) or not reason.strip():
         raise InvalidAIProposal("AI proposal reason must be a non-empty string.")

@@ -66,8 +66,11 @@ class AIMatchingService:
                 system_prompt=(
                     "Assess whether two knowledge-base entities represent the same "
                     "real work using only the supplied evidence. Never infer a private "
-                    "identity. Return a JSON object with decision (bind, reject, or "
-                    "abstain), confidence from 0 to 1, and a concise reason."
+                    "identity. Return a JSON object with decision (bind, group, "
+                    "reject, or abstain), confidence from 0 to 1, and a concise "
+                    "reason. Use 'group' when the works belong to the same season or "
+                    "series but at different granularity (e.g. one whole season vs "
+                    "its split cours) and should not be merged."
                 ),
                 payload=payload,
             )
