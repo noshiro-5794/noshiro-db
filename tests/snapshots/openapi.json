@@ -12118,11 +12118,12 @@
                 "enum": [
                     "pending",
                     "accepted",
+                    "grouped",
                     "rejected",
                     "abstained"
                 ],
                 "type": "string",
-                "description": "* `pending` - Pending\n* `accepted` - Accepted\n* `rejected` - Rejected\n* `abstained` - Abstained"
+                "description": "* `pending` - Pending\n* `accepted` - Accepted\n* `grouped` - Grouped without merging\n* `rejected` - Rejected\n* `abstained` - Abstained"
             },
             "MatchingCandidateDecide": {
                 "type": "object",
@@ -12218,11 +12219,12 @@
             "OutcomeEnum": {
                 "enum": [
                     "bind",
+                    "group",
                     "reject",
                     "abstain"
                 ],
                 "type": "string",
-                "description": "* `bind` - bind\n* `reject` - reject\n* `abstain` - abstain"
+                "description": "* `bind` - bind\n* `group` - group\n* `reject` - reject\n* `abstain` - abstain"
             },
             "PaginatedCollection": {
                 "type": "object",

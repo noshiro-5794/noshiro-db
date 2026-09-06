@@ -71,6 +71,7 @@ class MatchCandidate(TimestampedModel):
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
         ACCEPTED = "accepted", "Accepted"
+        GROUPED = "grouped", "Grouped without merging"
         REJECTED = "rejected", "Rejected"
         ABSTAINED = "abstained", "Abstained"
 
@@ -146,6 +147,7 @@ class MatchEvidence(TimestampedModel):
 class MatchDecision(TimestampedModel):
     class Outcome(models.TextChoices):
         BIND = "bind", "Bind"
+        GROUP = "group", "Group without merging"
         REJECT = "reject", "Reject"
         ABSTAIN = "abstain", "Abstain"
 

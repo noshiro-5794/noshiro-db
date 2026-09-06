@@ -7,7 +7,11 @@ from rest_framework.views import APIView
 
 from apps.ai.models import AIProposal
 from apps.index.models import MatchCandidate, MatchDecision
-from apps.index.services import EntityResolutionError, entity_resolution_service
+from apps.index.services import (
+    EntityResolutionError,
+    entity_resolution_service,
+    season_group_service,
+)
 from apps.sync.api.serializers.matching import MatchCandidateSerializer
 from shared.api.pagination import DefaultPageNumberPagination
 
@@ -64,6 +68,7 @@ class MatchingCandidateDecideView(APIView):
             )
         outcome = serializer.validated_data["outcome"]
         reason = serializer.validated_data["reason"]
+        grouped = False
         try:
             entity_resolution_service.decide_candidate(
                 candidate=candidate,
@@ -73,6 +78,13 @@ class MatchingCandidateDecideView(APIView):
             )
         except EntityResolutionError as exc:
             return Response({"detail": str(exc)}, status=409)
+        if outcome == MatchDecision.Outcome.GROUP:
+            season_group_service.ensure_pair_group(
+                left=candidate.left_entity,
+                right=candidate.right_entity,
+                reason=reason or "admin-group",
+            )
+            grouped = True
         latest = (
             AIProposal.objects.filter(match_candidate=candidate)
             .order_by("-created_at")
@@ -81,10 +93,16 @@ class MatchingCandidateDecideView(APIView):
         if latest is not None and latest.status == AIProposal.Status.PENDING:
             latest.status = (
                 AIProposal.Status.ACCEPTED
-                if outcome == MatchDecision.Outcome.BIND
+                if outcome
+                in {
+                    MatchDecision.Outcome.BIND,
+                    MatchDecision.Outcome.GROUP,
+                }
                 else AIProposal.Status.REJECTED
             )
-            latest.policy_reason = reason or "Admin review"
+            latest.policy_reason = f"{reason or 'Admin review'}" + (
+                " (grouped without merge)" if grouped else ""
+            )
             latest.decided_at = timezone.now()
             latest.save(update_fields=["status", "policy_reason", "decided_at"])
         return Response(
