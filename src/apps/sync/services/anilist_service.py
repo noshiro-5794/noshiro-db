@@ -20,6 +20,7 @@ from apps.index.models import (
     ExternalLink,
     IndexCollection,
     IndexMembership,
+    Observation,
     Organization,
     Person,
     ProviderRecord,
@@ -394,7 +395,7 @@ class AniListImportService:
             raw_relation = edge.get("relationType")
             if not isinstance(raw_relation, str) or not isinstance(node, dict):
                 continue
-            target = self._ensure_related_entity(node)
+            target = self._ensure_related_entity(node, observation)
             if target is None:
                 continue
             relation, _ = EntityRelation.objects.get_or_create(
@@ -409,7 +410,9 @@ class AniListImportService:
                 defaults={"raw_relation": raw_relation[:256]},
             )
 
-    def _ensure_related_entity(self, node: dict[str, Any]) -> Entity | None:
+    def _ensure_related_entity(
+        self, node: dict[str, Any], observation: Observation
+    ) -> Entity | None:
         anilist_id = node.get("id")
         if not isinstance(anilist_id, int):
             return None
@@ -442,6 +445,7 @@ class AniListImportService:
                 provider_record=record,
                 text=name[:256],
                 kind=EntityName.Kind.OFFICIAL,
+                observation=observation,
             )
         return entity
 
@@ -470,7 +474,7 @@ class AniListImportService:
                 continue
             node = edge.get("node") or {}
             role = edge.get("role") or ""
-            character = self._ensure_character(node)
+            character = self._ensure_character(node, observation)
             if character is None:
                 continue
             appearance, _ = Appearance.objects.get_or_create(
@@ -482,7 +486,7 @@ class AniListImportService:
             for actor in edge.get("voiceActors") or []:
                 if not isinstance(actor, dict):
                     continue
-                contributor = self._ensure_person(actor)
+                contributor = self._ensure_person(actor, observation)
                 if contributor is None:
                     continue
                 VoicePerformance.objects.get_or_create(
@@ -491,7 +495,9 @@ class AniListImportService:
                     observation=observation,
                 )
 
-    def _ensure_character(self, node: dict[str, Any]) -> Entity | None:
+    def _ensure_character(
+        self, node: dict[str, Any], observation: Observation
+    ) -> Entity | None:
         anilist_id = node.get("id")
         if not isinstance(anilist_id, int):
             return None
@@ -519,6 +525,7 @@ class AniListImportService:
                 provider_record=record,
                 text=full_name[:256],
                 kind=EntityName.Kind.OFFICIAL,
+                observation=observation,
             )
         return entity
 
@@ -529,7 +536,7 @@ class AniListImportService:
                 continue
             node = edge.get("node") or {}
             role = edge.get("role") or ""
-            contributor = self._ensure_person(node)
+            contributor = self._ensure_person(node, observation)
             if contributor is None:
                 continue
             Credit.objects.get_or_create(
@@ -547,7 +554,7 @@ class AniListImportService:
             if not isinstance(edge, dict):
                 continue
             node = edge.get("node") or {}
-            contributor = self._ensure_organization(node)
+            contributor = self._ensure_organization(node, observation)
             if contributor is None:
                 continue
             Credit.objects.get_or_create(
@@ -557,7 +564,9 @@ class AniListImportService:
                 observation=observation,
             )
 
-    def _ensure_person(self, node: dict[str, Any]) -> Contributor | None:
+    def _ensure_person(
+        self, node: dict[str, Any], observation: Observation
+    ) -> Contributor | None:
         anilist_id = node.get("id")
         if not isinstance(anilist_id, int):
             return None
@@ -590,10 +599,13 @@ class AniListImportService:
                 provider_record=record,
                 text=full_name[:256],
                 kind=EntityName.Kind.OFFICIAL,
+                observation=observation,
             )
         return contributor
 
-    def _ensure_organization(self, node: dict[str, Any]) -> Contributor | None:
+    def _ensure_organization(
+        self, node: dict[str, Any], observation: Observation
+    ) -> Contributor | None:
         anilist_id = node.get("id")
         if not isinstance(anilist_id, int):
             return None
@@ -625,6 +637,7 @@ class AniListImportService:
                 provider_record=record,
                 text=name[:256],
                 kind=EntityName.Kind.OFFICIAL,
+                observation=observation,
             )
         return contributor
 
@@ -687,6 +700,15 @@ class AniListImportService:
                     slug="episode-number",
                     name="Episode Number",
                     value=str(episode_number),
+                    value_type="string",
+                    json_pointer=f"/schedule/{index}/episode",
+                )
+                knowledge_ingestion_service.record_fact(
+                    entity=episode_entity,
+                    observation=calendar_observation,
+                    slug="episode-type",
+                    name="Episode Type",
+                    value="EP",
                     value_type="string",
                     json_pointer=f"/schedule/{index}/episode",
                 )
