@@ -154,7 +154,7 @@ export const decodeRatingDetails = (value: unknown) =>
 
 export const decodeUserSubject = (value: unknown) => {
   const entry = decodeValue(value, isLibraryEntry, 'Invalid library entry response');
-  const subject = subjectSummaryFromEntity(entry.entity as import('../contracts/entity').EntitySummary);
+  const subject = subjectSummaryFromEntity(entry.entity);
   return {
     ...entry,
     subject,
@@ -165,7 +165,7 @@ export const decodeReview = (value: unknown) => {
   const review = decodeValue(value, isReview, 'Invalid review response');
   return {
     ...review,
-    subject: subjectSummaryFromEntity(review.entity as import('../contracts/entity').EntitySummary),
+    subject: subjectSummaryFromEntity(review.entity),
   } as unknown as Review;
 };
 
@@ -181,7 +181,7 @@ export const decodeProgressSummary = (value: unknown) => {
     total_episodes: progress.total_episodes,
     finished_count: progress.finished_count,
     finished_episode_ids: progress.finished_episode_ids,
-    episodes: progress.episodes!.map((episode) => ({
+    episodes: progress.episodes.map((episode) => ({
       id: episode.id,
       title: episode.title,
       title_cn: episode.title_cn,

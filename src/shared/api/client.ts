@@ -160,7 +160,12 @@ function parseSuccessPayload(text: string): { kind: 'empty' | 'payload'; data: u
 
   try {
     const value: unknown = JSON.parse(text);
-    if (isRecord(value) && typeof value['code'] === 'number' && typeof value['message'] === 'string' && Object.hasOwn(value, 'data')) {
+    if (
+      isRecord(value) &&
+      typeof value['code'] === 'number' &&
+      typeof value['message'] === 'string' &&
+      Object.hasOwn(value, 'data')
+    ) {
       return { kind: 'payload', data: value['data'] };
     }
     return { kind: 'payload', data: value };
@@ -173,7 +178,7 @@ function errorPayload(text: string): {
   problem: ProblemDetails | null;
   legacy: ApiEnvelope<unknown> | null;
 } {
-  let value: unknown = null;
+  let value: unknown;
   try {
     value = text ? JSON.parse(text) : null;
   } catch {
@@ -339,7 +344,7 @@ export async function apiRequest<TData, TBody = unknown>(path: string, options: 
     }
 
     const { problem, legacy } = errorPayload(responseText);
-    const data = problem ? null : legacy?.data ?? (responseText.slice(0, 1600) || null);
+    const data = problem ? null : (legacy?.data ?? (responseText.slice(0, 1600) || null));
     const message =
       problem?.detail ||
       problem?.title ||

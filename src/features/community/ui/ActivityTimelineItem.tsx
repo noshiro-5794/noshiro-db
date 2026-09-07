@@ -107,7 +107,7 @@ export function ActivityTimelineItem({
                   typeof targetSubject.display_subtitle === 'string' &&
                   targetSubject.display_subtitle
                     ? targetSubject.display_subtitle
-                    : String(targetSubject.subject_type || '')}
+                    : targetSubject.subject_type || ''}
                 </small>
               </span>
             </Link>

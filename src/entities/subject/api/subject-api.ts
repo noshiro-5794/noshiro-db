@@ -222,7 +222,16 @@ export const indexApi = {
     api.get<ApiPage<SubjectSummary>>('/api/v1/index/entities/', {
       ...context,
       decode: (value) => decodeApiPage(value, decodeSubjectSummary),
-      query,
+      query: {
+        ...(query.query === undefined ? {} : { query: query.query }),
+        ...(query.keyword === undefined ? {} : { query: query.keyword }),
+        ...(query.collection === undefined ? {} : { collection: query.collection }),
+        ...(query.scope === undefined ? {} : { scope: query.scope }),
+        ...(query.subject_type === undefined ? {} : { subject_type: query.subject_type }),
+        ...(query.nsfw === undefined ? {} : { nsfw: query.nsfw }),
+        ...(query.page === undefined ? {} : { page: query.page }),
+        ...(query.page_size === undefined ? {} : { page_size: query.page_size }),
+      },
     }),
 
   getSubject: (subjectId: UUID, context: ApiRequestContext = {}) =>
@@ -271,19 +280,17 @@ export const indexApi = {
       }),
 
   listSubjectStaffRoles: (subjectId: UUID, context: ApiRequestContext = {}) =>
-    indexApi
-      .listSubjectStaff(subjectId, { page: 1, page_size: 1_000 }, context)
-      .then((page) =>
-        decodeSubjectStaffRoles({
-          roles: [
-            ...new Set(
-              page.results
-                .map((item) => item.role)
-                .filter((role): role is string => typeof role === 'string' && Boolean(role)),
-            ),
-          ],
-        }),
-      ),
+    indexApi.listSubjectStaff(subjectId, { page: 1, page_size: 1_000 }, context).then((page) =>
+      decodeSubjectStaffRoles({
+        roles: [
+          ...new Set(
+            page.results
+              .map((item) => item.role)
+              .filter((role): role is string => typeof role === 'string' && Boolean(role)),
+          ),
+        ],
+      }),
+    ),
 
   listSubjectCharacters: (subjectId: UUID, query: PageQuery = {}, context: ApiRequestContext = {}) =>
     api.get<ApiPage<SubjectCharacter>>(`/api/v1/index/entities/${encodePath(subjectId)}/characters/`, {
@@ -313,11 +320,14 @@ export const indexApi = {
         };
       }),
 
-  getCalendar: (_query: { weekday_en?: WeekdayEn } = {}, context: ApiRequestContext = {}) =>
-    api.get<CalendarGroup[]>('/api/v1/index/calendar/events/', {
+  getCalendar: (_query: { weekday_en?: WeekdayEn } = {}, context: ApiRequestContext = {}) => {
+    void _query;
+    return api.get<CalendarGroup[]>('/api/v1/index/calendar/events/', {
       ...context,
       decode: decodeCalendarEventsToGroups,
-    }),
+      query: { include_work: true },
+    });
+  },
 
   getBangumiSubject,
 };

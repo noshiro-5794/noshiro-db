@@ -67,7 +67,9 @@ export const profileApi = {
     api.get<CurrentUserProfile>('/api/v1/users/me/settings/', { ...context, decode: decodeCurrentUserProfile }),
 
   updateSettings: (body: Partial<Pick<CurrentUserProfile, 'language' | 'appearance'>>) =>
-    api.patch<CurrentUserProfile, typeof body>('/api/v1/users/me/settings/', body, { decode: decodeCurrentUserProfile }),
+    api.patch<CurrentUserProfile, typeof body>('/api/v1/users/me/settings/', body, {
+      decode: decodeCurrentUserProfile,
+    }),
 
   getStats: (query: { year?: number; timezone?: string } = {}, context: ApiRequestContext = {}) =>
     api.get<ProfileStats>('/api/v1/users/me/profile/stats/', { ...context, decode: decodeProfileStats, query }),

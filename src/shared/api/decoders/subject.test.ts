@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  decodeCalendarGroups,
+  decodeCalendarEventsToGroups,
   decodeSubjectDetail,
   decodeSubjectEpisode,
   decodeSubjectRelation,
@@ -49,12 +49,29 @@ describe('subject response decoders', () => {
         provenance: null,
       }),
     ).toMatchObject({ id: '1', ep_num: 1 });
+    expect(
+      decodeSubjectEpisode({
+        id: '2',
+        title: 'Episode',
+        title_cn: '',
+        type: 'EP',
+        number: null,
+        sort: null,
+        disc: null,
+        duration: null,
+        raw_duration: '',
+        air_date: null,
+        comment_count: null,
+        description: '',
+        provenance: null,
+      }),
+    ).toMatchObject({ id: '2', ep_num: null, date: null });
   });
 
   it('validates relation and staff role lists', () => {
-    expect(decodeSubjectRelation({ relation_type: 'sequel', target: entity, qualifiers: {}, evidence: [] })).toMatchObject(
-      { relation: 'sequel' },
-    );
+    expect(
+      decodeSubjectRelation({ relation_type: 'sequel', target: entity, qualifiers: {}, evidence: [] }),
+    ).toMatchObject({ relation: 'sequel' });
     expect(() => decodeSubjectRelation({ relation_type: 1, target: entity })).toThrow(TypeError);
     expect(decodeSubjectStaffRoles({ roles: ['director', 'writer'] })).toEqual({ roles: ['director', 'writer'] });
   });
@@ -72,7 +89,7 @@ describe('subject response decoders', () => {
       raw_value: 'Subject',
       provenance: null,
     };
-    expect(decodeCalendarGroups([event])).toHaveLength(7);
-    expect(() => decodeCalendarGroups([{ ...event, weekday: 8 }])).toThrow(TypeError);
+    expect(decodeCalendarEventsToGroups([event])).toHaveLength(7);
+    expect(() => decodeCalendarEventsToGroups([{ ...event, weekday: 8 }])).toThrow(TypeError);
   });
 });

@@ -2,12 +2,9 @@ import type {
   CalendarEvent,
   CalendarGroup,
   CalendarSubjectItem,
-  EntityCharacter,
-  EntityCredit,
   EntityDetail,
   EntityEpisode,
   EntityMedia,
-  EntityRelation,
   EntitySummary,
   FieldProvenance,
   FactEvidence,
@@ -114,7 +111,6 @@ function buildSubjectSummary(value: EntitySummary): SubjectSummary {
   const images = buildSubjectImages(value.media);
   const nsfw = value.audience === 'adult';
   const platform = null;
-  const sourceId = undefined;
   const displayMeta = [value.work_type, value.entity_type, value.lifecycle, value.audience].filter(
     (item): item is string => typeof item === 'string' && Boolean(item),
   );
@@ -134,7 +130,6 @@ function buildSubjectSummary(value: EntitySummary): SubjectSummary {
     ...(images.thumbnail ? { image_thumbnail: images.thumbnail } : {}),
     images,
     ...(images.original ? { image_original: images.original } : {}),
-    ...(sourceId === undefined ? {} : { source_id: sourceId }),
   };
 }
 
@@ -153,7 +148,7 @@ function buildSubjectDetail(value: EntityDetail): SubjectDetail {
   const summary = buildSubjectSummary(value);
   const firstDescription = value.descriptions.find((description) => description.is_official) ?? value.descriptions[0];
   const descriptionText = firstDescription?.text;
-  const titleCn = preferredName(value.names as Array<{ text: string; language: string; kind: string }>);
+  const titleCn = preferredName(value.names);
 
   return {
     ...summary,
@@ -190,17 +185,17 @@ function decodeEntityEpisode(value: unknown): SubjectEpisode {
     typeof value['title'] !== 'string' ||
     typeof value['title_cn'] !== 'string' ||
     typeof value['type'] !== 'string' ||
-    typeof value['number'] !== 'string' ||
-    typeof value['sort'] !== 'string' ||
-    typeof value['air_date'] !== 'string'
+    !(value['number'] === null || typeof value['number'] === 'string') ||
+    !(value['sort'] === null || typeof value['sort'] === 'string') ||
+    !(value['air_date'] === null || typeof value['air_date'] === 'string')
   ) {
     throw new TypeError('Invalid entity episode response');
   }
 
   return {
     ...(value as unknown as EntityEpisode),
-    ep_num: toNullableDecimal(value['number']),
-    date: value['air_date'],
+    ep_num: toNullableDecimal(value['number'] ?? ''),
+    date: value['air_date'] ?? null,
   };
 }
 
@@ -209,7 +204,7 @@ function decodeEntityCredit(value: unknown): SubjectStaff {
     throw new TypeError('Invalid entity credit response');
   }
 
-  const contributor = buildSubjectSummary(value['contributor'] as EntitySummary);
+  const contributor = buildSubjectSummary(value['contributor']);
   return {
     ...contributor,
     name: contributor.display_name,
@@ -223,7 +218,7 @@ function decodeEntityCharacter(value: unknown): SubjectCharacter {
     throw new TypeError('Invalid entity character response');
   }
 
-  const character = buildSubjectSummary(value['character'] as EntitySummary);
+  const character = buildSubjectSummary(value['character']);
   return {
     ...character,
     name: character.display_name,
@@ -240,7 +235,7 @@ function decodeEntityRelation(value: unknown): SubjectRelation {
 
   return {
     relation: value['relation_type'],
-    subject: buildSubjectSummary(value['target'] as EntitySummary),
+    subject: buildSubjectSummary(value['target']),
     ...(Array.isArray(value['evidence']) ? { evidence: value['evidence'] as FactEvidence[] } : {}),
   };
 }
@@ -252,24 +247,25 @@ function weekdayFromNumber(value: number | null): WeekdayEn | null {
 
 function calendarEventToItem(value: CalendarEvent): CalendarSubjectItem {
   const weekday = weekdayFromNumber(value.weekday);
+  const work = value.work ? buildSubjectSummary(value.work) : null;
   return {
     subject_id: value.work_id,
-    subject_type: 'anime',
-    title: value.raw_value,
-    title_cn: null,
-    display_title: value.raw_value,
-    date: value.starts_at?.slice(0, 10) ?? null,
-    image_url: null,
-    image: null,
-    image_thumbnail: null,
-    platform: value.region || value.timezone,
-    nsfw: false,
+    subject_type: work?.subject_type ?? 'anime',
+    title: work?.title ?? value.raw_value,
+    title_cn: work?.title_cn ?? null,
+    display_title: work?.display_title ?? value.raw_value,
+    date: work?.date ?? value.starts_at?.slice(0, 10) ?? null,
+    image_url: work?.image ?? work?.images?.poster ?? null,
+    image: work?.image ?? work?.images?.poster ?? null,
+    image_thumbnail: work?.image_thumbnail ?? work?.images?.thumbnail ?? null,
+    platform: work?.platform ?? (value.region || value.timezone),
+    nsfw: work?.nsfw ?? false,
     weekday_en: weekday ?? 'Mon',
-    doing: 0,
+    doing: value.collection_doing,
   };
 }
 
-export function decodeCalendarEvents(value: unknown): CalendarEvent[] {
+function decodeCalendarEvents(value: unknown): CalendarEvent[] {
   if (
     !Array.isArray(value) ||
     !value.every(
@@ -283,13 +279,15 @@ export function decodeCalendarEvents(value: unknown): CalendarEvent[] {
         typeof item['region'] === 'string' &&
         (item['weekday'] === null || (isInteger(item['weekday']) && item['weekday'] >= 1 && item['weekday'] <= 7)) &&
         typeof item['precision'] === 'string' &&
-        typeof item['raw_value'] === 'string',
+        typeof item['raw_value'] === 'string' &&
+        (item['collection_doing'] === undefined || isInteger(item['collection_doing'], 0)) &&
+        (item['work'] === undefined || item['work'] === null || isEntitySummary(item['work'])),
     )
   ) {
     throw new TypeError('Invalid calendar events response');
   }
 
-  return value as unknown as CalendarEvent[];
+  return value as CalendarEvent[];
 }
 
 export function decodeCalendarEventsToGroups(value: unknown): CalendarGroup[] {
@@ -330,7 +328,3 @@ export function decodeSubjectStaffRoles(value: unknown): { roles: string[] } {
   }
   return { roles: value['roles'] };
 }
-
-export const decodeCalendarGroups = decodeCalendarEventsToGroups;
-
-export type { EntityCharacter, EntityCredit, EntityRelation };

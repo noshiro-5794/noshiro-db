@@ -23,7 +23,7 @@ type AppearancePreference = NonNullable<CurrentUserProfile['appearance']>;
 export function ProfileSettingsForm({ profile, patchProfile, onError, onNotice }: SettingsFormProps) {
   const { t } = useI18n();
   const [nickname, setNickname] = useState(profile.nickname);
-  const [bio, setBio] = useState(profile.bio ?? '');
+  const [bio, setBio] = useState(profile.bio);
   const [isSaving, setIsSaving] = useState(false);
   const nicknameId = useId();
   const bioId = useId();
@@ -35,7 +35,7 @@ export function ProfileSettingsForm({ profile, patchProfile, onError, onNotice }
     setIsSaving(true);
     try {
       const nextProfile = await profileApi.updateMe({ nickname: nextNickname, bio });
-      patchProfile({ nickname: nextProfile.nickname, bio: nextProfile.bio ?? '' });
+      patchProfile({ nickname: nextProfile.nickname, bio: nextProfile.bio });
       onNotice('settings.profileUpdated');
     } catch (error) {
       onError(getErrorMessage(error, t('common.requestFailed')));

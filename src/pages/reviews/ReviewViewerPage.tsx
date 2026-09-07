@@ -66,7 +66,7 @@ export function ReviewViewerPage() {
   const fallbackBackTarget = review?.subject ? routes.entity(review.subject.id) : routes.reviews;
   const backTarget = backTargetFromState(location, fallbackBackTarget);
   const isOwnReview = Boolean(
-    myReviewQuery.data || (review?.user?.id && auth.profile?.user_id && review.user.id === auth.profile.user_id),
+    myReviewQuery.data || (review?.user.id && auth.profile?.user_id && review.user.id === auth.profile.user_id),
   );
   const deleteReviewMutation = useMutation({
     ...libraryMutations.deleteReview(),
@@ -180,7 +180,7 @@ export function ReviewViewerPage() {
           }
           meta={
             <>
-              {review.user?.id ? (
+              {review.user.id ? (
                 <Link to={routes.userProfile(review.user.id)}>
                   <Avatar alt={review.user.nickname || t('common.anonymous')} src={review.user.avatar} />
                 </Link>
@@ -188,7 +188,7 @@ export function ReviewViewerPage() {
                 <Avatar />
               )}
               <div className="min-w-0">
-                {review.user?.id ? (
+                {review.user.id ? (
                   <Link
                     className="block truncate text-sm font-semibold text-foreground hover:text-[var(--ui-accent-text)]"
                     to={routes.userProfile(review.user.id)}

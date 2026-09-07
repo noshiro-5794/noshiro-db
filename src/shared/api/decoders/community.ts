@@ -206,7 +206,9 @@ export const decodeCommunityBookmark = (value: unknown) => {
   const bookmark = decodeValue(value, isBookmark, 'Invalid community bookmark response');
   return {
     ...bookmark,
-    ...(bookmark.target?.entity ? { target: { ...bookmark.target, subject: subjectSummaryFromEntity(bookmark.target.entity) } } : {}),
+    ...(bookmark.target?.entity
+      ? { target: { ...bookmark.target, subject: subjectSummaryFromEntity(bookmark.target.entity) } }
+      : {}),
   };
 };
 export const decodeCommunityNotification = (value: unknown) =>

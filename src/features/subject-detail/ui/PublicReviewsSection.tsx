@@ -68,7 +68,7 @@ export function PublicReviewsSection({
               <PublicReviewItem
                 detailLinkState={detailLinkState}
                 isOwnReview={Boolean(
-                  review.user?.id && auth.profile?.user_id && review.user.id === auth.profile.user_id,
+                  review.user.id && auth.profile?.user_id && review.user.id === auth.profile.user_id,
                 )}
                 review={review}
               />
@@ -99,7 +99,7 @@ function PublicReviewItem({
     <article className="py-4 first:pt-0 last:pb-0">
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
-          {review.user?.id ? (
+          {review.user.id ? (
             <Link className="group shrink-0 rounded-full" to={routes.userProfile(review.user.id)}>
               <Avatar
                 alt={review.user.nickname || t('common.anonymous')}
@@ -111,7 +111,7 @@ function PublicReviewItem({
             <Avatar className="size-9" />
           )}
           <div className="min-w-0">
-            {review.user?.id ? (
+            {review.user.id ? (
               <Link
                 className="block truncate text-sm font-semibold text-foreground transition-colors hover:text-[var(--ui-accent-text)]"
                 to={routes.userProfile(review.user.id)}
