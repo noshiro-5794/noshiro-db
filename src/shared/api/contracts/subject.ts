@@ -82,14 +82,15 @@ export type SubjectSummary = EntitySummary & {
   created_at?: ISODateString;
 };
 
-export type SubjectDetail = EntityDetail & SubjectSummary & {
-  summary?: string;
-  episode_count: number;
-  staff_count: number;
-  character_count: number;
-  infobox?: unknown;
-  tags?: string[];
-};
+export type SubjectDetail = EntityDetail &
+  SubjectSummary & {
+    summary?: string;
+    episode_count: number;
+    staff_count: number;
+    character_count: number;
+    infobox?: unknown;
+    tags?: string[];
+  };
 
 export type SubjectEpisode = EntityEpisode & {
   ep_num: number | null;
@@ -130,7 +131,7 @@ export type SubjectCharacter = EntitySummary & {
 };
 
 export type SubjectRelation = {
-  direction?: 'outgoing' | 'incoming' | string;
+  direction?: string;
   relation: string;
   subject: SubjectSummary;
   evidence?: FactEvidence[];

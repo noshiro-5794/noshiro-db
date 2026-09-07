@@ -106,7 +106,8 @@ export const communityFollowsApi = {
     api.put<FollowRelation>(`/api/v1/community/me/following/${encodePath(targetUserId)}/`, undefined, {
       decode: decodeFollowRelation,
     }),
-  unfollow: (targetUserId: number) => api.delete<unknown>(`/api/v1/community/me/following/${encodePath(targetUserId)}/`),
+  unfollow: (targetUserId: number) =>
+    api.delete<unknown>(`/api/v1/community/me/following/${encodePath(targetUserId)}/`),
   listMyFollowing: (query: PageQuery = {}, context: ApiRequestContext = {}) =>
     api.get<ApiPage<FollowRelation>>('/api/v1/community/me/following/', {
       ...context,
@@ -208,9 +209,13 @@ export const communityPostsApi = {
       decode: decodeCommunityPost,
     }),
   update: (postId: number, body: Partial<CommunityPostBody>) =>
-    api.patch<CommunityPostSummary, Partial<CommunityPostBody>>(`/api/v1/community/posts/${encodePath(postId)}/`, body, {
-      decode: decodeCommunityPost,
-    }),
+    api.patch<CommunityPostSummary, Partial<CommunityPostBody>>(
+      `/api/v1/community/posts/${encodePath(postId)}/`,
+      body,
+      {
+        decode: decodeCommunityPost,
+      },
+    ),
   delete: (postId: number) => api.delete<unknown>(`/api/v1/community/posts/${encodePath(postId)}/`),
 };
 
@@ -238,13 +243,16 @@ export const communityInteractionsApi = {
       `/api/v1/community/me/reactions/${encodePath(body.target_type)}/${encodePath(body.target_id)}/${encodePath(body.reaction_type ?? 'like')}/`,
       undefined,
       {
-      decode: decodeCommunityReaction,
+        decode: decodeCommunityReaction,
       },
     ),
   unreact: (body: { target_type: CommunityTargetType; target_id: number; reaction_type?: CommunityReactionType }) =>
-    apiRequest<unknown>(`/api/v1/community/me/reactions/${encodePath(body.target_type)}/${encodePath(body.target_id)}/${encodePath(body.reaction_type ?? 'like')}/`, {
-      method: 'DELETE',
-    }),
+    apiRequest<unknown>(
+      `/api/v1/community/me/reactions/${encodePath(body.target_type)}/${encodePath(body.target_id)}/${encodePath(body.reaction_type ?? 'like')}/`,
+      {
+        method: 'DELETE',
+      },
+    ),
   listBookmarks: (query: CommunityBookmarkListQuery = {}, context: ApiRequestContext = {}) =>
     api.get<ApiPage<CommunityBookmark>>('/api/v1/community/me/bookmarks/', {
       ...context,
@@ -252,11 +260,18 @@ export const communityInteractionsApi = {
       query,
     }),
   bookmark: (body: { target_type: CommunityTargetType; target_id: number }) =>
-    api.put<CommunityBookmark, undefined>(`/api/v1/community/me/bookmarks/${encodePath(body.target_type)}/${encodePath(body.target_id)}/`, undefined, {
-      decode: decodeCommunityBookmark,
-    }),
+    api.put<CommunityBookmark, undefined>(
+      `/api/v1/community/me/bookmarks/${encodePath(body.target_type)}/${encodePath(body.target_id)}/`,
+      undefined,
+      {
+        decode: decodeCommunityBookmark,
+      },
+    ),
   unbookmark: (body: { target_type: CommunityTargetType; target_id: number }) =>
-    apiRequest<unknown>(`/api/v1/community/me/bookmarks/${encodePath(body.target_type)}/${encodePath(body.target_id)}/`, { method: 'DELETE' }),
+    apiRequest<unknown>(
+      `/api/v1/community/me/bookmarks/${encodePath(body.target_type)}/${encodePath(body.target_id)}/`,
+      { method: 'DELETE' },
+    ),
 };
 
 export const communityNotificationsApi = {
@@ -272,9 +287,13 @@ export const communityNotificationsApi = {
       decode: decodeNotificationUnreadCount,
     }),
   markRead: (notificationId: number) =>
-    api.put<CommunityNotification>(`/api/v1/community/me/notifications/${encodePath(notificationId)}/read-state/`, undefined, {
-      decode: decodeCommunityNotification,
-    }),
+    api.put<CommunityNotification>(
+      `/api/v1/community/me/notifications/${encodePath(notificationId)}/read-state/`,
+      undefined,
+      {
+        decode: decodeCommunityNotification,
+      },
+    ),
   markAllRead: () =>
     api.put<CommunityNotificationReadAllResult>('/api/v1/community/me/notifications/read-state/', undefined, {
       decode: decodeNotificationReadAllResult,

@@ -1,6 +1,8 @@
 import {
   api,
   decodeApiPage,
+  decodeCollection,
+  decodeCollectionItem,
   decodePublicReview,
   decodePublicUserSubject,
   encodePath,
@@ -76,35 +78,34 @@ export const publicUsersApi = {
       },
     }),
 
-  listCollections: async (_userId: number, _query: PublicCollectionListQuery = {}, _context: ApiRequestContext = {}) =>
-    ({
-      count: 0,
-      next: null,
-      previous: null,
-      results: [] as Collection[],
-    }) satisfies ApiPage<Collection>,
+  listCollections: (userId: number, query: PublicCollectionListQuery = {}, context: ApiRequestContext = {}) =>
+    api.get<ApiPage<Collection>>(`/api/v1/users/${encodePath(userId)}/collections/`, {
+      ...context,
+      decode: (value) => decodeApiPage(value, decodeCollection),
+      query: {
+        ...(query.keyword ? { keyword: query.keyword } : {}),
+        ...(query.ordering ? { ordering: query.ordering } : {}),
+        ...(query.page === undefined ? {} : { page: query.page }),
+        ...(query.page_size === undefined ? {} : { page_size: query.page_size }),
+      },
+    }),
 
-  getCollection: async (_userId: number, _collectionId: number, _context: ApiRequestContext = {}) =>
-    ({
-      id: 0,
-      name: '',
-      simple_rating: null,
-      note: '',
-      is_public: true,
-      item_count: 0,
-      reaction_count: 0,
-    }) as Collection,
+  getCollection: (userId: number, collectionId: number, context: ApiRequestContext = {}) =>
+    api.get<Collection>(`/api/v1/users/${encodePath(userId)}/collections/${encodePath(collectionId)}/`, {
+      ...context,
+      decode: decodeCollection,
+    }),
 
-  listCollectionItems: async (
-    _userId: number,
-    _collectionId: number,
-    _query: PageQuery = {},
-    _context: ApiRequestContext = {},
-  ) =>
-    ({
-      count: 0,
-      next: null,
-      previous: null,
-      results: [] as CollectionItem[],
-    }) satisfies ApiPage<CollectionItem>,
+  listCollectionItems: (userId: number, collectionId: number, query: PageQuery = {}, context: ApiRequestContext = {}) =>
+    api.get<ApiPage<CollectionItem>>(
+      `/api/v1/users/${encodePath(userId)}/collections/${encodePath(collectionId)}/items/`,
+      {
+        ...context,
+        decode: (value) => decodeApiPage(value, decodeCollectionItem),
+        query: {
+          ...(query.page === undefined ? {} : { page: query.page }),
+          ...(query.page_size === undefined ? {} : { page_size: query.page_size }),
+        },
+      },
+    ),
 };

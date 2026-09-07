@@ -1,39 +1,17 @@
 import type { ISODateString, UUID } from './common';
 
-export type EntityKind =
-  | 'work'
-  | 'release'
-  | 'episode'
-  | 'contributor'
-  | 'character'
-  | 'unclassified'
-  | (string & {});
+export type EntityKind = 'work' | 'release' | 'episode' | 'contributor' | 'character' | 'unclassified' | (string & {});
 
 export type EntityLifecycle = 'active' | 'merged' | 'retired' | (string & {});
 
 export type EntityAudience = 'unknown' | 'general' | 'adult' | (string & {});
 
 export type WorkType =
-  | 'anime'
-  | 'galgame'
-  | 'manga'
-  | 'novel'
-  | 'game'
-  | 'music'
-  | 'other'
-  | 'unclassified'
-  | (string & {});
+  'anime' | 'galgame' | 'manga' | 'novel' | 'game' | 'music' | 'other' | 'unclassified' | (string & {});
 
 export type EntitySafety = 'safe' | 'suggestive' | 'explicit' | 'unknown' | (string & {});
 
-export type EntityNameKind =
-  | 'original'
-  | 'official'
-  | 'alias'
-  | 'short'
-  | 'romanized'
-  | 'translated'
-  | (string & {});
+export type EntityNameKind = 'original' | 'official' | 'alias' | 'short' | 'romanized' | 'translated' | (string & {});
 
 export type EntityFactStatus = 'candidate' | 'selected' | 'rejected' | (string & {});
 
@@ -166,13 +144,13 @@ export type EntityEpisode = {
   title: string;
   title_cn: string;
   type: string;
-  number: string;
-  sort: string;
-  disc: number;
-  duration: string;
+  number: string | null;
+  sort: string | null;
+  disc: number | null;
+  duration: string | null;
   raw_duration: string;
-  air_date: string;
-  comment_count: number;
+  air_date: string | null;
+  comment_count: number | null;
   description: string;
   provenance: FieldProvenance | null;
 };
@@ -222,6 +200,8 @@ export type CalendarEvent = {
   weekday: number | null;
   precision: string;
   raw_value: string;
+  collection_doing: number;
+  work?: EntitySummary | null;
   provenance: FieldProvenance | null;
 };
 
