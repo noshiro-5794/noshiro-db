@@ -5,12 +5,17 @@ import pytest
 from django.core.management import call_command
 
 from apps.index.models import (
+    Contributor,
+    Credit,
+    CurrentObservation,
     Entity,
     EntityName,
+    Observation,
     Provider,
     ProviderNamespace,
     ProviderRecord,
     ProviderRepresentation,
+    Work,
 )
 
 pytestmark = pytest.mark.django_db(transaction=True)
@@ -50,6 +55,50 @@ def _anilist_entity() -> Entity:
     return entity
 
 
+def _observed_work_record(*, namespace: ProviderNamespace) -> ProviderRecord:
+    record = ProviderRecord.objects.create(
+        namespace=namespace, external_id="2", origin="api", status="active"
+    )
+    observation = Observation.objects.create(
+        provider_record=record,
+        origin=Observation.Origin.LEGACY,
+        schema_name="index.work",
+        schema_version="1",
+        normalized_data={"title": "Work"},
+        normalized_hash="hash-2",
+    )
+    CurrentObservation.objects.create(
+        provider_record=record,
+        mapper="legacy",
+        schema_name="index.work",
+        observation=observation,
+    )
+    return record
+
+
+def _contributor_entity(
+    *, namespace: ProviderNamespace
+) -> tuple[Entity, ProviderRecord]:
+    record = ProviderRecord.objects.create(
+        namespace=namespace, external_id="3", origin="api", status="active"
+    )
+    entity = Entity.objects.create(kind=Entity.Kind.CONTRIBUTOR)
+    ProviderRepresentation.objects.create(
+        provider_record=record,
+        entity=entity,
+        mapping_kind=ProviderRepresentation.MappingKind.EXACT,
+        method=ProviderRepresentation.Method.EXTERNAL_ID,
+    )
+    EntityName.objects.create(
+        entity=entity,
+        provider_record=record,
+        text="Some Contributor",
+        language="en",
+        kind=EntityName.Kind.OFFICIAL,
+    )
+    return entity, record
+
+
 def test_generate_match_candidates_dry_run_reports_counts() -> None:
     _anilist_entity()
 
@@ -58,6 +107,57 @@ def test_generate_match_candidates_dry_run_reports_counts() -> None:
     assert "dry-run" in output
     assert "anilist_entities=1" in output
     assert "candidates_created=0" in output
+
+
+def test_backfill_entity_name_observations_links_legacy_names() -> None:
+    provider, _ = Provider.objects.get_or_create(
+        slug="anilist", defaults={"name": "AniList"}
+    )
+    namespace, _ = ProviderNamespace.objects.get_or_create(
+        provider=provider,
+        slug="anime",
+        defaults={"resource_type": ProviderNamespace.ResourceType.SUBJECT},
+    )
+    work_record = _observed_work_record(namespace=namespace)
+    work_entity = Entity.objects.create(kind=Entity.Kind.WORK)
+    ProviderRepresentation.objects.create(
+        provider_record=work_record,
+        entity=work_entity,
+        mapping_kind=ProviderRepresentation.MappingKind.EXACT,
+        method=ProviderRepresentation.Method.PROVIDER,
+    )
+    work = Work.objects.create(
+        entity=work_entity,
+        work_type=Work.WorkType.ANIME,
+    )
+    contributor_entity, contributor_record = _contributor_entity(namespace=namespace)
+    contributor = Contributor.objects.create(
+        entity=contributor_entity,
+        kind=Contributor.Kind.PERSON,
+    )
+    observation = Observation.objects.filter(provider_record=work_record).first()
+    Credit.objects.create(
+        work=work,
+        contributor=contributor,
+        role="Director",
+        observation=observation,
+    )
+
+    name = EntityName.objects.get(
+        entity=contributor_entity,
+        provider_record=contributor_record,
+    )
+    assert name.observation_id is None
+
+    output = _run("backfill_entity_name_observations")
+    assert "[dry-run] orphan_names=1 linkable=1 unlinked=0" in output
+    name.refresh_from_db()
+    assert name.observation_id is None
+
+    output = _run("backfill_entity_name_observations", apply=True)
+    assert "[applied] orphan_names=1 linkable=1 unlinked=0" in output
+    name.refresh_from_db()
+    assert name.observation_id == observation.id
 
 
 def test_audit_relation_drift_handles_empty_and_populated_sets() -> None:
