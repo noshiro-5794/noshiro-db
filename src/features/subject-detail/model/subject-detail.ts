@@ -85,7 +85,8 @@ export function seoImageOf(subject: SubjectDetail) {
 }
 
 export function bangumiSubjectIdOf(subject?: SubjectDetail | null) {
-  const sourceId = subject?.source?.id ?? subject?.source_id;
+  const source = subject?.source;
+  const sourceId = source ? (source.provider === 'bangumi' ? source.id : null) : (subject?.source_id ?? null);
   const value = typeof sourceId === 'string' && /^\d+$/u.test(sourceId) ? Number(sourceId) : sourceId;
   return typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : null;
 }
