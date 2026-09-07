@@ -53,6 +53,9 @@ second package manager.
 uv run python src/manage.py full_sync
 uv run python src/manage.py incremental_sync --status
 uv run python src/manage.py sync_calendar
+uv run python src/manage.py sync_calendar --skip-subject-details
+uv run python src/manage.py sync_airing_daily
+uv run python src/manage.py sync_airing_daily --status
 uv run python src/manage.py sync_subject --bangumi-id 123
 uv run python src/manage.py sync_vndb v17
 uv run python src/manage.py sync_vndb v17 --without-related
@@ -62,6 +65,15 @@ uv run python src/manage.py sync_campaign anilist --ai-mode shadow --page-size 5
 # Limit a rehearsal to a bounded number of imported records.
 uv run python src/manage.py sync_campaign vndb --max-items 20 --ai-sample-size 20
 ```
+
+Calendar board refresh and the daily on-air refresh queue follow two layers:
+the active `AiringBoard` window (one current season, replaced in place and
+archived on season rollover) and per-work airing facts. `sync_calendar`
+refreshes the board; `sync_airing_daily` consumes the board in bounded batches
+through a per-day `SyncState` shard so worker restarts resume instead of
+restarting the day's queue. The beat `daily-calendar-sync` entry runs the
+board-only variant; use the management command without `--skip-subject-details`
+for an explicit one-off deep refresh.
 
 `sync_campaign` is resumable and idempotent for the same provider, campaign type,
 and parameters. Provider discovery and canonical imports remain deterministic;

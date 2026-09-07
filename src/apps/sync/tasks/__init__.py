@@ -1,3 +1,4 @@
+from apps.sync.tasks.airing import run_airing_daily_task
 from apps.sync.tasks.anilist import import_anilist_media_task
 from apps.sync.tasks.calendar import sync_calendar_task
 from apps.sync.tasks.campaign import run_sync_campaign_task
@@ -12,6 +13,7 @@ from apps.sync.tasks.vndb import import_vndb_work_task
 __all__ = (
     "import_anilist_media_task",
     "import_vndb_work_task",
+    "run_airing_daily_task",
     "run_incremental_sync_task",
     "run_sync_campaign_task",
     "scan_stale_sync_jobs",

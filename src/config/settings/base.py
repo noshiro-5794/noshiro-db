@@ -298,6 +298,10 @@ CELERY_BEAT_SCHEDULE = {
             minute=env.int("SYNC_CALENDAR_CRON_MINUTE", default=30),
         ),
     },
+    "daily-airing-refresh": {
+        "task": "apps.sync.tasks.airing.run_airing_daily_task",
+        "schedule": crontab(minute="*/15"),
+    },
     "daily-incremental-sync": {
         "task": "apps.sync.tasks.incremental.run_incremental_sync_task",
         "schedule": crontab(
@@ -464,6 +468,10 @@ HCAPTCHA_TIMEOUT = env.float("HCAPTCHA_TIMEOUT", default=5)
 SYNC_INCREMENTAL_SUBJECT_BATCH_SIZE = env.int(
     "SYNC_INCREMENTAL_SUBJECT_BATCH_SIZE", default=1000
 )
+
+# Airing daily queue processes the current on-air board in small batches so a
+# whole-season refresh stays bounded per Celery run.
+AIRING_DAILY_BATCH_SIZE = env.int("AIRING_DAILY_BATCH_SIZE", default=20)
 
 SYNC_INCREMENTAL_MAX_CONSECUTIVE_ERRORS = env.int(
     "SYNC_INCREMENTAL_MAX_CONSECUTIVE_ERRORS", default=20
