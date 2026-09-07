@@ -1,6 +1,7 @@
 from django.db.models import F, Q, QuerySet
 
 from apps.index.models import (
+    AiringBoard,
     AiringEvent,
     Appearance,
     ContentRating,
@@ -93,6 +94,41 @@ def current_facts() -> QuerySet[Fact]:
 
 def current_airing_events() -> QuerySet[AiringEvent]:
     return AiringEvent.objects.filter(current_observation_support()).distinct()
+
+
+def active_airing_board_events() -> QuerySet[AiringEvent]:
+    """Return the weekday rows owned by the single active on-air board.
+
+    The active board is the source of truth for the home calendar; precise
+    per-episode airings from other observations belong to range queries and
+    must never leak stale past episodes into the current-week board.
+    """
+    board = (
+        AiringBoard.objects.filter(status=AiringBoard.Status.ACTIVE)
+        .select_related("observation")
+        .first()
+    )
+    if board is not None and board.observation_id is not None:
+        return (
+            AiringEvent.objects.filter(
+                observation_id=board.observation_id,
+                precision=AiringEvent.Precision.WEEKDAY,
+            )
+            .select_related(
+                "work__entity",
+                "episode_entity",
+                "observation__provider_record__namespace__provider",
+                "observation__mapping_run",
+            )
+            .order_by("weekday", "-collection_doing", "id")
+        )
+    # Tests and pre-AiringBoard environments fall back to the current
+    # projection's weekday rows so the calendar never goes empty.
+    return (
+        current_airing_events()
+        .filter(precision=AiringEvent.Precision.WEEKDAY)
+        .order_by("weekday", "-collection_doing", "id")
+    )
 
 
 def current_entity_relations() -> QuerySet[EntityRelation]:
