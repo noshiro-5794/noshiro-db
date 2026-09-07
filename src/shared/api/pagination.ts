@@ -72,11 +72,7 @@ export function decodeCursorPage<T>(value: unknown, decodeItem: (item: unknown) 
   };
 }
 
-export function getNextCursorPageParam<T>(
-  lastPage: CursorPage<T>,
-  pages: Array<CursorPage<T>>,
-  _lastPageParam?: string | undefined,
-) {
+export function getNextCursorPageParam<T>(lastPage: CursorPage<T>, pages: Array<CursorPage<T>>) {
   const maxPages = 100;
   assertCursorPageShape(lastPage);
   if (!lastPage.next || pages.length >= maxPages || lastPage.results.length === 0) return undefined;

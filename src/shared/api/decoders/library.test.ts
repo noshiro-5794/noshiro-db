@@ -66,7 +66,16 @@ describe('library response decoders', () => {
       decodeProgressSummary({
         ...progress,
         episodes: [
-          { id: '1', title: 'Episode', title_cn: '', type: 'EP', number: '1', sort: '1', air_date: '', is_finished: true },
+          {
+            id: '1',
+            title: 'Episode',
+            title_cn: '',
+            type: 'EP',
+            number: '1',
+            sort: '1',
+            air_date: '',
+            is_finished: true,
+          },
         ],
       }),
     ).toMatchObject({ total_episodes: 0 });

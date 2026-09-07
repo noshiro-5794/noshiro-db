@@ -88,7 +88,9 @@ export const userSubjectsApi = {
     }),
 
   createMine: (body: CreateUserSubjectBody) =>
-    api.post<UserSubject, CreateUserSubjectBody>('/api/v1/users/me/library/entries/', body, { decode: decodeUserSubject }),
+    api.post<UserSubject, CreateUserSubjectBody>('/api/v1/users/me/library/entries/', body, {
+      decode: decodeUserSubject,
+    }),
 
   getMine: (userSubjectId: number, context: ApiRequestContext = {}) =>
     api.get<UserSubject>(`/api/v1/users/me/library/entries/${encodePath(userSubjectId)}/`, {
@@ -139,7 +141,8 @@ export const userSubjectsApi = {
       decode: decodeUserSubject,
     }),
 
-  deleteMine: (userSubjectId: number) => api.delete<unknown>(`/api/v1/users/me/library/entries/${encodePath(userSubjectId)}/`),
+  deleteMine: (userSubjectId: number) =>
+    api.delete<unknown>(`/api/v1/users/me/library/entries/${encodePath(userSubjectId)}/`),
 };
 
 export const progressApi = {
@@ -181,12 +184,19 @@ export const progressApi = {
     const entry = await findLibraryEntry(subjectId);
     if (!entry) throw new TypeError('Library entry not found');
     return isFinished
-      ? api.put<ProgressSummary>(`/api/v1/users/me/library/entries/${encodePath(entry.id)}/episodes/${encodePath(episodeId)}/progress/`, undefined, {
-          decode: decodeProgressSummary,
-        })
-      : api.delete<ProgressSummary>(`/api/v1/users/me/library/entries/${encodePath(entry.id)}/episodes/${encodePath(episodeId)}/progress/`, {
-          decode: decodeProgressSummary,
-        });
+      ? api.put<ProgressSummary>(
+          `/api/v1/users/me/library/entries/${encodePath(entry.id)}/episodes/${encodePath(episodeId)}/progress/`,
+          undefined,
+          {
+            decode: decodeProgressSummary,
+          },
+        )
+      : api.delete<ProgressSummary>(
+          `/api/v1/users/me/library/entries/${encodePath(entry.id)}/episodes/${encodePath(episodeId)}/progress/`,
+          {
+            decode: decodeProgressSummary,
+          },
+        );
   },
 };
 
@@ -284,11 +294,9 @@ export const reviewsApi = {
   ) =>
     findLibraryEntry(subjectId).then((entry) => {
       if (!entry) throw new TypeError('Library entry not found');
-      return api.post<Review, typeof body>(
-        `/api/v1/users/me/library/entries/${encodePath(entry.id)}/reviews/`,
-        body,
-        { decode: decodeReview },
-      );
+      return api.post<Review, typeof body>(`/api/v1/users/me/library/entries/${encodePath(entry.id)}/reviews/`, body, {
+        decode: decodeReview,
+      });
     }),
 
   getMine: (reviewId: number, context: ApiRequestContext = {}) =>
@@ -335,10 +343,7 @@ export const collectionsApi = {
       query,
     }),
 
-  addItem: (
-    collectionId: number,
-    body: { library_entry_id?: number; order?: number; relation?: string },
-  ) =>
+  addItem: (collectionId: number, body: { library_entry_id?: number; order?: number; relation?: string }) =>
     api.post<CollectionItem, typeof body>(`/api/v1/users/me/collections/${encodePath(collectionId)}/items/`, body, {
       decode: decodeCollectionItem,
     }),
@@ -363,5 +368,6 @@ export const collectionsApi = {
   deleteItem: (collectionId: number, itemId: number) =>
     api.delete<unknown>(`/api/v1/users/me/collections/${encodePath(collectionId)}/items/${encodePath(itemId)}/`),
 
-  deleteMine: (collectionId: number) => api.delete<unknown>(`/api/v1/users/me/collections/${encodePath(collectionId)}/`),
+  deleteMine: (collectionId: number) =>
+    api.delete<unknown>(`/api/v1/users/me/collections/${encodePath(collectionId)}/`),
 };

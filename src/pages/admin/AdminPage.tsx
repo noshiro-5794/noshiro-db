@@ -94,7 +94,10 @@ export function AdminPage() {
             </p>
           ) : null}
 
-          <form className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_auto]" onSubmit={(event) => void handleCreateJob(event)}>
+          <form
+            className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_auto]"
+            onSubmit={(event) => void handleCreateJob(event)}
+          >
             <div className="grid gap-3">
               <Field>
                 <FieldLabel>VNDB ID</FieldLabel>

@@ -1,8 +1,11 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
 
 const subjectId = '01980f00-0000-7000-8000-000000000001';
+const subjectTitle = 'Graph smoke subject';
 const publicPostId = 42;
 const publicReviewId = 12;
+const publicAuthorId = 7;
+const ownUserId = 1;
 
 const emptyPage = {
   count: 0,
@@ -11,24 +14,74 @@ const emptyPage = {
   results: [],
 };
 
-const subject = {
+const entitySummary = {
   id: subjectId,
-  title: 'Graph smoke subject',
-  title_cn: null,
-  subject_type: 'anime',
-  date: '2026-07-29',
-  platform: 'TV',
-  nsfw: false,
-  episode_count: 1,
-  staff_count: 0,
-  character_count: 0,
-  tags: ['science fiction'],
+  entity_type: 'work',
+  lifecycle: 'active',
+  audience: 'general',
+  work_type: 'anime',
+  display_name: subjectTitle,
+  collections: ['anime'],
+  media: [],
+};
+
+const entityDetail = {
+  ...entitySummary,
+  names: [],
+  descriptions: [],
+  facts: [],
+  external_links: [],
+  content_ratings: [],
+  sources: [],
+};
+
+const calendarEvent = {
+  id: 1001,
+  work_id: subjectId,
+  episode_id: null,
+  starts_at: '2026-09-03T13:00:00Z',
+  timezone: 'Asia/Shanghai',
+  region: 'JP',
+  weekday: 4,
+  precision: 'weekday',
+  raw_value: '2026-09-03',
+  collection_doing: 12,
+  work: entitySummary,
+  provenance: null,
 };
 
 const publicAuthor = {
-  id: 7,
+  id: publicAuthorId,
   nickname: 'Public author',
   avatar: null,
+};
+
+const ownProfile = (language: 'en-US' | 'ja-JP' = 'en-US') => ({
+  user_id: ownUserId,
+  email: 'noshiro@example.com',
+  nickname: 'Noshiro',
+  avatar: null,
+  bio: '',
+  is_staff: false,
+  is_superuser: false,
+  language,
+  appearance: 'light',
+  theme_color: '#7f6fb0',
+  show_adult_content: false,
+  adult_content_confirmed_at: null,
+});
+
+const publicProfile = {
+  ...publicAuthor,
+  bio: 'Public profile fixture',
+  is_following: false,
+  stats: {
+    library_entry_count: 1,
+    review_count: 0,
+    collection_count: 0,
+    following_count: 0,
+    follower_count: 0,
+  },
 };
 
 const publicPost = {
@@ -38,10 +91,18 @@ const publicPost = {
   is_spoiler: false,
   is_nsfw: false,
   is_locked: false,
+  is_pinned: false,
   reply_count: 0,
-  reaction_count: 3,
+  reaction_count: 0,
   created_at: '2026-07-29T08:00:00Z',
+  updated_at: '2026-07-29T08:00:00Z',
   author: publicAuthor,
+  entity: entitySummary,
+  viewer_state: {
+    has_liked: false,
+    has_bookmarked: false,
+    is_following_author: false,
+  },
 };
 
 const publicReview = {
@@ -50,22 +111,15 @@ const publicReview = {
   content: 'A public review that guests can read.',
   is_public: true,
   is_spoiler: false,
-  reaction_count: 2,
+  reaction_count: 0,
   created_at: '2026-07-29T08:00:00Z',
-  subject,
+  updated_at: '2026-07-29T08:00:00Z',
+  entity: entitySummary,
+  library_entry_id: 1,
   user: publicAuthor,
-};
-
-const publicProfile = {
-  ...publicAuthor,
-  bio: 'Public profile fixture',
-  is_following: false,
-  stats: {
-    subject_count: 1,
-    review_count: 0,
-    collection_count: 0,
-    following_count: 0,
-    follower_count: 0,
+  viewer_state: {
+    has_liked: false,
+    has_bookmarked: false,
   },
 };
 
@@ -74,13 +128,15 @@ const activity = {
   activity_type: 'user_subject_created',
   created_at: '2026-07-29T08:00:00Z',
   reaction_count: 0,
+  reply_count: 0,
   user: publicAuthor,
-  subject,
+  entity: entitySummary,
   viewer_state: { has_liked: false },
 };
 
 const userSubject = {
   id: 1,
+  entity: entitySummary,
   status: 'doing',
   simple_rating: 4,
   rating: '8.5',
@@ -88,18 +144,15 @@ const userSubject = {
   watch_start_date: '2026-07-01',
   watch_end_date: null,
   is_public: true,
+  releases: [],
+  created_at: '2026-07-29T08:00:00Z',
   updated_at: '2026-07-29T08:00:00Z',
-  subject: {
-    ...subject,
-    image: null,
-    image_thumbnail: null,
-  },
 };
 
 const progress = {
-  subject_id: subjectId,
-  user_subject_id: null,
-  total_episodes: 1,
+  library_entry_id: 1,
+  entity_id: subjectId,
+  total_episodes: 0,
   finished_count: 0,
   finished_episode_ids: [],
   episodes: [],
@@ -126,13 +179,13 @@ async function currentReturnTarget(page: Page) {
   });
 }
 
-async function mockPublicApi(page: Page) {
+async function mockGuestApi(page: Page) {
   await page.route(
     (url) => url.pathname.startsWith('/api/'),
     async (route) => {
       const path = new URL(route.request().url()).pathname;
 
-      if (path === '/api/users/token/refresh/') {
+      if (path === '/api/v1/auth/sessions/refresh/') {
         await route.fulfill({
           contentType: 'application/json',
           json: { code: 401, message: 'No active session', data: null },
@@ -141,45 +194,36 @@ async function mockPublicApi(page: Page) {
         return;
       }
 
-      if (path === '/api/index/calendar/') {
-        await fulfillApi(route, [
-          {
-            weekday: { id: 3, en: 'Wed' },
-            items: [
-              {
-                subject_id: subjectId,
-                subject_type: 'anime',
-                title: subject.title,
-                title_cn: null,
-                image_thumbnail: null,
-                platform: 'TV',
-                nsfw: false,
-                weekday_en: 'Wed',
-                doing: 12,
-              },
-            ],
-          },
-        ]);
+      if (path === '/api/v1/index/calendar/events/') {
+        await fulfillApi(route, [calendarEvent]);
         return;
       }
 
-      if (path === `/api/community/posts/${String(publicPostId)}/`) {
-        await fulfillApi(route, publicPost);
+      if (path === `/api/v1/index/entities/${subjectId}/`) {
+        await fulfillApi(route, entityDetail);
         return;
       }
 
-      if (path === `/api/users/reviews/${String(publicReviewId)}/`) {
+      if (path === `/api/v1/index/entities/${subjectId}/credits/` || path.endsWith('/relations/')) {
+        await fulfillApi(route, []);
+        return;
+      }
+
+      if (
+        path.startsWith(`/api/v1/index/entities/${subjectId}/episodes/`) ||
+        path.startsWith(`/api/v1/index/entities/${subjectId}/characters/`)
+      ) {
+        await fulfillApi(route, emptyPage);
+        return;
+      }
+
+      if (path === `/api/v1/users/reviews/${String(publicReviewId)}/`) {
         await fulfillApi(route, publicReview);
         return;
       }
 
-      if (path === `/api/index/subjects/${subjectId}/`) {
-        await fulfillApi(route, subject);
-        return;
-      }
-
-      if (path.startsWith(`/api/index/subjects/${subjectId}/`)) {
-        await fulfillApi(route, emptyPage);
+      if (path === `/api/v1/community/posts/${String(publicPostId)}/`) {
+        await fulfillApi(route, publicPost);
         return;
       }
 
@@ -189,65 +233,62 @@ async function mockPublicApi(page: Page) {
 }
 
 async function mockAuthenticatedApi(page: Page) {
+  const userSubjectId = String(userSubject.id);
+
   await page.route(
     (url) => url.pathname.startsWith('/api/'),
     async (route) => {
       const path = new URL(route.request().url()).pathname;
 
-      if (path === '/api/users/token/refresh/') {
-        await fulfillApi(route, { access: 'e2e-access-token' });
+      if (path === '/api/v1/auth/sessions/refresh/') {
+        await fulfillApi(route, { access: 'workspace-access-token' });
         return;
       }
 
-      if (path === '/api/users/me/profile/') {
-        await fulfillApi(route, {
-          user_id: 1,
-          email: 'noshiro@example.com',
-          nickname: 'Noshiro',
-          avatar: null,
-          bio: '',
-          is_staff: false,
-          is_superuser: false,
-          language: 'en-US',
-          appearance: 'light',
-        });
+      if (path === '/api/v1/users/me/profile/') {
+        await fulfillApi(route, ownProfile());
         return;
       }
 
-      if (path === '/api/users/me/subjects/') {
-        await fulfillApi(route, { ...emptyPage, count: 1, results: [userSubject] });
-        return;
-      }
-
-      if (path === '/api/community/notifications/unread-count/') {
+      if (path === '/api/v1/community/me/notifications/unread-count/') {
         await fulfillApi(route, { unread_count: 0 });
         return;
       }
 
-      if (path === `/api/index/subjects/${subjectId}/`) {
-        await fulfillApi(route, subject);
+      if (path === '/api/v1/users/me/library/entries/') {
+        await fulfillApi(route, { ...emptyPage, count: 1, results: [userSubject] });
         return;
       }
 
-      if (path === `/api/users/me/subjects/${subjectId}/context/`) {
-        await fulfillApi(route, {
-          is_marked: false,
-          user_subject: null,
-          tags: [],
-          rating_details: [],
-          reviews: [],
-          progress,
-        });
-        return;
-      }
-
-      if (path === `/api/users/me/subjects/${subjectId}/episodes/progress/`) {
+      if (path === `/api/v1/users/me/library/entries/${userSubjectId}/episodes/progress/`) {
         await fulfillApi(route, progress);
         return;
       }
 
-      if (path.endsWith('/staff/roles/')) {
-        await fulfillApi(route, { roles: [] });
+      if (
+        path === `/api/v1/users/me/library/entries/${userSubjectId}/tags/` ||
+        path === `/api/v1/users/me/library/entries/${userSubjectId}/rating-details/` ||
+        path === `/api/v1/users/me/library/entries/${userSubjectId}/reviews/`
+      ) {
+        await fulfillApi(route, []);
+        return;
+      }
+
+      if (path === `/api/v1/index/entities/${subjectId}/`) {
+        await fulfillApi(route, entityDetail);
+        return;
+      }
+
+      if (path === `/api/v1/index/entities/${subjectId}/credits/` || path.endsWith('/relations/')) {
+        await fulfillApi(route, []);
+        return;
+      }
+
+      if (
+        path.startsWith(`/api/v1/index/entities/${subjectId}/episodes/`) ||
+        path.startsWith(`/api/v1/index/entities/${subjectId}/characters/`)
+      ) {
+        await fulfillApi(route, emptyPage);
         return;
       }
 
@@ -265,10 +306,10 @@ async function mockLanguageSwitchLoginApi(page: Page) {
     async (route) => {
       const path = new URL(route.request().url()).pathname;
 
-      if (path === '/api/users/token/refresh/') {
+      if (path === '/api/v1/auth/sessions/refresh/') {
         refreshRequestCount += 1;
         const requestCookie = route.request().headers()['cookie'] ?? '';
-        if (!requestCookie.includes(`e2e_refresh=${refreshCookie}`)) {
+        if (!requestCookie.includes(`noshiro_refresh=${refreshCookie}`)) {
           await route.fulfill({
             contentType: 'application/json',
             json: { code: 401, message: 'No active session', data: null },
@@ -282,39 +323,29 @@ async function mockLanguageSwitchLoginApi(page: Page) {
           route,
           { access: 'refreshed-access-token' },
           {
-            'set-cookie': `e2e_refresh=${refreshCookie}; HttpOnly; Path=/api/users/; SameSite=Lax; Secure`,
+            'set-cookie': `noshiro_refresh=${refreshCookie}; HttpOnly; Path=/api/v1/auth/; SameSite=Lax`,
           },
         );
         return;
       }
 
-      if (path === '/api/users/login/password/') {
+      if (path === '/api/v1/auth/sessions/password/') {
         await fulfillApi(
           route,
           { access: 'login-access-token' },
           {
-            'set-cookie': `e2e_refresh=${refreshCookie}; HttpOnly; Path=/api/users/; SameSite=Lax; Secure`,
+            'set-cookie': `noshiro_refresh=${refreshCookie}; HttpOnly; Path=/api/v1/auth/; SameSite=Lax`,
           },
         );
         return;
       }
 
-      if (path === '/api/users/me/profile/') {
-        await fulfillApi(route, {
-          user_id: 1,
-          email: 'noshiro@example.com',
-          nickname: 'Noshiro',
-          avatar: null,
-          bio: '',
-          is_staff: false,
-          is_superuser: false,
-          language: 'ja-JP',
-          appearance: 'light',
-        });
+      if (path === '/api/v1/users/me/profile/') {
+        await fulfillApi(route, ownProfile('ja-JP'));
         return;
       }
 
-      if (path === '/api/community/notifications/unread-count/') {
+      if (path === '/api/v1/community/me/notifications/unread-count/') {
         await fulfillApi(route, { unread_count: 0 });
         return;
       }
@@ -328,59 +359,35 @@ async function mockLanguageSwitchLoginApi(page: Page) {
 
 async function mockActivityProfileApi(page: Page) {
   let refreshRequestCount = 0;
-  let publicSubjectOrdering: string | null = null;
 
   await page.route(
     (url) => url.pathname.startsWith('/api/'),
     async (route) => {
-      const url = new URL(route.request().url());
-      const path = url.pathname;
+      const path = new URL(route.request().url()).pathname;
 
-      if (path === '/api/users/token/refresh/') {
+      if (path === '/api/v1/auth/sessions/refresh/') {
         refreshRequestCount += 1;
         await new Promise((resolve) => setTimeout(resolve, 50));
         await fulfillApi(route, { access: 'activity-access-token' });
         return;
       }
 
-      if (path === '/api/users/me/profile/') {
-        await fulfillApi(route, {
-          user_id: 1,
-          email: 'noshiro@example.com',
-          nickname: 'Noshiro',
-          avatar: null,
-          bio: '',
-          is_staff: false,
-          is_superuser: false,
-          language: 'en-US',
-          appearance: 'light',
-        });
+      if (path === '/api/v1/users/me/profile/') {
+        await fulfillApi(route, ownProfile());
         return;
       }
 
-      if (path === '/api/community/me/feed/') {
-        await fulfillApi(route, { ...emptyPage, count: 1, results: [activity] });
+      if (path === '/api/v1/community/me/feed/') {
+        await fulfillApi(route, { next: null, previous: null, results: [activity] });
         return;
       }
 
-      if (path === `/api/users/${String(publicAuthor.id)}/profile/`) {
+      if (path === `/api/v1/users/${String(publicAuthorId)}/`) {
         await fulfillApi(route, publicProfile);
         return;
       }
 
-      if (path === `/api/users/${String(publicAuthor.id)}/subjects/`) {
-        publicSubjectOrdering = url.searchParams.get('ordering');
-        if (publicSubjectOrdering !== '-id') {
-          await route.fulfill({
-            contentType: 'application/json',
-            json: { code: 400, message: 'Unsupported ordering', data: null },
-            status: 400,
-          });
-          return;
-        }
-      }
-
-      if (path === '/api/community/notifications/unread-count/') {
+      if (path === '/api/v1/community/me/notifications/unread-count/') {
         await fulfillApi(route, { unread_count: 0 });
         return;
       }
@@ -389,14 +396,11 @@ async function mockActivityProfileApi(page: Page) {
     },
   );
 
-  return {
-    getPublicSubjectOrdering: () => publicSubjectOrdering,
-    getRefreshRequestCount: () => refreshRequestCount,
-  };
+  return () => refreshRequestCount;
 }
 
 test.beforeEach(async ({ page }) => {
-  await mockPublicApi(page);
+  await mockGuestApi(page);
 });
 
 test.afterEach(async ({ page }) => {
@@ -407,12 +411,12 @@ test('public home opens the catalog and renders API data', async ({ page }) => {
   await page.goto('/');
 
   await expect(page.getByRole('heading', { name: 'Collect. Preserve. Relive.' })).toBeVisible();
-  await expect(page.getByText('Graph smoke subject').first()).toBeVisible();
+  await expect(page.getByText(subjectTitle).first()).toBeVisible();
 
   await page.getByRole('link', { name: 'Explore catalog' }).click();
   await expect(page).toHaveURL(/\/search$/u);
   await expect(page.getByRole('searchbox', { name: 'Keyword' })).toBeVisible();
-  await expect(page.getByText('Graph smoke subject').first()).toBeVisible();
+  await expect(page.getByText(subjectTitle).first()).toBeVisible();
 
   await page.goto('/calendar');
   await expect(page.getByRole('heading', { name: 'Calendar' })).toBeVisible();
@@ -485,7 +489,7 @@ test('login keeps the session when the account language differs from the browser
 
 test('activity survives reload and opens the avatar profile without invalid queries', async ({ page }) => {
   await page.unrouteAll({ behavior: 'wait' });
-  const { getPublicSubjectOrdering, getRefreshRequestCount } = await mockActivityProfileApi(page);
+  const getRefreshRequestCount = await mockActivityProfileApi(page);
 
   await page.goto('/community/posts');
   await expect(page.getByRole('img', { name: publicAuthor.nickname })).toBeVisible();
@@ -496,10 +500,9 @@ test('activity survives reload and opens the avatar profile without invalid quer
   await expect.poll(getRefreshRequestCount).toBe(2);
 
   await page.getByRole('img', { name: publicAuthor.nickname }).click();
-  await expect(page).toHaveURL(new RegExp(`/users/${String(publicAuthor.id)}$`, 'u'));
+  await expect(page).toHaveURL(new RegExp(`/users/${String(publicAuthorId)}$`, 'u'));
   await expect(page.locator('h1')).toHaveText(publicAuthor.nickname);
   await expect(page.getByRole('alert')).toHaveCount(0);
-  await expect.poll(getPublicSubjectOrdering).toBe('-id');
 });
 
 test('authenticated workspace opens core views', async ({ page }) => {
@@ -518,11 +521,11 @@ test('authenticated workspace opens core views', async ({ page }) => {
   await page.getByRole('navigation').getByRole('link', { name: 'Library', exact: true }).click();
   await expect(page).toHaveURL(/\/library$/u);
   await expect(page.locator('h1')).toHaveText('Library');
-  await expect(page.getByText(subject.title).first()).toBeVisible();
+  await expect(page.getByText(subjectTitle).first()).toBeVisible();
 
   await page.setViewportSize({ height: 900, width: 1440 });
-  await page.goto(`/subjects/${subjectId}`);
-  await expect(page.locator('h1')).toHaveText(subject.title);
+  await page.goto(`/entities/${subjectId}`);
+  await expect(page.locator('h1')).toHaveText(subjectTitle);
 
   const subjectNavigationOffset = await page.locator('[data-slot="subject-section-nav"]').evaluate((navigation) => {
     const pageTopbar = document.querySelector<HTMLElement>('[data-slot="page-topbar"]');
@@ -531,7 +534,7 @@ test('authenticated workspace opens core views', async ({ page }) => {
   });
   expect(Math.abs(subjectNavigationOffset)).toBeLessThanOrEqual(1);
 
-  const markButton = page.getByRole('button', { name: 'Mark subject', exact: true });
+  const markButton = page.getByRole('button', { name: 'Edit mark', exact: true });
   await expect(markButton).toBeEnabled();
   const markIconSize = await markButton.locator('svg').evaluate((icon) => {
     const bounds = icon.getBoundingClientRect();
@@ -561,8 +564,8 @@ test('authenticated workspace opens core views', async ({ page }) => {
   expect(toolbarOffset).toBeLessThanOrEqual(2);
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(`/subjects/${subjectId}`);
-  await expect(page.locator('h1')).toHaveText(subject.title);
+  await page.goto(`/entities/${subjectId}`);
+  await expect(page.locator('h1')).toHaveText(subjectTitle);
   await expect(page.getByRole('link', { name: 'My mark', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: /Infobox/u })).toBeVisible();
   await expect(page.getByRole('button', { name: /Staff/u })).toBeVisible();
@@ -576,7 +579,7 @@ test('authenticated workspace opens core views', async ({ page }) => {
 });
 
 test('knowledge graph paints non-empty canvas pixels', async ({ page }) => {
-  await page.goto(`/subjects/${subjectId}/graph`);
+  await page.goto(`/entities/${subjectId}/graph`);
 
   const canvas = page.locator('canvas');
   await expect(canvas).toBeVisible();

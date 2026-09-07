@@ -282,8 +282,8 @@ export function EpisodesSection({
                 emptyLabel={emptyText}
                 rows={[
                   [t('subject.type'), selectedEpisode.type],
-                  [t('subject.episode'), String(selectedEpisode.ep_num ?? '')],
-                  [t('subject.sort'), String(selectedEpisode.sort ?? '')],
+                  [t('subject.episode'), selectedEpisode.ep_num === null ? '' : String(selectedEpisode.ep_num)],
+                  [t('subject.sort'), selectedEpisode.sort === null ? '' : selectedEpisode.sort],
                   [t('subject.date'), selectedEpisode.date ?? ''],
                   [t('subject.duration'), selectedEpisode.duration ?? ''],
                 ].filter((row): row is [string, string] => Boolean(row[1]))}
