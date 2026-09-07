@@ -22,6 +22,7 @@ export function NotificationsPage() {
   );
   const markReadMutation = useMarkNotificationsReadMutation();
   const notifications = notificationsQuery.data?.results ?? [];
+  const nextCursor = notificationsQuery.data?.next ?? null;
   const resultsStatus: ResultsStatus =
     notificationsQuery.data === undefined && notificationsQuery.isLoading
       ? 'loading'
@@ -141,13 +142,13 @@ export function NotificationsPage() {
                 );
               })}
             </ListSurface>
-            {notificationsQuery.data?.next ? (
+            {nextCursor ? (
               <Button
                 disabled={notificationsQuery.isFetching}
                 type="button"
                 variant="secondary"
                 onClick={() => {
-                  if (notificationsQuery.data?.next) setCursor(notificationsQuery.data.next);
+                  if (nextCursor) setCursor(nextCursor);
                 }}
               >
                 {t('community.loadMore')}
