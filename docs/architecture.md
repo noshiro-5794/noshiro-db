@@ -96,6 +96,12 @@ policy review before canonical projection. `SyncWorkItem` leases make duplicate
 Celery delivery and worker interruption recoverable; a campaign is not considered
 complete while discovery pages or queued work items remain.
 
+The anime calendar keeps one active **airing board** (the current on-air season)
+instead of accumulating quarterly rows: calendar refreshes replace the board in
+place and archive the window on season rollover, while each work keeps its own
+per-episode airing facts. The board feeds a durable `airing_daily` queue that
+refreshes current-season subjects and episodes in bounded batches.
+
 The internal MCP server exposes reads and audited proposal submission; the public
 server exposes only authenticated, rate-limited safe projections. MCP tools and
 in-process tools share the same namespaced, Pydantic-validated registry and explicit

@@ -58,6 +58,7 @@ class SyncJob(models.Model):
         VNDB_IMPORT = "vndb_import", "VNDB import"
         ANILIST_IMPORT = "anilist_import", "AniList import"
         CALENDAR = "calendar", "Calendar"
+        AIRING_DAILY = "airing_daily", "Airing daily refresh"
         INCREMENTAL = "incremental", "Incremental"
 
     class Status(models.TextChoices):
