@@ -1,15 +1,21 @@
 import logging
+from zoneinfo import ZoneInfo
 
+from django.conf import settings
 from django.db import transaction
 from django.db.models import F
+from django.utils import timezone
 
 from apps.index.models import (
     AiringEvent,
+    Observation,
+    ProviderRecord,
     ProviderRepresentation,
     SourceRecord,
     Work,
 )
 from apps.index.services import knowledge_ingestion_service
+from apps.index.services.airing_board import airing_board_service
 from apps.sync.models import SyncError
 from apps.sync.providers.bangumi import (
     BANGUMI_CALENDAR_NAMESPACE,
@@ -158,6 +164,17 @@ class CalendarSyncService:
                 "Calendar refresh produced no valid entries; existing rows were kept."
             )
 
+        fetched_ids = cls._ids_from_groups(data)
+        previous_ids = cls._previous_calendar_item_ids()
+        added_ids = sorted(fetched_ids - previous_ids)
+        removed_ids = sorted(previous_ids - fetched_ids)
+        season_key = cls._season_key()
+        board_metadata = {
+            "fetched_at": timezone.now().isoformat(),
+            "weekday_counts": cls._weekday_counts(airing_events),
+            "added_ids": added_ids,
+            "removed_ids": removed_ids,
+        }
         with transaction.atomic():
             calendar_recorded = source_record_service.record(
                 namespace_spec=BANGUMI_CALENDAR_NAMESPACE,
@@ -181,6 +198,9 @@ class CalendarSyncService:
                 event.observation = calendar_observation
             cls._replace_calendar(
                 airing_events=airing_events,
+                calendar_observation=calendar_observation,
+                season_key=season_key,
+                board_metadata=board_metadata,
             )
         sync_job_service.set_total(
             job_id=job_id,
@@ -244,6 +264,12 @@ class CalendarSyncService:
             "failed_subject_count": failed_subject_count,
             "detail_synced_count": detail_synced_count,
             "detail_failed_count": detail_failed_count,
+            "season_key": season_key,
+            "added_subject_count": len(added_ids),
+            "removed_subject_count": len(removed_ids),
+            "added_subject_ids": added_ids,
+            "removed_subject_ids": removed_ids,
+            "board": airing_board_service.snapshot(),
         }
         sync_job_service.mark_succeeded(
             job_id=job_id,
@@ -309,6 +335,9 @@ class CalendarSyncService:
     def _replace_calendar(
         *,
         airing_events: list[AiringEvent],
+        calendar_observation: Observation,
+        season_key: str,
+        board_metadata: dict,
     ) -> None:
         AiringEvent.objects.filter(
             observation__provider_record__namespace__provider__slug=(
@@ -320,6 +349,78 @@ class CalendarSyncService:
         ).delete()
         if airing_events:
             AiringEvent.objects.bulk_create(airing_events, ignore_conflicts=True)
+        airing_board_service.refresh(
+            observation=calendar_observation,
+            season_key=season_key,
+            item_count=len(airing_events),
+            metadata=board_metadata,
+        )
+
+    @staticmethod
+    def _ids_from_groups(data: list) -> set[int]:
+        ids: set[int] = set()
+        for weekday_group in data:
+            if not isinstance(weekday_group, dict):
+                continue
+            items = weekday_group.get("items") or []
+            if not isinstance(items, list):
+                continue
+            for item in items:
+                if isinstance(item, dict) and isinstance(item.get("id"), int):
+                    ids.add(item["id"])
+        return ids
+
+    @staticmethod
+    def _weekday_counts(airing_events: list[AiringEvent]) -> dict[str, int]:
+        counts: dict[int, int] = {}
+        for event in airing_events:
+            if event.weekday is None:
+                continue
+            counts[event.weekday] = counts.get(event.weekday, 0) + 1
+        return {str(weekday): count for weekday, count in sorted(counts.items())}
+
+    @staticmethod
+    def _previous_calendar_item_ids() -> set[int]:
+        """Return Bangumi subject IDs from the last calendar observation."""
+        record = (
+            ProviderRecord.objects.filter(
+                namespace__provider__slug=BANGUMI_CALENDAR_NAMESPACE.source.slug,
+                namespace__slug=BANGUMI_CALENDAR_NAMESPACE.slug,
+                external_id="weekly",
+            )
+            .order_by("-last_seen_at")
+            .first()
+        )
+        if record is None:
+            return set()
+        observation = (
+            Observation.objects.filter(
+                provider_record=record,
+                schema_name="index.schedule",
+            )
+            .order_by("-observed_at")
+            .first()
+        )
+        if observation is None:
+            return set()
+        payload = observation.normalized_data
+        if not isinstance(payload, dict):
+            return set()
+        groups = payload.get("groups")
+        return (
+            CalendarSyncService._ids_from_groups(groups)
+            if isinstance(groups, list)
+            else set()
+        )
+
+    @staticmethod
+    def _season_key() -> str:
+        zone = ZoneInfo(
+            getattr(settings, "DEPLOYMENT_TIME_ZONE", "") or "Asia/Shanghai"
+        )
+        local_now = timezone.localtime(timezone.now(), zone)
+        quarter = (local_now.month - 1) // 3 + 1
+        return f"{local_now.year}Q{quarter}"
 
     @staticmethod
     def _bangumi_id_for_work(work: Work) -> int | None:

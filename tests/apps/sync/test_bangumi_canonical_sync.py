@@ -5,6 +5,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.index.models import (
+    AiringBoard,
     AiringEvent,
     Contributor,
     CurrentObservation,
@@ -176,17 +177,23 @@ def test_calendar_import_creates_current_canonical_airing_event() -> None:
             return_value="",
         ),
     ):
-        result = calendar_sync_service.sync_calendar(sync_subject_details=False)
-        calendar_sync_service.sync_calendar(sync_subject_details=False)
+        first_result = calendar_sync_service.sync_calendar(sync_subject_details=False)
+        second_result = calendar_sync_service.sync_calendar(sync_subject_details=False)
 
     event = AiringEvent.objects.get()
-    assert result["synced_subject_count"] == 1
+    assert first_result["synced_subject_count"] == 1
+    assert first_result["added_subject_count"] == 1
+    assert second_result["added_subject_count"] == 0
+    assert first_result["board"]["season_key"]
     assert event.work_id == subject.id
     assert event.weekday == 2
     assert event.precision == AiringEvent.Precision.WEEKDAY
     assert event.observation.current_projections.filter(
         mapper="bangumi.calendar"
     ).exists()
+    active_boards = AiringBoard.objects.filter(status=AiringBoard.Status.ACTIVE)
+    assert active_boards.count() == 1
+    assert active_boards.get().item_count == 1
 
 
 def test_adult_episode_description_requires_confirmed_rest_preference() -> None:
