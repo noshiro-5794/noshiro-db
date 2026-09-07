@@ -17,6 +17,7 @@ from .entities import (
     Work,
 )
 from .knowledge import (
+    AiringBoard,
     AiringEvent,
     Appearance,
     ContentRating,
@@ -65,6 +66,7 @@ from .taxonomy import (
 )
 
 __all__ = [
+    "AiringBoard",
     "AiringEvent",
     "AnimeProfile",
     "Appearance",

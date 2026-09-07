@@ -534,3 +534,65 @@ class AiringEvent(TimestampedModel):
             models.Index(fields=["starts_at"], name="idx_airing_starts_at"),
             models.Index(fields=["weekday"], name="idx_airing_weekday"),
         ]
+
+
+class AiringBoard(TimestampedModel):
+    """Single active on-air board for one broadcast season.
+
+    The board is deliberately a thin window over the calendar observation that
+    already owns the weekday ``AiringEvent`` rows. It never copies event rows:
+    membership is read from ``observation.airing_events``. Calendar refreshes
+    update the active board in place within the same season; when the effective
+    broadcast season changes the previous window is archived and a new active
+    board is created, so at most one season is exposed to callers.
+    """
+
+    class Status(models.TextChoices):
+        ACTIVE = "active", "Active"
+        ARCHIVED = "archived", "Archived"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    observation = models.ForeignKey(
+        "Observation",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="airing_boards",
+    )
+    season_key = models.CharField(max_length=16, blank=True)
+    status = models.CharField(
+        max_length=16,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+    )
+    item_count = models.PositiveIntegerField(default=0)
+    metadata = models.JSONField(default=dict, blank=True)
+    effective_from = models.DateTimeField(null=True, blank=True)
+    effective_until = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "airing_board"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["status"],
+                condition=Q(status="active"),
+                name="uq_airing_board_single_active",
+            ),
+            models.CheckConstraint(
+                condition=Q(status__in=("active", "archived")),
+                name="ck_airing_board_status",
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=["status", "-effective_from"],
+                name="idx_airing_board_status",
+            ),
+            models.Index(
+                fields=["season_key", "status"],
+                name="idx_airing_board_season",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.season_key or '-'}:{self.status}:{self.item_count}"
