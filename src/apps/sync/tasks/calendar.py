@@ -9,7 +9,7 @@ from apps.sync.services.sync_job_service import sync_job_service
     time_limit=3900,
 )
 def sync_calendar_task(
-    sync_subject_details: bool = True,
+    sync_subject_details: bool = False,
     job_id: str | None = None,
 ):
     lease_owner = f"celery:{current_task.request.id}"
