@@ -9,7 +9,7 @@ import {
   paginateRelationGroups,
 } from './subject-detail';
 
-function subject(sourceId: string | number | undefined): SubjectDetail {
+function subject(sourceId: string | number | undefined, provider: 'bangumi' | 'anilist' = 'bangumi'): SubjectDetail {
   return {
     id: 'subject-1',
     title: 'Subject',
@@ -34,7 +34,12 @@ function subject(sourceId: string | number | undefined): SubjectDetail {
     episode_count: 0,
     staff_count: 0,
     character_count: 0,
-    ...(sourceId === undefined ? {} : { source_id: sourceId }),
+    ...(sourceId === undefined
+      ? {}
+      : {
+          source: { provider, id: String(sourceId) },
+          source_id: sourceId,
+        }),
   };
 }
 
@@ -64,6 +69,8 @@ describe('subject detail model', () => {
   it('accepts only positive safe Bangumi IDs', () => {
     expect(bangumiSubjectIdOf(subject('4255'))).toBe(4255);
     expect(bangumiSubjectIdOf(subject(4255))).toBe(4255);
+    expect(bangumiSubjectIdOf(subject('189046', 'anilist'))).toBeNull();
+    expect(bangumiSubjectIdOf(subject(189046, 'anilist'))).toBeNull();
     expect(bangumiSubjectIdOf(subject('12.5'))).toBeNull();
     expect(bangumiSubjectIdOf(subject(-1))).toBeNull();
     expect(bangumiSubjectIdOf(subject(Number.MAX_SAFE_INTEGER + 1))).toBeNull();
