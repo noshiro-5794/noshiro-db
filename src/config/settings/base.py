@@ -375,7 +375,7 @@ VNDB_USER_AGENT = env(
 VNDB_TIMEOUT = env.float("VNDB_TIMEOUT", default=30)
 VNDB_RATE_LIMIT_INTERVAL = env.float(
     "VNDB_RATE_LIMIT_INTERVAL",
-    default=1.0,
+    default=2.0,
 )
 
 ANILIST_API_BASE_URL = env(

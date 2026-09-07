@@ -119,7 +119,7 @@ class VNDBClient:
         self._client = client
         self._rate_limiter = DistributedRateLimiter(
             "vndb",
-            getattr(settings, "VNDB_RATE_LIMIT_INTERVAL", 0.5),
+            getattr(settings, "VNDB_RATE_LIMIT_INTERVAL", 2.0),
             allow_fallback=client is not None,
         )
 
@@ -207,13 +207,17 @@ class VNDBClient:
     ) -> CatalogPage:
         """Discover stable VNDB work IDs without fetching canonical payloads."""
         page = max(1, int(cursor or "1"))
+        # VNDB's throttle is based on SQL execution time. ``count`` scans the
+        # whole table, so only the first discovery page pays for it; the
+        # campaign already knows the stable total after page one.
+        request_count = page == 1
         data = self.query(
             "vn",
             filters=[],
             fields="id",
             page=page,
             results=page_size,
-            count=True,
+            count=request_count,
             sort="id",
         )
         external_ids = tuple(
@@ -225,7 +229,9 @@ class VNDBClient:
             external_ids=external_ids,
             next_cursor=str(page + 1) if data.get("more") else None,
             total_count=(
-                int(data["count"]) if isinstance(data.get("count"), int) else None
+                int(data["count"])
+                if request_count and isinstance(data.get("count"), int)
+                else None
             ),
         )
 
