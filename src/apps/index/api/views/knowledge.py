@@ -24,11 +24,13 @@ from apps.index.api.serializers.knowledge import (
     IndexCollectionSerializer,
 )
 from apps.index.models import (
+    AiringEvent,
     Entity,
     IndexCollection,
     MetricSnapshot,
 )
 from apps.index.selectors.current import (
+    active_airing_board_events,
     current_airing_events,
     current_appearances,
     current_credits,
@@ -638,29 +640,35 @@ class CalendarEventListView(APIView):
             "true",
             "yes",
         }
-        qs = (
-            current_airing_events()
-            .filter(
-                work__entity__lifecycle=Entity.Lifecycle.ACTIVE,
-                work__entity__visibility=Entity.Visibility.PUBLIC,
+        has_range = bool(values.get("from") or values.get("to"))
+        if has_range:
+            qs = current_airing_events().filter(
+                starts_at__isnull=False,
+                precision__in=(
+                    AiringEvent.Precision.MINUTE,
+                    AiringEvent.Precision.DAY,
+                ),
             )
-            .select_related(
-                "work__entity",
-                "episode_entity",
-                "observation__provider_record__namespace__provider",
-                "observation__mapping_run",
-            )
+        else:
+            # Without an explicit range the endpoint is the current-season
+            # weekday board; precise airing facts are returned only for
+            # time-windowed queries.
+            qs = active_airing_board_events()
+        qs = qs.filter(
+            work__entity__lifecycle=Entity.Lifecycle.ACTIVE,
+            work__entity__visibility=Entity.Visibility.PUBLIC,
         )
         if from_value := values.get("from"):
             qs = qs.filter(starts_at__gte=from_value)
         if to_value := values.get("to"):
             qs = qs.filter(starts_at__lte=to_value)
-        if timezone := values.get("timezone"):
+        if has_range and (timezone := values.get("timezone")):
             qs = qs.filter(timezone=timezone)
         adult_allowed = request_allows_adult_content(request)
         data = []
         seen = set()
-        for event in qs.order_by("starts_at", "id"):
+        ordered = qs.order_by("starts_at", "id") if has_range else qs
+        for event in ordered:
             work_entity = entity_resolution_service.resolve(event.work.entity)
             if not entity_resolution_service.is_public(work_entity):
                 continue
