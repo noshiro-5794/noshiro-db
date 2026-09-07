@@ -136,7 +136,29 @@ def test_forbidden_storage_provider_is_not_requested(
     getattr(http_client, request_method).assert_not_called()
 
 
-def test_vndb_catalog_discovery_is_page_based_and_id_only() -> None:
+def test_vndb_catalog_discovery_is_page_based_and_counts_on_first_page() -> None:
+    http_client = Mock()
+    response = http_client.post.return_value
+    response.json.return_value = {
+        "results": [{"id": "v1"}, {"id": "v2"}],
+        "more": True,
+        "count": 42,
+    }
+    with patch("apps.sync.providers.vndb.Provider.objects.filter") as provider_filter:
+        provider_filter.return_value.first.return_value = None
+        page = VNDBClient(http_client).discover_vn_page(cursor="1", page_size=25)
+
+    assert page.external_ids == ("v1", "v2")
+    assert page.next_cursor == "2"
+    assert page.total_count == 42
+    request = http_client.post.call_args.kwargs["json"]
+    assert request["fields"] == "id"
+    assert request["page"] == 1
+    assert request["results"] == 25
+    assert request["count"] is True
+
+
+def test_vndb_catalog_discovery_skips_expensive_count_after_first_page() -> None:
     http_client = Mock()
     response = http_client.post.return_value
     response.json.return_value = {
@@ -150,11 +172,10 @@ def test_vndb_catalog_discovery_is_page_based_and_id_only() -> None:
 
     assert page.external_ids == ("v1", "v2")
     assert page.next_cursor == "4"
-    assert page.total_count == 42
+    assert page.total_count is None
     request = http_client.post.call_args.kwargs["json"]
-    assert request["fields"] == "id"
     assert request["page"] == 3
-    assert request["results"] == 25
+    assert request["count"] is False
 
 
 def test_anilist_catalog_discovery_uses_page_info() -> None:
