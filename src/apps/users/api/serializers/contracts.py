@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from apps.index.api.serializers.knowledge import EntitySummarySerializer
+from apps.index.models import Work
 from apps.users.models import UserRelease, UserSubject, UserSubjectRatingDetail
 
 
@@ -8,12 +9,58 @@ class AccessTokenSerializer(serializers.Serializer):
     access = serializers.CharField()
 
 
-class PublicLibraryQuerySerializer(serializers.Serializer):
-    status = serializers.ChoiceField(choices=UserSubject.Status.choices, required=False)
+MY_LIBRARY_ORDERINGS = (
+    "-updated_at",
+    "-created_at",
+    "-rating",
+    "rating",
+    "-simple_rating",
+    "-watch_end_date",
+    "-watch_start_date",
+)
+
+PUBLIC_LIBRARY_ORDERINGS = (
+    "-id",
+    "id",
+    "-rating",
+    "rating",
+    "-simple_rating",
+    "simple_rating",
+    "-watch_end_date",
+    "watch_end_date",
+    "-watch_start_date",
+    "watch_start_date",
+)
 
 
-class LibraryEntryQuerySerializer(serializers.Serializer):
+class LibraryEntryQueryBaseSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=UserSubject.Status.choices, required=False)
+    subject_type = serializers.ChoiceField(
+        choices=Work.WorkType.choices,
+        required=False,
+    )
+    keyword = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=200,
+    )
+
+
+class PublicLibraryQuerySerializer(LibraryEntryQueryBaseSerializer):
+    ordering = serializers.ChoiceField(
+        required=False,
+        default="-id",
+        choices=PUBLIC_LIBRARY_ORDERINGS,
+    )
+
+
+class LibraryEntryQuerySerializer(LibraryEntryQueryBaseSerializer):
+    tag_id = serializers.IntegerField(required=False, min_value=1)
+    ordering = serializers.ChoiceField(
+        required=False,
+        default="-updated_at",
+        choices=MY_LIBRARY_ORDERINGS,
+    )
 
 
 class LibraryEntryWriteSerializer(serializers.Serializer):
