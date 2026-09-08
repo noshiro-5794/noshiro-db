@@ -168,12 +168,22 @@ class ProviderCandidateService:
                 JOIN provider p ON p.id = pn.provider_id AND p.slug = %s
                 JOIN work w ON w.entity_id = en.entity_id
                 WHERE btrim(en.text) <> ''
+                  AND en.text %% %s
                   AND w.work_type = 'anime'
                   AND similarity(en.text, %s) >= %s
-                ORDER BY sim DESC, en.entity_id
+                ORDER BY similarity(en.text, %s) DESC, en.entity_id
                 LIMIT %s
                 """,
-                [name, namespace_slug, provider_slug, name, min_similarity, top_k],
+                [
+                    name,
+                    namespace_slug,
+                    provider_slug,
+                    name,
+                    name,
+                    min_similarity,
+                    name,
+                    top_k,
+                ],
             )
             return [
                 {
