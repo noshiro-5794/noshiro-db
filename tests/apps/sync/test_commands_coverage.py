@@ -103,3 +103,14 @@ def test_schedule_coverage_command_reports_sources() -> None:
 
     run.assert_called_once_with()
     assert '"anilist": {}' in output
+
+
+def test_complete_airing_times_command_runs_service() -> None:
+    with patch(
+        "apps.sync.management.commands.complete_airing_times.schedule_completion_service.run",
+        return_value={"pending": 0, "accepted": 0},
+    ) as run:
+        output = _run("complete_airing_times", "--limit", "5")
+
+    run.assert_called_once_with(limit=5, apply=True)
+    assert '"accepted": 0' in output
