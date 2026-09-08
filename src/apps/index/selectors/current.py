@@ -1,4 +1,5 @@
 from django.db.models import F, Q, QuerySet
+from django.utils import timezone
 
 from apps.index.models import (
     AiringBoard,
@@ -18,6 +19,7 @@ from apps.index.models import (
     ReleaseWork,
     ReleaseWorkEvidence,
     VoicePerformance,
+    Work,
 )
 
 
@@ -128,6 +130,33 @@ def active_airing_board_events() -> QuerySet[AiringEvent]:
         current_airing_events()
         .filter(precision=AiringEvent.Precision.WEEKDAY)
         .order_by("weekday", "-collection_doing", "id")
+    )
+
+
+def supplementary_current_airing_events() -> QuerySet[AiringEvent]:
+    """Return current AniList schedule rows not owned by the Bangumi board.
+
+    The active board is refreshed from the Bangumi weekly calendar. Continuing
+    works that only have AniList airing schedules must still surface once on
+    the range-less calendar; each returned minute row is collapsed per work and
+    weekday by the endpoint view.
+    """
+    return (
+        current_airing_events()
+        .filter(
+            precision=AiringEvent.Precision.MINUTE,
+            starts_at__gte=timezone.now(),
+            work__work_type=Work.WorkType.ANIME,
+            observation__provider_record__namespace__provider__slug="anilist",
+            observation__provider_record__namespace__slug="calendar",
+        )
+        .select_related(
+            "work__entity",
+            "episode_entity",
+            "observation__provider_record__namespace__provider",
+            "observation__mapping_run",
+        )
+        .order_by("starts_at", "id")
     )
 
 

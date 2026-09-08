@@ -5,7 +5,14 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.index.models import AiringBoard, AiringEvent, Entity, Work
+from apps.index.services import knowledge_ingestion_service
 from apps.index.services.airing_board import airing_board_service
+from apps.sync.providers.contracts import (
+    CatalogSourceSpec,
+    FetchedSourceRecord,
+    SourceNamespaceSpec,
+)
+from apps.sync.services.source_record_service import source_record_service
 from apps.users.models import User
 from apps.users.services.profile.profile_service import ProfileService
 
@@ -20,6 +27,35 @@ def _anime_work(*, audience: str = Entity.Audience.GENERAL) -> Work:
         audience=audience,
     )
     return Work.objects.create(entity=entity, work_type=Work.WorkType.ANIME)
+
+
+def _anilist_calendar_observation(payload: dict):
+    source = CatalogSourceSpec(
+        slug="anilist",
+        name="AniList",
+        base_url="https://anilist.co",
+    )
+    namespace = SourceNamespaceSpec(
+        source=source,
+        slug="calendar",
+        resource_type="schedule",
+    )
+    recorded = source_record_service.record(
+        namespace_spec=namespace,
+        fetched=FetchedSourceRecord(
+            external_id="189046",
+            payload=payload,
+            mapper_version="anilist-airing-v1",
+        ),
+    )
+    return knowledge_ingestion_service.record_observation(
+        provider_record=recorded.record,
+        mapper="anilist.airing",
+        mapper_version="anilist-airing-v1",
+        normalized_data=payload,
+        schema_name="index.schedule",
+        schema_version="1",
+    )
 
 
 def test_calendar_returns_only_current_safe_events_with_provenance() -> None:
@@ -103,6 +139,45 @@ def test_calendar_without_range_projects_active_board_and_ignores_stale_minutes(
     events = response.json()
     assert [item["id"] for item in events] == [board_event.id]
     assert AiringBoard.objects.filter(status=AiringBoard.Status.ACTIVE).count() == 1
+
+
+def test_calendar_without_range_surfaces_current_anilist_schedule_once() -> None:
+    work = _anime_work()
+    board_observation = observation({"version": "empty-board"})
+    airing_board_service.refresh(
+        observation=board_observation,
+        season_key="2026Q3",
+        item_count=0,
+    )
+    anilist_observation = _anilist_calendar_observation({"version": "anilist-schedule"})
+    now = timezone.now()
+    for offset_days in (1, 8):
+        AiringEvent.objects.create(
+            work=work,
+            weekday=3,
+            starts_at=now + timezone.timedelta(days=offset_days),
+            timezone="UTC",
+            precision=AiringEvent.Precision.MINUTE,
+            raw_value=(now + timezone.timedelta(days=offset_days)).isoformat(),
+            observation=anilist_observation,
+        )
+    AiringEvent.objects.create(
+        work=work,
+        weekday=3,
+        starts_at=now - timezone.timedelta(days=90),
+        timezone="UTC",
+        precision=AiringEvent.Precision.MINUTE,
+        raw_value="stale",
+        observation=anilist_observation,
+    )
+
+    response = APIClient().get("/api/v1/index/calendar/events/")
+
+    assert response.status_code == 200
+    events = response.json()
+    assert len(events) == 1
+    assert events[0]["work_id"] == str(work.entity_id)
+    assert events[0]["precision"] == "minute"
 
 
 def test_calendar_with_time_range_returns_precise_airings_only() -> None:
