@@ -1,6 +1,10 @@
 from celery import shared_task
 
-from apps.ai.services import ai_knowledge_proposal_service, ai_matching_service
+from apps.ai.services import (
+    ai_knowledge_proposal_service,
+    ai_matching_service,
+    schedule_completion_service,
+)
 from integrations.ai import AIProviderError
 
 
@@ -44,3 +48,19 @@ def extract_observation_evidence_task(observation_id: str, entity_id: str) -> st
         entity_id=entity_id,
     )
     return str(proposal.id)
+
+
+@shared_task(
+    autoretry_for=(AIProviderError,),
+    retry_backoff=True,
+    retry_jitter=True,
+    max_retries=2,
+    soft_time_limit=600,
+    time_limit=700,
+)
+def complete_missing_schedule_slots_task(
+    *,
+    limit: int | None = None,
+    apply: bool = True,
+) -> dict:
+    return schedule_completion_service.run(limit=limit, apply=apply)
