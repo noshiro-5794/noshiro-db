@@ -2,6 +2,7 @@ from .candidate_generation import provider_candidate_service
 from .fact_resolution import fact_resolution_service
 from .identity import cross_provider_identity_service
 from .ingestion import knowledge_ingestion_service
+from .mal_identity import mal_identity_service
 from .resolution import EntityResolutionError, entity_resolution_service
 from .season_group import season_group_service
 
@@ -11,6 +12,7 @@ __all__ = [
     "entity_resolution_service",
     "fact_resolution_service",
     "knowledge_ingestion_service",
+    "mal_identity_service",
     "provider_candidate_service",
     "season_group_service",
 ]
