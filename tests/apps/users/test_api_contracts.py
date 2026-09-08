@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 from unittest.mock import Mock, patch
 
 import pytest
@@ -12,6 +13,7 @@ from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from rest_framework_simplejwt.utils import get_md5_hash_password
 
+from apps.index.models import Entity, EntityName, Work
 from apps.users.api.serializers.collections import (
     CollectionListRequestSerializer,
 )
@@ -24,7 +26,7 @@ from apps.users.api.serializers.profile import (
     UserSettingsUpdateRequestSerializer,
 )
 from apps.users.exceptions import InvalidWatchDateRange, UserNotFound
-from apps.users.models import User, UserSubject
+from apps.users.models import User, UserSubject, UserSubjectTag, UserTag
 from apps.users.selectors.public.public_profile_selector import PublicProfileSelector
 from apps.users.services.library.subject_service import UserSubjectService
 
@@ -67,13 +69,42 @@ def test_confirming_adult_content_records_the_confirmation_time() -> None:
 
 
 def test_user_list_queries_reject_unknown_filters() -> None:
-    my_library = LibraryEntryQuerySerializer(data={"status": "unknown"})
-    public_library = PublicLibraryQuerySerializer(data={"status": "unknown"})
+    my_library = LibraryEntryQuerySerializer(
+        data={"status": "unknown", "ordering": "rating", "subject_type": "anime"}
+    )
+    public_library = PublicLibraryQuerySerializer(
+        data={
+            "status": "unknown",
+            "ordering": "rating",
+            "subject_type": "galgame",
+            "keyword": "keyword",
+        }
+    )
     collections = CollectionListRequestSerializer(data={"ordering": "random"})
 
     assert not my_library.is_valid()
     assert not public_library.is_valid()
     assert not collections.is_valid()
+
+    valid_my = LibraryEntryQuerySerializer(
+        data={
+            "status": "doing",
+            "ordering": "-rating",
+            "subject_type": "anime",
+            "keyword": "keyword",
+            "tag_id": 3,
+        }
+    )
+    valid_public = PublicLibraryQuerySerializer(
+        data={
+            "status": "doing",
+            "ordering": "-id",
+            "subject_type": "anime",
+            "keyword": "keyword",
+        }
+    )
+    assert valid_my.is_valid()
+    assert valid_public.is_valid()
 
 
 def test_watch_dates_use_native_date_fields_and_a_range_constraint() -> None:
@@ -82,6 +113,76 @@ def test_watch_dates_use_native_date_fields_and_a_range_constraint() -> None:
     assert "ck_watch_date_range" in {
         constraint.name for constraint in UserSubject._meta.constraints
     }
+
+
+@pytest.mark.django_db
+def test_library_queries_apply_keyword_type_tag_and_ordering() -> None:
+    owner = User.objects.create_user(email="library-owner@example.com")
+    public_user = User.objects.create_user(email="library-public@example.com")
+
+    def create_entry(title: str, *, work_type: str, rating: str) -> Entity:
+        entity = Entity.objects.create(kind=Entity.Kind.WORK)
+        Work.objects.create(entity=entity, work_type=work_type)
+        EntityName.objects.create(
+            entity=entity,
+            text=title,
+            language="en",
+            kind=EntityName.Kind.ORIGINAL,
+        )
+        UserSubject.objects.create(
+            user=owner,
+            entity=entity,
+            status=UserSubject.Status.DOING,
+            rating=Decimal(rating),
+            comment=f"comment {title}",
+            is_public=True,
+        )
+        UserSubject.objects.create(
+            user=public_user,
+            entity=entity,
+            status=UserSubject.Status.DOING,
+            rating=Decimal(rating),
+            is_public=True,
+        )
+        return entity
+
+    anime = create_entry("Alpha Anime", work_type=Work.WorkType.ANIME, rating="9.0")
+    create_entry("Beta Anime", work_type=Work.WorkType.ANIME, rating="7.0")
+    create_entry("Gamma Galgame", work_type=Work.WorkType.GALGAME, rating="8.0")
+
+    client = APIClient()
+    client.force_authenticate(owner)
+    response = client.get(
+        "/api/v1/users/me/library/entries/",
+        {
+            "keyword": "alpha",
+            "subject_type": "anime",
+            "ordering": "-rating",
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["count"] == 1
+    assert response.json()["results"][0]["entity"]["id"] == str(anime.id)
+
+    tag = UserTag.objects.create(user=owner, name="watch")
+    UserSubjectTag.objects.create(
+        user_subject=UserSubject.objects.get(user=owner, entity=anime),
+        tag=tag,
+    )
+    tag_response = client.get(
+        "/api/v1/users/me/library/entries/",
+        {"tag_id": tag.id},
+    )
+    assert tag_response.status_code == 200
+    assert tag_response.json()["count"] == 1
+
+    public_client = APIClient()
+    public_response = public_client.get(
+        f"/api/v1/users/{public_user.id}/library/entries/",
+        {"keyword": "alpha", "ordering": "-rating"},
+    )
+    assert public_response.status_code == 200
+    assert public_response.json()["count"] == 1
 
 
 def test_watch_date_normalization_is_strict() -> None:
