@@ -1,5 +1,6 @@
 from celery import current_task, shared_task
 
+from apps.sync.services.mal_season_pipeline import mal_season_pipeline_service
 from apps.sync.services.mal_service import mal_import_service
 from apps.sync.services.sync_job_service import sync_job_service
 
@@ -50,3 +51,17 @@ def import_mal_media_task(
             lease_owner=lease_owner,
         )
         raise
+
+
+@shared_task(soft_time_limit=3600, time_limit=3900)
+def run_mal_season_pipeline_task(
+    *,
+    sync_schedules: bool = True,
+    evaluate: bool = False,
+    max_items: int | None = None,
+) -> dict:
+    return mal_season_pipeline_service.run(
+        sync_schedules=sync_schedules,
+        evaluate=evaluate,
+        max_items=max_items,
+    )
