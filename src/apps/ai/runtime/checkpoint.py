@@ -8,7 +8,7 @@ from typing import Any
 from django.db import transaction
 from django.utils import timezone
 
-from apps.ai.models import AgentRun, AgentStep
+from apps.ai.models import AgentMessage, AgentRun, AgentStep
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +40,7 @@ class CheckpointManager:
             "run_id": str(run.pk),
             "run_status": run.status,
             "step_count": len(steps),
+            "message_count": AgentMessage.objects.filter(run=run).count(),
             "last_completed_sequence": max(
                 (s["sequence"] for s in steps if s["status"] == "succeeded"),
                 default=-1,
