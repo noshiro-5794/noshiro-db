@@ -10,11 +10,13 @@ class ProviderAPIError(RuntimeError):
         status_code: int | None = None,
         retry_after: float | None = None,
         error_code: str = "provider_error",
+        unavailable_reason: str | None = None,
     ) -> None:
         super().__init__(message)
         self.status_code = status_code
         self.retry_after = retry_after
         self.error_code = error_code
+        self.unavailable_reason = unavailable_reason
 
 
 class BangumiAPIError(ProviderAPIError):
@@ -62,14 +64,21 @@ class AniListAPIError(ProviderAPIError):
         *,
         status_code: int | None = None,
         retry_after: float | None = None,
+        unavailable_reason: str | None = None,
     ) -> None:
         super().__init__(
             message,
             status_code=status_code,
             retry_after=retry_after,
             error_code=f"http_{status_code}" if status_code else "request_error",
+            unavailable_reason=unavailable_reason,
         )
-        self.retryable = status_code == 429 or status_code is None or status_code >= 500
+        self.retryable = (
+            unavailable_reason is not None
+            or status_code == 429
+            or status_code is None
+            or status_code >= 500
+        )
 
 
 class MALAPIError(ProviderAPIError):
