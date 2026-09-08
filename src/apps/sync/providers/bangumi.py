@@ -114,7 +114,7 @@ class BangumiClient:
             )
         )
 
-    def _get(self, path: str, **kwargs: Any) -> Any:
+    def _ensure_provider_allowed(self) -> None:
         provider = (
             Provider.objects.filter(slug=BANGUMI_SOURCE.slug)
             .only("is_enabled", "storage_policy")
@@ -127,9 +127,32 @@ class BangumiClient:
                 raise BangumiAPIError(
                     "Bangumi provider forbids source payload storage."
                 )
+
+    def _get(self, path: str, **kwargs: Any) -> Any:
+        self._ensure_provider_allowed()
         self._rate_limiter.acquire()
         try:
             response = self.client.get(path, **kwargs)
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            detail = exc.response.text[:500]
+            raise BangumiAPIError(
+                f"Bangumi API returned {exc.response.status_code}: {detail}",
+                status_code=exc.response.status_code,
+            ) from exc
+        except httpx.RequestError as exc:
+            raise BangumiAPIError(f"Bangumi API request failed: {exc}") from exc
+
+        try:
+            return response.json()
+        except ValueError as exc:
+            raise BangumiAPIError("Bangumi API returned invalid JSON.") from exc
+
+    def _post(self, path: str, **kwargs: Any) -> Any:
+        self._ensure_provider_allowed()
+        self._rate_limiter.acquire()
+        try:
+            response = self.client.post(path, **kwargs)
             response.raise_for_status()
         except httpx.HTTPStatusError as exc:
             detail = exc.response.text[:500]
@@ -150,6 +173,39 @@ class BangumiClient:
 
     def fetch_subject(self, subject_id: int) -> dict[str, Any]:
         return self._get(f"/v0/subjects/{subject_id}")
+
+    def search_subjects(
+        self,
+        *,
+        keyword: str,
+        subject_types: tuple[int, ...] = (2,),
+        limit: int = 10,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        """Search subjects through the experimental v0 search endpoint.
+
+        The endpoint filters anime (type 2) by default so external search can
+        be reused safely by the AI harness without returning books/games/etc.
+        """
+        normalized = keyword.strip()
+        if not normalized:
+            raise ValueError("Bangumi subject search requires a keyword.")
+        params = {
+            "limit": min(max(int(limit), 1), 50),
+            "offset": max(0, int(offset)),
+        }
+        body: dict[str, Any] = {
+            "keyword": normalized[:512],
+            "sort": "match",
+        }
+        if subject_types:
+            body["filter"] = {"type": [int(value) for value in subject_types]}
+        payload = self._post("/v0/search/subjects", params=params, json=body)
+        if not isinstance(payload, dict) or not isinstance(payload.get("data"), list):
+            raise BangumiAPIError(
+                "Bangumi subject search response must contain a data list."
+            )
+        return payload
 
     def discover_subject_page(
         self,
