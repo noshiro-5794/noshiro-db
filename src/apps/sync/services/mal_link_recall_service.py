@@ -90,12 +90,22 @@ class MalLinkRecallService:
             .order_by("-created_at")
             .first()
         )
-        if (
-            existing is not None
-            and existing.status == AgentRun.Status.SUCCEEDED
-            and not force
-        ):
-            return self._summary_for_run(root, existing, skipped=True)
+        if existing is not None:
+            if existing.status == AgentRun.Status.SUCCEEDED and not force:
+                return self._summary_for_run(root, existing, skipped=True)
+            if existing.status in {
+                AgentRun.Status.QUEUED,
+                AgentRun.Status.RUNNING,
+                AgentRun.Status.WAITING,
+                AgentRun.Status.PAUSED,
+            }:
+                return self._summary_for_run(root, existing, skipped=False)
+            # A failed/cancelled attempt keeps its audit trail but must free the
+            # idempotency key so a fresh attempt can reuse the same scope/key.
+            AgentRun.objects.filter(pk=existing.pk).update(
+                idempotency_key="",
+                updated_at=timezone.now(),
+            )
 
         context = self._context(root)
         system_prompt = (
