@@ -61,6 +61,9 @@ export const publicUsersApi = {
       ...context,
       decode: (value) => decodeApiPage(value, decodePublicUserSubject),
       query: {
+        ...(query.subject_type === undefined ? {} : { subject_type: query.subject_type }),
+        ...(query.keyword === undefined ? {} : { keyword: query.keyword }),
+        ...(query.ordering === undefined ? {} : { ordering: query.ordering }),
         ...(query.page === undefined ? {} : { page: query.page }),
         ...(query.page_size === undefined ? {} : { page_size: query.page_size }),
         ...(query.status === undefined ? {} : { status: query.status }),
