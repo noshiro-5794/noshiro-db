@@ -73,7 +73,7 @@ def test_jikan_season_discovery_uses_page_pagination() -> None:
     assert page.next_cursor == "4"
     request = http_client.get.call_args
     assert request.args == ("/seasons/now",)
-    assert request.kwargs["params"] == {"page": 3, "limit": 25, "sfw": "true"}
+    assert request.kwargs["params"] == {"page": 3, "limit": 25}
 
 
 def test_jikan_season_discovery_terminates_without_next_page() -> None:
@@ -109,7 +109,6 @@ def test_jikan_schedule_discovery_filters_by_weekday() -> None:
         "filter": "thursday",
         "page": 1,
         "limit": 25,
-        "sfw": "true",
     }
 
 
