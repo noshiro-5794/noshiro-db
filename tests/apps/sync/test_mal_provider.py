@@ -8,6 +8,7 @@ from apps.sync.providers.exceptions import MALAPIError
 from apps.sync.providers.mal import (
     JIKAN_WEEKDAYS,
     MAL_ANIME_NAMESPACE,
+    MAL_SCHEDULE_ITEM_NAMESPACE,
     MAL_SCHEDULE_NAMESPACE,
     MAL_SOURCE,
     JikanClient,
@@ -18,9 +19,14 @@ def test_mal_namespace_specs_reference_mal_provider() -> None:
     assert MAL_SOURCE.slug == "mal"
     assert MAL_ANIME_NAMESPACE.slug == "anime"
     assert MAL_SCHEDULE_NAMESPACE.slug == "schedule"
+    assert MAL_SCHEDULE_ITEM_NAMESPACE.slug == "schedule-item"
     assert all(
         spec.source.slug == "mal"
-        for spec in (MAL_ANIME_NAMESPACE, MAL_SCHEDULE_NAMESPACE)
+        for spec in (
+            MAL_ANIME_NAMESPACE,
+            MAL_SCHEDULE_NAMESPACE,
+            MAL_SCHEDULE_ITEM_NAMESPACE,
+        )
     )
 
 

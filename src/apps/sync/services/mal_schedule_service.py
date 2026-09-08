@@ -18,10 +18,13 @@ from typing import Any
 from django.utils import timezone
 from django.utils.timezone import localdate
 
+from apps.index.services import (
+    knowledge_ingestion_service,
+)
 from apps.sync.providers.contracts import FetchedSourceRecord
 from apps.sync.providers.mal import (
     JIKAN_WEEKDAYS,
-    MAL_ANIME_NAMESPACE,
+    MAL_SCHEDULE_ITEM_NAMESPACE,
     MAL_SCHEDULE_NAMESPACE,
     MAL_SEASON_NAMESPACE,
     jikan_client,
@@ -173,6 +176,17 @@ class MALScheduleService:
                 fetched_at=timezone.now(),
             ),
         )
+        knowledge_ingestion_service.record_observation(
+            provider_record=recorded.record,
+            mapper="mal.weekly",
+            mapper_version="mal-schedule-v1",
+            normalized_data={
+                "weekday": weekday,
+                "pages": pages,
+            },
+            schema_name="index.schedule",
+            schema_version="1",
+        )
         item_ids = self._record_anime_items(item_payloads)
         return {
             "weekday": weekday,
@@ -189,7 +203,7 @@ class MALScheduleService:
         season_key: str,
         pages: list[dict[str, Any]],
     ) -> Any:
-        return source_record_service.record(
+        recorded = source_record_service.record(
             namespace_spec=MAL_SEASON_NAMESPACE,
             fetched=FetchedSourceRecord(
                 external_id=f"season-now:{season_key}",
@@ -203,6 +217,18 @@ class MALScheduleService:
                 fetched_at=timezone.now(),
             ),
         )
+        knowledge_ingestion_service.record_observation(
+            provider_record=recorded.record,
+            mapper="mal.season-now",
+            mapper_version="mal-season-v1",
+            normalized_data={
+                "season_key": season_key,
+                "pages": pages,
+            },
+            schema_name="index.schedule",
+            schema_version="1",
+        )
+        return recorded
 
     @staticmethod
     def _record_anime_items(items: dict[str, dict[str, Any]]) -> list[str]:
@@ -220,7 +246,7 @@ class MALScheduleService:
             for external_id, payload in items.items()
         ]
         recorded = source_record_service.record_many(
-            namespace_spec=MAL_ANIME_NAMESPACE,
+            namespace_spec=MAL_SCHEDULE_ITEM_NAMESPACE,
             fetched_records=fetched_records,
         )
         return [

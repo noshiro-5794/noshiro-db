@@ -36,6 +36,12 @@ MAL_ANIME_NAMESPACE = SourceNamespaceSpec(
     resource_type=ProviderNamespace.ResourceType.SUBJECT,
     description="MyAnimeList anime entry",
 )
+MAL_SCHEDULE_ITEM_NAMESPACE = SourceNamespaceSpec(
+    source=MAL_SOURCE,
+    slug="schedule-item",
+    resource_type=ProviderNamespace.ResourceType.SUBJECT,
+    description="MyAnimeList anime entry as seen in a weekly schedule page",
+)
 MAL_SCHEDULE_NAMESPACE = SourceNamespaceSpec(
     source=MAL_SOURCE,
     slug="schedule",

@@ -36,6 +36,7 @@ from apps.index.services import (
 from apps.sync.providers.contracts import FetchedSourceRecord
 from apps.sync.providers.mal import (
     MAL_ANIME_NAMESPACE,
+    MAL_SCHEDULE_ITEM_NAMESPACE,
     jikan_client,
 )
 from apps.sync.services.source_record_service import source_record_service
@@ -55,7 +56,7 @@ class MALImportService:
         record = (
             ProviderRecord.objects.filter(
                 namespace__provider__slug=MAL_ANIME_NAMESPACE.source.slug,
-                namespace__slug=MAL_ANIME_NAMESPACE.slug,
+                namespace__slug=MAL_SCHEDULE_ITEM_NAMESPACE.slug,
                 external_id=str(mal_id),
                 status=ProviderRecord.Status.ACTIVE,
             )

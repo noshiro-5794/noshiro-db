@@ -2,10 +2,10 @@ from unittest.mock import patch
 
 import pytest
 
-from apps.index.models import ProviderNamespace, ProviderRecord
+from apps.index.models import Observation, ProviderNamespace, ProviderRecord
 from apps.sync.providers.mal import (
     JIKAN_WEEKDAYS,
-    MAL_ANIME_NAMESPACE,
+    MAL_SCHEDULE_ITEM_NAMESPACE,
     MAL_SCHEDULE_NAMESPACE,
     MAL_SEASON_NAMESPACE,
     jikan_client,
@@ -48,9 +48,16 @@ def test_sync_season_now_records_schedule_and_item_records() -> None:
     )
     assert season_records.count() == 1
     assert (
+        Observation.objects.filter(
+            provider_record__in=season_records,
+            schema_name="index.schedule",
+        ).exists()
+        is True
+    )
+    assert (
         ProviderRecord.objects.filter(
             namespace__provider__slug="mal",
-            namespace__slug=MAL_ANIME_NAMESPACE.slug,
+            namespace__slug=MAL_SCHEDULE_ITEM_NAMESPACE.slug,
         ).count()
         == 3
     )
@@ -65,13 +72,13 @@ def test_sync_season_now_is_idempotent() -> None:
     assert (
         ProviderRecord.objects.filter(
             namespace__provider__slug="mal",
-            namespace__slug=MAL_ANIME_NAMESPACE.slug,
+            namespace__slug=MAL_SCHEDULE_ITEM_NAMESPACE.slug,
         ).count()
         == 1
     )
     record = ProviderRecord.objects.get(
         namespace__provider__slug="mal",
-        namespace__slug=MAL_ANIME_NAMESPACE.slug,
+        namespace__slug=MAL_SCHEDULE_ITEM_NAMESPACE.slug,
         external_id="1",
     )
     assert record.revisions.count() == 1
@@ -90,6 +97,13 @@ def test_sync_schedule_day_stores_one_record_per_weekday() -> None:
         external_id="weekly:thursday",
     )
     assert schedule_record.latest_revision is not None
+    assert (
+        Observation.objects.filter(
+            provider_record=schedule_record,
+            schema_name="index.schedule",
+        ).exists()
+        is True
+    )
 
 
 def test_sync_visits_season_and_all_seven_days() -> None:
