@@ -63,6 +63,7 @@ def test_default_registry_exposes_namespaced_read_tools() -> None:
     registry = create_default_tool_registry()
 
     assert {tool.name for tool in registry.list_all()} == {
+        "bangumi.search_subjects",
         "knowledge.search_entities",
         "knowledge.get_entity",
         "knowledge.get_relations",

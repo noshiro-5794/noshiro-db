@@ -50,7 +50,12 @@ _MAL_DAY_LABELS = {
     "sundays": 7,
 }
 
-_SOURCE_PRIORITY = {"anilist": 0, "mal": 1, "bangumi": 2}
+# MAL is the authoritative source for the current-season board: Jikan mirrors
+# MAL's own broadcast data and this project treats MAL as the identity spine.
+# AniList and Bangumi corroborate slots; when sources disagree on the same
+# canonical work, the lower-priority source only appears if the leader is
+# absent for that work/day.
+_SOURCE_PRIORITY = {"mal": 0, "anilist": 1, "bangumi": 2}
 
 
 @dataclass(frozen=True, slots=True)
