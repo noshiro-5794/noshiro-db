@@ -9,10 +9,12 @@ from apps.index.models import Provider
 from apps.sync.providers.anilist import ANILIST_SOURCE
 from apps.sync.providers.bangumi import BANGUMI_SOURCE
 from apps.sync.providers.contracts import CatalogSourceSpec
+from apps.sync.providers.mal import MAL_SOURCE
 from apps.sync.providers.vndb import VNDB_SOURCE
 
 PROVIDER_SPECS: dict[str, CatalogSourceSpec] = {
-    spec.slug: spec for spec in (VNDB_SOURCE, BANGUMI_SOURCE, ANILIST_SOURCE)
+    spec.slug: spec
+    for spec in (VNDB_SOURCE, BANGUMI_SOURCE, ANILIST_SOURCE, MAL_SOURCE)
 }
 
 POLICY_FIELDS = {

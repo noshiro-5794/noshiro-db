@@ -1,6 +1,7 @@
 from .exceptions import (
     AniListAPIError,
     BangumiAPIError,
+    MALAPIError,
     ProviderAPIError,
     VNDBAPIError,
 )
@@ -8,6 +9,7 @@ from .exceptions import (
 __all__ = [
     "AniListAPIError",
     "BangumiAPIError",
+    "MALAPIError",
     "ProviderAPIError",
     "VNDBAPIError",
 ]
