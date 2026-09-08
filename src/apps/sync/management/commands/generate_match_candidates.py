@@ -12,8 +12,9 @@ EVALUATE_TASK = "apps.ai.tasks.evaluate_match_candidate_task"
 
 class Command(BaseCommand):
     help = (
-        "Create title-similarity match candidates between AniList anime and "
-        "Bangumi subject works. No entity is merged; AI evaluation is optional."
+        "Create title-similarity match candidates between a supported anime "
+        "source and Bangumi subject works. No entity is merged; AI evaluation "
+        "is optional."
     )
 
     def add_arguments(self, parser):
@@ -24,6 +25,12 @@ class Command(BaseCommand):
             help="pg_trgm similarity threshold for candidate titles.",
         )
         parser.add_argument("--top-k", type=int, default=5)
+        parser.add_argument(
+            "--source",
+            choices=("anilist", "mal"),
+            default="anilist",
+            help="Provider whose anime records are matched toward Bangumi.",
+        )
         parser.add_argument(
             "--dry-run",
             action="store_true",
@@ -36,11 +43,18 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        summary = provider_candidate_service.generate_candidates(
-            min_similarity=options["min_similarity"],
-            top_k=options["top_k"],
-            create=not options["dry_run"],
-        )
+        if options["source"] == "mal":
+            summary = provider_candidate_service.generate_mal_bangumi_candidates(
+                min_similarity=options["min_similarity"],
+                top_k=options["top_k"],
+                create=not options["dry_run"],
+            )
+        else:
+            summary = provider_candidate_service.generate_candidates(
+                min_similarity=options["min_similarity"],
+                top_k=options["top_k"],
+                create=not options["dry_run"],
+            )
         if options["evaluate"] and not options["dry_run"]:
             for candidate_id in summary["created_ids"]:
                 celery_app.send_task(
@@ -51,7 +65,7 @@ class Command(BaseCommand):
 
         mode = "dry-run" if options["dry_run"] else "created"
         self.stdout.write(
-            f"[{mode}] anilist_entities={summary['anilist_entities']} "
+            f"[{mode}] {options['source']}_entities={summary['source_entities']} "
             f"candidates_created={summary['candidates_created']} "
             f"pairs_reported={len(summary['pairs'])}"
         )
