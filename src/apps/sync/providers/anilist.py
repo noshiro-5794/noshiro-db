@@ -1,3 +1,4 @@
+import time
 from typing import Any
 
 import httpx
@@ -84,6 +85,8 @@ ANILIST_TAG_NAMESPACE = SourceNamespaceSpec(
 
 
 class AniListClient:
+    MAX_ATTEMPTS = 3
+
     CATALOG_QUERY = """
     query ($page: Int!, $perPage: Int!) {
       Page(page: $page, perPage: $perPage) {
@@ -220,39 +223,89 @@ class AniListClient:
                     "AniList provider forbids source payload storage."
                 )
 
-        self._rate_limiter.acquire()
-        try:
-            response = self.client.post(
-                "", json={"query": query, "variables": variables}
-            )
-            response.raise_for_status()
-            payload = response.json()
-        except httpx.HTTPStatusError as exc:
-            raise AniListAPIError(
-                f"AniList returned HTTP {exc.response.status_code}: "
-                f"{exc.response.text[:500]}",
-                status_code=exc.response.status_code,
-                retry_after=_retry_after(exc.response),
-            ) from exc
-        except httpx.RequestError as exc:
-            raise AniListAPIError(f"AniList request failed: {exc}") from exc
-        except ValueError as exc:
-            raise AniListAPIError("AniList returned invalid JSON.") from exc
+        last_error: AniListAPIError | None = None
+        for attempt in range(self.MAX_ATTEMPTS):
+            self._rate_limiter.acquire()
+            try:
+                response = self.client.post(
+                    "", json={"query": query, "variables": variables}
+                )
+                response.raise_for_status()
+                payload = response.json()
+            except httpx.HTTPStatusError as exc:
+                status_code = exc.response.status_code
+                response_text = exc.response.text
+                retry_after = _retry_after(exc.response)
+                unavailable = (
+                    status_code == 403
+                    and "temporarily disabled" in response_text.lower()
+                )
+                if unavailable:
+                    # Maintenance is a server-side outage: do not hammer it.
+                    raise AniListAPIError(
+                        f"AniList returned HTTP {status_code}: {response_text[:500]}",
+                        status_code=status_code,
+                        retry_after=retry_after or 900,
+                        unavailable_reason="provider_maintenance",
+                    ) from exc
+                error = AniListAPIError(
+                    f"AniList returned HTTP {status_code}: {response_text[:500]}",
+                    status_code=status_code,
+                    retry_after=retry_after,
+                )
+                if (
+                    status_code in {429, 500, 502, 503, 504}
+                    and attempt < self.MAX_ATTEMPTS - 1
+                ):
+                    last_error = error
+                    delay = min(
+                        90.0,
+                        retry_after or (10.0 if status_code >= 500 else 5.0),
+                    )
+                    time.sleep(delay)
+                    continue
+                raise error from exc
+            except httpx.RequestError as exc:
+                error = AniListAPIError(f"AniList request failed: {exc}")
+                if attempt < self.MAX_ATTEMPTS - 1:
+                    last_error = error
+                    time.sleep(min(10.0, 1.5 * (2**attempt)))
+                    continue
+                raise error from exc
+            except ValueError as exc:
+                raise AniListAPIError("AniList returned invalid JSON.") from exc
 
-        if not isinstance(payload, dict) or not isinstance(payload.get("data"), dict):
-            raise AniListAPIError("AniList returned an invalid GraphQL response.")
-        if errors := payload.get("errors"):
-            detail = str(errors[0] if isinstance(errors, list) else errors)[:500]
-            retryable = any(
-                isinstance(error, dict)
-                and error.get("extensions", {}).get("code")
-                in {"RATE_LIMITED", "INTERNAL_SERVER_ERROR"}
-                for error in (errors if isinstance(errors, list) else [errors])
-            )
-            error = AniListAPIError(f"AniList GraphQL error: {detail}")
-            error.retryable = retryable
-            raise error
-        return payload["data"]
+            if not isinstance(payload, dict) or not isinstance(
+                payload.get("data"), dict
+            ):
+                raise AniListAPIError("AniList returned an invalid GraphQL response.")
+            if errors := payload.get("errors"):
+                detail = str(errors[0] if isinstance(errors, list) else errors)[:500]
+                unavailable = "temporarily disabled" in detail.lower()
+                if unavailable:
+                    raise AniListAPIError(
+                        f"AniList GraphQL error: {detail}",
+                        status_code=403,
+                        retry_after=900,
+                        unavailable_reason="provider_maintenance",
+                    )
+                retryable = any(
+                    isinstance(error, dict)
+                    and error.get("extensions", {}).get("code")
+                    in {"RATE_LIMITED", "INTERNAL_SERVER_ERROR"}
+                    for error in (errors if isinstance(errors, list) else [errors])
+                )
+                error = AniListAPIError(f"AniList GraphQL error: {detail}")
+                error.retryable = retryable
+                if retryable and attempt < self.MAX_ATTEMPTS - 1:
+                    last_error = error
+                    time.sleep(min(30.0, 5.0 * (2**attempt)))
+                    continue
+                raise error
+            return payload["data"]
+        if last_error is not None:
+            raise last_error
+        raise AniListAPIError("AniList request exhausted its retry budget.")
 
     def fetch_media(
         self,

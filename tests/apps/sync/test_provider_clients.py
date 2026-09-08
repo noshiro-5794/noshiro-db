@@ -1,5 +1,6 @@
 from unittest.mock import Mock, patch
 
+import httpx
 import pytest
 from django.test import override_settings
 
@@ -10,6 +11,7 @@ from apps.sync.providers.bangumi import (
     BangumiAPIError,
     BangumiClient,
 )
+from apps.sync.providers.exceptions import AniListAPIError
 from apps.sync.providers.vndb import VNDB_SOURCE, VNDBAPIError, VNDBClient
 
 
@@ -198,6 +200,42 @@ def test_anilist_catalog_discovery_uses_page_info() -> None:
     assert page.external_ids == ("10", "11")
     assert page.next_cursor is None
     assert page.total_count == 2
+
+
+@pytest.mark.django_db
+def test_anilist_maintenance_403_is_unavailable_not_permanent() -> None:
+    http_client = Mock()
+    request = httpx.Request("POST", "https://graphql.anilist.co")
+    response = httpx.Response(
+        403,
+        request=request,
+        text=(
+            '{"errors":[{"message":"The AniList API has been temporarily '
+            'disabled due to severe stability issues.","status":403,'
+            '"locations":[]}],"data":null}'
+        ),
+    )
+    http_client.post.side_effect = httpx.HTTPStatusError(
+        "403 Forbidden",
+        request=request,
+        response=response,
+    )
+
+    with (
+        patch("apps.sync.providers.anilist.Provider.objects.filter") as provider_filter,
+        patch("apps.sync.providers.anilist.time.sleep") as sleep,
+        pytest.raises(AniListAPIError) as exc_info,
+    ):
+        provider_filter.return_value.first.return_value = None
+        AniListClient(http_client).discover_anime_page(cursor="1", page_size=25)
+
+    error = exc_info.value
+    assert isinstance(error, AniListAPIError)
+    assert error.status_code == 403
+    assert error.retryable is True
+    assert error.unavailable_reason == "provider_maintenance"
+    http_client.post.assert_called_once()
+    sleep.assert_not_called()
 
 
 def test_anilist_delta_discovery_uses_updated_watermark() -> None:
