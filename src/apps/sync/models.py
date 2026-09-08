@@ -57,6 +57,7 @@ class SyncJob(models.Model):
         SUBJECT_RESYNC = "subject_resync", "Subject resync"
         VNDB_IMPORT = "vndb_import", "VNDB import"
         ANILIST_IMPORT = "anilist_import", "AniList import"
+        MAL_IMPORT = "mal_import", "MAL import"
         CALENDAR = "calendar", "Calendar"
         AIRING_DAILY = "airing_daily", "Airing daily refresh"
         INCREMENTAL = "incremental", "Incremental"
