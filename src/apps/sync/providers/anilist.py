@@ -201,6 +201,7 @@ class AniListClient:
                     },
                     timeout=settings.ANILIST_TIMEOUT,
                     follow_redirects=True,
+                    use_proxy=False,
                 )
             )
         return self._client
