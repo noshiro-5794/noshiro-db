@@ -23,6 +23,7 @@ _MODEL_ROUTING: dict[str, str] = {
     "schedule_completion": "AI_FAST_MODEL",
     "user_agent": "AI_FAST_MODEL",
     "agent_loop": "AI_FAST_MODEL",
+    "mal_recall": "AI_FAST_MODEL",
 }
 
 _CLASSIFICATION_FALLBACK_THRESHOLD = Decimal("0.85")

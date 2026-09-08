@@ -17,7 +17,7 @@ from typing import Any, Literal
 
 from django.db import transaction
 from django.utils import timezone
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from apps.ai.models import AgentRun
 from apps.ai.runtime.agent_loop import AgentLoopDriver
@@ -39,13 +39,20 @@ POLICY_VERSION = "mal-agent-recall-v1"
 IDEMPOTENCY_SCOPE = "mal-recall:v1"
 USE_CASE = "mal_recall"
 TOOL_SCOPES = ("knowledge:read", "mal:read")
+MIN_FOUND_CONFIDENCE = 0.92
 
 
 class RecallMalOutput(BaseModel):
-    decision: Literal["found", "not_found"]
+    decision: Literal["found", "not_found", "matched"]
     mal_id: int | None = Field(default=None)
     confidence: float = Field(default=0, ge=0, le=1)
-    reason: str = Field(min_length=1)
+    reason: str = Field(default="")
+
+    @model_validator(mode="after")
+    def _normalize_decision(self) -> RecallMalOutput:
+        if self.decision == "matched":
+            object.__setattr__(self, "decision", "found")
+        return self
 
 
 class MalLinkRecallService:
@@ -125,7 +132,10 @@ class MalLinkRecallService:
             "deciding. A second season of an older series must map to the "
             "correct second-season MAL id, not the first season.\n"
             "5. Return strict JSON matching the requested schema; abstain with "
-            "decision=not_found when no candidate is precise enough."
+            "decision=not_found when no candidate is precise enough.\n"
+            'Output exactly: {"decision": "found"|"not_found", '
+            '"mal_id": integer|null, "confidence": 0.0..1.0, '
+            '"reason": "..."}.'
         )
         run = AgentRun.objects.create(
             kind=AgentRun.Kind.ADMIN_ENRICH,
@@ -184,6 +194,13 @@ class MalLinkRecallService:
                 "root_entity_id": str(root.pk),
                 "outcome": "not_found",
                 "reason": parsed.reason,
+            }
+        if parsed.confidence < MIN_FOUND_CONFIDENCE:
+            return {
+                "root_entity_id": str(root.pk),
+                "outcome": "low_confidence",
+                "reason": parsed.reason,
+                "confidence": str(parsed.confidence),
             }
         candidate_id, linked_root_id = self._ensure_candidate(
             root=root,
