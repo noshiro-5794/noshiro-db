@@ -16,12 +16,12 @@ def _run(*args) -> str:
 def test_sync_mal_schedule_command_reports_summary() -> None:
     with patch(
         "apps.sync.services.mal_schedule_service.mal_schedule_service.sync",
-        return_value={"season": {}, "weekday_schedules": []},
+        return_value={"season": {"season_key": "2026Q3", "items_seen": 0}},
     ) as sync:
         output = _run("sync_mal_schedule")
 
     sync.assert_called_once()
-    assert '"season": {}' in output
+    assert '"season_key": "2026Q3"' in output
 
 
 def test_sync_mal_season_command_runs_pipeline() -> None:
@@ -32,7 +32,7 @@ def test_sync_mal_season_command_runs_pipeline() -> None:
         output = _run("sync_mal_season", "--evaluate")
 
     run.assert_called_once_with(
-        sync_schedules=True,
+        fetch_season=True,
         evaluate=True,
         max_items=None,
     )
