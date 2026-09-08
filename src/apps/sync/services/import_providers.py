@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from apps.sync.models import SyncJob
 from apps.sync.tasks.anilist import import_anilist_media_task
+from apps.sync.tasks.mal import import_mal_media_task
 from apps.sync.tasks.vndb import import_vndb_work_task
 
 
@@ -31,6 +32,14 @@ IMPORT_PROVIDERS: dict[str, ImportProvider] = {
         job_type=SyncJob.JobType.ANILIST_IMPORT,
         external_id_pattern=re.compile(r"^[1-9][0-9]*$"),
         dispatch=import_anilist_media_task.delay,
+        default_include_related=True,
+    ),
+    "mal": ImportProvider(
+        slug="mal",
+        label="MyAnimeList",
+        job_type=SyncJob.JobType.MAL_IMPORT,
+        external_id_pattern=re.compile(r"^[1-9][0-9]*$"),
+        dispatch=import_mal_media_task.delay,
         default_include_related=True,
     ),
 }
