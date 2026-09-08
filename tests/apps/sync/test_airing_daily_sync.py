@@ -3,6 +3,7 @@ from unittest.mock import patch
 import pytest
 
 from apps.index.models import (
+    AiringBoardEntry,
     AiringEvent,
     Entity,
     Observation,
@@ -123,3 +124,50 @@ def test_daily_status_reports_current_shard() -> None:
     status = airing_daily_sync_service.get_status(season_key="2026Q3")
     assert status["state"] is not None
     assert status["state"]["status"] == SyncState.Status.FINISHED
+
+
+def test_daily_targets_include_board_projection_provider_records() -> None:
+    provider, _ = Provider.objects.get_or_create(
+        slug="mal",
+        defaults={"name": "MyAnimeList", "storage_policy": "allowed"},
+    )
+    namespace, _ = ProviderNamespace.objects.get_or_create(
+        provider=provider,
+        slug="anime",
+        defaults={"resource_type": ProviderNamespace.ResourceType.SUBJECT},
+    )
+    record = ProviderRecord.objects.create(
+        namespace=namespace,
+        external_id="5114",
+        origin="api",
+        status="active",
+    )
+    entity = Entity.objects.create(kind=Entity.Kind.WORK)
+    Work.objects.create(entity=entity, work_type=Work.WorkType.ANIME)
+    ProviderRepresentation.objects.create(
+        provider_record=record,
+        entity=entity,
+        mapping_kind=ProviderRepresentation.MappingKind.EXACT,
+        method=ProviderRepresentation.Method.PROVIDER,
+    )
+    board = airing_board_service.refresh(
+        observation=None,
+        season_key="2026Q3",
+        item_count=1,
+    )
+    AiringBoardEntry.objects.create(
+        board=board,
+        work_id=entity.id,
+        weekday=2,
+        precision=AiringBoardEntry.Precision.WEEKDAY,
+        source_refs=[
+            {"provider": "mal", "external_id": "5114"},
+        ],
+    )
+
+    targets, _ = airing_daily_sync_service.board_targets()
+
+    assert len(targets) == 1
+    assert targets[0].provider_slug == "mal"
+    assert targets[0].external_id == "5114"
+    assert targets[0].work_id == str(entity.id)

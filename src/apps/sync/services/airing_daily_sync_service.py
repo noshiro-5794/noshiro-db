@@ -9,9 +9,9 @@ Progress lives in ``SyncState`` under a per-day and per-season shard:
 
     shard = "airing_daily:<local-date>:<season-key>"
 
-Workers process the sorted Bangumi IDs of the active board one batch at a time
-until the day shard reaches FINISHED. A new calendar date starts a new shard;
-season rollover changes the season component automatically.
+Workers process sorted provider records of the active board's canonical works
+one batch at a time until the day shard reaches FINISHED. A new calendar date
+starts a new shard; season rollover changes the season component automatically.
 """
 
 from __future__ import annotations
@@ -24,13 +24,17 @@ from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 
-from apps.index.models import AiringBoard, AiringEvent, ProviderRepresentation
-from apps.sync.models import SyncError, SyncState
-from apps.sync.providers.bangumi import (
-    BANGUMI_SUBJECT_NAMESPACE,
-    BangumiAPIError,
+from apps.index.models import (
+    AiringBoard,
+    AiringBoardEntry,
+    AiringEvent,
+    ProviderRepresentation,
 )
+from apps.sync.models import SyncError, SyncState
+from apps.sync.providers.bangumi import BangumiAPIError
+from apps.sync.services.anilist_service import anilist_import_service
 from apps.sync.services.episode_service import episode_service
+from apps.sync.services.mal_service import mal_import_service
 from apps.sync.services.subject_service import subject_service
 from apps.sync.services.sync_job_service import sync_job_service
 
@@ -39,8 +43,12 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True, slots=True)
 class AiringTarget:
-    bangumi_id: int
+    provider_slug: str
+    external_id: str
     work_id: str
+
+
+SUPPORTED_PROVIDER_SLUGS = ("bangumi", "anilist", "mal")
 
 
 class AiringDailySyncService:
@@ -53,45 +61,63 @@ class AiringDailySyncService:
             .select_related("observation")
             .first()
         )
-        if board is None or board.observation_id is None:
+        if board is None:
             return [], board.season_key if board is not None else None
-        work_ids = (
-            AiringEvent.objects.filter(observation_id=board.observation_id)
-            .values_list("work_id", flat=True)
-            .distinct()
-        )
+        work_ids: set[str] = set()
+        if board.observation_id is not None:
+            work_ids.update(
+                AiringEvent.objects.filter(observation_id=board.observation_id)
+                .values_list("work_id", flat=True)
+                .distinct()
+            )
+        if (
+            board.observation_id is not None
+            or AiringBoardEntry.objects.filter(board=board).exists()
+        ):
+            work_ids.update(
+                AiringBoardEntry.objects.filter(board=board).values_list(
+                    "work_id", flat=True
+                )
+            )
         if not work_ids:
             return [], board.season_key
         representations = (
             ProviderRepresentation.objects.filter(
                 entity_id__in=list(work_ids),
-                provider_record__namespace__provider__slug=(
-                    BANGUMI_SUBJECT_NAMESPACE.source.slug
+                provider_record__namespace__provider__slug__in=(
+                    SUPPORTED_PROVIDER_SLUGS
                 ),
-                provider_record__namespace__slug=BANGUMI_SUBJECT_NAMESPACE.slug,
                 provider_record__status="active",
                 is_active=True,
             )
-            .select_related("provider_record")
+            .select_related("provider_record__namespace__provider")
             .order_by("provider_record__external_id")
         )
         targets: list[AiringTarget] = []
         seen: set[str] = set()
         for representation in representations:
-            try:
-                bangumi_id = int(representation.provider_record.external_id)
-            except (TypeError, ValueError):
+            provider_slug = representation.provider_record.namespace.provider.slug
+            if provider_slug not in SUPPORTED_PROVIDER_SLUGS:
                 continue
-            key = str(bangumi_id)
+            external_id = representation.provider_record.external_id
+            key = f"{provider_slug}:{external_id}"
             if key in seen:
                 continue
             seen.add(key)
             targets.append(
                 AiringTarget(
-                    bangumi_id=bangumi_id, work_id=str(representation.entity_id)
+                    provider_slug=provider_slug,
+                    external_id=external_id,
+                    work_id=str(representation.entity_id),
                 )
             )
-        return sorted(targets, key=lambda item: item.bangumi_id), board.season_key
+        return (
+            sorted(
+                targets,
+                key=lambda item: (item.provider_slug, item.external_id),
+            ),
+            board.season_key,
+        )
 
     def shard_for(
         self,
@@ -200,13 +226,17 @@ class AiringDailySyncService:
                     synced=1 if outcome == "synced" else 0,
                     skipped=1 if outcome == "skipped" else 0,
                     failed=1 if outcome == "failed" else 0,
-                    current_label=(f"{self.TASK_NAME}: {target.bangumi_id} {outcome}"),
+                    current_label=(
+                        f"{self.TASK_NAME}: "
+                        f"{target.provider_slug}:{target.external_id} {outcome}"
+                    ),
                 )
                 if verbose:
                     logger.info(
                         "Airing daily target processed",
                         extra={
-                            "bangumi_id": target.bangumi_id,
+                            "provider": target.provider_slug,
+                            "external_id": target.external_id,
                             "work_id": target.work_id,
                             "outcome": outcome,
                         },
@@ -253,32 +283,51 @@ class AiringDailySyncService:
 
     def _refresh_target(self, target: AiringTarget) -> str:
         try:
-            subject_service.upsert_subject(target.bangumi_id)
-            episode_service.sync_subject_episodes(target.bangumi_id)
+            if target.provider_slug == "bangumi":
+                subject_service.upsert_subject(int(target.external_id))
+                episode_service.sync_subject_episodes(int(target.external_id))
+            elif target.provider_slug == "anilist":
+                anilist_import_service.import_media(int(target.external_id))
+            elif target.provider_slug == "mal":
+                mal_import_service.import_anime(int(target.external_id))
+            else:
+                return "skipped"
             return "synced"
         except BangumiAPIError as exc:
             if exc.is_not_found:
                 return "skipped"
             logger.warning(
                 "Airing daily provider request failed",
-                extra={"bangumi_id": target.bangumi_id, "work_id": target.work_id},
+                extra={
+                    "provider": target.provider_slug,
+                    "external_id": target.external_id,
+                    "work_id": target.work_id,
+                },
                 exc_info=True,
             )
-            self._record_error(bangumi_id=target.bangumi_id)
+            self._record_error(entity_id=target.external_id)
             return "failed"
         except Exception:
             logger.exception(
                 "Airing daily target failed",
-                extra={"bangumi_id": target.bangumi_id, "work_id": target.work_id},
+                extra={
+                    "provider": target.provider_slug,
+                    "external_id": target.external_id,
+                    "work_id": target.work_id,
+                },
             )
-            self._record_error(bangumi_id=target.bangumi_id)
+            self._record_error(entity_id=target.external_id)
             return "failed"
 
     @staticmethod
-    def _record_error(*, bangumi_id: int) -> None:
+    def _record_error(*, entity_id: str) -> None:
+        try:
+            numeric_id = int(entity_id)
+        except (TypeError, ValueError):
+            return
         error, created = SyncError.objects.get_or_create(
             task_name=AiringDailySyncService.TASK_NAME,
-            entity_id=bangumi_id,
+            entity_id=numeric_id,
         )
         if not created:
             SyncError.objects.filter(pk=error.pk).update(
