@@ -32,6 +32,19 @@ def test_not_found_output_allows_missing_confidence() -> None:
     assert output.confidence == 0
 
 
+def test_matched_alias_normalizes_to_found() -> None:
+    output = RecallMalOutput.model_validate(
+        {
+            "decision": "matched",
+            "mal_id": 62954,
+            "confidence": 0.97,
+            "reason": "Same title and date.",
+        }
+    )
+
+    assert output.decision == "found"
+
+
 def _anime_entity(
     *,
     provider_slug: str,
