@@ -18,6 +18,7 @@ from .entities import (
 )
 from .knowledge import (
     AiringBoard,
+    AiringBoardEntry,
     AiringEvent,
     Appearance,
     ContentRating,
@@ -67,6 +68,7 @@ from .taxonomy import (
 
 __all__ = [
     "AiringBoard",
+    "AiringBoardEntry",
     "AiringEvent",
     "AnimeProfile",
     "Appearance",
