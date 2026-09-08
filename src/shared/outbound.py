@@ -13,8 +13,9 @@ def outbound_proxies() -> dict[str, str] | None:
     }
 
 
-def httpx_client_kwargs(**kwargs: Any) -> dict[str, Any]:
-    proxies = outbound_proxies()
-    if proxies is not None:
-        kwargs.setdefault("proxy", proxies["http://"])
+def httpx_client_kwargs(*, use_proxy: bool = True, **kwargs: Any) -> dict[str, Any]:
+    if use_proxy:
+        proxies = outbound_proxies()
+        if proxies is not None:
+            kwargs.setdefault("proxy", proxies["http://"])
     return kwargs

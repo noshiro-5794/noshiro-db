@@ -93,6 +93,7 @@ class JikanClient:
                     },
                     timeout=settings.JIKAN_TIMEOUT,
                     follow_redirects=True,
+                    use_proxy=False,
                 )
             )
         return self._client
