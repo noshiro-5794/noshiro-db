@@ -12,6 +12,7 @@ from .claim import (
     ApprovalRequest,
     ClaimEvidence,
 )
+from .conversation import AgentMessage
 from .inference import (
     AIEvaluationRun,
     AIPolicy,
@@ -25,6 +26,7 @@ __all__ = [
     "AIPolicy",
     "AIProposal",
     "AIRun",
+    "AgentMessage",
     "AgentRun",
     "AgentSession",
     "AgentStep",
