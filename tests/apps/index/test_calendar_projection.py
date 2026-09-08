@@ -141,6 +141,42 @@ def test_calendar_without_range_projects_active_board_and_ignores_stale_minutes(
     assert AiringBoard.objects.filter(status=AiringBoard.Status.ACTIVE).count() == 1
 
 
+def test_calendar_without_range_collapses_same_work_to_precise_minute() -> None:
+    work = _anime_work()
+    board_observation = observation({"version": "board"})
+    precise_observation = _anilist_calendar_observation({"version": "anilist"})
+    AiringEvent.objects.create(
+        work=work,
+        weekday=3,
+        precision=AiringEvent.Precision.WEEKDAY,
+        raw_value="Wednesday",
+        observation=board_observation,
+    )
+    now = timezone.now()
+    precise = AiringEvent.objects.create(
+        work=work,
+        weekday=3,
+        starts_at=now + timezone.timedelta(days=1),
+        timezone="UTC",
+        precision=AiringEvent.Precision.MINUTE,
+        raw_value=(now + timezone.timedelta(days=1)).isoformat(),
+        observation=precise_observation,
+    )
+    airing_board_service.refresh(
+        observation=board_observation,
+        season_key="2026Q3",
+        item_count=1,
+    )
+
+    response = APIClient().get("/api/v1/index/calendar/events/")
+
+    assert response.status_code == 200
+    events = response.json()
+    assert len(events) == 1
+    assert events[0]["id"] == precise.id
+    assert events[0]["precision"] == "minute"
+
+
 def test_calendar_without_range_surfaces_current_anilist_schedule_once() -> None:
     work = _anime_work()
     board_observation = observation({"version": "empty-board"})
