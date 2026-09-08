@@ -1,7 +1,13 @@
 import { type SyntheticEvent, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { DatabaseZap } from 'lucide-react';
-import { AdminSyncJobList, syncMutations, syncQueries, syncQueryKeys } from '@/features/admin-sync';
+import {
+  AdminCampaignsPanel,
+  AdminSyncJobList,
+  syncMutations,
+  syncQueries,
+  syncQueryKeys,
+} from '@/features/admin-sync';
 import { useI18n } from '@/shared/i18n';
 import { getErrorMessage } from '@/shared/lib/error';
 import { Button } from '@/shared/ui/Button';
@@ -129,6 +135,7 @@ export function AdminPage() {
           }}
           onRefresh={() => void refreshJobs()}
         />
+        <AdminCampaignsPanel />
       </div>
     </Page>
   );
