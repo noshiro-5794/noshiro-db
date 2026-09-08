@@ -81,6 +81,10 @@ export const userSubjectsApi = {
       ...context,
       decode: (value) => decodeApiPage(value, decodeUserSubject),
       query: {
+        ...(query.subject_type === undefined ? {} : { subject_type: query.subject_type }),
+        ...(query.keyword === undefined ? {} : { keyword: query.keyword }),
+        ...(query.tag_id === undefined ? {} : { tag_id: query.tag_id }),
+        ...(query.ordering === undefined ? {} : { ordering: query.ordering }),
         ...(query.page === undefined ? {} : { page: query.page }),
         ...(query.page_size === undefined ? {} : { page_size: query.page_size }),
         ...(query.status === undefined ? {} : { status: query.status }),
