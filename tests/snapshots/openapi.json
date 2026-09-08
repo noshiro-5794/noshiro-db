@@ -4837,12 +4837,13 @@
                         "schema": {
                             "enum": [
                                 "vndb",
-                                "anilist"
+                                "anilist",
+                                "mal"
                             ],
                             "type": "string",
                             "minLength": 1
                         },
-                        "description": "* `vndb` - VNDB\n* `anilist` - AniList"
+                        "description": "* `vndb` - VNDB\n* `anilist` - AniList\n* `mal` - MyAnimeList"
                     },
                     {
                         "in": "query",
@@ -13272,10 +13273,11 @@
             "ProviderEnum": {
                 "enum": [
                     "vndb",
-                    "anilist"
+                    "anilist",
+                    "mal"
                 ],
                 "type": "string",
-                "description": "* `vndb` - VNDB\n* `anilist` - AniList"
+                "description": "* `vndb` - VNDB\n* `anilist` - AniList\n* `mal` - MyAnimeList"
             },
             "PublicUser": {
                 "type": "object",
