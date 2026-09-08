@@ -1,78 +1,10 @@
-"""Attach legacy AniList names to the observations that exposed their entities."""
-
-from __future__ import annotations
-
-from uuid import UUID
+"""Backfill legacy AniList names missing an observation link."""
 
 from django.core.management.base import BaseCommand
-from django.db.models import Q
 
-from apps.index.models import (
-    Appearance,
-    Credit,
-    Entity,
-    EntityName,
-    EntityRelation,
-    EntityRelationEvidence,
-    ProviderRecord,
+from apps.sync.services.entity_name_backfill_service import (
+    backfill_orphan_entity_name_observations,
 )
-
-
-def _selected_observation_ids(queryset):
-    return list(
-        queryset.filter(
-            observation__isnull=False,
-            observation__provider_record__status=ProviderRecord.Status.ACTIVE,
-            observation__current_projections__isnull=False,
-        )
-        .order_by("-observation__observed_at", "observation_id")
-        .values_list("observation_id", flat=True)
-        .distinct()[:1]
-    )
-
-
-def find_observation_for_entity(entity: Entity) -> UUID | None:
-    if entity.kind == Entity.Kind.CONTRIBUTOR:
-        candidate_ids = _selected_observation_ids(
-            Credit.objects.filter(contributor__entity_id=entity.pk)
-        )
-    elif entity.kind == Entity.Kind.CHARACTER:
-        candidate_ids = _selected_observation_ids(
-            Appearance.objects.filter(character_entity_id=entity.pk)
-        )
-    elif entity.kind == Entity.Kind.WORK:
-        candidate_ids = _selected_observation_ids(
-            EntityRelationEvidence.objects.filter(relation__to_entity_id=entity.pk)
-        )
-        if not candidate_ids:
-            relation = (
-                EntityRelation.objects.filter(
-                    Q(from_entity_id=entity.pk) | Q(to_entity_id=entity.pk)
-                )
-                .select_related("from_entity", "to_entity")
-                .first()
-            )
-            if relation is not None:
-                counterpart = (
-                    relation.to_entity
-                    if relation.from_entity_id == entity.pk
-                    else relation.from_entity
-                )
-                candidate_ids = list(
-                    EntityName.objects.filter(
-                        entity=counterpart,
-                        observation__isnull=False,
-                        observation__provider_record__status=ProviderRecord.Status.ACTIVE,
-                        observation__current_projections__isnull=False,
-                    )
-                    .order_by("-observation__observed_at", "observation_id")
-                    .values_list("observation_id", flat=True)
-                    .distinct()[:1]
-                )
-    else:
-        candidate_ids = []
-
-    return candidate_ids[0] if candidate_ids else None
 
 
 class Command(BaseCommand):
@@ -89,23 +21,9 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        orphan_names = EntityName.objects.filter(
-            provider_record__isnull=False,
-            observation__isnull=True,
-        ).select_related("entity")
-        total = orphan_names.count()
-        linked = 0
-        for name in orphan_names.iterator(chunk_size=500):
-            observation_id = find_observation_for_entity(name.entity)
-            if observation_id is None:
-                continue
-            linked += 1
-            if options["apply"]:
-                EntityName.objects.filter(pk=name.pk, observation__isnull=True).update(
-                    observation_id=observation_id
-                )
-
+        summary = backfill_orphan_entity_name_observations(apply=options["apply"])
         mode = "applied" if options["apply"] else "dry-run"
         self.stdout.write(
-            f"[{mode}] orphan_names={total} linkable={linked} unlinked={total - linked}"
+            f"[{mode}] orphan_names={summary['orphan_names']} "
+            f"linkable={summary['linkable']} unlinked={summary['unlinked']}"
         )
