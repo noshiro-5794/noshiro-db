@@ -264,14 +264,14 @@ class AiringDailySyncService:
                 extra={"bangumi_id": target.bangumi_id, "work_id": target.work_id},
                 exc_info=True,
             )
-            self._record_error(target.bangumi_id)
+            self._record_error(bangumi_id=target.bangumi_id)
             return "failed"
         except Exception:
             logger.exception(
                 "Airing daily target failed",
                 extra={"bangumi_id": target.bangumi_id, "work_id": target.work_id},
             )
-            self._record_error(target.bangumi_id)
+            self._record_error(bangumi_id=target.bangumi_id)
             return "failed"
 
     @staticmethod
