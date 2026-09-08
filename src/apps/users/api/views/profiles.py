@@ -13,7 +13,7 @@ from apps.users.api.serializers.contracts import (
     PublicUserSerializer,
     ReviewSerializer,
 )
-from apps.users.api.views.library import library_entry_data, library_entry_queryset
+from apps.users.api.views.library import library_entry_data
 from apps.users.api.views.profile import (
     MyAvatarUploadView,
     MyProfileStatsView,
@@ -23,6 +23,7 @@ from apps.users.api.views.profile import (
 from apps.users.api.views.reviews import review_data, review_queryset
 from apps.users.models import Collection, Review, UserSubject
 from apps.users.models.account import User
+from apps.users.selectors.public.public_profile_selector import PublicProfileSelector
 from shared.api.contracts import (
     PaginationQuerySerializer,
     api_responses,
@@ -106,13 +107,16 @@ class PublicUserLibraryView(APIView):
         user = get_public_user(user_id=user_id, viewer=request.user)
         serializer = PublicLibraryQuerySerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
-        queryset = library_entry_queryset(user=user).filter(is_public=True)
-        if entry_status := serializer.validated_data.get("status"):
-            queryset = queryset.filter(status=entry_status)
-        paginator = DefaultPageNumberPagination()
-        page = paginator.paginate_queryset(
-            queryset.order_by("-updated_at", "-id"), request, view=self
+        values = serializer.validated_data
+        queryset = PublicProfileSelector.list_public_user_subjects(
+            user=user,
+            status=values.get("status"),
+            subject_type=values.get("subject_type"),
+            keyword=values.get("keyword"),
+            ordering=values.get("ordering", "-id"),
         )
+        paginator = DefaultPageNumberPagination()
+        page = paginator.paginate_queryset(queryset, request, view=self)
         return paginator.get_paginated_response(
             [library_entry_data(entry) for entry in page]
         )

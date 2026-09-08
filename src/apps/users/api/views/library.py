@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.db.models import Q
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import status
 from rest_framework.exceptions import NotFound, ValidationError
@@ -140,12 +141,26 @@ class LibraryEntryListCreateView(APIView):
     def get(self, request):
         serializer = LibraryEntryQuerySerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
+        values = serializer.validated_data
         queryset = library_entry_queryset(user=request.user)
-        if entry_status := serializer.validated_data.get("status"):
+        if entry_status := values.get("status"):
             queryset = queryset.filter(status=entry_status)
+        if subject_type := values.get("subject_type"):
+            queryset = queryset.filter(entity__work__work_type=subject_type)
+        if keyword := (values.get("keyword") or "").strip():
+            queryset = queryset.filter(
+                Q(entity__names__text__icontains=keyword)
+                | Q(comment__icontains=keyword)
+            ).distinct()
+        if tag_id := values.get("tag_id"):
+            queryset = queryset.filter(
+                tag_relations__tag_id=tag_id,
+                tag_relations__tag__user=request.user,
+            )
+        ordering = values.get("ordering", "-updated_at")
         paginator = DefaultPageNumberPagination()
         page = paginator.paginate_queryset(
-            queryset.order_by("-updated_at", "-id"), request, view=self
+            queryset.order_by(ordering, "-id"), request, view=self
         )
         return paginator.get_paginated_response(
             [library_entry_data(entry) for entry in page]
