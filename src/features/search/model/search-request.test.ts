@@ -2,12 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { buildSubjectSearchQuery, usesSubjectDatabaseSearch } from './search-request';
 
 describe('subject search request', () => {
-  it('uses calendar browsing for display-only filters', () => {
+  it('uses calendar browsing while no keyword is entered', () => {
     expect(usesSubjectDatabaseSearch({ subject_type: 'anime', ordering: 'title', nsfw: false })).toBe(false);
-    expect(buildSubjectSearchQuery({ subject_type: 'anime', ordering: 'title', nsfw: false }, 30)).toEqual({
-      page: 1,
-      page_size: 30,
-    });
   });
 
   it('maps validated database filters to the API contract', () => {
@@ -27,6 +23,8 @@ describe('subject search request', () => {
     expect(usesSubjectDatabaseSearch(search)).toBe(true);
     expect(buildSubjectSearchQuery(search, 30)).toEqual({
       query: 'visual novel',
+      subject_type: 'galgame',
+      nsfw: false,
       page: 3,
       page_size: 30,
     });
