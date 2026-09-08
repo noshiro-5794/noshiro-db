@@ -8,7 +8,8 @@ from apps.sync.services.season_pipeline_service import season_pipeline_service
 class Command(BaseCommand):
     help = (
         "Sync the current season from AniList and MAL, promote entities, "
-        "reconcile official ids, generate title candidates, and rebuild board."
+        "reconcile official ids, generate title candidates, and rebuild board. "
+        "Source legs are isolated: a failing provider does not block the rest."
     )
 
     def add_arguments(self, parser):
