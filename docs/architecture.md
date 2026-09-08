@@ -88,6 +88,14 @@ The database is the execution source of truth; checkpoints are immutable snapsho
 and retries use explicit state transitions and idempotency scopes. Apply, approval,
 and validation steps fail closed until a concrete handler is registered.
 
+Open-ended retrieval tasks run on a second runtime mode: an append-only
+`AgentMessage` transcript drives a native tool-calling loop until the model
+returns a final answer. The loop reuses the same tool registry, permission
+scopes, budget, and evidence capture as deterministic workflows, so decision
+skills stay bounded while recall skills (for example Bangumi↔MAL candidate
+discovery) may search the database and external APIs iteratively before the
+adjudicator decides.
+
 Provider-wide synchronization is linked to one `AgentRun` through `SyncCampaign`.
 Fetch, pagination, mapping, and revision writes remain deterministic and resumable;
 AI is invoked only at explicit normalization/enrichment boundaries with an
