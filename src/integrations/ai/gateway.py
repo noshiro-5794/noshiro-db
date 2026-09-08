@@ -11,6 +11,7 @@ from shared.outbound import httpx_client_kwargs
 _MODEL_ROUTING: dict[str, str] = {
     "entity_matching": "AI_REASONING_MODEL",
     "entity_classification": "AI_FAST_MODEL",
+    "bangumi_link_search": "AI_REASONING_MODEL",
     "evidence_extraction": "AI_FAST_MODEL",
     "conflict_detection": "AI_REASONING_MODEL",
     "info_completion": "AI_FAST_MODEL",
