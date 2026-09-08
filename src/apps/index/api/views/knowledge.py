@@ -38,6 +38,7 @@ from apps.index.selectors.current import (
     current_entity_relations,
     current_release_work_evidence,
     current_release_work_links,
+    supplementary_current_airing_events,
 )
 from apps.index.selectors.projections import (
     entity_detail,
@@ -642,32 +643,56 @@ class CalendarEventListView(APIView):
         }
         has_range = bool(values.get("from") or values.get("to"))
         if has_range:
-            qs = current_airing_events().filter(
-                starts_at__isnull=False,
-                precision__in=(
-                    AiringEvent.Precision.MINUTE,
-                    AiringEvent.Precision.DAY,
-                ),
+            qs = (
+                current_airing_events()
+                .filter(
+                    starts_at__isnull=False,
+                    precision__in=(
+                        AiringEvent.Precision.MINUTE,
+                        AiringEvent.Precision.DAY,
+                    ),
+                )
+                .filter(
+                    work__entity__lifecycle=Entity.Lifecycle.ACTIVE,
+                    work__entity__visibility=Entity.Visibility.PUBLIC,
+                )
             )
+            if from_value := values.get("from"):
+                qs = qs.filter(starts_at__gte=from_value)
+            if to_value := values.get("to"):
+                qs = qs.filter(starts_at__lte=to_value)
+            if timezone := values.get("timezone"):
+                qs = qs.filter(timezone=timezone)
+            ordered = qs.order_by("starts_at", "id")
         else:
             # Without an explicit range the endpoint is the current-season
-            # weekday board; precise airing facts are returned only for
-            # time-windowed queries.
-            qs = active_airing_board_events()
-        qs = qs.filter(
-            work__entity__lifecycle=Entity.Lifecycle.ACTIVE,
-            work__entity__visibility=Entity.Visibility.PUBLIC,
-        )
-        if from_value := values.get("from"):
-            qs = qs.filter(starts_at__gte=from_value)
-        if to_value := values.get("to"):
-            qs = qs.filter(starts_at__lte=to_value)
-        if has_range and (timezone := values.get("timezone")):
-            qs = qs.filter(timezone=timezone)
+            # weekday board. The Bangumi board is supplemented by current
+            # AniList schedules so continuing works without a Bangumi subject
+            # still surface once instead of vanishing entirely.
+            ordered = list(
+                active_airing_board_events()
+                .filter(
+                    work__entity__lifecycle=Entity.Lifecycle.ACTIVE,
+                    work__entity__visibility=Entity.Visibility.PUBLIC,
+                )
+                .order_by("weekday", "-collection_doing", "id")
+            )
+            ordered.extend(
+                supplementary_current_airing_events().filter(
+                    work__entity__lifecycle=Entity.Lifecycle.ACTIVE,
+                    work__entity__visibility=Entity.Visibility.PUBLIC,
+                )
+            )
+            ordered.sort(
+                key=lambda event: (
+                    event.weekday if event.weekday is not None else 7,
+                    -event.collection_doing,
+                    event.work_id,
+                )
+            )
         adult_allowed = request_allows_adult_content(request)
         data = []
         seen = set()
-        ordered = qs.order_by("starts_at", "id") if has_range else qs
         for event in ordered:
             work_entity = entity_resolution_service.resolve(event.work.entity)
             if not entity_resolution_service.is_public(work_entity):
@@ -687,10 +712,10 @@ class CalendarEventListView(APIView):
                 episode_id = episode.id
             key = (
                 work_entity.id,
-                episode_id,
-                event.starts_at,
                 event.weekday,
                 event.region,
+                episode_id if has_range else None,
+                event.starts_at if has_range else None,
             )
             if key in seen:
                 continue
