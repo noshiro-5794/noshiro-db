@@ -168,3 +168,38 @@ def test_dry_run_reports_pairs_without_writing() -> None:
     assert summary["candidates_created"] == 0
     assert len(summary["pairs"]) == 1
     assert str(uuid.UUID(summary["pairs"][0]["source_entity"]))
+
+
+def test_mal_source_can_match_bangumi_work() -> None:
+    mal = _entity(
+        provider_slug="mal",
+        namespace_slug="anime",
+        external_id="50",
+        name="Sousou no Frieren",
+        make_work=True,
+    )
+    _entity(
+        provider_slug="bangumi",
+        namespace_slug="subject",
+        external_id="500",
+        name="Sousou no Frieren",
+        make_work=True,
+    )
+
+    summary = provider_candidate_service.generate_mal_bangumi_candidates(
+        min_similarity=0.6,
+        top_k=5,
+    )
+
+    assert summary["source_provider"] == "mal"
+    assert summary["candidates_created"] == 1
+    from apps.index.models import MatchCandidate, MatchEvidence
+
+    candidate = MatchCandidate.objects.select_related(
+        "left_entity", "right_entity"
+    ).get(policy_version="title-similarity-mal-bangumi-v1")
+    evidence = MatchEvidence.objects.get(
+        candidate=candidate, evidence_type="title_similarity"
+    )
+    assert evidence.value["provider_pair"] == "mal:bangumi"
+    assert mal.id in {candidate.left_entity_id, candidate.right_entity_id}
