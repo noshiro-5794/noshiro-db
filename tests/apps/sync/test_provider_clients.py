@@ -160,6 +160,44 @@ def test_vndb_catalog_discovery_is_page_based_and_counts_on_first_page() -> None
     assert request["count"] is True
 
 
+def test_bangumi_subject_search_posts_v0_search_contract() -> None:
+    http_client = Mock()
+    response = http_client.post.return_value
+    response.json.return_value = {
+        "data": [
+            {
+                "id": 23456,
+                "name": "Test Anime",
+                "name_cn": "测试动画",
+                "date": "2026-04-01",
+                "summary": "…",
+            }
+        ],
+        "total": 1,
+        "limit": 5,
+        "offset": 0,
+    }
+    with patch(
+        "apps.sync.providers.bangumi.Provider.objects.filter"
+    ) as provider_filter:
+        provider_filter.return_value.first.return_value = None
+        payload = BangumiClient(http_client).search_subjects(
+            keyword="Test Anime",
+            subject_types=(2,),
+            limit=5,
+            offset=0,
+        )
+
+    assert payload["data"][0]["id"] == 23456
+    request = http_client.post.call_args
+    assert request.kwargs["params"] == {"limit": 5, "offset": 0}
+    assert request.kwargs["json"] == {
+        "keyword": "Test Anime",
+        "sort": "match",
+        "filter": {"type": [2]},
+    }
+
+
 def test_vndb_catalog_discovery_skips_expensive_count_after_first_page() -> None:
     http_client = Mock()
     response = http_client.post.return_value
