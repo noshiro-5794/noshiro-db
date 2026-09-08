@@ -124,9 +124,12 @@ class JikanClient:
                     status_code=status_code,
                     retry_after=retry_after,
                 )
-                if status_code == 429 and _attempt < 2:
+                if status_code in {429, 500, 502, 503, 504} and _attempt < 2:
                     last_error = error
-                    delay = min(90.0, retry_after or 5.0)
+                    delay = min(
+                        90.0,
+                        retry_after or (10.0 if status_code >= 500 else 5.0),
+                    )
                     time.sleep(delay)
                     continue
                 raise error from exc
