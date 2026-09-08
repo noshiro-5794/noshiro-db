@@ -114,3 +114,14 @@ def test_complete_airing_times_command_runs_service() -> None:
 
     run.assert_called_once_with(limit=5, apply=True)
     assert '"accepted": 0' in output
+
+
+def test_sync_season_command_runs_pipeline() -> None:
+    with patch(
+        "apps.sync.management.commands.sync_season.season_pipeline_service.run",
+        return_value={"anilist_imported": 0, "ai_evaluations_dispatched": 0},
+    ) as run:
+        output = _run("sync_season", "--evaluate", "--max-items-per-source", "3")
+
+    run.assert_called_once_with(max_items_per_source=3, evaluate=True)
+    assert '"anilist_imported": 0' in output
