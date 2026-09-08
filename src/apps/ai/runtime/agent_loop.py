@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import time
 from dataclasses import dataclass
 from decimal import Decimal
@@ -397,7 +398,7 @@ class AgentLoopDriver:
             schema = self._skill_registry.get(skill_name).output_model
         if schema is not None:
             try:
-                parsed = json.loads(completion.content)
+                parsed = _extract_json_object(completion.content)
                 if not isinstance(parsed, dict):
                     raise ValueError("Skill output must be a JSON object.")
                 final_output = schema.model_validate(parsed).model_dump(mode="json")
@@ -472,3 +473,16 @@ def _payload_hash(value: dict[str, Any]) -> str:
         separators=(",", ":"),
     ).encode()
     return hashlib.sha256(encoded).hexdigest()
+
+
+def _extract_json_object(content: str) -> dict[str, Any]:
+    """Extract the first balanced JSON object from a model response."""
+    cleaned = re.sub(r"```(?:json)?", "", content, flags=re.IGNORECASE).strip()
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
+    if start < 0 or end <= start:
+        raise ValueError("Model response does not contain a JSON object.")
+    parsed = json.loads(cleaned[start : end + 1])
+    if not isinstance(parsed, dict):
+        raise ValueError("Model JSON output must be an object.")
+    return parsed
