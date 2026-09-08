@@ -154,7 +154,6 @@ class JikanClient:
             {
                 "page": page,
                 "limit": self._bounded_page_size(page_size),
-                "sfw": "true",
             },
         )
 
@@ -176,7 +175,6 @@ class JikanClient:
                 "filter": weekday,
                 "page": page,
                 "limit": self._bounded_page_size(page_size),
-                "sfw": "true",
             },
         )
 
