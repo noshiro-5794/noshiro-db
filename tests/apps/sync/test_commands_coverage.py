@@ -81,3 +81,25 @@ def test_generate_match_candidates_supports_mal_source() -> None:
 
     run.assert_called_once_with(min_similarity=0.6, top_k=5, create=False)
     assert "mal_entities=0" in output
+
+
+def test_sync_anilist_season_command_runs_service() -> None:
+    with patch(
+        "apps.sync.management.commands.sync_anilist_season.anilist_season_service.sync_current_season",
+        return_value={"season_key": "fall:2026", "pages": 0},
+    ) as run:
+        output = _run("sync_anilist_season")
+
+    run.assert_called_once_with(page_size=50, max_pages=40)
+    assert '"season_key": "fall:2026"' in output
+
+
+def test_schedule_coverage_command_reports_sources() -> None:
+    with patch(
+        "apps.sync.management.commands.schedule_coverage.schedule_coverage_service.report",
+        return_value={"sources": {"bangumi": {}, "anilist": {}, "mal": {}}},
+    ) as run:
+        output = _run("schedule_coverage")
+
+    run.assert_called_once_with()
+    assert '"anilist": {}' in output

@@ -39,6 +39,18 @@ ANILIST_CALENDAR_NAMESPACE = SourceNamespaceSpec(
     resource_type=ProviderNamespace.ResourceType.SCHEDULE,
     description="Point-in-time AniList airing schedule for a media entry",
 )
+ANILIST_SEASON_NAMESPACE = SourceNamespaceSpec(
+    source=ANILIST_SOURCE,
+    slug="season",
+    resource_type=ProviderNamespace.ResourceType.SCHEDULE,
+    description="Point-in-time AniList seasonal anime listing",
+)
+ANILIST_SEASON_ITEM_NAMESPACE = SourceNamespaceSpec(
+    source=ANILIST_SOURCE,
+    slug="season-item",
+    resource_type=ProviderNamespace.ResourceType.SUBJECT,
+    description="AniList anime entry as seen in a seasonal listing",
+)
 ANILIST_CHARACTER_NAMESPACE = SourceNamespaceSpec(
     source=ANILIST_SOURCE,
     slug="character",
@@ -87,6 +99,40 @@ class AniListClient:
         media(type: ANIME, sort: UPDATED_AT, updatedAt_greater: $updatedAfter) {
           id
           updatedAt
+        }
+      }
+    }
+    """
+    SEASON_QUERY = """
+    query ($page: Int!, $perPage: Int!, $season: MediaSeason, $seasonYear: Int!) {
+      Page(page: $page, perPage: $perPage) {
+        pageInfo { hasNextPage total }
+        media(
+          type: ANIME
+          season: $season
+          seasonYear: $seasonYear
+          status_in: [RELEASING]
+          sort: [ID]
+        ) {
+          id
+          idMal
+          type
+          format
+          status
+          season
+          seasonYear
+          episodes
+          duration
+          isAdult
+          siteUrl
+          startDate { year month day }
+          endDate { year month day }
+          nextAiringEpisode { airingAt episode }
+          title { romaji english native userPreferred }
+          coverImage { extraLarge large medium color }
+          airingSchedule(perPage: 10) {
+            nodes { id episode airingAt timeUntilAiring }
+          }
         }
       }
     }
@@ -222,6 +268,29 @@ class AniListClient:
         if not isinstance(media, dict):
             raise AniListAPIError(f"AniList media {anilist_id} was not found.")
         return media
+
+    def fetch_season_page(
+        self,
+        *,
+        season: str,
+        season_year: int,
+        cursor: str | None = None,
+        page_size: int = 50,
+    ) -> dict[str, Any]:
+        page = max(1, int(cursor or "1"))
+        data = self._post(
+            self.SEASON_QUERY,
+            {
+                "page": page,
+                "perPage": min(max(page_size, 1), 50),
+                "season": season.upper(),
+                "seasonYear": season_year,
+            },
+        )
+        page_data = data.get("Page")
+        if not isinstance(page_data, dict):
+            raise AniListAPIError("AniList returned an invalid season page.")
+        return page_data
 
     def discover_anime_page(
         self, *, cursor: str | None = None, page_size: int = 50

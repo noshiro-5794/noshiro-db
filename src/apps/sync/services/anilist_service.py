@@ -42,6 +42,7 @@ from apps.sync.providers.anilist import (
     ANILIST_CHARACTER_NAMESPACE,
     ANILIST_EPISODE_NAMESPACE,
     ANILIST_GENRE_NAMESPACE,
+    ANILIST_SEASON_ITEM_NAMESPACE,
     ANILIST_STAFF_NAMESPACE,
     ANILIST_STUDIO_NAMESPACE,
     ANILIST_TAG_NAMESPACE,
@@ -94,6 +95,28 @@ class AniListImportService:
             raise ValueError("AniList media IDs must be positive integers.")
         media = anilist_client.fetch_media(anilist_id)
         return self._persist_media(media)
+
+    def import_saved_media(self, anilist_id: int) -> Entity:
+        """Import an AniList media from an already-persisted seasonal payload."""
+        record = (
+            ProviderRecord.objects.filter(
+                namespace__provider__slug=ANILIST_ANIME_NAMESPACE.source.slug,
+                namespace__slug=ANILIST_SEASON_ITEM_NAMESPACE.slug,
+                external_id=str(anilist_id),
+                status=ProviderRecord.Status.ACTIVE,
+                latest_revision__isnull=False,
+            )
+            .select_related("latest_revision")
+            .first()
+        )
+        if record is None:
+            raise ValueError(
+                f"AniList media {anilist_id} has no persisted seasonal payload."
+            )
+        payload = record.latest_revision.payload
+        if not isinstance(payload, dict) or payload.get("id") != int(anilist_id):
+            raise ValueError(f"AniList media {anilist_id} payload is inconsistent.")
+        return self._persist_media(payload)
 
     @transaction.atomic
     def _persist_media(self, media: dict[str, Any]) -> Entity:
