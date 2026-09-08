@@ -8,7 +8,7 @@ from apps.ai.models import (
     AIRun,
     ToolInvocation,
 )
-from apps.ai.runtime.agent_loop import AgentLoopDriver
+from apps.ai.runtime.agent_loop import AgentLoopDriver, _extract_json_object
 from apps.ai.runtime.executor import StepExecutor
 from apps.ai.skills.registry import create_default_skill_registry
 from apps.ai.tools.registry import (
@@ -20,6 +20,18 @@ from apps.ai.tools.registry import (
 from integrations.ai.gateway import AgentCompletion, AgentToolCall
 
 pytestmark = pytest.mark.django_db(transaction=True)
+
+
+def test_extract_json_object_handles_explanation_and_code_fence() -> None:
+    content = (
+        "I found a match.\n```json\n"
+        '{"decision": "found", "mal_id": 62954, '
+        '"confidence": 0.97, "reason": "same title"}\n```'
+    )
+
+    parsed = _extract_json_object(content)
+
+    assert parsed["mal_id"] == 62954
 
 
 class EchoInput(ToolInput):
