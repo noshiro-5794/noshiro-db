@@ -9,6 +9,7 @@ from apps.sync.tasks.manual import (
     sync_subject_by_bangumi_id_task,
     sync_subject_by_uuid_task,
 )
+from apps.sync.tasks.season import run_season_pipeline_task
 from apps.sync.tasks.vndb import import_vndb_work_task
 
 __all__ = (
@@ -18,6 +19,7 @@ __all__ = (
     "run_airing_daily_task",
     "run_incremental_sync_task",
     "run_mal_season_pipeline_task",
+    "run_season_pipeline_task",
     "run_sync_campaign_task",
     "scan_stale_sync_jobs",
     "sync_calendar_task",
