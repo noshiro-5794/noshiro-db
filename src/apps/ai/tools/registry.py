@@ -133,11 +133,13 @@ def create_default_tool_registry() -> ToolRegistry:
     """Build a registry used by harness workers and MCP adapters."""
     from .bangumi import register_bangumi_tools
     from .knowledge import register_knowledge_tools
+    from .mal import register_mal_tools
     from .web import register_web_tools
 
     registry = ToolRegistry()
     register_bangumi_tools(registry)
     register_knowledge_tools(registry)
+    register_mal_tools(registry)
     register_web_tools(registry)
     return registry
 
@@ -150,9 +152,11 @@ def bootstrap_default_tools() -> ToolRegistry:
     if not tool_registry:
         from .bangumi import register_bangumi_tools
         from .knowledge import register_knowledge_tools
+        from .mal import register_mal_tools
         from .web import register_web_tools
 
         register_bangumi_tools(tool_registry)
         register_knowledge_tools(tool_registry)
+        register_mal_tools(tool_registry)
         register_web_tools(tool_registry)
     return tool_registry

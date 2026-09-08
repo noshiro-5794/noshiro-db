@@ -22,6 +22,7 @@ from typing import Any
 
 from django.db.models import Max
 from django.utils import timezone
+from pydantic import BaseModel
 
 from apps.ai.models import (
     AgentMessage,
@@ -71,6 +72,7 @@ class AgentLoopDriver:
         user_prompt: str,
         tool_names: list[str] | None = None,
         skill_name: str = "",
+        output_model: type[BaseModel] | None = None,
         use_case: str = "agent_loop",
     ) -> AgentRun:
         run = self._start_or_resume(run)
@@ -127,6 +129,7 @@ class AgentLoopDriver:
                         air_run=air_run,
                         completion=completion,
                         skill_name=skill_name,
+                        output_model=output_model,
                     )
 
                 self._execute_tool_calls(
@@ -384,19 +387,20 @@ class AgentLoopDriver:
         air_run: AIRun,
         completion: AgentCompletion,
         skill_name: str,
+        output_model: type[BaseModel] | None,
     ) -> AgentRun:
         if not completion.content.strip():
             raise ValueError("Model returned an empty final answer.")
         final_output: dict[str, Any]
-        if skill_name:
+        schema = output_model
+        if schema is None and skill_name:
+            schema = self._skill_registry.get(skill_name).output_model
+        if schema is not None:
             try:
                 parsed = json.loads(completion.content)
                 if not isinstance(parsed, dict):
                     raise ValueError("Skill output must be a JSON object.")
-                skill = self._skill_registry.get(skill_name)
-                final_output = skill.output_model.model_validate(parsed).model_dump(
-                    mode="json"
-                )
+                final_output = schema.model_validate(parsed).model_dump(mode="json")
             except Exception as exc:
                 raise ValueError(f"Invalid final skill output: {exc}") from exc
         else:
