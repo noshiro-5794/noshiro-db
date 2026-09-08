@@ -96,7 +96,7 @@ export function RegisterPage() {
     <AuthPageLayout title={t('register.title')}>
       <form className="grid gap-5" onSubmit={(event) => void handleSubmit(event)}>
         <div className="motion-rise grid justify-items-center text-center">
-          <img className="size-12 rounded-lg" src="/brand/icon.svg" alt="" aria-hidden="true" />
+          <img className="size-12 rounded-lg" src="/favicon.svg" alt="" aria-hidden="true" />
           <h1 className="mt-5 text-2xl font-semibold tracking-normal text-[var(--ui-text)]">{t('register.title')}</h1>
         </div>
 

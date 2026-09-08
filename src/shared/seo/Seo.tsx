@@ -8,7 +8,7 @@ const siteName = 'Noshiro DB';
 const defaultTitle = siteName;
 const defaultDescription =
   'Explore anime and galgames, browse weekly anime, and keep track of marks, reviews, and collections.';
-const defaultImage = '/assets/social/og-image.png';
+const defaultImage = '/og-image.png';
 
 const htmlLangByLocale: Record<Locale, string> = {
   'zh-CN': 'zh-CN',

@@ -9,7 +9,7 @@ import { Button } from '@/shared/ui/Button';
 import { PublicFooter } from '@/widgets/public-footer';
 import './docs.css';
 
-const ownerAvatarSrc = '/brand/mascot-avatar.png';
+const ownerAvatarSrc = '/favicon.svg';
 const docsRoute = getRouteApi('/docs/$slug');
 
 function OwnerAvatar({ size = 'sm' }: { size?: 'sm' | 'md' }) {

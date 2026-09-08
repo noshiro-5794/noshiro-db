@@ -275,8 +275,8 @@ export function AppShell({ children }: AppShellProps) {
           <div className="mx-auto flex h-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-5">
             <Link className="flex min-w-0 items-center gap-2" to={routes.home} aria-label="Noshiro DB">
               <img
-                className="size-7 rounded-[var(--ui-radius-control)]"
-                src="/brand/icon.svg"
+                className="size-8 rounded-[var(--ui-radius-control)]"
+                src="/favicon.svg"
                 alt=""
                 aria-hidden="true"
               />
@@ -343,7 +343,7 @@ export function AppShell({ children }: AppShellProps) {
     >
       <header className="sticky top-0 z-[var(--ui-layer-shell-header)] flex h-[var(--ui-shell-header-height)] items-center justify-between gap-3 border-b border-[var(--ui-border)] bg-[color-mix(in_srgb,var(--ui-bg-canvas)_92%,transparent)] px-3 backdrop-blur-xl lg:hidden">
         <Link className="flex min-w-0 items-center gap-2" to={routes.home} aria-label="Noshiro DB">
-          <img className="size-6 rounded-[var(--ui-radius-control)]" src="/brand/icon.svg" alt="" aria-hidden="true" />
+          <img className="size-7 rounded-[var(--ui-radius-control)]" src="/favicon.svg" alt="" aria-hidden="true" />
           <span className="truncate text-sm font-semibold">Noshiro DB</span>
         </Link>
         <div className="flex items-center gap-0.5">
@@ -368,8 +368,8 @@ export function AppShell({ children }: AppShellProps) {
           <DialogHeader className="border-b border-[var(--ui-border)] px-4 py-3 pr-12">
             <DialogTitle className="flex items-center gap-2 text-sm">
               <img
-                className="size-6 rounded-[var(--ui-radius-control)]"
-                src="/brand/icon.svg"
+                className="size-7 rounded-[var(--ui-radius-control)]"
+                src="/favicon.svg"
                 alt=""
                 aria-hidden="true"
               />
@@ -420,7 +420,7 @@ export function AppShell({ children }: AppShellProps) {
           to={routes.home}
           aria-label="Noshiro DB"
         >
-          <img className="size-6 rounded-[var(--ui-radius-control)]" src="/brand/icon.svg" alt="" aria-hidden="true" />
+          <img className="size-7 rounded-[var(--ui-radius-control)]" src="/favicon.svg" alt="" aria-hidden="true" />
           <span className="grid min-w-0">
             <span className="truncate text-sm font-semibold">Noshiro DB</span>
           </span>
