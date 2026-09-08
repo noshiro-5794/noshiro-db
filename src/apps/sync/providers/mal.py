@@ -8,6 +8,7 @@ schedule workflows this provider powers.
 
 from __future__ import annotations
 
+import time
 from typing import Any
 
 import httpx
@@ -109,23 +110,35 @@ class JikanClient:
                 raise MALAPIError("MAL provider is disabled.")
             if provider.storage_policy == Provider.UsagePolicy.FORBIDDEN:
                 raise MALAPIError("MAL provider forbids source payload storage.")
-        self._rate_limiter.acquire()
-        try:
-            response = self.client.get(path, params=params)
-            response.raise_for_status()
-        except httpx.HTTPStatusError as exc:
-            raise MALAPIError(
-                f"Jikan API returned {exc.response.status_code}: "
-                f"{exc.response.text[:500]}",
-                status_code=exc.response.status_code,
-                retry_after=_retry_after(exc.response),
-            ) from exc
-        except httpx.RequestError as exc:
-            raise MALAPIError(f"Jikan API request failed: {exc}") from exc
-        try:
-            return response.json()
-        except ValueError as exc:
-            raise MALAPIError("Jikan API returned invalid JSON.") from exc
+        last_error: MALAPIError | None = None
+        for _attempt in range(3):
+            self._rate_limiter.acquire()
+            try:
+                response = self.client.get(path, params=params)
+                response.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                status_code = exc.response.status_code
+                retry_after = _retry_after(exc.response)
+                error = MALAPIError(
+                    f"Jikan API returned {status_code}: {exc.response.text[:500]}",
+                    status_code=status_code,
+                    retry_after=retry_after,
+                )
+                if status_code == 429 and _attempt < 2:
+                    last_error = error
+                    delay = min(90.0, retry_after or 5.0)
+                    time.sleep(delay)
+                    continue
+                raise error from exc
+            except httpx.RequestError as exc:
+                raise MALAPIError(f"Jikan API request failed: {exc}") from exc
+            try:
+                return response.json()
+            except ValueError as exc:
+                raise MALAPIError("Jikan API returned invalid JSON.") from exc
+        if last_error is not None:
+            raise last_error
+        raise MALAPIError("Jikan request exhausted its retry budget.")
 
     def fetch_anime(self, mal_id: int) -> dict[str, Any]:
         """Return the compact ``/anime/{id}`` record for one MAL anime."""
