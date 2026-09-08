@@ -16,6 +16,7 @@ _MODEL_ROUTING: dict[str, str] = {
     "info_completion": "AI_FAST_MODEL",
     "field_normalization": "AI_FAST_MODEL",
     "knowledge_qa": "AI_FAST_MODEL",
+    "schedule_completion": "AI_FAST_MODEL",
     "user_agent": "AI_FAST_MODEL",
 }
 
