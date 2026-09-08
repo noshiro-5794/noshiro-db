@@ -17,6 +17,7 @@ from apps.index.models import (
     ProviderRepresentation,
     Work,
 )
+from apps.index.services import knowledge_ingestion_service
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -99,6 +100,36 @@ def _contributor_entity(
     return entity, record
 
 
+def _observed_episode_entity(
+    *, namespace: ProviderNamespace
+) -> tuple[Entity, Observation]:
+    record = ProviderRecord.objects.create(
+        namespace=namespace, external_id="4", origin="api", status="active"
+    )
+    observation = Observation.objects.create(
+        provider_record=record,
+        origin=Observation.Origin.LEGACY,
+        schema_name="index.episode",
+        schema_version="1",
+        normalized_data={"episode": 1},
+        normalized_hash="hash-episode",
+    )
+    CurrentObservation.objects.create(
+        provider_record=record,
+        mapper="anilist.episode",
+        schema_name="index.episode",
+        observation=observation,
+    )
+    entity = Entity.objects.create(kind=Entity.Kind.EPISODE)
+    ProviderRepresentation.objects.create(
+        provider_record=record,
+        entity=entity,
+        mapping_kind=ProviderRepresentation.MappingKind.EXACT,
+        method=ProviderRepresentation.Method.PROVIDER,
+    )
+    return entity, observation
+
+
 def test_generate_match_candidates_dry_run_reports_counts() -> None:
     _anilist_entity()
 
@@ -158,6 +189,37 @@ def test_backfill_entity_name_observations_links_legacy_names() -> None:
     assert "[applied] orphan_names=1 linkable=1 unlinked=0" in output
     name.refresh_from_db()
     assert name.observation_id == observation.id
+
+
+def test_backfill_anilist_episode_types_records_ep_facts() -> None:
+    provider, _ = Provider.objects.get_or_create(
+        slug="anilist", defaults={"name": "AniList"}
+    )
+    namespace, _ = ProviderNamespace.objects.get_or_create(
+        provider=provider,
+        slug="episode",
+        defaults={"resource_type": ProviderNamespace.ResourceType.EPISODE},
+    )
+    episode_entity, observation = _observed_episode_entity(namespace=namespace)
+    knowledge_ingestion_service.record_fact(
+        entity=episode_entity,
+        observation=observation,
+        slug="episode-number",
+        name="Episode Number",
+        value="1",
+        value_type="string",
+        json_pointer="/episode/number",
+    )
+
+    output = _run("backfill_anilist_episode_types")
+    assert "[dry-run] episodes=1 linkable=1 unlinked=0" in output
+    assert not episode_entity.facts.filter(predicate__slug="episode-type").exists()
+
+    output = _run("backfill_anilist_episode_types", apply=True)
+    assert "[applied] episodes=1 linkable=1 unlinked=0" in output
+    assert episode_entity.facts.filter(
+        predicate__slug="episode-type", value="EP"
+    ).exists()
 
 
 def test_audit_relation_drift_handles_empty_and_populated_sets() -> None:
