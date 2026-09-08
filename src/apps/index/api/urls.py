@@ -1,6 +1,7 @@
 from django.urls import path
 
 from apps.index.api.views.knowledge import (
+    AiringBoardEntryListView,
     CalendarEventListView,
     CollectionEntityListView,
     CollectionListView,
@@ -67,5 +68,10 @@ urlpatterns = [
         "index/calendar/events/",
         CalendarEventListView.as_view(),
         name="index-calendar-events",
+    ),
+    path(
+        "index/calendar/board/events/",
+        AiringBoardEntryListView.as_view(),
+        name="index-calendar-board-events",
     ),
 ]
