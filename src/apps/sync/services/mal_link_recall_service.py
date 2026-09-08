@@ -44,7 +44,7 @@ TOOL_SCOPES = ("knowledge:read", "mal:read")
 class RecallMalOutput(BaseModel):
     decision: Literal["found", "not_found"]
     mal_id: int | None = Field(default=None)
-    confidence: float = Field(ge=0, le=1)
+    confidence: float = Field(default=0, ge=0, le=1)
     reason: str = Field(min_length=1)
 
 

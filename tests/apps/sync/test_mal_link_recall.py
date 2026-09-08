@@ -16,9 +16,20 @@ from apps.index.models import (
     ProviderRepresentation,
     Work,
 )
-from apps.sync.services.mal_link_recall_service import mal_link_recall_service
+from apps.sync.services.mal_link_recall_service import (
+    RecallMalOutput,
+    mal_link_recall_service,
+)
 
 pytestmark = pytest.mark.django_db(transaction=True)
+
+
+def test_not_found_output_allows_missing_confidence() -> None:
+    output = RecallMalOutput.model_validate(
+        {"decision": "not_found", "reason": "No precise MAL entry."}
+    )
+
+    assert output.confidence == 0
 
 
 def _anime_entity(
