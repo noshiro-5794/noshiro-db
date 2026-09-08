@@ -5686,6 +5686,36 @@
                 "parameters": [
                     {
                         "in": "query",
+                        "name": "keyword",
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 200
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "ordering",
+                        "schema": {
+                            "enum": [
+                                "-id",
+                                "id",
+                                "-rating",
+                                "rating",
+                                "-simple_rating",
+                                "simple_rating",
+                                "-watch_end_date",
+                                "watch_end_date",
+                                "-watch_start_date",
+                                "watch_start_date"
+                            ],
+                            "type": "string",
+                            "default": "-id",
+                            "minLength": 1
+                        },
+                        "description": "* `-id` - -id\n* `id` - id\n* `-rating` - -rating\n* `rating` - rating\n* `-simple_rating` - -simple_rating\n* `simple_rating` - simple_rating\n* `-watch_end_date` - -watch_end_date\n* `watch_end_date` - watch_end_date\n* `-watch_start_date` - -watch_start_date\n* `watch_start_date` - watch_start_date"
+                    },
+                    {
+                        "in": "query",
                         "name": "page",
                         "schema": {
                             "type": "integer",
@@ -5717,6 +5747,25 @@
                             "minLength": 1
                         },
                         "description": "* `doing` - Doing\n* `wish` - Wish\n* `done` - Done\n* `on_hold` - On Hold\n* `drop` - Drop"
+                    },
+                    {
+                        "in": "query",
+                        "name": "subject_type",
+                        "schema": {
+                            "enum": [
+                                "anime",
+                                "galgame",
+                                "manga",
+                                "novel",
+                                "game",
+                                "music",
+                                "other",
+                                "unclassified"
+                            ],
+                            "type": "string",
+                            "minLength": 1
+                        },
+                        "description": "* `anime` - Anime\n* `galgame` - Galgame\n* `manga` - Manga\n* `novel` - Novel\n* `game` - Game\n* `music` - Music\n* `other` - Other\n* `unclassified` - Unclassified"
                     },
                     {
                         "in": "path",
@@ -6899,6 +6948,33 @@
                 "parameters": [
                     {
                         "in": "query",
+                        "name": "keyword",
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 200
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "ordering",
+                        "schema": {
+                            "enum": [
+                                "-updated_at",
+                                "-created_at",
+                                "-rating",
+                                "rating",
+                                "-simple_rating",
+                                "-watch_end_date",
+                                "-watch_start_date"
+                            ],
+                            "type": "string",
+                            "default": "-updated_at",
+                            "minLength": 1
+                        },
+                        "description": "* `-updated_at` - -updated_at\n* `-created_at` - -created_at\n* `-rating` - -rating\n* `rating` - rating\n* `-simple_rating` - -simple_rating\n* `-watch_end_date` - -watch_end_date\n* `-watch_start_date` - -watch_start_date"
+                    },
+                    {
+                        "in": "query",
                         "name": "page",
                         "schema": {
                             "type": "integer",
@@ -6930,6 +7006,33 @@
                             "minLength": 1
                         },
                         "description": "* `doing` - Doing\n* `wish` - Wish\n* `done` - Done\n* `on_hold` - On Hold\n* `drop` - Drop"
+                    },
+                    {
+                        "in": "query",
+                        "name": "subject_type",
+                        "schema": {
+                            "enum": [
+                                "anime",
+                                "galgame",
+                                "manga",
+                                "novel",
+                                "game",
+                                "music",
+                                "other",
+                                "unclassified"
+                            ],
+                            "type": "string",
+                            "minLength": 1
+                        },
+                        "description": "* `anime` - Anime\n* `galgame` - Galgame\n* `manga` - Manga\n* `novel` - Novel\n* `game` - Game\n* `music` - Music\n* `other` - Other\n* `unclassified` - Unclassified"
+                    },
+                    {
+                        "in": "query",
+                        "name": "tag_id",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        }
                     }
                 ],
                 "tags": [
