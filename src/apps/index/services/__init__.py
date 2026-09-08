@@ -1,3 +1,4 @@
+from .airing_board_projection import airing_board_projection_service
 from .candidate_generation import provider_candidate_service
 from .fact_resolution import fact_resolution_service
 from .identity import cross_provider_identity_service
@@ -8,6 +9,7 @@ from .season_group import season_group_service
 
 __all__ = [
     "EntityResolutionError",
+    "airing_board_projection_service",
     "cross_provider_identity_service",
     "entity_resolution_service",
     "fact_resolution_service",

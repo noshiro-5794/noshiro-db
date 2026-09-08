@@ -4025,6 +4025,45 @@
                 }
             }
         },
+        "/api/v1/index/calendar/board/events/": {
+            "get": {
+                "operationId": "get_api_v1_index_calendar_board_events",
+                "description": "Current Gantt board projection (one bar per canonical work/weekday).",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "include_work",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "tags": [
+                    "v1"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/AiringBoardEntry"
+                                    }
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/api/v1/index/calendar/events/": {
             "get": {
                 "operationId": "get_api_v1_index_calendar_events",
@@ -9955,6 +9994,97 @@
                 ],
                 "type": "string",
                 "description": "* `off` - Off\n* `shadow` - Shadow\n* `assisted` - Assisted\n* `required` - Required"
+            },
+            "AiringBoardEntry": {
+                "type": "object",
+                "description": "Gantt-ready board bar from the curated multi-source projection.",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "work_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "episode_entity_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "nullable": true
+                    },
+                    "episode_number": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "nullable": true
+                    },
+                    "starts_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "ends_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "nullable": true
+                    },
+                    "timezone": {
+                        "type": "string"
+                    },
+                    "region": {
+                        "type": "string"
+                    },
+                    "weekday": {
+                        "type": "integer",
+                        "maximum": 7,
+                        "minimum": 1,
+                        "nullable": true
+                    },
+                    "duration_minutes": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "nullable": true
+                    },
+                    "precision": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "decision": {
+                        "type": "string"
+                    },
+                    "confidence": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "source_refs": {},
+                    "work": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/EntitySummary"
+                            }
+                        ],
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "confidence",
+                    "decision",
+                    "duration_minutes",
+                    "ends_at",
+                    "episode_entity_id",
+                    "episode_number",
+                    "id",
+                    "precision",
+                    "region",
+                    "source_refs",
+                    "starts_at",
+                    "status",
+                    "timezone",
+                    "weekday",
+                    "work_id"
+                ]
             },
             "AppearanceEnum": {
                 "enum": [

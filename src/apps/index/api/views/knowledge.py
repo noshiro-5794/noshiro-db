@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.index.api.serializers.knowledge import (
+    AiringBoardEntrySerializer,
     CalendarEventSerializer,
     CalendarQuerySerializer,
     EntityCharacterSerializer,
@@ -24,6 +25,8 @@ from apps.index.api.serializers.knowledge import (
     IndexCollectionSerializer,
 )
 from apps.index.models import (
+    AiringBoard,
+    AiringBoardEntry,
     AiringEvent,
     Entity,
     IndexCollection,
@@ -744,6 +747,80 @@ class CalendarEventListView(APIView):
                 }
             )
         return Response(CalendarEventSerializer(data, many=True).data)
+
+
+class AiringBoardEntryListView(APIView):
+    """Current Gantt board projection (one bar per canonical work/weekday)."""
+
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("include_work", OpenApiTypes.BOOL),
+        ],
+        responses=api_responses(
+            {200: AiringBoardEntrySerializer(many=True)}, errors=()
+        ),
+    )
+    def get(self, request):
+        board = (
+            AiringBoard.objects.filter(status=AiringBoard.Status.ACTIVE)
+            .select_related("observation")
+            .first()
+        )
+        if board is None:
+            return Response([])
+        adult_allowed = request_allows_adult_content(request)
+        entries = (
+            AiringBoardEntry.objects.filter(board=board)
+            .select_related("work__entity", "episode_entity")
+            .order_by("weekday", "starts_at", "work_id")
+        )
+        data = []
+        for entry in entries:
+            work_entity = entity_resolution_service.resolve(entry.work.entity)
+            if (
+                work_entity.lifecycle != Entity.Lifecycle.ACTIVE
+                or not entity_resolution_service.is_public(work_entity)
+            ):
+                continue
+            include_work = request.query_params.get("include_work", "").lower() in {
+                "1",
+                "true",
+                "yes",
+            }
+            summary = entity_summary(
+                work_entity,
+                safe=True,
+                adult_allowed=adult_allowed,
+            )
+            if summary["audience"] == Entity.Audience.ADULT and not adult_allowed:
+                continue
+            starts_at = entry.starts_at
+            ends_at = None
+            if starts_at is not None and entry.duration_minutes:
+                ends_at = starts_at + timedelta(minutes=entry.duration_minutes)
+            data.append(
+                {
+                    "id": entry.id,
+                    "work_id": entry.work_id,
+                    "episode_entity_id": entry.episode_entity_id,
+                    "episode_number": entry.episode_number,
+                    "starts_at": starts_at,
+                    "ends_at": ends_at,
+                    "timezone": entry.timezone,
+                    "region": entry.region,
+                    "weekday": entry.weekday,
+                    "duration_minutes": entry.duration_minutes,
+                    "precision": entry.precision,
+                    "status": entry.status,
+                    "decision": entry.decision,
+                    "confidence": float(entry.confidence),
+                    "source_refs": entry.source_refs,
+                    **({"work": summary} if include_work else {}),
+                }
+            )
+        return Response(AiringBoardEntrySerializer(data, many=True).data)
 
 
 def ensure_public_entity(entity_id) -> Entity:

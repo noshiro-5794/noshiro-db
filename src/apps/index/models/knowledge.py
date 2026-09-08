@@ -1,4 +1,5 @@
 import uuid
+from decimal import Decimal
 
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
@@ -596,3 +597,104 @@ class AiringBoard(TimestampedModel):
 
     def __str__(self) -> str:
         return f"{self.season_key or '-'}:{self.status}:{self.item_count}"
+
+
+class AiringBoardEntry(TimestampedModel):
+    """One curated board bar: a canonical work in a broadcast week window.
+
+    Source ``AiringEvent`` rows are immutable per-provider facts. This table is
+    the multi-source projection a Gantt calendar can render: after identity
+    resolution, exactly one entry exists per canonical work/weekday/slot, and
+    ``source_refs`` records which provider observations support that slot so
+    schedule conflicts and consensus stay auditable.
+    """
+
+    class Precision(models.TextChoices):
+        MINUTE = "minute", "Minute"
+        DAY = "day", "Day"
+        WEEKDAY = "weekday", "Weekday"
+        UNKNOWN = "unknown", "Unknown"
+
+    class Status(models.TextChoices):
+        SCHEDULED = "scheduled", "Scheduled"
+        TENTATIVE = "tentative", "Tentative"
+        FINISHED = "finished", "Finished"
+
+    class Decision(models.TextChoices):
+        CONSENSUS = "consensus", "Consensus"
+        SOURCE_PRIORITY = "source_priority", "Source priority"
+        MANUAL = "manual", "Manual"
+        AI = "ai", "AI"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    board = models.ForeignKey(
+        "AiringBoard",
+        on_delete=models.CASCADE,
+        related_name="entries",
+    )
+    work = models.ForeignKey(
+        "Work",
+        on_delete=models.CASCADE,
+        related_name="airing_board_entries",
+    )
+    episode_entity = models.ForeignKey(
+        "Entity",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="airing_board_entries",
+    )
+    episode_number = models.PositiveIntegerField(null=True, blank=True)
+    weekday = models.PositiveSmallIntegerField(null=True, blank=True)
+    starts_at = models.DateTimeField(null=True, blank=True)
+    timezone = models.CharField(max_length=64, blank=True)
+    region = models.CharField(max_length=16, blank=True)
+    duration_minutes = models.PositiveIntegerField(null=True, blank=True)
+    precision = models.CharField(
+        max_length=16,
+        choices=Precision.choices,
+        default=Precision.UNKNOWN,
+    )
+    status = models.CharField(
+        max_length=16,
+        choices=Status.choices,
+        default=Status.TENTATIVE,
+    )
+    decision = models.CharField(
+        max_length=32,
+        choices=Decision.choices,
+        default=Decision.SOURCE_PRIORITY,
+    )
+    confidence = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=Decimal("1.0000"),
+    )
+    source_refs = models.JSONField(default=list, blank=True)
+
+    class Meta:
+        db_table = "airing_board_entry"
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(weekday__isnull=True) | Q(weekday__range=(1, 7)),
+                name="ck_airing_board_weekday",
+            ),
+            models.UniqueConstraint(
+                fields=[
+                    "board",
+                    "work",
+                    "episode_number",
+                    "starts_at",
+                    "timezone",
+                ],
+                name="uq_airing_board_slot",
+                nulls_distinct=False,
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["board", "weekday"], name="idx_board_weekday"),
+            models.Index(fields=["board", "starts_at"], name="idx_board_starts_at"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.work_id}:{self.starts_at or self.weekday}"
