@@ -392,6 +392,23 @@ ANILIST_RATE_LIMIT_INTERVAL = env.float(
     default=0.75,
 )
 
+# MAL anime data is fetched through the public Jikan REST API. The adapter
+# exposes MAL records; no API key is required, but the API is rate-limited to
+# roughly 3 requests/second and 60 requests/minute.
+JIKAN_API_BASE_URL = env(
+    "JIKAN_API_BASE_URL",
+    default="https://api.jikan.moe/v4",
+)
+JIKAN_USER_AGENT = env(
+    "JIKAN_USER_AGENT",
+    default="Noshiro_5794/noshiro_db (https://github.com/noshiro-5794)",
+)
+JIKAN_TIMEOUT = env.float("JIKAN_TIMEOUT", default=30)
+JIKAN_RATE_LIMIT_INTERVAL = env.float(
+    "JIKAN_RATE_LIMIT_INTERVAL",
+    default=0.4,
+)
+
 AI_AGENT_API_BASE_URL = env(
     "AI_AGENT_API_BASE_URL",
     default="https://api.siliconflow.cn/v1/chat/completions",

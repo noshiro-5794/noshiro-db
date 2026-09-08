@@ -72,9 +72,27 @@ class AniListAPIError(ProviderAPIError):
         self.retryable = status_code == 429 or status_code is None or status_code >= 500
 
 
+class MALAPIError(ProviderAPIError):
+    def __init__(
+        self,
+        message: str,
+        *,
+        status_code: int | None = None,
+        retry_after: float | None = None,
+    ) -> None:
+        super().__init__(
+            message,
+            status_code=status_code,
+            retry_after=retry_after,
+            error_code=f"http_{status_code}" if status_code else "request_error",
+        )
+        self.retryable = status_code == 429 or status_code is None or status_code >= 500
+
+
 __all__ = [
     "AniListAPIError",
     "BangumiAPIError",
+    "MALAPIError",
     "ProviderAPIError",
     "VNDBAPIError",
 ]
