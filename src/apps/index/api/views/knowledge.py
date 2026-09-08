@@ -1,4 +1,5 @@
 from datetime import timedelta
+from typing import Any
 
 from django.db.models import Prefetch
 from drf_spectacular.types import OpenApiTypes
@@ -693,6 +694,7 @@ class CalendarEventListView(APIView):
                     event.work_id,
                 )
             )
+            ordered = self._collapse_weekday_sources(ordered)
         adult_allowed = request_allows_adult_content(request)
         data = []
         seen = set()
@@ -747,6 +749,20 @@ class CalendarEventListView(APIView):
                 }
             )
         return Response(CalendarEventSerializer(data, many=True).data)
+
+    @staticmethod
+    def _collapse_weekday_sources(ordered: list[AiringEvent]) -> list[AiringEvent]:
+        """Keep one precise slot per canonical work on the range-less board."""
+        collapsed: dict[Any, AiringEvent] = {}
+        for event in ordered:
+            root = entity_resolution_service.resolve(event.work.entity)
+            current = collapsed.get(root.id)
+            if current is None or (
+                event.precision == AiringEvent.Precision.MINUTE
+                and current.precision != AiringEvent.Precision.MINUTE
+            ):
+                collapsed[root.id] = event
+        return list(collapsed.values())
 
 
 class AiringBoardEntryListView(APIView):
