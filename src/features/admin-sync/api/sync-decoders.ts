@@ -7,6 +7,8 @@ import type {
   IncrementalSyncRunResult,
   QueuedTask,
   SubjectResyncResult,
+  SyncCampaign,
+  SyncCampaignSummary,
   SyncJob,
   SyncTaskStatus,
 } from '@/shared/api';
@@ -23,8 +25,20 @@ function isInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value);
 }
 
+function isNonNegativeInteger(value: unknown): value is number {
+  return isInteger(value) && value >= 0;
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
 function isNullableString(value: unknown) {
   return value === null || isString(value);
+}
+
+function isNullableDecimal(value: unknown) {
+  return value === null || typeof value === 'string';
 }
 
 function isQueuedTask(value: unknown): value is QueuedTask {
@@ -162,6 +176,87 @@ export function decodeImportJob(value: unknown): ImportJob {
     started_at: value['started_at'],
     finished_at: value['finished_at'],
     updated_at: value['updated_at'],
+  };
+}
+
+function isSyncCampaign(value: unknown): value is SyncCampaign {
+  if (
+    !isRecord(value) ||
+    !isString(value['id']) ||
+    !isString(value['provider_slug']) ||
+    !isString(value['campaign_type']) ||
+    !isString(value['status']) ||
+    !isString(value['ai_mode']) ||
+    !isRecord(value['parameters']) ||
+    !isNonNegativeInteger(value['total_items']) ||
+    !isNonNegativeInteger(value['processed_items']) ||
+    !isNonNegativeInteger(value['synced_items']) ||
+    !isNonNegativeInteger(value['skipped_items']) ||
+    !isNonNegativeInteger(value['failed_items']) ||
+    !(value['quality_report'] === null || isRecord(value['quality_report'])) ||
+    !isNullableDecimal(value['cost']) ||
+    !isString(value['error']) ||
+    !isNullableString(value['heartbeat_at']) ||
+    !isNullableString(value['next_run_at']) ||
+    !isString(value['created_at']) ||
+    !isNullableString(value['started_at']) ||
+    !isNullableString(value['finished_at']) ||
+    !isString(value['updated_at']) ||
+    !isRecord(value['progress'])
+  ) {
+    return false;
+  }
+
+  const progress = value['progress'];
+  return (
+    (progress['percent'] === null || isFiniteNumber(progress['percent'])) &&
+    isNonNegativeInteger(progress['queued']) &&
+    isNonNegativeInteger(progress['running']) &&
+    isNonNegativeInteger(progress['succeeded']) &&
+    isNonNegativeInteger(progress['failed']) &&
+    isNonNegativeInteger(progress['retry_waiting']) &&
+    (progress['throughput_items_per_second'] === null || isFiniteNumber(progress['throughput_items_per_second'])) &&
+    (progress['eta_seconds'] === null || isNonNegativeInteger(progress['eta_seconds']))
+  );
+}
+
+export function decodeSyncCampaign(value: unknown): SyncCampaign {
+  if (!isSyncCampaign(value)) {
+    throw new TypeError('Invalid sync campaign response');
+  }
+  return value;
+}
+
+export function decodeSyncCampaignList(value: unknown): SyncCampaign[] {
+  if (!Array.isArray(value) || !value.every(isSyncCampaign)) {
+    throw new TypeError('Invalid sync campaign list response');
+  }
+  return value;
+}
+
+function isNumberMap(value: unknown): value is Record<string, number> {
+  return isRecord(value) && Object.values(value).every(isNonNegativeInteger);
+}
+
+export function decodeSyncCampaignSummary(value: unknown): SyncCampaignSummary {
+  if (
+    !isRecord(value) ||
+    !isNumberMap(value['campaigns_by_status']) ||
+    !isNumberMap(value['campaigns_by_provider']) ||
+    !isNonNegativeInteger(value['stale_leases']) ||
+    !isNonNegativeInteger(value['queued_items']) ||
+    !isNonNegativeInteger(value['failed_items']) ||
+    !isNonNegativeInteger(value['pending_ai_claims'])
+  ) {
+    throw new TypeError('Invalid sync campaign summary response');
+  }
+  return {
+    campaigns_by_status: value['campaigns_by_status'],
+    campaigns_by_provider: value['campaigns_by_provider'],
+    stale_leases: value['stale_leases'],
+    queued_items: value['queued_items'],
+    failed_items: value['failed_items'],
+    pending_ai_claims: value['pending_ai_claims'],
   };
 }
 
