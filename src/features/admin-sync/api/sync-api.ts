@@ -1,6 +1,19 @@
 import { api, decodeCursorPage, encodePath } from '@/shared/api';
-import type { ApiRequestContext, CursorPage, ImportJob, ImportJobCreate } from '@/shared/api';
-import { decodeImportJob } from './sync-decoders';
+import type {
+  ApiRequestContext,
+  CursorPage,
+  ImportJob,
+  ImportJobCreate,
+  SyncCampaign,
+  SyncCampaignAction,
+  SyncCampaignSummary,
+} from '@/shared/api';
+import {
+  decodeImportJob,
+  decodeSyncCampaign,
+  decodeSyncCampaignList,
+  decodeSyncCampaignSummary,
+} from './sync-decoders';
 
 export const operationsApi = {
   listImportJobs: (
@@ -22,6 +35,24 @@ export const operationsApi = {
   createImportJob: (body: ImportJobCreate) =>
     api.post<ImportJob, ImportJobCreate>('/api/v1/operations/import-jobs/', body, {
       decode: decodeImportJob,
+    }),
+
+  listCampaigns: (query: { provider?: string; status?: string } = {}, context: ApiRequestContext = {}) =>
+    api.get<SyncCampaign[]>('/api/v1/operations/sync/', {
+      ...context,
+      decode: decodeSyncCampaignList,
+      query,
+    }),
+
+  getCampaignSummary: (context: ApiRequestContext = {}) =>
+    api.get<SyncCampaignSummary>('/api/v1/operations/sync/summary/', {
+      ...context,
+      decode: decodeSyncCampaignSummary,
+    }),
+
+  campaignAction: (campaignId: string, action: SyncCampaignAction) =>
+    api.post<SyncCampaign>(`/api/v1/operations/sync/${encodePath(campaignId)}/${encodePath(action)}/`, undefined, {
+      decode: decodeSyncCampaign,
     }),
 };
 

@@ -1,4 +1,4 @@
-import type { ISODateString, OpenString, UUID } from './common';
+import type { DecimalString, ISODateString, OpenString, UUID } from './common';
 import type { SubjectType } from './subject';
 
 export type ImportJobProvider = 'bangumi' | 'vndb' | OpenString;
@@ -108,3 +108,65 @@ export type SubjectResyncResult = {
   character_count: number;
   related_subject_count: number;
 };
+
+export type SyncCampaignType = 'full' | 'incremental' | OpenString;
+export type SyncCampaignStatus =
+  | 'queued'
+  | 'discovering'
+  | 'fetching'
+  | 'mapping'
+  | 'normalizing'
+  | 'reconciling'
+  | 'enriching'
+  | 'reviewing'
+  | 'paused'
+  | 'completed'
+  | 'failed'
+  | 'cancelled'
+  | OpenString;
+export type SyncCampaignAIMode = 'off' | 'shadow' | 'assisted' | 'required' | OpenString;
+export type SyncCampaignProvider = 'bangumi' | 'vndb' | 'anilist' | OpenString;
+
+export type SyncCampaign = {
+  id: UUID;
+  provider_slug: SyncCampaignProvider;
+  campaign_type: SyncCampaignType;
+  status: SyncCampaignStatus;
+  ai_mode: SyncCampaignAIMode;
+  parameters: Record<string, unknown>;
+  total_items: number;
+  processed_items: number;
+  synced_items: number;
+  skipped_items: number;
+  failed_items: number;
+  quality_report: Record<string, unknown> | null;
+  cost: DecimalString | null;
+  error: string;
+  heartbeat_at: ISODateString | null;
+  next_run_at: ISODateString | null;
+  created_at: ISODateString;
+  started_at: ISODateString | null;
+  finished_at: ISODateString | null;
+  updated_at: ISODateString;
+  progress: {
+    percent: number | null;
+    queued: number;
+    running: number;
+    succeeded: number;
+    failed: number;
+    retry_waiting: number;
+    throughput_items_per_second: number | null;
+    eta_seconds: number | null;
+  };
+};
+
+export type SyncCampaignSummary = {
+  campaigns_by_status: Record<string, number>;
+  campaigns_by_provider: Record<string, number>;
+  stale_leases: number;
+  queued_items: number;
+  failed_items: number;
+  pending_ai_claims: number;
+};
+
+export type SyncCampaignAction = 'pause' | 'resume' | 'cancel';
