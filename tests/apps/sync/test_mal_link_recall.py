@@ -4,6 +4,7 @@ from unittest.mock import patch
 import pytest
 from django.core.management import call_command
 
+from apps.ai.models import AgentRun, AgentStep
 from apps.index.models import (
     Entity,
     EntityName,
@@ -137,3 +138,59 @@ def test_recall_mal_links_command_reports_summary() -> None:
 
     run.assert_called_once_with(limit=5, evaluate=False, force=False)
     assert '"not_found"' in out.getvalue()
+
+
+def test_failed_attempt_frees_idempotency_key_for_retry() -> None:
+    bangumi = _anime_entity(
+        provider_slug="bangumi",
+        namespace_slug="subject",
+        external_id="595884",
+        title="Test Show",
+    )
+    old = AgentRun.objects.create(
+        kind=AgentRun.Kind.ADMIN_ENRICH,
+        status=AgentRun.Status.FAILED,
+        error="old failure",
+        idempotency_scope="mal-recall:v1",
+        idempotency_key="bangumi:595884",
+        metadata={"scopes": ["knowledge:read", "mal:read"]},
+    )
+
+    def fake_driver_run(run, **kwargs):
+        run.status = AgentRun.Status.SUCCEEDED
+        run.error = ""
+        run.save(update_fields=["status", "error", "updated_at"])
+        AgentStep.objects.create(
+            run=run,
+            sequence=1,
+            kind=AgentStep.Kind.MODEL,
+            status=AgentStep.Status.SUCCEEDED,
+            output={
+                "decision": "not_found",
+                "mal_id": None,
+                "confidence": 0.0,
+                "reason": "No precise MAL entry.",
+            },
+        )
+        return run
+
+    fake = type("FakeDriver", (), {"run": staticmethod(fake_driver_run)})()
+    with patch(
+        "apps.sync.services.mal_link_recall_service.AgentLoopDriver",
+        return_value=fake,
+    ):
+        result = mal_link_recall_service.recall_one(
+            root=bangumi,
+            evaluate=False,
+        )
+
+    assert result["outcome"] == "not_found"
+    old.refresh_from_db()
+    assert old.idempotency_key == ""
+    assert (
+        AgentRun.objects.filter(
+            idempotency_scope="mal-recall:v1",
+            idempotency_key="bangumi:595884",
+        ).count()
+        == 1
+    )
