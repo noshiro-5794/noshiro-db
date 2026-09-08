@@ -7,15 +7,15 @@ from apps.sync.services.mal_season_pipeline import mal_season_pipeline_service
 
 class Command(BaseCommand):
     help = (
-        "Run the MAL current-season pipeline: schedule fetch, saved-record "
+        "Run the MAL current-season pipeline: season fetch, saved-record "
         "import, official AniList reconciliation, and title candidates."
     )
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--no-schedule",
+            "--no-season",
             action="store_true",
-            help="Reuse already-persisted MAL schedule records.",
+            help="Reuse the already-persisted MAL season records.",
         )
         parser.add_argument(
             "--evaluate",
@@ -31,7 +31,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         result = mal_season_pipeline_service.run(
-            sync_schedules=not options["no_schedule"],
+            fetch_season=not options["no_season"],
             evaluate=options["evaluate"],
             max_items=options["max_items"],
         )

@@ -69,9 +69,9 @@ class SeasonPipelineService:
         }
 
     def _run_mal_leg(self, max_items: int | None) -> dict[str, Any]:
-        """Refresh MAL schedules, promote entities, and reconcile identity."""
+        """Refresh the MAL season listing and promote its entities."""
         return mal_season_pipeline_service.run(
-            sync_schedules=True,
+            fetch_season=True,
             evaluate=False,
             max_items=max_items,
         )

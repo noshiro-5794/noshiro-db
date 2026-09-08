@@ -28,17 +28,24 @@ def _schedule_item_record(*, mal_id: int = 5114) -> None:
         defaults={"resource_type": ProviderNamespace.ResourceType.SUBJECT},
     )
     payload = {
-        "mal_id": mal_id,
+        "id": mal_id,
         "title": "Hanasaku Iroha",
-        "titles": [
-            {"type": "Default", "title": "Hanasaku Iroha"},
-            {"type": "Japanese", "title": "花咲くいろは"},
-        ],
-        "type": "TV",
-        "episodes": 26,
-        "status": "Currently Airing",
+        "alternative_titles": {
+            "synonyms": [],
+            "en": "Hanasaku Iroha",
+            "ja": "花咲くいろは",
+        },
+        "media_type": "tv",
+        "num_episodes": 26,
+        "status": "currently_airing",
         "synopsis": "",
-        "images": {"jpg": {"large_image_url": "https://example.test/large.jpg"}},
+        "main_picture": {
+            "medium": "https://example.test/medium.jpg",
+            "large": "https://example.test/large.jpg",
+        },
+        "start_date": "2011-04-03",
+        "end_date": "2011-09-25",
+        "average_episode_duration": 1440,
     }
     record = ProviderRecord.objects.create(
         namespace=namespace,
@@ -50,7 +57,7 @@ def _schedule_item_record(*, mal_id: int = 5114) -> None:
         record=record,
         payload=payload,
         payload_hash=f"payload-{mal_id}",
-        schema_version="jikan-v4",
+        schema_version="mal-api-v2",
     )
     ProviderRecord.objects.filter(pk=record.pk).update(latest_revision=revision)
 
@@ -63,11 +70,11 @@ def test_pipeline_promotes_saved_schedule_record_to_entity() -> None:
         return_value={"created_ids": [], "pairs": []},
     ) as candidates:
         result = mal_season_pipeline_service.run(
-            sync_schedules=False,
+            fetch_season=False,
             evaluate=False,
         )
 
-    assert result["schedule"] is None
+    assert result["season"] is None
     assert result["saved_anime_ids"] == 1
     assert result["imported_entities"] == 1
     assert result["identity"]["bound"] == 0

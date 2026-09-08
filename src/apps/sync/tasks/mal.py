@@ -56,12 +56,12 @@ def import_mal_media_task(
 @shared_task(soft_time_limit=3600, time_limit=3900)
 def run_mal_season_pipeline_task(
     *,
-    sync_schedules: bool = True,
+    fetch_season: bool = True,
     evaluate: bool = False,
     max_items: int | None = None,
 ) -> dict:
     return mal_season_pipeline_service.run(
-        sync_schedules=sync_schedules,
+        fetch_season=fetch_season,
         evaluate=evaluate,
         max_items=max_items,
     )

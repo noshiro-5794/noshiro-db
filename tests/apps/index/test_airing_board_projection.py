@@ -9,6 +9,7 @@ from apps.index.models import (
     AiringBoard,
     AiringBoardEntry,
     Entity,
+    Observation,
     Provider,
     ProviderNamespace,
     ProviderRecord,
@@ -58,57 +59,66 @@ def _anime_entity(
     return entity
 
 
-def test_rebuild_projects_mal_schedule_onto_one_board_entry() -> None:
-    entity = _anime_entity(
-        provider_slug="mal",
-        namespace_slug="anime",
-        external_id="5114",
-    )
+def _current_season_key() -> str:
+    now = timezone.localtime()
+    return f"{now.year}Q{(now.month - 1) // 3 + 1}"
+
+
+def _record_mal_season_observation(*, mal_id: int) -> ProviderRecord:
     source = CatalogSourceSpec(
         slug="mal",
         name="MyAnimeList",
         base_url="https://myanimelist.net",
     )
-    schedule_namespace = SourceNamespaceSpec(
+    season_namespace = SourceNamespaceSpec(
         source=source,
-        slug="schedule",
+        slug="season",
         resource_type=ProviderNamespace.ResourceType.SCHEDULE,
     )
     now = timezone.now().astimezone(ZoneInfo("Asia/Tokyo"))
-    tomorrow = (now + timedelta(days=1)).strftime("%A").lower() + "s"
-    payload_page = {
-        "data": [
-            {
-                "mal_id": 5114,
-                "title": "Hanasaku Iroha",
-                "status": "Currently Airing",
-                "episodes": 26,
-                "duration": "24 min per ep",
-                "broadcast": {
-                    "day": tomorrow,
-                    "time": "22:00",
-                    "timezone": "Asia/Tokyo",
-                },
-            }
-        ]
+    tomorrow = (now + timedelta(days=1)).strftime("%A").lower()
+    season_key = _current_season_key()
+    item = {
+        "mal_id": mal_id,
+        "media_type": "tv",
+        "status": "currently_airing",
+        "start_date": "2026-07-01",
+        "broadcast_day": tomorrow,
+        "broadcast_time": "22:00",
+        "timezone": "Asia/Tokyo",
+        "duration_minutes": 24,
     }
     recorded = source_record_service.record(
-        namespace_spec=schedule_namespace,
+        namespace_spec=season_namespace,
         fetched=FetchedSourceRecord(
-            external_id="weekly:sunday",
-            payload={"weekday": "sunday", "pages": [payload_page]},
-            schema_version="jikan-v4",
-            mapper_version="mal-schedule-v1",
+            external_id=f"season-now:{season_key}",
+            payload={"season_key": season_key, "pages": []},
+            canonical_url=(f"https://api.myanimelist.net/v2/anime/season/{season_key}"),
+            schema_version="mal-api-v2",
+            mapper_version="mal-season-v2",
         ),
     )
     knowledge_ingestion_service.record_observation(
         provider_record=recorded.record,
-        mapper="mal.weekly",
-        mapper_version="mal-schedule-v1",
-        normalized_data={"weekday": "sunday", "pages": [payload_page]},
+        mapper="mal.season",
+        mapper_version="mal-season-v2",
+        normalized_data={
+            "season_key": season_key,
+            "items": [item],
+        },
         schema_name="index.schedule",
-        schema_version="1",
+        schema_version="2",
     )
+    return recorded.record
+
+
+def test_rebuild_projects_mal_season_onto_one_board_entry() -> None:
+    entity = _anime_entity(
+        provider_slug="mal",
+        namespace_slug="anime",
+        external_id="5114",
+    )
+    _record_mal_season_observation(mal_id=5114)
 
     summary = airing_board_projection_service.rebuild()
 
@@ -127,66 +137,7 @@ def test_board_endpoint_returns_projected_bar() -> None:
         namespace_slug="anime",
         external_id="5000",
     )
-    source = CatalogSourceSpec(
-        slug="mal",
-        name="MyAnimeList",
-        base_url="https://myanimelist.net",
-    )
-    schedule_namespace = SourceNamespaceSpec(
-        source=source,
-        slug="schedule",
-        resource_type=ProviderNamespace.ResourceType.SCHEDULE,
-    )
-    recorded = source_record_service.record(
-        namespace_spec=schedule_namespace,
-        fetched=FetchedSourceRecord(
-            external_id="weekly:monday",
-            payload={
-                "weekday": "monday",
-                "pages": [
-                    {
-                        "data": [
-                            {
-                                "mal_id": 5000,
-                                "status": "Currently Airing",
-                                "broadcast": {
-                                    "day": "Mondays",
-                                    "time": "22:00",
-                                    "timezone": "Asia/Tokyo",
-                                },
-                            }
-                        ]
-                    }
-                ],
-            },
-            schema_version="jikan-v4",
-        ),
-    )
-    knowledge_ingestion_service.record_observation(
-        provider_record=recorded.record,
-        mapper="mal.weekly",
-        mapper_version="mal-schedule-v1",
-        normalized_data={
-            "weekday": "monday",
-            "pages": [
-                {
-                    "data": [
-                        {
-                            "mal_id": 5000,
-                            "status": "Currently Airing",
-                            "broadcast": {
-                                "day": "Mondays",
-                                "time": "22:00",
-                                "timezone": "Asia/Tokyo",
-                            },
-                        }
-                    ]
-                }
-            ],
-        },
-        schema_name="index.schedule",
-        schema_version="1",
-    )
+    _record_mal_season_observation(mal_id=5000)
     airing_board_projection_service.rebuild()
 
     response = APIClient().get("/api/v1/index/calendar/board/events/?include_work=true")
@@ -197,3 +148,36 @@ def test_board_endpoint_returns_projected_bar() -> None:
     assert payload[0]["work_id"] == str(entity.id)
     assert payload[0]["precision"] == "minute"
     assert payload[0]["work"]["id"] == str(entity.id)
+
+
+def test_rebuild_includes_not_yet_aired_premiere_inside_window() -> None:
+    entity = _anime_entity(
+        provider_slug="mal",
+        namespace_slug="anime",
+        external_id="62907",
+    )
+    local_now = timezone.now().astimezone(ZoneInfo("Asia/Tokyo"))
+    premiere_day = (local_now + timedelta(days=2)).date().isoformat()
+    _record_mal_season_observation(mal_id=62907)
+
+    observation = Observation.objects.get(
+        provider_record__external_id=f"season-now:{_current_season_key()}",
+        schema_name="index.schedule",
+    )
+    normalized = observation.normalized_data
+    normalized["items"][0].update(
+        {
+            "status": "not_yet_aired",
+            "start_date": premiere_day,
+            "broadcast_time": "20:00",
+        }
+    )
+    observation.normalized_data = normalized
+    observation.save(update_fields=["normalized_data"])
+
+    airing_board_projection_service.rebuild()
+
+    entry = AiringBoardEntry.objects.get(board__status=AiringBoard.Status.ACTIVE)
+    assert entry.work_id == entity.id
+    assert entry.starts_at is not None
+    assert entry.precision == AiringBoardEntry.Precision.MINUTE

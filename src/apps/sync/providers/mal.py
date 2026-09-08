@@ -1,9 +1,10 @@
-"""MAL anime client backed by the public Jikan REST API.
+"""MAL anime client backed by the official MyAnimeList API v2.
 
-The provider slug and namespaces identify MyAnimeList records (``mal_id``);
-the transport simply calls Jikan, which is an unofficial, key-less HTTP
-interface to MAL data. No official MAL credentials are needed for the daily
-schedule workflows this provider powers.
+The provider slug and namespaces identify MyAnimeList records (``mal_id``).
+The transport talks directly to ``api.myanimelist.net/v2`` using the public
+client authentication header (``X-MAL-CLIENT-ID``). No OAuth token is needed
+for the anime detail, seasonal listing, or search endpoints this project uses;
+the client secret is kept only for future OAuth-based user-scope features.
 """
 
 from __future__ import annotations
@@ -16,7 +17,6 @@ from django.conf import settings
 
 from apps.index.models import Provider, ProviderNamespace
 from apps.sync.providers.contracts import (
-    CatalogPage,
     CatalogSourceSpec,
     SourceNamespaceSpec,
 )
@@ -41,58 +41,70 @@ MAL_SCHEDULE_ITEM_NAMESPACE = SourceNamespaceSpec(
     source=MAL_SOURCE,
     slug="schedule-item",
     resource_type=ProviderNamespace.ResourceType.SUBJECT,
-    description="MyAnimeList anime entry as seen in a weekly schedule page",
-)
-MAL_SCHEDULE_NAMESPACE = SourceNamespaceSpec(
-    source=MAL_SOURCE,
-    slug="schedule",
-    resource_type=ProviderNamespace.ResourceType.SCHEDULE,
-    description="Jikan weekly broadcast schedule page",
+    description=("MyAnimeList anime entry as seen in an official seasonal listing"),
 )
 MAL_SEASON_NAMESPACE = SourceNamespaceSpec(
     source=MAL_SOURCE,
     slug="season",
     resource_type=ProviderNamespace.ResourceType.SCHEDULE,
-    description="Jikan seasonal anime listing",
+    description="Point-in-time MyAnimeList seasonal listing",
 )
 
-JIKAN_WEEKDAYS = (
-    "monday",
-    "tuesday",
-    "wednesday",
-    "thursday",
-    "friday",
-    "saturday",
-    "sunday",
-    "other",
-    "unknown",
+# Fields requested from anime detail, seasonal, and search endpoints. They cover
+# everything the importer and board projection need without pulling expensive
+# recommendation or related-entry trees.
+MAL_ANIME_FIELDS = (
+    "id,title,main_picture,alternative_titles,start_date,end_date,synopsis,"
+    "mean,rank,popularity,num_list_users,num_scoring_users,nsfw,media_type,"
+    "status,num_episodes,start_season,broadcast,source,"
+    "average_episode_duration,rating,pictures,studios"
 )
 
+# Calendar quarters align with MAL broadcast seasons: Q1 = winter, Q2 = spring,
+# Q3 = summer, Q4 = fall.
+MAL_SEASON_BY_QUARTER = {
+    1: "winter",
+    2: "spring",
+    3: "summer",
+    4: "fall",
+}
 
-class JikanClient:
-    """Small typed client for the Jikan v4 REST endpoints used by the board."""
 
-    MAX_PAGE_SIZE = 25
+class MALAPIClient:
+    """Small typed client for the official MAL v2 REST endpoints."""
+
+    SEASON_MAX_LIMIT = 500
+    SEARCH_MAX_LIMIT = 100
+    RETRYABLE_STATUSES = {429, 500, 502, 503, 504}
+    MAX_ATTEMPTS = 3
 
     def __init__(self, client: httpx.Client | None = None) -> None:
         self._client = client
         self._rate_limiter = DistributedRateLimiter(
             "mal",
-            settings.JIKAN_RATE_LIMIT_INTERVAL,
+            settings.MAL_RATE_LIMIT_INTERVAL,
             allow_fallback=client is not None,
         )
 
     @property
     def client(self) -> httpx.Client:
         if self._client is None:
+            client_id = settings.MAL_API_CLIENT_ID
+            if not client_id:
+                raise MALAPIError(
+                    "MAL_API_CLIENT_ID is not configured. Register a MAL API "
+                    "client at https://myanimelist.net/apiconfig and set the "
+                    "environment variable before enabling MAL sync."
+                )
             self._client = httpx.Client(
                 **httpx_client_kwargs(
-                    base_url=settings.JIKAN_API_BASE_URL,
+                    base_url=settings.MAL_API_BASE_URL,
                     headers={
                         "Accept": "application/json",
-                        "User-Agent": settings.JIKAN_USER_AGENT,
+                        "X-MAL-CLIENT-ID": client_id,
+                        "User-Agent": settings.MAL_USER_AGENT,
                     },
-                    timeout=settings.JIKAN_TIMEOUT,
+                    timeout=settings.MAL_TIMEOUT,
                     follow_redirects=True,
                     use_proxy=False,
                 )
@@ -111,7 +123,7 @@ class JikanClient:
             if provider.storage_policy == Provider.UsagePolicy.FORBIDDEN:
                 raise MALAPIError("MAL provider forbids source payload storage.")
         last_error: MALAPIError | None = None
-        for _attempt in range(3):
+        for attempt in range(self.MAX_ATTEMPTS):
             self._rate_limiter.acquire()
             try:
                 response = self.client.get(path, params=params)
@@ -120,11 +132,14 @@ class JikanClient:
                 status_code = exc.response.status_code
                 retry_after = _retry_after(exc.response)
                 error = MALAPIError(
-                    f"Jikan API returned {status_code}: {exc.response.text[:500]}",
+                    f"MAL API returned {status_code}: {exc.response.text[:500]}",
                     status_code=status_code,
                     retry_after=retry_after,
                 )
-                if status_code in {429, 500, 502, 503, 504} and _attempt < 2:
+                if (
+                    status_code in self.RETRYABLE_STATUSES
+                    and attempt < self.MAX_ATTEMPTS - 1
+                ):
                     last_error = error
                     delay = min(
                         90.0,
@@ -134,117 +149,75 @@ class JikanClient:
                     continue
                 raise error from exc
             except httpx.RequestError as exc:
-                raise MALAPIError(f"Jikan API request failed: {exc}") from exc
+                raise MALAPIError(f"MAL API request failed: {exc}") from exc
             try:
                 return response.json()
             except ValueError as exc:
-                raise MALAPIError("Jikan API returned invalid JSON.") from exc
+                raise MALAPIError("MAL API returned invalid JSON.") from exc
         if last_error is not None:
             raise last_error
-        raise MALAPIError("Jikan request exhausted its retry budget.")
+        raise MALAPIError("MAL request exhausted its retry budget.")
 
     def fetch_anime(self, mal_id: int) -> dict[str, Any]:
-        """Return the compact ``/anime/{id}`` record for one MAL anime."""
-        payload = self._get(f"/anime/{mal_id}")
-        item = payload.get("data") if isinstance(payload, dict) else None
-        if not isinstance(item, dict):
+        """Return the official v2 anime record for one MAL anime."""
+        payload = self._get(
+            f"/anime/{mal_id}",
+            {"fields": MAL_ANIME_FIELDS},
+        )
+        if not isinstance(payload, dict):
             raise MALAPIError(f"MAL anime {mal_id} was not found.")
-        return item
+        return payload
 
     def fetch_anime_full(self, mal_id: int) -> dict[str, Any]:
-        """Return the extended ``/anime/{id}/full`` record when details are needed."""
-        payload = self._get(f"/anime/{mal_id}/full")
-        item = payload.get("data") if isinstance(payload, dict) else None
-        if not isinstance(item, dict):
-            raise MALAPIError(f"MAL anime {mal_id} was not found.")
-        return item
+        """Backwards-compatible full-detail fetch (same as ``fetch_anime``)."""
+        return self.fetch_anime(mal_id)
 
-    def fetch_season_now(
+    def fetch_season(
         self,
         *,
-        cursor: str | None = None,
-        page_size: int = 25,
+        year: int,
+        season: str,
+        offset: int = 0,
+        limit: int = 100,
     ) -> dict[str, Any]:
-        page = max(1, int(cursor or "1"))
-        return self._get(
-            "/seasons/now",
+        """Return one page of the official seasonal anime listing."""
+        bounded_limit = min(max(int(limit), 1), self.SEASON_MAX_LIMIT)
+        bounded_offset = max(0, int(offset))
+        payload = self._get(
+            f"/anime/season/{int(year)}/{season}",
             {
-                "page": page,
-                "limit": self._bounded_page_size(page_size),
+                "limit": bounded_limit,
+                "offset": bounded_offset,
+                "fields": MAL_ANIME_FIELDS,
+                "nsfw": "true",
             },
         )
-
-    def fetch_schedule(
-        self,
-        *,
-        weekday: str,
-        cursor: str | None = None,
-        page_size: int = 25,
-    ) -> dict[str, Any]:
-        if weekday not in JIKAN_WEEKDAYS:
-            raise ValueError(
-                f"Jikan weekday must be one of {', '.join(JIKAN_WEEKDAYS)}."
-            )
-        page = max(1, int(cursor or "1"))
-        return self._get(
-            "/schedules",
-            {
-                "filter": weekday,
-                "page": page,
-                "limit": self._bounded_page_size(page_size),
-            },
-        )
-
-    def discover_season_now_page(
-        self,
-        *,
-        cursor: str | None = None,
-        page_size: int = 25,
-    ) -> CatalogPage:
-        """Discover MAL ids in the current anime season with Jikan pagination."""
-        payload = self.fetch_season_now(cursor=cursor, page_size=page_size)
-        return self._catalog_page(payload, cursor=cursor)
-
-    def discover_schedule_page(
-        self,
-        *,
-        weekday: str,
-        cursor: str | None = None,
-        page_size: int = 25,
-    ) -> CatalogPage:
-        """Discover MAL ids that broadcast on one weekday."""
-        payload = self.fetch_schedule(
-            weekday=weekday,
-            cursor=cursor,
-            page_size=page_size,
-        )
-        return self._catalog_page(payload, cursor=cursor)
-
-    def _catalog_page(self, payload: Any, *, cursor: str | None) -> CatalogPage:
         if not isinstance(payload, dict):
-            raise MALAPIError("Jikan catalog response must be an object.")
-        items = payload.get("data")
-        if not isinstance(items, list):
-            raise MALAPIError("Jikan catalog response is missing its data list.")
-        external_ids = tuple(
-            str(item["mal_id"])
-            for item in items
-            if isinstance(item, dict) and isinstance(item.get("mal_id"), int)
-        )
-        pagination = payload.get("pagination") if isinstance(payload, dict) else {}
-        has_next = (
-            isinstance(pagination, dict) and pagination.get("has_next_page") is True
-        )
-        page = max(1, int(cursor or "1"))
-        return CatalogPage(
-            external_ids=external_ids,
-            next_cursor=str(page + 1) if has_next else None,
-            total_count=None,
-        )
+            raise MALAPIError("MAL seasonal listing response must be an object.")
+        return payload
 
-    @classmethod
-    def _bounded_page_size(cls, page_size: int) -> int:
-        return min(max(int(page_size), 1), cls.MAX_PAGE_SIZE)
+    def search_anime(
+        self,
+        *,
+        query: str,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        """Search anime through the official v2 endpoint."""
+        bounded_limit = min(max(int(limit), 1), self.SEARCH_MAX_LIMIT)
+        payload = self._get(
+            "/anime",
+            {
+                "q": query,
+                "limit": bounded_limit,
+                "offset": max(0, int(offset)),
+                "fields": MAL_ANIME_FIELDS,
+                "nsfw": "true",
+            },
+        )
+        if not isinstance(payload, dict):
+            raise MALAPIError("MAL search response must be an object.")
+        return payload
 
     def close(self) -> None:
         if self._client is not None:
@@ -252,7 +225,15 @@ class JikanClient:
             self._client = None
 
 
-jikan_client = JikanClient()
+mal_api_client = MALAPIClient()
+
+
+def season_name_for_quarter(quarter: int) -> str:
+    """Map a calendar quarter (1-4) to its MAL broadcast season name."""
+    season = MAL_SEASON_BY_QUARTER.get(int(quarter))
+    if season is None:
+        raise ValueError("MAL broadcast quarter must be between 1 and 4.")
+    return season
 
 
 def _retry_after(response: httpx.Response) -> float | None:
