@@ -46,7 +46,7 @@ def test_run_chains_anilist_promotion_candidates_and_mal_pipeline() -> None:
     assert result["anilist_imported"] == 1
     assert result["ai_evaluations_dispatched"] == 1
     mal_run.assert_called_once_with(
-        sync_schedules=True,
+        fetch_season=True,
         evaluate=False,
         max_items=2,
     )
@@ -99,7 +99,7 @@ def test_anilist_maintenance_does_not_block_mal_leg() -> None:
     promote.assert_not_called()
     generate_candidates.assert_not_called()
     mal_run.assert_called_once_with(
-        sync_schedules=True,
+        fetch_season=True,
         evaluate=False,
         max_items=None,
     )
