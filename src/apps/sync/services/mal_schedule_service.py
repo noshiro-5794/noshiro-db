@@ -1,14 +1,10 @@
-"""Durable schedule persistence for MAL data fetched through Jikan.
+"""Durable seasonal persistence for MAL data fetched through the official API.
 
-The service keeps two complementary artifacts:
-
-* point-in-time schedule observations under ``mal/season`` and ``mal/schedule``
-  so board refreshes can compare source snapshots;
-* one idempotent ``mal/anime`` provider record per MAL anime so identity
-  matching can bind MAL ids to canonical entities without re-fetching pages.
-
-The MAL anime rows created here are intentionally observation-free until a
-detail import runs; the board and identity phases only need stable records.
+MyAnimeList v2 has no weekly schedule endpoint, so the board source is the
+official **seasonal listing**. One idempotent ``mal/season`` snapshot keeps
+the point-in-time broadcast facts (used by the board projection), while each
+season anime is mirrored under ``mal/schedule-item`` so the MAL season
+pipeline can promote entities without re-fetching the full season.
 """
 
 from __future__ import annotations
@@ -18,178 +14,106 @@ from typing import Any
 from django.utils import timezone
 from django.utils.timezone import localdate
 
-from apps.index.services import (
-    knowledge_ingestion_service,
-)
+from apps.index.services import knowledge_ingestion_service
 from apps.sync.providers.contracts import FetchedSourceRecord
 from apps.sync.providers.mal import (
-    JIKAN_WEEKDAYS,
     MAL_SCHEDULE_ITEM_NAMESPACE,
-    MAL_SCHEDULE_NAMESPACE,
     MAL_SEASON_NAMESPACE,
-    jikan_client,
+    mal_api_client,
+    season_name_for_quarter,
 )
 from apps.sync.services.source_record_service import source_record_service
 from apps.sync.services.sync_job_service import sync_job_service
 
 
 class MALScheduleService:
-    """Fetch and record the MAL weekly schedule and current season list."""
+    """Fetch and record the official MAL current-season listing."""
 
-    WEEKDAYS = JIKAN_WEEKDAYS[:7]
     TASK_NAME = "mal_schedule"
-    DEFAULT_PAGE_SIZE = 25
-    DEFAULT_MAX_PAGES_PER_DAY = 20
+    DEFAULT_LIMIT = 500
+    DEFAULT_MAX_PAGES = 10
+    TIMEZONE = "Asia/Tokyo"
 
     def sync(
         self,
         *,
         job_id: str | None = None,
-        page_size: int | None = None,
-        max_pages_per_weekday: int | None = None,
+        limit: int | None = None,
+        max_pages: int | None = None,
     ) -> dict[str, Any]:
-        page_size = max(1, int(page_size or self.DEFAULT_PAGE_SIZE))
-        max_pages = max(1, int(max_pages_per_weekday or self.DEFAULT_MAX_PAGES_PER_DAY))
+        limit = max(1, int(limit or self.DEFAULT_LIMIT))
+        max_pages = max(1, int(max_pages or self.DEFAULT_MAX_PAGES))
         sync_job_service.mark_running(
             job_id=job_id,
-            total_count=1 + len(self.WEEKDAYS),
-            current_label="Fetching MAL season and weekly schedules",
+            total_count=1,
+            current_label="Fetching MAL current-season listing",
         )
         try:
-            season = self.sync_season_now(page_size=page_size, max_pages=max_pages)
-            schedules = [
-                self.sync_schedule_day(
-                    weekday=weekday,
-                    page_size=page_size,
-                    max_pages=max_pages,
-                )
-                for weekday in self.WEEKDAYS
-            ]
+            season = self.sync_current_season(limit=limit, max_pages=max_pages)
         except Exception as exc:
             sync_job_service.mark_failed(
                 job_id=job_id,
                 error=exc,
-                current_label="MAL schedule sync failed",
+                current_label="MAL seasonal sync failed",
             )
             raise
         result = {
             "source": "mal",
             "season": season,
-            "weekday_schedules": schedules,
             "fetched_at": timezone.now().isoformat(),
         }
         sync_job_service.mark_succeeded(
             job_id=job_id,
             result=result,
-            current_label="MAL schedule sync completed",
+            current_label="MAL seasonal sync completed",
         )
         return result
 
-    def sync_season_now(
+    def sync_current_season(
         self,
         *,
-        page_size: int = 25,
-        max_pages: int = 20,
+        limit: int = 500,
+        max_pages: int = 10,
     ) -> dict[str, Any]:
         today = localdate()
         quarter = (today.month - 1) // 3 + 1
-        season_key = f"{today.year}Q{quarter}"
+        year = today.year
+        mal_season = season_name_for_quarter(quarter)
+        season_key = f"{year}Q{quarter}"
+
         pages: list[dict[str, Any]] = []
         item_payloads: dict[str, dict[str, Any]] = {}
-        next_cursor: str | None = None
+        offset = 0
         page_count = 0
         while page_count < max_pages:
             page_count += 1
-            payload = jikan_client.fetch_season_now(
-                cursor=next_cursor,
-                page_size=page_size,
+            payload = mal_api_client.fetch_season(
+                year=year,
+                season=mal_season,
+                offset=offset,
+                limit=limit,
             )
             pages.append(payload)
-            for item in self._items(payload):
-                mal_id = item.get("mal_id")
+            nodes = self._nodes(payload)
+            for node in nodes:
+                mal_id = node.get("id")
                 if isinstance(mal_id, int):
-                    item_payloads[str(mal_id)] = item
-            pagination = payload.get("pagination") if isinstance(payload, dict) else {}
-            if (
-                not isinstance(pagination, dict)
-                or pagination.get("has_next_page") is not True
-            ):
+                    item_payloads[str(mal_id)] = node
+            if not nodes or not self._has_next_page(payload):
                 break
-            next_cursor = str(page_count + 1)
+            offset += len(nodes)
 
-        recorded = self._record_season_pages(
+        recorded = self._record_season_snapshot(
             season_key=season_key,
+            mal_season=mal_season,
+            year=year,
             pages=pages,
+            items=list(item_payloads.values()),
         )
         item_ids = self._record_anime_items(item_payloads)
         return {
             "season_key": season_key,
-            "pages": len(pages),
-            "schedule_record_id": str(recorded.record.id),
-            "changed": recorded.changed,
-            "items_seen": len(item_payloads),
-            "items_recorded": len(item_ids),
-        }
-
-    def sync_schedule_day(
-        self,
-        *,
-        weekday: str,
-        page_size: int = 25,
-        max_pages: int = 20,
-    ) -> dict[str, Any]:
-        pages: list[dict[str, Any]] = []
-        item_payloads: dict[str, dict[str, Any]] = {}
-        next_cursor: str | None = None
-        page_count = 0
-        while page_count < max_pages:
-            page_count += 1
-            payload = jikan_client.fetch_schedule(
-                weekday=weekday,
-                cursor=next_cursor,
-                page_size=page_size,
-            )
-            pages.append(payload)
-            for item in self._items(payload):
-                mal_id = item.get("mal_id")
-                if isinstance(mal_id, int):
-                    item_payloads[str(mal_id)] = item
-            pagination = payload.get("pagination") if isinstance(payload, dict) else {}
-            if (
-                not isinstance(pagination, dict)
-                or pagination.get("has_next_page") is not True
-            ):
-                break
-            next_cursor = str(page_count + 1)
-
-        recorded = source_record_service.record(
-            namespace_spec=MAL_SCHEDULE_NAMESPACE,
-            fetched=FetchedSourceRecord(
-                external_id=f"weekly:{weekday}",
-                payload={
-                    "weekday": weekday,
-                    "pages": pages,
-                },
-                canonical_url=(f"https://api.jikan.moe/v4/schedules?filter={weekday}"),
-                schema_version="jikan-v4",
-                mapper_version="mal-schedule-v1",
-                fetched_at=timezone.now(),
-            ),
-        )
-        knowledge_ingestion_service.record_observation(
-            provider_record=recorded.record,
-            mapper="mal.weekly",
-            mapper_version="mal-schedule-v1",
-            normalized_data={
-                "weekday": weekday,
-                "pages": pages,
-            },
-            schema_name="index.schedule",
-            schema_version="1",
-        )
-        item_ids = self._record_anime_items(item_payloads)
-        return {
-            "weekday": weekday,
+            "mal_season": mal_season,
             "pages": len(pages),
             "schedule_record_id": str(recorded.record.id),
             "changed": recorded.changed,
@@ -198,40 +122,97 @@ class MALScheduleService:
         }
 
     @staticmethod
-    def _record_season_pages(
+    def _nodes(payload: Any) -> list[dict[str, Any]]:
+        if not isinstance(payload, dict):
+            return []
+        data = payload.get("data")
+        if not isinstance(data, list):
+            return []
+        nodes: list[dict[str, Any]] = []
+        for wrapper in data:
+            if not isinstance(wrapper, dict):
+                continue
+            node = (
+                wrapper.get("node")
+                if isinstance(wrapper.get("node"), dict)
+                else wrapper
+            )
+            if isinstance(node, dict):
+                nodes.append(node)
+        return nodes
+
+    @staticmethod
+    def _has_next_page(payload: dict[str, Any]) -> bool:
+        paging = payload.get("paging") if isinstance(payload, dict) else {}
+        return isinstance(paging, dict) and bool(paging.get("next"))
+
+    def _record_season_snapshot(
+        self,
         *,
         season_key: str,
+        mal_season: str,
+        year: int,
         pages: list[dict[str, Any]],
+        items: list[dict[str, Any]],
     ) -> Any:
+        external_id = f"season-now:{season_key}"
         recorded = source_record_service.record(
             namespace_spec=MAL_SEASON_NAMESPACE,
             fetched=FetchedSourceRecord(
-                external_id=f"season-now:{season_key}",
+                external_id=external_id,
                 payload={
                     "season_key": season_key,
+                    "year": year,
+                    "season": mal_season,
                     "pages": pages,
                 },
-                canonical_url="https://api.jikan.moe/v4/seasons/now",
-                schema_version="jikan-v4",
-                mapper_version="mal-season-v1",
+                canonical_url=(
+                    f"https://api.myanimelist.net/v2/anime/season/{year}/{mal_season}"
+                ),
+                schema_version="mal-api-v2",
+                mapper_version="mal-season-v2",
                 fetched_at=timezone.now(),
             ),
         )
         knowledge_ingestion_service.record_observation(
             provider_record=recorded.record,
-            mapper="mal.season-now",
-            mapper_version="mal-season-v1",
+            mapper="mal.season",
+            mapper_version="mal-season-v2",
             normalized_data={
                 "season_key": season_key,
-                "pages": pages,
+                "year": year,
+                "season": mal_season,
+                "items": [self._normalized_item(item) for item in items],
             },
             schema_name="index.schedule",
-            schema_version="1",
+            schema_version="2",
         )
         return recorded
 
+    @classmethod
+    def _normalized_item(cls, item: dict[str, Any]) -> dict[str, Any]:
+        broadcast = (
+            item.get("broadcast") if isinstance(item.get("broadcast"), dict) else {}
+        )
+        episode_duration = item.get("average_episode_duration")
+        duration_minutes = None
+        if isinstance(episode_duration, int) and episode_duration > 0:
+            duration_minutes = max(1, round(episode_duration / 60))
+        return {
+            "mal_id": item.get("id"),
+            "media_type": item.get("media_type"),
+            "status": item.get("status"),
+            "start_date": item.get("start_date"),
+            "broadcast_day": broadcast.get("day_of_the_week"),
+            "broadcast_time": broadcast.get("start_time"),
+            "timezone": cls.TIMEZONE if broadcast else "",
+            "duration_minutes": duration_minutes,
+        }
+
     @staticmethod
-    def _record_anime_items(items: dict[str, dict[str, Any]]) -> list[str]:
+    def _record_anime_items(
+        items: dict[str, dict[str, Any]],
+    ) -> list[str]:
         if not items:
             return []
         fetched_records = [
@@ -239,8 +220,8 @@ class MALScheduleService:
                 external_id=external_id,
                 payload=payload,
                 canonical_url=(f"https://myanimelist.net/anime/{external_id}"),
-                schema_version="jikan-v4",
-                mapper_version="mal-schedule-item-v1",
+                schema_version="mal-api-v2",
+                mapper_version="mal-season-item-v2",
                 fetched_at=timezone.now(),
             )
             for external_id, payload in items.items()
@@ -254,17 +235,6 @@ class MALScheduleService:
             for external_id in items
             if (item := recorded.get(external_id)) is not None
         ]
-
-    @staticmethod
-    def _items(payload: Any) -> list[dict[str, Any]]:
-        if not isinstance(payload, dict):
-            return []
-        data = payload.get("data")
-        return (
-            [item for item in data if isinstance(item, dict)]
-            if isinstance(data, list)
-            else []
-        )
 
 
 mal_schedule_service = MALScheduleService()

@@ -94,7 +94,7 @@ class ScheduleCoverageService:
             "item_count": len(item_ids),
             "schedule_observation_records": ProviderRecord.objects.filter(
                 namespace__provider__slug="mal",
-                namespace__slug__in=("schedule", "season"),
+                namespace__slug="season",
                 status=ProviderRecord.Status.ACTIVE,
             ).count(),
         }

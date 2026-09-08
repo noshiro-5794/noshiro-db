@@ -1,4 +1,4 @@
-"""End-to-end current-season MAL pipeline for schedule and identity refresh."""
+"""End-to-end current-season MAL pipeline for listing and identity refresh."""
 
 from __future__ import annotations
 
@@ -17,16 +17,16 @@ from apps.sync.services.mal_schedule_service import mal_schedule_service
 
 
 class MALSeasonPipelineService:
-    """Fetch schedules, promote saved records, and reconcile identities."""
+    """Fetch the season listing, promote records, and reconcile identities."""
 
     def run(
         self,
         *,
-        sync_schedules: bool = True,
+        fetch_season: bool = True,
         evaluate: bool = False,
         max_items: int | None = None,
     ) -> dict[str, Any]:
-        schedule_summary = mal_schedule_service.sync() if sync_schedules else None
+        season_summary = mal_schedule_service.sync() if fetch_season else None
         saved_ids = self._saved_anime_ids(max_items=max_items)
         imported = [
             str(entity.id)
@@ -40,7 +40,7 @@ class MALSeasonPipelineService:
         if evaluate and created_ids:
             self._dispatch_ai_evaluations(created_ids)
         return {
-            "schedule": schedule_summary,
+            "season": season_summary,
             "saved_anime_ids": len(saved_ids),
             "imported_entities": len(imported),
             "identity": identity_summary,

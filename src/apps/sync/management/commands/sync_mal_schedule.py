@@ -6,25 +6,25 @@ from apps.sync.services.mal_schedule_service import mal_schedule_service
 
 
 class Command(BaseCommand):
-    help = "Fetch and persist the MAL/Jikan weekly schedule and current season."
+    help = "Fetch and persist the official MAL current-season listing."
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--page-size",
+            "--limit",
             type=int,
-            default=25,
-            help="Maximum items per Jikan page (max 25).",
+            default=500,
+            help="Maximum items per MAL season page (max 500).",
         )
         parser.add_argument(
-            "--max-pages-per-weekday",
+            "--max-pages",
             type=int,
-            default=20,
-            help="Safety cap for pages fetched per weekday list.",
+            default=10,
+            help="Safety cap for pages fetched per seasonal listing.",
         )
 
     def handle(self, *args, **options):
         result = mal_schedule_service.sync(
-            page_size=options["page_size"],
-            max_pages_per_weekday=options["max_pages_per_weekday"],
+            limit=options["limit"],
+            max_pages=options["max_pages"],
         )
         self.stdout.write(json.dumps(result, ensure_ascii=False, indent=2))

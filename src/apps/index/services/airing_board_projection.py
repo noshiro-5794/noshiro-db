@@ -9,7 +9,7 @@ draw one bar per canonical work instead of per source.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -40,21 +40,11 @@ _WEEKDAY_MAP = {
     "sunday": 7,
 }
 
-_MAL_DAY_LABELS = {
-    "mondays": 1,
-    "tuesdays": 2,
-    "wednesdays": 3,
-    "thursdays": 4,
-    "fridays": 5,
-    "saturdays": 6,
-    "sundays": 7,
-}
-
-# MAL is the authoritative source for the current-season board: Jikan mirrors
-# MAL's own broadcast data and this project treats MAL as the identity spine.
-# AniList and Bangumi corroborate slots; when sources disagree on the same
-# canonical work, the lower-priority source only appears if the leader is
-# absent for that work/day.
+# MAL is the authoritative source for the current-season board: its official
+# v2 seasonal listing carries the broadcast day/time for every airing entry,
+# and this project treats MAL as the identity spine. AniList and Bangumi
+# corroborate slots; when sources disagree on the same canonical work, the
+# lower-priority source only appears if the leader is absent for that work/day.
 _SOURCE_PRIORITY = {"mal": 0, "anilist": 1, "bangumi": 2}
 
 
@@ -78,7 +68,7 @@ class CandidateBar:
 class AiringBoardProjectionService:
     def rebuild(self) -> dict[str, Any]:
         board = self._ensure_board()
-        candidates = self._candidates_for_window()
+        candidates = self._candidates_for_window(season_key=board.season_key)
         entries = self._project_candidates(candidates, board=board)
         with transaction.atomic():
             AiringBoardEntry.objects.filter(board=board).delete()
@@ -124,13 +114,19 @@ class AiringBoardProjectionService:
             )
         return board
 
-    def _candidates_for_window(self) -> list[CandidateBar]:
+    def _candidates_for_window(self, *, season_key: str) -> list[CandidateBar]:
         now = timezone.now()
         end = now + timedelta(days=7)
         candidates: list[CandidateBar] = []
         candidates.extend(self._bangumi_weekday_candidates())
         candidates.extend(self._anilist_minute_candidates(now=now, end=end))
-        candidates.extend(self._mal_broadcast_candidates(now=now, end=end))
+        candidates.extend(
+            self._mal_season_candidates(
+                now=now,
+                end=end,
+                season_key=season_key,
+            )
+        )
         return candidates
 
     @staticmethod
@@ -190,75 +186,69 @@ class AiringBoardProjectionService:
             )
         return bars
 
-    def _mal_broadcast_candidates(
+    def _mal_season_candidates(
         self,
         *,
         now: datetime,
         end: datetime,
+        season_key: str,
     ) -> list[CandidateBar]:
         bars: list[CandidateBar] = []
         mal_works = self._mal_work_index()
         records = Observation.objects.filter(
             schema_name="index.schedule",
             current_projections__provider_record__namespace__provider__slug="mal",
-            current_projections__provider_record__namespace__slug="schedule",
+            current_projections__provider_record__namespace__slug="season",
         )
-        for observation in records.prefetch_related("current_projections"):
+        for observation in records:
             normalized = observation.normalized_data or {}
-            weekday_label = str(normalized.get("weekday") or "").lower()
-            weekday = _WEEKDAY_MAP.get(weekday_label)
-            if weekday is None:
+            if normalized.get("season_key") != season_key:
                 continue
-            for page in normalized.get("pages") or []:
-                if not isinstance(page, dict):
+            for item in normalized.get("items") or []:
+                if not isinstance(item, dict):
                     continue
-                for item in page.get("data") or []:
-                    if not isinstance(item, dict):
-                        continue
-                    mal_id = item.get("mal_id")
-                    if not isinstance(mal_id, int):
-                        continue
-                    bar = self._mal_item_bar(
-                        item=item,
-                        fallback_weekday=weekday,
-                        mal_works=mal_works,
-                        observation_id=observation.id,
-                        now=now,
-                        end=end,
-                    )
-                    if bar is not None:
-                        bars.append(bar)
+                bar = self._mal_item_bar(
+                    item=item,
+                    mal_works=mal_works,
+                    observation_id=observation.id,
+                    now=now,
+                    end=end,
+                )
+                if bar is not None:
+                    bars.append(bar)
         return bars
 
     @staticmethod
     def _mal_item_bar(
         *,
         item: dict[str, Any],
-        fallback_weekday: int,
         mal_works: dict[int, Any],
         observation_id: Any,
         now: datetime,
         end: datetime,
     ) -> CandidateBar | None:
         mal_id = item.get("mal_id")
-        if not isinstance(mal_id, int):
+        if not isinstance(mal_id, int) or mal_id not in mal_works:
             return None
-        entity_id = mal_works.get(mal_id)
-        if entity_id is None:
+        status = str(item.get("status") or "").lower().replace(" ", "_")
+        is_airing = status == "currently_airing"
+        is_upcoming = status == "not_yet_aired"
+        if not (is_airing or is_upcoming):
             return None
-        broadcast = (
-            item.get("broadcast") if isinstance(item.get("broadcast"), dict) else {}
-        )
-        weekday = _MAL_DAY_LABELS.get(
-            str(broadcast.get("day") or "").strip().lower(),
-            fallback_weekday,
-        )
+        weekday = _WEEKDAY_MAP.get(str(item.get("broadcast_day") or "").strip().lower())
         if weekday is None:
             return None
-        raw_time = broadcast.get("time")
-        timezone_name = str(broadcast.get("timezone") or "Asia/Tokyo")
+        raw_time = item.get("broadcast_time")
+        timezone_name = str(item.get("timezone") or "Asia/Tokyo")
         starts_at = None
-        if isinstance(raw_time, str) and ":" in raw_time:
+        if is_upcoming:
+            starts_at = _premiere_occurrence(
+                start_date=item.get("start_date"),
+                raw_time=raw_time if isinstance(raw_time, str) else "",
+                timezone_name=timezone_name,
+                now=now,
+            )
+        elif isinstance(raw_time, str) and ":" in raw_time:
             try:
                 hour, minute = raw_time.split(":", 1)
                 slot = _next_occurrence(
@@ -273,24 +263,22 @@ class AiringBoardProjectionService:
                 starts_at = None
         if starts_at is not None and not (now <= starts_at < end):
             return None
-        duration = _duration_minutes(item.get("duration"))
-        status = (
-            AiringBoardEntry.Status.SCHEDULED
-            if str(item.get("status") or "").lower() == "currently airing"
-            else AiringBoardEntry.Status.TENTATIVE
+        entity_id = mal_works[mal_id]
+        effective_weekday = (
+            starts_at.weekday() + 1 if starts_at is not None else weekday
         )
         return CandidateBar(
             entity_id=entity_id,
-            weekday=weekday,
+            weekday=effective_weekday,
             starts_at=starts_at,
             timezone=timezone_name,
-            duration_minutes=duration,
+            duration_minutes=_as_positive_int(item.get("duration_minutes")),
             precision=(
                 AiringBoardEntry.Precision.MINUTE
                 if starts_at is not None
                 else AiringBoardEntry.Precision.WEEKDAY
             ),
-            status=status,
+            status=AiringBoardEntry.Status.SCHEDULED,
             provider="mal",
             observation_id=observation_id,
             external_id=str(mal_id),
@@ -419,10 +407,35 @@ def _next_occurrence(
     return local_slot.astimezone(UTC)
 
 
-def _duration_minutes(raw: Any) -> int | None:
-    if not isinstance(raw, str):
+def _premiere_occurrence(
+    *,
+    start_date: Any,
+    raw_time: str,
+    timezone_name: str,
+    now: datetime,
+) -> datetime | None:
+    """Return the exact premiere instant for a not-yet-aired MAL entry."""
+    if not isinstance(start_date, str) or ":" not in raw_time:
         return None
-    for token in raw.split():
-        if token.isdigit():
-            return int(token)
+    try:
+        premiere_day = date.fromisoformat(start_date)
+        hour, minute = raw_time.split(":", 1)
+        premiere_time = time(hour=int(hour), minute=int(minute[:2]))
+    except (TypeError, ValueError):
+        return None
+    try:
+        zone = ZoneInfo(timezone_name)
+    except Exception:
+        zone = ZoneInfo("Asia/Tokyo")
+    premiere = datetime.combine(premiere_day, premiere_time, tzinfo=zone)
+    if premiere <= now:
+        return None
+    return premiere.astimezone(UTC)
+
+
+def _as_positive_int(value: Any) -> int | None:
+    if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+        return value
+    if isinstance(value, str) and value.isdigit():
+        return int(value)
     return None
