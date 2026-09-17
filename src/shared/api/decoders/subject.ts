@@ -1,4 +1,6 @@
 import type {
+  CalendarBoardEntry,
+  CalendarBoardWork,
   CalendarEvent,
   CalendarGroup,
   CalendarSubjectItem,
@@ -321,6 +323,62 @@ export const decodeSubjectEpisode = decodeEntityEpisode;
 export const decodeSubjectStaff = decodeEntityCredit;
 export const decodeSubjectCharacter = decodeEntityCharacter;
 export const decodeSubjectRelation = decodeEntityRelation;
+
+function decodeCalendarBoardWork(value: unknown): CalendarBoardWork | null {
+  if (!isRecord(value)) return null;
+  const id = value['id'];
+  if (!isString(id)) return null;
+  const rawMedia = value['media'];
+  const media: unknown[] = Array.isArray(rawMedia) ? rawMedia : [];
+  const poster =
+    media.find((item) => isRecord(item) && item['purpose'] === 'poster' && isString(item['url'])) ??
+    media.find((item) => isRecord(item) && isString(item['url']));
+  return {
+    id,
+    displayName: isString(value['display_name']) ? value['display_name'] : '',
+    cover: poster && isRecord(poster) && isString(poster['url']) ? poster['url'] : null,
+    isAdult: value['audience'] === 'adult',
+    workType: isString(value['work_type']) ? value['work_type'] : null,
+  };
+}
+
+export function decodeCalendarBoardEntries(value: unknown): CalendarBoardEntry[] {
+  if (!Array.isArray(value)) throw new TypeError('Invalid calendar board response');
+  return value.map((item) => {
+    if (!isRecord(item) || !isString(item['id']) || !isString(item['work_id'])) {
+      throw new TypeError('Invalid calendar board entry');
+    }
+    const sources = Array.isArray(item['source_refs'])
+      ? item['source_refs'].filter(isRecord).map((source) => ({
+          provider: isString(source['provider']) ? source['provider'] : '',
+          namespace: isString(source['namespace']) ? source['namespace'] : '',
+          external_id: isString(source['external_id']) ? source['external_id'] : '',
+          observation_id: isString(source['observation_id']) ? source['observation_id'] : '',
+          precision: isString(source['precision']) ? source['precision'] : '',
+          starts_at: isString(source['starts_at']) ? source['starts_at'] : '',
+          role: isString(source['role']) ? source['role'] : '',
+        }))
+      : [];
+    return {
+      id: item['id'],
+      workId: item['work_id'],
+      episodeEntityId: isNullableString(item['episode_entity_id']) ? item['episode_entity_id'] : null,
+      episodeNumber: isInteger(item['episode_number']) ? item['episode_number'] : null,
+      startsAt: isNullableString(item['starts_at']) ? item['starts_at'] : null,
+      endsAt: isNullableString(item['ends_at']) ? item['ends_at'] : null,
+      timezone: isString(item['timezone']) ? item['timezone'] : '',
+      region: isString(item['region']) ? item['region'] : '',
+      weekday: isInteger(item['weekday']) ? item['weekday'] : null,
+      durationMinutes: isInteger(item['duration_minutes']) ? item['duration_minutes'] : null,
+      precision: isString(item['precision']) ? item['precision'] : 'unknown',
+      status: isString(item['status']) ? item['status'] : 'tentative',
+      decision: isString(item['decision']) ? item['decision'] : '',
+      confidence: typeof item['confidence'] === 'number' ? item['confidence'] : 0,
+      sources,
+      work: decodeCalendarBoardWork(item['work']),
+    } satisfies CalendarBoardEntry;
+  });
+}
 
 export function decodeSubjectStaffRoles(value: unknown): { roles: string[] } {
   if (!isRecord(value) || !Array.isArray(value['roles']) || !value['roles'].every(isString)) {
