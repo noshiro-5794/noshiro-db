@@ -164,6 +164,43 @@ export type CalendarGroup = {
   items: CalendarSubjectItem[];
 };
 
+export type CalendarSourceRef = {
+  provider: string;
+  namespace: string;
+  external_id: string;
+  observation_id: string;
+  precision: string;
+  starts_at: string;
+  role: string;
+};
+
+export type CalendarBoardWork = {
+  id: UUID;
+  displayName: string;
+  cover: string | null;
+  isAdult: boolean;
+  workType: string | null;
+};
+
+export type CalendarBoardEntry = {
+  id: UUID;
+  workId: UUID;
+  episodeEntityId: UUID | null;
+  episodeNumber: number | null;
+  startsAt: DateString | null;
+  endsAt: DateString | null;
+  timezone: string;
+  region: string;
+  weekday: number | null;
+  durationMinutes: number | null;
+  precision: string;
+  status: string;
+  decision: string;
+  confidence: number;
+  sources: CalendarSourceRef[];
+  work: CalendarBoardWork | null;
+};
+
 export type EntityStaff = EntityCredit;
 export type EntityStaffCharacter = EntityCharacter;
 export type EntityReleaseRelation = EntityRelease;

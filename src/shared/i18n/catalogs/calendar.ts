@@ -11,6 +11,10 @@ export const calendarMessages = defineMessages({
     'calendar.trending': '热度',
     'calendar.weeklyItems': '每周条目',
     'calendar.visibleItems': '当前显示',
+    'calendar.today': '今天',
+    'calendar.month': '月',
+    'calendar.week': '周',
+    'calendar.day': '日',
   },
   'en-US': {
     'calendar.title': 'Calendar',
@@ -22,6 +26,10 @@ export const calendarMessages = defineMessages({
     'calendar.trending': 'Trending',
     'calendar.weeklyItems': 'weekly items',
     'calendar.visibleItems': 'visible',
+    'calendar.today': 'Today',
+    'calendar.month': 'Month',
+    'calendar.week': 'Week',
+    'calendar.day': 'Day',
   },
   'ja-JP': {
     'calendar.title': 'カレンダー',
@@ -33,5 +41,9 @@ export const calendarMessages = defineMessages({
     'calendar.trending': '人気',
     'calendar.weeklyItems': '週間作品',
     'calendar.visibleItems': '表示中',
+    'calendar.today': '今日',
+    'calendar.month': '月',
+    'calendar.week': '週',
+    'calendar.day': '日',
   },
 });

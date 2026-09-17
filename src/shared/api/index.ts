@@ -38,6 +38,7 @@ export {
   decodeUserSubjectContext,
 } from './decoders/library';
 export {
+  decodeCalendarBoardEntries,
   decodeCalendarEventsToGroups,
   decodeSubjectCharacter,
   decodeSubjectDetail,

@@ -1,6 +1,7 @@
 import {
   api,
   decodeApiPage,
+  decodeCalendarBoardEntries,
   decodeCalendarEventsToGroups,
   decodeSubjectCharacter,
   decodeSubjectDetail,
@@ -14,6 +15,7 @@ import {
 import type {
   ApiPage,
   ApiRequestContext,
+  CalendarBoardEntry,
   CalendarGroup,
   PageQuery,
   PrimarySubjectType,
@@ -328,6 +330,13 @@ export const indexApi = {
       query: { include_work: true },
     });
   },
+
+  getCalendarBoard: (context: ApiRequestContext = {}) =>
+    api.get<CalendarBoardEntry[]>('/api/v1/index/calendar/board/events/', {
+      ...context,
+      decode: decodeCalendarBoardEntries,
+      query: { include_work: true },
+    }),
 
   getBangumiSubject,
 };
