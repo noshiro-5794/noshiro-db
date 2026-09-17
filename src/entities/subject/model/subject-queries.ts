@@ -26,6 +26,7 @@ const subjectQueryKeys = {
   allRelations: (subjectId: UUID) => [...subjectQueryKeys.relations(subjectId), 'all'] as const,
   bangumiSnapshot: (bangumiSubjectId: number) => [...subjectQueryKeys.all, 'bangumi', bangumiSubjectId] as const,
   calendar: (weekday?: WeekdayEn) => ['calendar', weekday ?? 'all'] as const,
+  calendarBoard: () => ['calendar', 'board'] as const,
 };
 
 export const subjectQueries = {
@@ -112,5 +113,12 @@ export const subjectQueries = {
     queryOptions({
       queryKey: subjectQueryKeys.calendar(weekday),
       queryFn: ({ signal }) => indexApi.getCalendar(weekday ? { weekday_en: weekday } : {}, { signal }),
+    }),
+
+  calendarBoard: () =>
+    queryOptions({
+      queryKey: subjectQueryKeys.calendarBoard(),
+      queryFn: ({ signal }) => indexApi.getCalendarBoard({ signal }),
+      staleTime: 5 * 60 * 1000,
     }),
 };
