@@ -102,6 +102,9 @@ export function rangeDays(from: Date, to: Date): Date[] {
 
 function entryWeekday(entry: CalendarBoardEntry): number | null {
   if (entry.weekday !== null) return entry.weekday;
+  // A day-precision bar carries a one-off release date, not a weekly slot, so
+  // it must never be projected onto a weekday column.
+  if (entry.precision === 'day') return null;
   if (!entry.startsAt) return null;
   const parts = airingDateParts(entry.startsAt);
   if (!parts) return null;
