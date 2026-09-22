@@ -371,6 +371,7 @@ export function decodeCalendarBoardEntries(value: unknown): CalendarBoardEntry[]
       weekday: isInteger(item['weekday']) ? item['weekday'] : null,
       durationMinutes: isInteger(item['duration_minutes']) ? item['duration_minutes'] : null,
       precision: isString(item['precision']) ? item['precision'] : 'unknown',
+      format: isString(item['format']) ? item['format'] : '',
       status: isString(item['status']) ? item['status'] : 'tentative',
       decision: isString(item['decision']) ? item['decision'] : '',
       confidence: typeof item['confidence'] === 'number' ? item['confidence'] : 0,

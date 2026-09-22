@@ -194,6 +194,8 @@ export type CalendarBoardEntry = {
   weekday: number | null;
   durationMinutes: number | null;
   precision: string;
+  /** Provider format such as TV, ONA, MOVIE or OVA; blank when unknown. */
+  format: string;
   status: string;
   decision: string;
   confidence: number;
