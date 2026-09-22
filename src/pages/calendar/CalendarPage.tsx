@@ -22,7 +22,7 @@ import {
   occurrenceFor,
   rangeDays,
   isWithin,
-  seasonWindow,
+  boardWindow,
   shiftMonth,
   startOfWeek,
   weekRange,
@@ -62,12 +62,13 @@ export function CalendarPage() {
   const entries = useMemo(() => calendarQuery.data ?? [], [calendarQuery.data]);
   const subjectLinkState = useMemo(() => routeBackState(location, t('calendar.title')), [location, t]);
   /**
-   * The board's own season bounds the calendar, but announced premieres may sit
-   * just past the season end — those stay reachable so a visitor can look at
-   * what starts next month without the whole schedule repeating forever.
+   * The board covers its season plus the neighbouring months, so every month a
+   * visitor lands on can show the month before and after it. Announced premieres
+   * just past that window stay reachable too, while the outer bound still stops
+   * the weekly schedule from repeating forever.
    */
   const season = useMemo(() => {
-    const base = seasonWindow(entries[0]?.seasonKey ?? '');
+    const base = boardWindow(entries[0]?.seasonKey ?? '');
     if (!base) return null;
     let to = base.to;
     for (const entry of entries) {
