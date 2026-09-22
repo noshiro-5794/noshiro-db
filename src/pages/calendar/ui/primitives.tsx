@@ -18,7 +18,7 @@ export function IconButton({
   onClick,
 }: {
   children: ReactNode;
-  className?: string;
+  className?: string | undefined;
   label: string;
   onClick: () => void;
 }) {
