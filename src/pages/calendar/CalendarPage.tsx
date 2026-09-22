@@ -14,6 +14,7 @@ import {
   AIRING_TIME_ZONE,
   AIRING_TIME_ZONE_LABEL,
   addDays,
+  airingCalendarDate,
   buildOccurrences,
   dateKey,
   groupOccurrences,
@@ -60,7 +61,21 @@ export function CalendarPage() {
   const calendarQuery = useQuery(subjectQueries.calendarBoard());
   const entries = useMemo(() => calendarQuery.data ?? [], [calendarQuery.data]);
   const subjectLinkState = useMemo(() => routeBackState(location, t('calendar.title')), [location, t]);
-  const season = useMemo(() => seasonWindow(entries[0]?.seasonKey ?? ''), [entries]);
+  /**
+   * The board's own season bounds the calendar, but announced premieres may sit
+   * just past the season end — those stay reachable so a visitor can look at
+   * what starts next month without the whole schedule repeating forever.
+   */
+  const season = useMemo(() => {
+    const base = seasonWindow(entries[0]?.seasonKey ?? '');
+    if (!base) return null;
+    let to = base.to;
+    for (const entry of entries) {
+      const premieresOn = airingCalendarDate(entry.startsAt);
+      if (premieresOn && premieresOn > to) to = premieresOn;
+    }
+    return { from: base.from, to };
+  }, [entries]);
 
   const range = useMemo(() => {
     if (layout === 'chart') return weekRange(cursor);
