@@ -273,10 +273,15 @@ export function buildOccurrences(
     const startMinutes = startMinutesOf(entry);
     const durationMinutes = durationMinutesOf(entry);
     const run = runWindowOf(entry);
+    // A run that ends before the board even starts is inconsistent source data:
+    // the work is on this board, so it is still airing. Keep it rather than
+    // hiding a live show behind a bad date.
+    const boundedRun =
+      run && run.to !== null && window !== null && run.to < window.from ? { from: run.from, to: null } : run;
 
     for (const day of days) {
       if (!isWithin(day, window)) continue;
-      if (run && !isWithin(day, run)) continue;
+      if (boundedRun && !isWithin(day, boundedRun)) continue;
       const isoWeekday = day.getDay() === 0 ? 7 : day.getDay();
       if (isoWeekday !== weekday) continue;
       occurrences.push({
