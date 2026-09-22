@@ -131,7 +131,7 @@ function BroadcastCard({
           <span className="line-clamp-2 text-[12px] font-semibold leading-[15px] text-[var(--ui-text)]">{title}</span>
           <span className="flex min-w-0 items-center gap-1.5 text-[10px] text-[var(--ui-text-muted)]">
             <span className="calendar-tint shrink-0 rounded-[4px] px-1 py-[1px] font-medium tabular-nums">{time}</span>
-            {entry.format ? (
+            {isDateOnly && entry.format ? (
               <span className="shrink-0 rounded-[4px] border border-[var(--ui-border)] px-1 py-[1px] font-medium uppercase">
                 {entry.format}
               </span>
