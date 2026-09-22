@@ -126,6 +126,19 @@ export function isWithin(date: Date, window: { from: Date; to: Date | null } | n
   return value >= window.from.getTime() && (window.to === null || value <= window.to.getTime());
 }
 
+/**
+ * Months a visitor can browse for one board: the season plus the month before
+ * and after it, so any month of the season can show its neighbours.
+ */
+export function boardWindow(seasonKey: string): { from: Date; to: Date } | null {
+  const season = seasonWindow(seasonKey);
+  if (!season) return null;
+  return {
+    from: new Date(season.from.getFullYear(), season.from.getMonth() - 1, 1),
+    to: new Date(season.to.getFullYear(), season.to.getMonth() + 2, 0),
+  };
+}
+
 /** Parse a `YYYY-MM-DD` payload value without shifting it into another zone. */
 export function parseDateOnly(value: string | null): Date | null {
   if (!value) return null;
