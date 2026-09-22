@@ -120,10 +120,10 @@ export function seasonWindow(seasonKey: string): { from: Date; to: Date } | null
   };
 }
 
-export function isWithin(date: Date, window: { from: Date; to: Date } | null): boolean {
+export function isWithin(date: Date, window: { from: Date; to: Date | null } | null): boolean {
   if (!window) return true;
   const value = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-  return value >= window.from.getTime() && value <= window.to.getTime();
+  return value >= window.from.getTime() && (window.to === null || value <= window.to.getTime());
 }
 
 /** Parse a `YYYY-MM-DD` payload value without shifting it into another zone. */
@@ -146,7 +146,7 @@ export function parseDateOnly(value: string | null): Date | null {
  * season. When the finale is unknown it is derived from the episode count, and
  * when even the premiere is unknown the entry falls back to the board window.
  */
-export function runWindowOf(entry: CalendarBoardEntry): { from: Date; to: Date } | null {
+export function runWindowOf(entry: CalendarBoardEntry): { from: Date; to: Date | null } | null {
   const from = parseDateOnly(entry.premieredOn);
   if (!from) return null;
   const explicitEnd = parseDateOnly(entry.endedOn);
@@ -154,7 +154,10 @@ export function runWindowOf(entry: CalendarBoardEntry): { from: Date; to: Date }
   if (entry.episodeCount && entry.episodeCount > 0) {
     return { from, to: addDays(from, (entry.episodeCount - 1) * 7 + 6) };
   }
-  return { from, to: addDays(from, 120) };
+  // The board only lists works a provider reports as airing, so an entry with a
+  // past premiere and no known length is a long runner: bound the start, leave
+  // the end open rather than expiring a show that is still on air.
+  return { from, to: null };
 }
 
 function entryWeekday(entry: CalendarBoardEntry): number | null {
