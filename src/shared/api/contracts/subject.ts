@@ -197,6 +197,11 @@ export type CalendarBoardEntry = {
   precision: string;
   /** Provider format such as TV, ONA, MOVIE or OVA; blank when unknown. */
   format: string;
+  /** First broadcast date of the work's run, when a provider published it. */
+  premieredOn: DateString | null;
+  /** Last broadcast date, when known. */
+  endedOn: DateString | null;
+  episodeCount: number | null;
   status: string;
   decision: string;
   confidence: number;

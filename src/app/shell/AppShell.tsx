@@ -274,12 +274,7 @@ export function AppShell({ children }: AppShellProps) {
         <header className="sticky top-0 z-[var(--ui-layer-shell-header)] h-[var(--ui-shell-header-height)] border-b border-border-subtle bg-[color-mix(in_srgb,var(--ui-bg-canvas)_88%,transparent)] backdrop-blur-xl">
           <div className="mx-auto flex h-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-5">
             <Link className="flex min-w-0 items-center gap-2" to={routes.home} aria-label="Noshiro DB">
-              <img
-                className="size-8 rounded-[var(--ui-radius-control)]"
-                src="/favicon.svg"
-                alt=""
-                aria-hidden="true"
-              />
+              <img className="size-8 rounded-[var(--ui-radius-control)]" src="/favicon.svg" alt="" aria-hidden="true" />
               <span className="truncate text-sm font-semibold">Noshiro DB</span>
             </Link>
 
@@ -367,12 +362,7 @@ export function AppShell({ children }: AppShellProps) {
         <DialogContent className="gap-0 p-0" closeLabel={t('nav.closeNavigation')} placement="left">
           <DialogHeader className="border-b border-[var(--ui-border)] px-4 py-3 pr-12">
             <DialogTitle className="flex items-center gap-2 text-sm">
-              <img
-                className="size-7 rounded-[var(--ui-radius-control)]"
-                src="/favicon.svg"
-                alt=""
-                aria-hidden="true"
-              />
+              <img className="size-7 rounded-[var(--ui-radius-control)]" src="/favicon.svg" alt="" aria-hidden="true" />
               Noshiro DB
             </DialogTitle>
           </DialogHeader>
