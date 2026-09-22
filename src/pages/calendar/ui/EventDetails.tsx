@@ -33,7 +33,9 @@ export function EventDetails({
   const weekday = entry.weekday === null ? '' : weekdayName(locale, entry.weekday);
   const timeText = time
     ? `${weekday ? `${weekday} ` : ''}${time}${end ? ` – ${end}` : ''}`
-    : weekday || t('calendar.unscheduled');
+    : weekday
+      ? `${t('calendar.everyWeek')}${weekday}`
+      : t('calendar.unscheduled');
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

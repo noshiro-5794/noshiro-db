@@ -225,9 +225,13 @@ export function buildOccurrences(
     if (weekday === null) continue;
     const startMinutes = startMinutesOf(entry);
     const durationMinutes = durationMinutesOf(entry);
+    // A known instant marks the first episode this board can vouch for, so the
+    // work is not projected onto weeks before it premieres.
+    const premieresOn = entry.precision === 'minute' ? airingCalendarDate(entry.startsAt) : null;
 
     for (const day of days) {
       if (!isWithin(day, window)) continue;
+      if (premieresOn && dateKey(day) < dateKey(premieresOn)) continue;
       const isoWeekday = day.getDay() === 0 ? 7 : day.getDay();
       if (isoWeekday !== weekday) continue;
       occurrences.push({
