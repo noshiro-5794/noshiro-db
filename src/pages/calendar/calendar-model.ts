@@ -126,6 +126,37 @@ export function isWithin(date: Date, window: { from: Date; to: Date } | null): b
   return value >= window.from.getTime() && value <= window.to.getTime();
 }
 
+/** Parse a `YYYY-MM-DD` payload value without shifting it into another zone. */
+export function parseDateOnly(value: string | null): Date | null {
+  if (!value) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!year || !month || !day) return null;
+  return new Date(year, month - 1, day);
+}
+
+/**
+ * Broadcast run of one work.
+ *
+ * A weekly slot is only true between a work's premiere and its finale, so the
+ * calendar projects an entry inside this window rather than across a whole
+ * season. When the finale is unknown it is derived from the episode count, and
+ * when even the premiere is unknown the entry falls back to the board window.
+ */
+export function runWindowOf(entry: CalendarBoardEntry): { from: Date; to: Date } | null {
+  const from = parseDateOnly(entry.premieredOn);
+  if (!from) return null;
+  const explicitEnd = parseDateOnly(entry.endedOn);
+  if (explicitEnd) return { from, to: explicitEnd };
+  if (entry.episodeCount && entry.episodeCount > 0) {
+    return { from, to: addDays(from, (entry.episodeCount - 1) * 7 + 6) };
+  }
+  return { from, to: addDays(from, 120) };
+}
+
 function entryWeekday(entry: CalendarBoardEntry): number | null {
   if (entry.weekday !== null) return entry.weekday;
   // A day-precision bar carries a one-off release date, not a weekly slot, so
@@ -225,13 +256,11 @@ export function buildOccurrences(
     if (weekday === null) continue;
     const startMinutes = startMinutesOf(entry);
     const durationMinutes = durationMinutesOf(entry);
-    // A known instant marks the first episode this board can vouch for, so the
-    // work is not projected onto weeks before it premieres.
-    const premieresOn = entry.precision === 'minute' ? airingCalendarDate(entry.startsAt) : null;
+    const run = runWindowOf(entry);
 
     for (const day of days) {
       if (!isWithin(day, window)) continue;
-      if (premieresOn && dateKey(day) < dateKey(premieresOn)) continue;
+      if (run && !isWithin(day, run)) continue;
       const isoWeekday = day.getDay() === 0 ? 7 : day.getDay();
       if (isoWeekday !== weekday) continue;
       occurrences.push({
