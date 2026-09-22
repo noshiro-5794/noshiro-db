@@ -184,6 +184,7 @@ export type CalendarBoardWork = {
 
 export type CalendarBoardEntry = {
   id: UUID;
+  seasonKey: string;
   workId: UUID;
   episodeEntityId: UUID | null;
   episodeNumber: number | null;

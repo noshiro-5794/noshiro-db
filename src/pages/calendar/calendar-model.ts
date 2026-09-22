@@ -100,6 +100,32 @@ export function rangeDays(from: Date, to: Date): Date[] {
   return days;
 }
 
+/**
+ * Broadcast window of a board, derived from its season key (`2026Q3`).
+ *
+ * The board is a weekly schedule for one season, so projecting it onto every
+ * week forever would show the same works in a future year. The calendar clamps
+ * both its projection and its navigation to this window; when the season rolls
+ * over the next board supplies the next window.
+ */
+export function seasonWindow(seasonKey: string): { from: Date; to: Date } | null {
+  const match = /^(\d{4})Q([1-4])$/.exec(seasonKey.trim().toUpperCase());
+  if (!match) return null;
+  const year = Number(match[1]);
+  const quarter = Number(match[2]);
+  const startMonth = (quarter - 1) * 3;
+  return {
+    from: new Date(year, startMonth, 1),
+    to: new Date(year, startMonth + 3, 0),
+  };
+}
+
+export function isWithin(date: Date, window: { from: Date; to: Date } | null): boolean {
+  if (!window) return true;
+  const value = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  return value >= window.from.getTime() && value <= window.to.getTime();
+}
+
 function entryWeekday(entry: CalendarBoardEntry): number | null {
   if (entry.weekday !== null) return entry.weekday;
   // A day-precision bar carries a one-off release date, not a weekly slot, so
@@ -136,6 +162,23 @@ const weekdayFromShortName: Record<string, number> = {
   Sun: 7,
 };
 
+const airingDateFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: AIRING_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+/** Calendar date of an instant in the broadcast zone. */
+export function airingCalendarDate(value: string | null): Date | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const [year, month, day] = airingDateFormatter.format(date).split('-').map(Number);
+  if (year === undefined || month === undefined || day === undefined) return null;
+  return new Date(year, month - 1, day);
+}
+
 function airingDateParts(value: string | null): AiringParts | null {
   if (!value) return null;
   const date = new Date(value);
@@ -168,7 +211,12 @@ export function durationMinutesOf(entry: CalendarBoardEntry): number {
   return 30;
 }
 
-export function buildOccurrences(entries: CalendarBoardEntry[], from: Date, to: Date): CalendarOccurrence[] {
+export function buildOccurrences(
+  entries: CalendarBoardEntry[],
+  from: Date,
+  to: Date,
+  window: { from: Date; to: Date } | null = null,
+): CalendarOccurrence[] {
   const days = rangeDays(from, to);
   const occurrences: CalendarOccurrence[] = [];
 
@@ -179,6 +227,7 @@ export function buildOccurrences(entries: CalendarBoardEntry[], from: Date, to: 
     const durationMinutes = durationMinutesOf(entry);
 
     for (const day of days) {
+      if (!isWithin(day, window)) continue;
       const isoWeekday = day.getDay() === 0 ? 7 : day.getDay();
       if (isoWeekday !== weekday) continue;
       occurrences.push({
@@ -234,6 +283,9 @@ export function occurrenceFor(entry: CalendarBoardEntry, reference: Date): Calen
         break;
       }
     }
+  } else {
+    // A one-off release keeps its own date instead of snapping to the cursor.
+    date = airingCalendarDate(entry.startsAt) ?? date;
   }
   const startMinutes = startMinutesOf(entry);
   return {
