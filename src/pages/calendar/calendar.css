@@ -1,0 +1,64 @@
+/*
+ * Airing calendar presentation.
+ *
+ * Every bar, dot, and badge is tinted by the provider that backs the entry, so
+ * the palette lives on a single `data-cal-source` attribute instead of being
+ * duplicated as Tailwind classes in each component.
+ */
+
+:root {
+  --cal-anilist: #4a5ec7;
+  --cal-mal: #1f7a5c;
+  --cal-bangumi: #b5731f;
+  --cal-unknown: var(--ui-accent);
+  --cal-accent: var(--cal-unknown);
+  --cal-on-accent: #ffffff;
+}
+
+[data-cal-source='anilist'] {
+  --cal-accent: var(--cal-anilist);
+}
+
+[data-cal-source='mal'] {
+  --cal-accent: var(--cal-mal);
+}
+
+[data-cal-source='bangumi'] {
+  --cal-accent: var(--cal-bangumi);
+}
+
+:root[data-theme-mode='dark'] {
+  --cal-anilist: #5b6fd8;
+  --cal-mal: #2c8f6d;
+  --cal-bangumi: #bd7f2c;
+  --cal-on-accent: #f7f7fa;
+}
+
+/* Google-style event bar: solid fill, tight radius, full cell width. */
+.calendar-bar {
+  background-color: var(--cal-accent);
+  color: var(--cal-on-accent);
+}
+
+/* Soft variant used by chips, dots and the broadcast board. */
+.calendar-tint {
+  background-color: color-mix(in srgb, var(--cal-accent) 14%, transparent);
+  color: color-mix(in srgb, var(--cal-accent) 82%, var(--ui-text));
+}
+
+.calendar-dot {
+  background-color: var(--cal-accent);
+}
+
+.calendar-grid-scroll {
+  scrollbar-width: thin;
+}
+
+.calendar-grid-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+
+.calendar-grid-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--ui-border-strong);
+  border-radius: 999px;
+}

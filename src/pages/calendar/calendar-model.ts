@@ -1,11 +1,23 @@
 import type { CalendarBoardEntry } from '@/shared/api';
 
+/**
+ * Anime air times are published in Japan standard time. Every provider reports
+ * the *day* in that zone too, so rendering the clock in the viewer's local zone
+ * would show "Monday 06:30" for a show that airs Tuesday 07:30 JST. The calendar
+ * therefore pins both the day and the clock to the broadcast zone.
+ */
+export const AIRING_TIME_ZONE = 'Asia/Tokyo';
+
+/** Short label shown next to the toolbar title so the clock is unambiguous. */
+export const AIRING_TIME_ZONE_LABEL = 'JST';
+
 export type CalendarOccurrence = {
   key: string;
   entry: CalendarBoardEntry;
   date: Date;
-  startsAt: Date | null;
-  endsAt: Date | null;
+  /** Minutes past midnight in {@link AIRING_TIME_ZONE}; `null` when unknown. */
+  startMinutes: number | null;
+  durationMinutes: number;
   tentative: boolean;
 };
 
@@ -15,6 +27,25 @@ export type CalendarDay = {
   timed: CalendarOccurrence[];
   tentative: CalendarOccurrence[];
 };
+
+export type WeekdayBucket = {
+  /** ISO weekday, 1 = Monday … 7 = Sunday. `null` collects unscheduled works. */
+  weekday: number | null;
+  entries: CalendarBoardEntry[];
+};
+
+/** ISO weekday order used by both the grid header and the broadcast board. */
+export const isoWeekdays = [1, 2, 3, 4, 5, 6, 7] as const;
+
+export const sourceLabels: Record<string, string> = {
+  anilist: 'AniList',
+  mal: 'MAL',
+  bangumi: 'Bangumi',
+};
+
+export function sourceLabel(provider: string): string {
+  return sourceLabels[provider] ?? provider.toUpperCase();
+}
 
 export function dateKey(date: Date): string {
   const year = date.getFullYear();
@@ -31,6 +62,12 @@ export function addDays(date: Date, amount: number): Date {
 
 export function addMonths(date: Date, amount: number): Date {
   return new Date(date.getFullYear(), date.getMonth() + amount, 1);
+}
+
+/** Move by whole months while keeping the day of month when it exists. */
+export function shiftMonth(date: Date, amount: number): Date {
+  const lastDay = new Date(date.getFullYear(), date.getMonth() + amount + 1, 0).getDate();
+  return new Date(date.getFullYear(), date.getMonth() + amount, Math.min(date.getDate(), lastDay));
 }
 
 export function startOfWeek(date: Date): Date {
@@ -66,16 +103,66 @@ export function rangeDays(from: Date, to: Date): Date[] {
 function entryWeekday(entry: CalendarBoardEntry): number | null {
   if (entry.weekday !== null) return entry.weekday;
   if (!entry.startsAt) return null;
-  const date = new Date(entry.startsAt);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.getDay() === 0 ? 7 : date.getDay();
+  const parts = airingDateParts(entry.startsAt);
+  if (!parts) return null;
+  return parts.weekday;
 }
 
-function localTimeParts(value: string | null): { hours: number; minutes: number } | null {
+type AiringParts = {
+  hours: number;
+  minutes: number;
+  /** ISO weekday, 1 = Monday … 7 = Sunday. */
+  weekday: number;
+};
+
+const airingFormatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: AIRING_TIME_ZONE,
+  hour: '2-digit',
+  minute: '2-digit',
+  weekday: 'short',
+  hour12: false,
+});
+
+const weekdayFromShortName: Record<string, number> = {
+  Mon: 1,
+  Tue: 2,
+  Wed: 3,
+  Thu: 4,
+  Fri: 5,
+  Sat: 6,
+  Sun: 7,
+};
+
+function airingDateParts(value: string | null): AiringParts | null {
   if (!value) return null;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
-  return { hours: date.getHours(), minutes: date.getMinutes() };
+  const parts = airingFormatter.formatToParts(date);
+  const lookup = new Map(parts.map((part) => [part.type, part.value]));
+  const hours = Number(lookup.get('hour'));
+  const minutes = Number(lookup.get('minute'));
+  const weekday = weekdayFromShortName[lookup.get('weekday') ?? ''];
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes) || weekday === undefined) return null;
+  return { hours: hours % 24, minutes, weekday };
+}
+
+/** Minutes past midnight in the broadcast zone, or `null` when unknown. */
+export function startMinutesOf(entry: CalendarBoardEntry): number | null {
+  const parts = airingDateParts(entry.startsAt);
+  if (!parts) return null;
+  return parts.hours * 60 + parts.minutes;
+}
+
+export function durationMinutesOf(entry: CalendarBoardEntry): number {
+  if (entry.durationMinutes) return entry.durationMinutes;
+  if (entry.startsAt && entry.endsAt) {
+    const start = new Date(entry.startsAt).getTime();
+    const end = new Date(entry.endsAt).getTime();
+    if (Number.isFinite(start) && Number.isFinite(end) && end > start) {
+      return Math.round((end - start) / 60_000);
+    }
+  }
+  return 30;
 }
 
 export function buildOccurrences(entries: CalendarBoardEntry[], from: Date, to: Date): CalendarOccurrence[] {
@@ -85,26 +172,19 @@ export function buildOccurrences(entries: CalendarBoardEntry[], from: Date, to: 
   for (const entry of entries) {
     const weekday = entryWeekday(entry);
     if (weekday === null) continue;
-    const time = localTimeParts(entry.startsAt);
-    const duration = entry.durationMinutes ?? 24;
+    const startMinutes = startMinutesOf(entry);
+    const durationMinutes = durationMinutesOf(entry);
 
     for (const day of days) {
       const isoWeekday = day.getDay() === 0 ? 7 : day.getDay();
       if (isoWeekday !== weekday) continue;
-      let startsAt: Date | null = null;
-      let endsAt: Date | null = null;
-      if (time) {
-        startsAt = new Date(day);
-        startsAt.setHours(time.hours, time.minutes, 0, 0);
-        endsAt = new Date(startsAt.getTime() + duration * 60_000);
-      }
       occurrences.push({
         key: `${entry.id}:${dateKey(day)}`,
         entry,
         date: new Date(day),
-        startsAt,
-        endsAt,
-        tentative: startsAt === null,
+        startMinutes,
+        durationMinutes,
+        tentative: startMinutes === null,
       });
     }
   }
@@ -127,23 +207,184 @@ export function groupOccurrences(occurrences: CalendarOccurrence[]): Map<string,
     days.set(key, day);
   }
   for (const day of days.values()) {
-    day.timed.sort((left, right) => (left.startsAt?.getTime() ?? 0) - (right.startsAt?.getTime() ?? 0));
+    day.timed.sort((left, right) => (left.startMinutes ?? 0) - (right.startMinutes ?? 0));
     day.tentative.sort((left, right) => titleOf(left).localeCompare(titleOf(right)));
   }
   return days;
 }
 
+/**
+ * Build the occurrence that represents an entry right now: the next date whose
+ * weekday matches the entry's schedule, carrying its airtime when known. Used by
+ * the broadcast board, which lists works rather than dated cells.
+ */
+export function occurrenceFor(entry: CalendarBoardEntry, reference: Date): CalendarOccurrence {
+  const weekday = entryWeekday(entry);
+  let date = new Date(reference);
+  date.setHours(0, 0, 0, 0);
+  if (weekday !== null) {
+    for (let step = 0; step < 7; step += 1) {
+      const candidate = addDays(date, step);
+      const isoWeekday = candidate.getDay() === 0 ? 7 : candidate.getDay();
+      if (isoWeekday === weekday) {
+        date = candidate;
+        break;
+      }
+    }
+  }
+  const startMinutes = startMinutesOf(entry);
+  return {
+    key: `${entry.id}:${dateKey(date)}`,
+    entry,
+    date,
+    startMinutes,
+    durationMinutes: durationMinutesOf(entry),
+    tentative: startMinutes === null,
+  };
+}
+
+export type PositionedOccurrence = {
+  occurrence: CalendarOccurrence;
+  /** Minutes past midnight. */
+  startMinutes: number;
+  durationMinutes: number;
+  /** Zero-based column inside its overlapping cluster. */
+  lane: number;
+  /** Width divisor for the cluster, so blocks never sit on top of each other. */
+  laneCount: number;
+};
+
+/**
+ * Assign side-by-side lanes to overlapping timed occurrences, the way a
+ * calendar lays out concurrent events. Occurrences without a start time are
+ * skipped — they belong to the unscheduled strip instead.
+ */
+export function layoutOccurrences(occurrences: CalendarOccurrence[]): PositionedOccurrence[] {
+  const timed = occurrences.flatMap((occurrence) => {
+    if (occurrence.startMinutes === null) return [];
+    const startMinutes = occurrence.startMinutes;
+    const durationMinutes = Math.max(15, occurrence.durationMinutes);
+    return [{ occurrence, startMinutes, durationMinutes }];
+  });
+  timed.sort((left, right) => left.startMinutes - right.startMinutes || left.durationMinutes - right.durationMinutes);
+
+  const laidOut: PositionedOccurrence[] = [];
+  let cluster: PositionedOccurrence[] = [];
+  let clusterEnd = Number.NEGATIVE_INFINITY;
+
+  const flush = () => {
+    if (cluster.length === 0) return;
+    const laneCount = Math.max(...cluster.map((item) => item.lane)) + 1;
+    laidOut.push(...cluster.map((item) => ({ ...item, laneCount })));
+    cluster = [];
+  };
+
+  for (const item of timed) {
+    if (item.startMinutes >= clusterEnd) {
+      flush();
+      clusterEnd = item.startMinutes + item.durationMinutes;
+    } else {
+      clusterEnd = Math.max(clusterEnd, item.startMinutes + item.durationMinutes);
+    }
+    const laneIndex = cluster.findIndex(
+      (existing) => existing.startMinutes + existing.durationMinutes <= item.startMinutes,
+    );
+    if (laneIndex === -1) {
+      cluster.push({ ...item, lane: cluster.length, laneCount: 1 });
+    } else {
+      const lane = cluster[laneIndex];
+      cluster[laneIndex] = { ...item, lane: lane?.lane ?? 0, laneCount: 1 };
+    }
+  }
+  flush();
+  return laidOut;
+}
+
 export function titleOf(occurrence: CalendarOccurrence): string {
-  return occurrence.entry.work?.displayName || occurrence.entry.workId;
+  return titleOfEntry(occurrence.entry);
 }
 
-export function primaryProvider(occurrence: CalendarOccurrence): string {
-  return occurrence.entry.sources[0]?.provider ?? '';
+export function providerOf(entry: CalendarBoardEntry): string {
+  return entry.sources[0]?.provider ?? 'unknown';
 }
 
-export function formatTime(date: Date | null, locale: string): string {
-  if (!date) return '';
-  return new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', hour12: false }).format(date);
+export function weekdaysOf(entry: CalendarBoardEntry): (number | null)[] {
+  const weekday = entryWeekday(entry);
+  return weekday === null ? [null] : [weekday];
+}
+
+/** Format minutes past midnight as a wall-clock label in the active locale. */
+export function formatMinutesOfDay(minutes: number, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(2024, 0, 1, Math.floor(minutes / 60) % 24, minutes % 60));
+}
+
+/** Current time inside the broadcast zone, expressed as minutes past midnight. */
+export function nowMinutes(): number {
+  const parts = airingDateParts(new Date().toISOString());
+  return parts ? parts.hours * 60 + parts.minutes : 0;
+}
+
+/**
+ * Bucket raw board entries by ISO weekday for the broadcast board. Entries
+ * without a weekday land in the trailing "unscheduled" bucket so nothing is
+ * silently dropped from the view.
+ */
+export function groupEntriesByWeekday(entries: CalendarBoardEntry[]): WeekdayBucket[] {
+  const buckets = new Map<number | null, CalendarBoardEntry[]>([...isoWeekdays, null].map((weekday) => [weekday, []]));
+
+  for (const entry of entries) {
+    for (const weekday of weekdaysOf(entry)) {
+      buckets.get(weekday)?.push(entry);
+    }
+  }
+
+  return [...buckets.entries()]
+    .filter(([, items]) => items.length > 0)
+    .map(([weekday, items]) => ({
+      weekday,
+      entries: [...items].sort(compareBoardEntries),
+    }));
+}
+
+function compareBoardEntries(left: CalendarBoardEntry, right: CalendarBoardEntry): number {
+  const leftMinutes = startMinutesOf(left);
+  const rightMinutes = startMinutesOf(right);
+  if (leftMinutes !== rightMinutes) {
+    if (leftMinutes === null) return 1;
+    if (rightMinutes === null) return -1;
+    return leftMinutes - rightMinutes;
+  }
+  return titleOfEntry(left).localeCompare(titleOfEntry(right));
+}
+
+export function titleOfEntry(entry: CalendarBoardEntry): string {
+  return entry.work?.displayName || entry.workId;
+}
+
+/** Whether the work has no weekly slot (films, OVAs, one-off specials). */
+export function isWeekdayless(entry: CalendarBoardEntry): boolean {
+  return entryWeekday(entry) === null;
+}
+
+/** Localised release date in the broadcast zone, e.g. "7月24日". */
+export function formatAiringDate(value: string | null, locale: string): string {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat(locale, {
+    timeZone: AIRING_TIME_ZONE,
+    month: 'short',
+    day: 'numeric',
+  }).format(date);
+}
+
+export function formatTime(minutes: number | null, locale: string): string {
+  if (minutes === null) return '';
+  return formatMinutesOfDay(minutes, locale);
 }
 
 export function formatDayTitle(date: Date, locale: string): string {
@@ -160,4 +401,23 @@ export function formatMonthTitle(date: Date, locale: string): string {
 
 export function formatWeekday(date: Date, locale: string): string {
   return new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(date);
+}
+
+/**
+ * Monday-first weekday labels. Both the month grid and the broadcast board use
+ * the ISO week so a single header component can serve either layout.
+ */
+export function weekdayLabels(locale: string): string[] {
+  const monday = new Date(2024, 0, 1); // 2024-01-01 is a Monday.
+  return Array.from({ length: 7 }, (_, index) => formatWeekday(addDays(monday, index), locale));
+}
+
+/** Long weekday name for a 1-based ISO weekday. */
+export function weekdayName(locale: string, isoWeekday: number): string {
+  const monday = new Date(2024, 0, 1);
+  return new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(addDays(monday, isoWeekday - 1));
+}
+
+export function isSameDay(left: Date, right: Date): boolean {
+  return dateKey(left) === dateKey(right);
 }
