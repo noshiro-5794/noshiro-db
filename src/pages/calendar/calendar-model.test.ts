@@ -13,6 +13,7 @@ import {
 function entry(overrides: Partial<CalendarBoardEntry>): CalendarBoardEntry {
   return {
     id: 'entry',
+    seasonKey: '2026Q3',
     workId: 'work',
     episodeEntityId: null,
     episodeNumber: null,

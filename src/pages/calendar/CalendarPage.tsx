@@ -20,6 +20,8 @@ import {
   monthGridRange,
   occurrenceFor,
   rangeDays,
+  isWithin,
+  seasonWindow,
   shiftMonth,
   startOfWeek,
   weekRange,
@@ -58,6 +60,7 @@ export function CalendarPage() {
   const calendarQuery = useQuery(subjectQueries.calendarBoard());
   const entries = useMemo(() => calendarQuery.data ?? [], [calendarQuery.data]);
   const subjectLinkState = useMemo(() => routeBackState(location, t('calendar.title')), [location, t]);
+  const season = useMemo(() => seasonWindow(entries[0]?.seasonKey ?? ''), [entries]);
 
   const range = useMemo(() => {
     if (layout === 'chart') return weekRange(cursor);
@@ -66,7 +69,10 @@ export function CalendarPage() {
     return { from: cursor, to: cursor };
   }, [cursor, layout, view]);
 
-  const daysMap = useMemo(() => groupOccurrences(buildOccurrences(entries, range.from, range.to)), [entries, range]);
+  const daysMap = useMemo(
+    () => groupOccurrences(buildOccurrences(entries, range.from, range.to, season)),
+    [entries, range, season],
+  );
   const days = useMemo(() => rangeDays(range.from, range.to), [range]);
 
   const status: ResultsStatus =
@@ -80,16 +86,21 @@ export function CalendarPage() {
 
   const move = (direction: -1 | 1) => {
     if (layout === 'chart') return;
-    if (view === 'month') {
-      setCursor((current) => shiftMonth(current, direction));
-      return;
-    }
-    setCursor((current) => addDays(current, direction * (view === 'week' ? 7 : 1)));
+    setCursor((current) => {
+      const next = step(current, direction);
+      return isWithin(next, season) ? next : current;
+    });
   };
 
   const goToday = () => {
-    setCursor(new Date());
+    const now = new Date();
+    setCursor(season && !isWithin(now, season) ? new Date(season.to) : now);
   };
+
+  const step = (from: Date, direction: -1 | 1) =>
+    view === 'month' ? shiftMonth(from, direction) : addDays(from, direction * (view === 'week' ? 7 : 1));
+
+  const canStep = (direction: -1 | 1) => layout === 'chart' || isWithin(step(cursor, direction), season);
 
   const openEntryInBoard = (entry: CalendarBoardEntry) => {
     setSelected(occurrenceFor(entry, cursor));
@@ -127,6 +138,7 @@ export function CalendarPage() {
           </button>
           <span className="flex items-center">
             <IconButton
+              className={canStep(-1) ? undefined : 'opacity-30'}
               label={t('calendar.previous')}
               onClick={() => {
                 move(-1);
@@ -135,6 +147,7 @@ export function CalendarPage() {
               <ChevronLeft className="size-4" />
             </IconButton>
             <IconButton
+              className={canStep(1) ? undefined : 'opacity-30'}
               label={t('calendar.next')}
               onClick={() => {
                 move(1);

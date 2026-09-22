@@ -106,8 +106,7 @@ function BroadcastCard({
     : minutes === null
       ? t('calendar.unscheduled')
       : formatMinutesOfDay(minutes, locale);
-  const status = entry.status === 'scheduled' ? t('calendar.statusScheduled') : t('calendar.statusTentative');
-  const precision = entry.precision === 'minute' ? t('calendar.precisionMinute') : t('calendar.precisionWeekday');
+  const weekday = entry.weekday === null ? '' : weekdayName(locale, entry.weekday);
 
   return (
     <div className="group/card relative" data-cal-source={provider}>
@@ -151,12 +150,17 @@ function BroadcastCard({
         <div className="rounded-[var(--ui-radius-surface)] border border-[var(--ui-border)] bg-[var(--ui-bg-elevated)] p-2.5 text-[11px] shadow-[var(--ui-shadow-popup)]">
           <p className="mb-1.5 font-semibold text-[var(--ui-text)]">{title}</p>
           <dl className="grid gap-1 text-[var(--ui-text-muted)]">
-            <Row label={t('calendar.detailTime')} value={`${time} · ${precision}`} />
-            <Row label={t('calendar.detailStatus')} value={`${status} · ${Math.round(entry.confidence * 100)}%`} />
             <Row
-              label={t('calendar.detailSources')}
-              value={entry.sources.map((source) => sourceLabel(source.provider)).join(' · ') || '—'}
+              label={t('calendar.detailTime')}
+              value={
+                isDateOnly
+                  ? `${t('calendar.premieresOn')} ${time}`
+                  : minutes === null
+                    ? weekday || t('calendar.unscheduled')
+                    : `${t('calendar.everyWeek')}${weekday} ${time}`
+              }
             />
+            {entry.format ? <Row label={t('calendar.detailFormat')} value={entry.format} /> : null}
           </dl>
           <button
             className="mt-2 w-full rounded-[4px] border border-[var(--ui-border)] px-2 py-1 text-[11px] font-medium text-[var(--ui-text-muted)] transition-colors hover:text-[var(--ui-text)]"

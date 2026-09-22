@@ -1,11 +1,11 @@
 import { useEffect, type ReactNode } from 'react';
 import { Link } from '@tanstack/react-router';
-import { BadgeCheck, Clock, Gauge, Radio, X } from 'lucide-react';
+import { Clock, Tag, X } from 'lucide-react';
 import { useI18n } from '@/shared/i18n';
 import { placeholderImagePaths } from '@/shared/assets/public-assets';
 import { routes } from '@/shared/routing/paths';
 import type { RouteBackState } from '@/shared/routing/route-state';
-import { formatDayTitle, formatTime, sourceLabel, titleOf, type CalendarOccurrence } from '../calendar-model';
+import { formatDayTitle, formatTime, titleOf, weekdayName, type CalendarOccurrence } from '../calendar-model';
 import { IconButton } from './primitives';
 
 const coverPlaceholder = placeholderImagePaths.subjectCover;
@@ -30,14 +30,10 @@ export function EventDetails({
   const time = formatTime(occurrence.startMinutes, locale);
   const end =
     occurrence.startMinutes === null ? '' : formatTime(occurrence.startMinutes + occurrence.durationMinutes, locale);
-  const timeText = time ? (end ? `${time} – ${end}` : time) : t('calendar.unscheduled');
-  const precision =
-    entry.precision === 'minute'
-      ? t('calendar.precisionMinute')
-      : entry.precision === 'weekday'
-        ? t('calendar.precisionWeekday')
-        : t('calendar.precisionUnknown');
-  const status = entry.status === 'scheduled' ? t('calendar.statusScheduled') : t('calendar.statusTentative');
+  const weekday = entry.weekday === null ? '' : weekdayName(locale, entry.weekday);
+  const timeText = time
+    ? `${weekday ? `${weekday} ` : ''}${time}${end ? ` – ${end}` : ''}`
+    : weekday || t('calendar.unscheduled');
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -83,16 +79,8 @@ export function EventDetails({
         </div>
 
         <dl className="mt-5 grid gap-1">
-          <DetailRow icon={<Clock className="size-4" />} value={`${timeText} · ${precision}`} />
-          <DetailRow
-            icon={<Radio className="size-4" />}
-            value={entry.sources.map((source) => sourceLabel(source.provider)).join(' · ') || '—'}
-          />
-          <DetailRow icon={<BadgeCheck className="size-4" />} value={status} />
-          <DetailRow
-            icon={<Gauge className="size-4" />}
-            value={`${t('calendar.detailConfidence')} ${Math.round(entry.confidence * 100)}%`}
-          />
+          <DetailRow icon={<Clock className="size-4" />} value={timeText} />
+          {entry.format ? <DetailRow icon={<Tag className="size-4" />} value={entry.format} /> : null}
         </dl>
 
         {work ? (
