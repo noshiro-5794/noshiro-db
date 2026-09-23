@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useI18n } from '@/shared/i18n';
 import { subjectQueries } from '@/entities/subject';
-import type { CalendarBoardEntry } from '@/shared/api';
 import { routeBackState } from '@/shared/routing/route-state';
 import { routes } from '@/shared/routing/paths';
 import { Seo } from '@/shared/seo/Seo';
@@ -17,7 +16,6 @@ import {
   buildOccurrences,
   groupOccurrences,
   monthGridRange,
-  occurrenceFor,
   rangeDays,
   isWithin,
   boardWindow,
@@ -26,24 +24,11 @@ import {
   weekRange,
   type CalendarOccurrence,
 } from '@/features/airing-calendar';
-import {
-  BroadcastBoard,
-  EventDetails,
-  IconButton,
-  MonthGrid,
-  SegmentedControl,
-  TimeGrid,
-} from '@/features/airing-calendar';
+import { EventDetails, IconButton, MonthGrid, SegmentedControl, TimeGrid } from '@/features/airing-calendar';
 
-type CalendarLayout = 'calendar' | 'chart';
 type CalendarView = 'month' | 'week' | 'day';
 
 const calendarRoute = getRouteApi('/calendar');
-
-const layoutOptions: { value: CalendarLayout; labelKey: 'calendar.layoutCalendar' | 'calendar.layoutChart' }[] = [
-  { value: 'calendar', labelKey: 'calendar.layoutCalendar' },
-  { value: 'chart', labelKey: 'calendar.layoutChart' },
-];
 
 const viewOptions: { value: CalendarView; labelKey: 'calendar.month' | 'calendar.week' | 'calendar.day' }[] = [
   { value: 'month', labelKey: 'calendar.month' },
@@ -56,15 +41,11 @@ export function CalendarPage() {
   const location = useLocation();
   const search = calendarRoute.useSearch();
   const navigate = calendarRoute.useNavigate();
-  const layout: CalendarLayout = search.layout ?? 'calendar';
   const view: CalendarView = search.view ?? 'month';
   const [cursor, setCursor] = useState(() => new Date());
   const [selected, setSelected] = useState<CalendarOccurrence | null>(null);
 
-  // Presentation lives in the URL so a link can point at one module directly.
-  const setLayout = (next: CalendarLayout) => {
-    void navigate({ replace: true, search: (current) => ({ ...current, layout: next }) });
-  };
+  // The span lives in the URL so a link can point at a specific module view.
   const setView = (next: CalendarView) => {
     void navigate({ replace: true, search: (current) => ({ ...current, view: next }) });
   };
@@ -80,11 +61,10 @@ export function CalendarPage() {
   const season = useMemo(() => boardWindow(entries[0]), [entries]);
 
   const range = useMemo(() => {
-    if (layout === 'chart') return weekRange(cursor);
     if (view === 'month') return monthGridRange(cursor);
     if (view === 'week') return weekRange(cursor);
     return { from: cursor, to: cursor };
-  }, [cursor, layout, view]);
+  }, [cursor, view]);
 
   const daysMap = useMemo(
     () => groupOccurrences(buildOccurrences(entries, range.from, range.to, season)),
@@ -102,7 +82,6 @@ export function CalendarPage() {
           : 'ready';
 
   const move = (direction: -1 | 1) => {
-    if (layout === 'chart') return;
     setCursor((current) => {
       const next = step(current, direction);
       return isWithin(next, season) ? next : current;
@@ -117,14 +96,9 @@ export function CalendarPage() {
   const step = (from: Date, direction: -1 | 1) =>
     view === 'month' ? shiftMonth(from, direction) : addDays(from, direction * (view === 'week' ? 7 : 1));
 
-  const canStep = (direction: -1 | 1) => layout === 'chart' || isWithin(step(cursor, direction), season);
-
-  const openEntryInBoard = (entry: CalendarBoardEntry) => {
-    setSelected(occurrenceFor(entry, cursor));
-  };
+  const canStep = (direction: -1 | 1) => isWithin(step(cursor, direction), season);
 
   const title = useMemo(() => {
-    if (layout === 'chart') return t('calendar.layoutChart');
     if (view === 'month') {
       return new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long' }).format(cursor);
     }
@@ -135,7 +109,7 @@ export function CalendarPage() {
       return `${formatter.format(from)} – ${formatter.format(to)}`;
     }
     return new Intl.DateTimeFormat(locale, { month: 'long', day: 'numeric', weekday: 'long' }).format(cursor);
-  }, [cursor, layout, locale, t, view]);
+  }, [cursor, locale, view]);
 
   return (
     <Page eyebrow={t('nav.groupDiscover')} seo={false} title={t('calendar.title')} width="wide">
@@ -178,28 +152,15 @@ export function CalendarPage() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <SegmentedControl
-                ariaLabel={t('calendar.layoutAria')}
-                onChange={setLayout}
-                options={layoutOptions.map((option) => ({ value: option.value, label: t(option.labelKey) }))}
-                value={layout}
+                ariaLabel={t('calendar.viewAria')}
+                onChange={setView}
+                options={viewOptions.map((option) => ({ value: option.value, label: t(option.labelKey) }))}
+                value={view}
               />
-              {layout === 'calendar' ? (
-                <SegmentedControl
-                  ariaLabel={t('calendar.viewAria')}
-                  onChange={setView}
-                  options={viewOptions.map((option) => ({ value: option.value, label: t(option.labelKey) }))}
-                  value={view}
-                />
-              ) : null}
             </div>
           </div>
           <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
             <h1 className="min-w-0 truncate text-[28px] font-semibold tracking-tight text-[var(--ui-text)]">{title}</h1>
-            {layout === 'chart' ? (
-              <span className="text-xs tabular-nums text-[var(--ui-text-muted)]">
-                {`${entries.length} ${t('calendar.itemsUnit')}`}
-              </span>
-            ) : null}
             <span
               className="rounded-[6px] border border-[var(--cal-hairline)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--ui-text-subtle)]"
               title={AIRING_TIME_ZONE}
@@ -216,32 +177,21 @@ export function CalendarPage() {
           loadingTitle={t('calendar.loading')}
           status={status}
         >
-          {layout === 'chart' ? (
-            <BroadcastBoard
-              emptyLabel={t('calendar.empty')}
-              entries={entries}
-              onOpen={openEntryInBoard}
-              state={subjectLinkState}
+          {view === 'month' ? (
+            <MonthGrid
+              days={days}
+              daysMap={daysMap}
+              month={cursor}
+              onOpenOccurrence={setSelected}
+              onSelectDate={(date) => {
+                setCursor(date);
+                setView('day');
+              }}
             />
-          ) : (
-            <>
-              {view === 'month' ? (
-                <MonthGrid
-                  days={days}
-                  daysMap={daysMap}
-                  month={cursor}
-                  onOpenOccurrence={setSelected}
-                  onSelectDate={(date) => {
-                    setCursor(date);
-                    setView('day');
-                  }}
-                />
-              ) : null}
-              {view === 'week' || view === 'day' ? (
-                <TimeGrid days={days} daysMap={daysMap} onOpenOccurrence={setSelected} />
-              ) : null}
-            </>
-          )}
+          ) : null}
+          {view === 'week' || view === 'day' ? (
+            <TimeGrid days={days} daysMap={daysMap} onOpenOccurrence={setSelected} />
+          ) : null}
         </ResultsState>
       </div>
       {selected ? (

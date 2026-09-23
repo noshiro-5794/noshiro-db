@@ -2,7 +2,6 @@ import { placeholderImagePaths } from '@/shared/assets/public-assets';
 import { lazy, Suspense, useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import {
-  ArrowRight,
   Bell,
   Bookmark,
   BookOpen,
@@ -62,6 +61,15 @@ type NavGroup = {
   title: string;
   items: NavItem[];
 };
+
+function MenuEntry({ body, label, to }: { body: string; label: string; to: string }) {
+  return (
+    <Link className="grid gap-1 rounded-[8px] px-2.5 py-2 transition-colors hover:bg-[var(--ui-bg-subtle)]" to={to}>
+      <span className="text-[13.5px] font-medium text-foreground">{label}</span>
+      <span className="text-[12.5px] leading-5 text-muted-foreground">{body}</span>
+    </Link>
+  );
+}
 
 function isThemePreference(value: unknown): value is 'auto' | 'dark' | 'light' {
   return value === 'auto' || value === 'dark' || value === 'light';
@@ -306,39 +314,35 @@ export function AppShell({ children }: AppShellProps) {
                   <ChevronDown className="size-3.5" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-[540px] p-0">
-                  <div className="grid grid-cols-2 gap-1 p-2">
-                    <Link
-                      className="grid gap-1 rounded-[8px] p-3 transition-colors hover:bg-[var(--ui-bg-subtle)]"
-                      search={{ layout: 'calendar', view: 'month' }}
-                      to={routes.calendar}
-                    >
-                      <span className="text-[13.5px] font-medium text-foreground">{t('nav.monthGrid')}</span>
-                      <span className="text-[12.5px] leading-5 text-muted-foreground">{t('nav.monthGridBody')}</span>
-                    </Link>
-                    <Link
-                      className="grid gap-1 rounded-[8px] p-3 transition-colors hover:bg-[var(--ui-bg-subtle)]"
-                      search={{ layout: 'chart' }}
-                      to={routes.calendar}
-                    >
-                      <span className="text-[13.5px] font-medium text-foreground">{t('nav.broadcastBoard')}</span>
-                      <span className="text-[12.5px] leading-5 text-muted-foreground">
-                        {t('nav.broadcastBoardBody')}
-                      </span>
-                    </Link>
-                  </div>
-                  <div className="flex items-center justify-between gap-3 border-t border-[var(--ui-border-subtle)] px-4 py-2.5">
-                    <span className="text-[12.5px] text-muted-foreground">
-                      <span className="mr-1.5 font-medium text-foreground">{t('nav.whatsNew')}</span>
-                      {t('nav.whatsNewBody')}
-                    </span>
-                    <Link
-                      className="inline-flex shrink-0 items-center gap-1 text-[12.5px] font-medium text-muted-foreground transition-colors hover:text-foreground"
-                      search={{ layout: 'chart' }}
-                      to={routes.calendar}
-                    >
-                      {t('nav.learnMore')}
-                      <ArrowRight className="size-3.5" />
-                    </Link>
+                  {/* Linear's menu: described entries in two columns, plain links in a third. */}
+                  <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_170px] gap-2 p-2">
+                    <div className="grid content-start gap-1">
+                      <MenuEntry body={t('nav.monthGridBody')} label={t('nav.monthGrid')} to={routes.calendar} />
+                      <MenuEntry
+                        body={t('nav.broadcastBoardBody')}
+                        label={t('nav.broadcastBoard')}
+                        to={routes.airing}
+                      />
+                    </div>
+                    <div className="grid content-start gap-1">
+                      <MenuEntry body={t('nav.seasonBody')} label={t('nav.season')} to={routes.season} />
+                      <MenuEntry body={t('nav.guideBody')} label={t('nav.guide')} to={routes.docsIntroduction} />
+                    </div>
+                    <div className="grid content-start gap-0.5 border-l border-[var(--ui-border-subtle)] pl-2">
+                      {[
+                        { label: t('nav.search'), to: routes.search },
+                        { label: t('nav.docs'), to: routes.docsIntroduction },
+                        { label: t('nav.community'), to: routes.communityPosts },
+                      ].map((link) => (
+                        <Link
+                          className="rounded-[6px] px-2.5 py-1.5 text-[13px] text-muted-foreground transition-colors hover:bg-[var(--ui-bg-subtle)] hover:text-foreground"
+                          key={link.to + link.label}
+                          {...resolvedRouteHref(link.to)}
+                        >
+                          {link.label}
+                        </Link>
+                      ))}
+                    </div>
                   </div>
                 </DropdownMenuContent>
               </DropdownMenu>
