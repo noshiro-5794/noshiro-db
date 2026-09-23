@@ -794,10 +794,42 @@ class AiringBoardEntryListView(APIView):
             board.season_key
         )
         adult_allowed = request_allows_adult_content(request)
+        include_work = request.query_params.get("include_work", "").lower() in {
+            "1",
+            "true",
+            "yes",
+        }
+        entries = list(
+            AiringBoardEntry.objects.filter(board=board)
+            .select_related("work__entity", "episode_entity")
+            .order_by("weekday", "starts_at", "work_id")
+        )
+        # Resolve and gate every bar first, collecting the canonical entities so
+        # the profile lookup can be bounded to this board. Scanning the whole
+        # anime_profile table on every request made the endpoint — and therefore
+        # the home, search and calendar pages — needlessly slow.
+        visible: list[tuple[AiringBoardEntry, Any, dict[str, Any]]] = []
+        for entry in entries:
+            work_entity = entity_resolution_service.resolve(entry.work.entity)
+            if (
+                work_entity.lifecycle != Entity.Lifecycle.ACTIVE
+                or not entity_resolution_service.is_public(work_entity)
+            ):
+                continue
+            summary = entity_summary(
+                work_entity,
+                safe=True,
+                adult_allowed=adult_allowed,
+            )
+            if summary["audience"] == Entity.Audience.ADULT and not adult_allowed:
+                continue
+            visible.append((entry, work_entity, summary))
         profiles = {
             entity_id: (format_value, premiered_on, ended_on, episode_count)
             for entity_id, format_value, premiered_on, ended_on, episode_count in (
-                AnimeProfile.objects.filter(work__entity_id__isnull=False).values_list(
+                AnimeProfile.objects.filter(
+                    work__entity_id__in=[entity.id for _, entity, _ in visible]
+                ).values_list(
                     "work__entity_id",
                     "format",
                     "premiered_on",
@@ -806,31 +838,8 @@ class AiringBoardEntryListView(APIView):
                 )
             )
         }
-        entries = (
-            AiringBoardEntry.objects.filter(board=board)
-            .select_related("work__entity", "episode_entity")
-            .order_by("weekday", "starts_at", "work_id")
-        )
         data = []
-        for entry in entries:
-            work_entity = entity_resolution_service.resolve(entry.work.entity)
-            if (
-                work_entity.lifecycle != Entity.Lifecycle.ACTIVE
-                or not entity_resolution_service.is_public(work_entity)
-            ):
-                continue
-            include_work = request.query_params.get("include_work", "").lower() in {
-                "1",
-                "true",
-                "yes",
-            }
-            summary = entity_summary(
-                work_entity,
-                safe=True,
-                adult_allowed=adult_allowed,
-            )
-            if summary["audience"] == Entity.Audience.ADULT and not adult_allowed:
-                continue
+        for entry, work_entity, summary in visible:
             profile = profiles.get(work_entity.id) or ("", None, None, None)
             starts_at = entry.starts_at
             ends_at = None
