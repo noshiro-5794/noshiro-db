@@ -13,6 +13,12 @@
   --cal-unknown: var(--ui-accent);
   --cal-accent: var(--cal-unknown);
   --cal-on-accent: #ffffff;
+  /* Notion Calendar keeps the grid almost colourless and reserves one accent
+     for "now": the current day badge and the live time line. */
+  --cal-hairline: color-mix(in srgb, var(--ui-border) 60%, transparent);
+  --cal-now: #e5484d;
+  --cal-now-text: #ffffff;
+  --cal-muted: var(--ui-text-subtle);
 }
 
 [data-cal-source='anilist'] {
@@ -32,12 +38,46 @@
   --cal-mal: #2c8f6d;
   --cal-bangumi: #bd7f2c;
   --cal-on-accent: #f7f7fa;
+  --cal-hairline: color-mix(in srgb, var(--ui-border) 70%, transparent);
+  --cal-now: #e5484d;
+  --cal-now-text: #ffffff;
 }
 
-/* Google-style event bar: solid fill, tight radius, full cell width. */
+/*
+ * Event bar: Google's full-cell bar geometry with Notion Calendar's quieter
+ * treatment — a soft tint of the provider hue, an accent spine for identity and
+ * text in the same hue instead of white on saturated colour.
+ */
 .calendar-bar {
-  background-color: var(--cal-accent);
-  color: var(--cal-on-accent);
+  background-color: color-mix(in srgb, var(--cal-accent) 14%, transparent);
+  border-left: 2.5px solid var(--cal-accent);
+  color: color-mix(in srgb, var(--cal-accent) 72%, var(--ui-text));
+}
+
+.calendar-bar:hover {
+  background-color: color-mix(in srgb, var(--cal-accent) 22%, transparent);
+}
+
+/* Today marker: a compact filled badge, as in Notion Calendar. */
+.calendar-today {
+  background-color: var(--cal-now);
+  color: var(--cal-now-text);
+}
+
+/* Live time: a hairline across the day with a rounded label at its start. */
+.calendar-now-line {
+  border-top: 1px solid var(--cal-now);
+}
+
+.calendar-now-label {
+  background-color: var(--cal-now);
+  color: var(--cal-now-text);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 /* Soft variant used by chips, dots and the broadcast board. */
