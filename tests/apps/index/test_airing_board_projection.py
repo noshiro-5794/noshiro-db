@@ -24,7 +24,7 @@ from apps.index.services import (
 )
 from apps.index.services.airing_board_projection import (
     CandidateBar,
-    _board_window,
+    _add_months,
     _choose_bar,
     _corroborates,
     _format_allowed,
@@ -135,12 +135,14 @@ def test_season_bounds_cover_the_whole_quarter() -> None:
     assert _season_end_date("2026Q4").isoformat() == "2026-12-31"
 
 
-def test_board_window_reaches_the_neighbouring_months() -> None:
-    start, end = _board_window("2026Q3")
+def test_board_window_covers_the_neighbouring_months() -> None:
+    """The window is the previous, current and next month of today."""
+    first_of_month = timezone.localdate().replace(day=1)
 
-    # June is reachable from July, November from September.
-    assert start.isoformat() == "2026-05-31T15:00:00+00:00"
-    assert end.isoformat() == "2026-10-31T15:00:00+00:00"
+    start_date, end_date = airing_board_projection_service.window_dates("2026Q3")
+
+    assert start_date == _add_months(first_of_month, -1)
+    assert end_date == _add_months(first_of_month, 2) - timedelta(days=1)
 
 
 def test_rebuild_projects_mal_season_onto_one_board_entry() -> None:
