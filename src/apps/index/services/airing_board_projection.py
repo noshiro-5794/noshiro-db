@@ -113,6 +113,16 @@ class AiringBoardProjectionService:
         }
 
     @staticmethod
+    def window_dates(season_key: str) -> tuple[date, date]:
+        """Inclusive first and last day the board covers, in the airing zone."""
+        start, end = _board_window(season_key)
+        zone = ZoneInfo("Asia/Tokyo")
+        return (
+            start.astimezone(zone).date(),
+            (end - timedelta(seconds=1)).astimezone(zone).date(),
+        )
+
+    @staticmethod
     def _ensure_board() -> AiringBoard:
         board = (
             AiringBoard.objects.filter(status=AiringBoard.Status.ACTIVE)
@@ -250,6 +260,9 @@ class AiringBoardProjectionService:
     ) -> list[CandidateBar]:
         bars: list[CandidateBar] = []
         mal_works = self._mal_work_index()
+        # The rolling window reaches into the next month, which may already
+        # belong to the next season's snapshot.
+        wanted_seasons = {season_key, _next_season_key(season_key)}
         records = Observation.objects.filter(
             schema_name="index.schedule",
             current_projections__provider_record__namespace__provider__slug="mal",
@@ -257,7 +270,7 @@ class AiringBoardProjectionService:
         )
         for observation in records:
             normalized = observation.normalized_data or {}
-            if normalized.get("season_key") != season_key:
+            if normalized.get("season_key") not in wanted_seasons:
                 continue
             for item in normalized.get("items") or []:
                 if not isinstance(item, dict):
@@ -552,6 +565,15 @@ def _season_start_date(season_key: str) -> date | None:
     return date(year, 1 + (quarter - 1) * 3, 1)
 
 
+def _next_season_key(season_key: str) -> str:
+    value = (season_key or "").strip().upper()
+    if len(value) != 6 or value[4] != "Q" or value[-1] not in "1234":
+        return value
+    year = int(value[:4])
+    quarter = int(value[-1])
+    return f"{year + 1}Q1" if quarter == 4 else f"{year}Q{quarter + 1}"
+
+
 def _season_end_date(season_key: str) -> date | None:
     """Last day of the season, i.e. the day before the next quarter starts."""
     start = _season_start_date(season_key)
@@ -586,22 +608,23 @@ def _add_months(value: date, months: int) -> date:
 
 
 def _board_window(season_key: str) -> tuple[datetime, datetime]:
-    """Season window plus one month on each side.
+    """Rolling window: the previous, current and next month.
 
-    A visitor looking at any month of the season must be able to reach the month
-    before and the month after it, so the data window is wider than the season
-    even though the board keeps a single season identity.
+    Broadcast data is only trustworthy near the present — an AniList schedule
+    for a finished cour is a historical record, and a season snapshot for an
+    unannounced one is guesswork. Anchoring the window on the current month
+    keeps every visible week supported by real data, and it happens to cover a
+    whole month grid, whose leading and trailing cells never reach further than
+    the neighbouring month.
     """
-    start_date = _season_start_date(season_key)
-    end_date = _season_end_date(season_key)
-    if start_date is None or end_date is None:
-        return _season_bounds(season_key)
     zone = ZoneInfo("Asia/Tokyo")
+    today = timezone.localdate()
+    first_of_month = date(today.year, today.month, 1)
     start = datetime.combine(
-        _add_months(start_date, -1), time(hour=0), tzinfo=zone
+        _add_months(first_of_month, -1), time(hour=0), tzinfo=zone
     ).astimezone(UTC)
     end = datetime.combine(
-        _add_months(date(end_date.year, end_date.month, 1), 2),
+        _add_months(first_of_month, 2),
         time(hour=0),
         tzinfo=zone,
     ).astimezone(UTC)
