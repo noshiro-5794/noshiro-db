@@ -6,7 +6,6 @@ export const routes = {
   search: '/search',
   calendar: '/calendar',
   airing: '/airing',
-  season: '/season',
   docsRoot: '/docs',
   docsIntroduction: '/docs/introduction',
   docsPattern: '/docs/:slug',

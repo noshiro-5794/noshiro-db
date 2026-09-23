@@ -20,20 +20,13 @@ export {
   monthGridRange,
   occurrenceFor,
   rangeDays,
-  seasonBars,
   shiftMonth,
   startOfWeek,
   weekRange,
-  formatAiringDate,
-  providerOf,
-  sourceLabel,
-  titleOfEntry,
   type CalendarOccurrence,
-  type SeasonBar,
 } from './model/calendar-model';
 export { BroadcastBoard } from './ui/BroadcastBoard';
 export { EventDetails } from './ui/EventDetails';
 export { MonthGrid } from './ui/MonthGrid';
 export { IconButton, SegmentedControl } from './ui/primitives';
-export { SeasonTimeline } from './ui/SeasonTimeline';
 export { TimeGrid } from './ui/TimeGrid';

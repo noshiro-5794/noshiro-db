@@ -225,11 +225,10 @@ export function AppShell({ children }: AppShellProps) {
   const location = useLocation();
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
 
+  // Visitor-facing nouns: what the site offers, not how a page is laid out.
   const publicNavItems = [
     { to: routes.home, label: t('nav.home') },
-    { to: routes.search, label: t('nav.search') },
-    { to: routes.calendar, label: t('nav.calendar') },
-    { to: routes.docsIntroduction, label: t('nav.docs') },
+    { to: routes.search, label: t('nav.catalog') },
   ];
   const appNavGroups: NavGroup[] = [
     {
@@ -288,9 +287,12 @@ export function AppShell({ children }: AppShellProps) {
               <span className="truncate text-[15px] font-semibold">Noshiro DB</span>
             </Link>
 
-            {/* Linear-style nav: plain links where the current page keeps a quiet pill. */}
-            <nav className="ml-2 hidden items-center gap-0.5 lg:flex">
-              {publicNavItems.slice(0, 2).map((item) => (
+            {/*
+             * Linear's bar: the wordmark sits left, navigation is centred in the
+             * bar, and only the account actions sit right.
+             */}
+            <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 lg:flex">
+              {publicNavItems.map((item) => (
                 <Link
                   activeOptions={{ exact: item.to === routes.home }}
                   className="rounded-[6px] px-2.5 py-1.5 text-[13.5px] font-medium text-muted-foreground transition-colors hover:bg-[var(--ui-bg-subtle)] hover:text-foreground data-[status=active]:bg-[var(--ui-bg-subtle)] data-[status=active]:text-foreground"
@@ -310,39 +312,18 @@ export function AppShell({ children }: AppShellProps) {
                     />
                   }
                 >
-                  {t('nav.calendar')}
+                  {t('nav.airing')}
                   <ChevronDown className="size-3.5" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-[540px] p-0">
-                  {/* Linear's menu: described entries in two columns, plain links in a third. */}
-                  <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_170px] gap-2 p-2">
-                    <div className="grid content-start gap-1">
-                      <MenuEntry body={t('nav.monthGridBody')} label={t('nav.monthGrid')} to={routes.calendar} />
-                      <MenuEntry
-                        body={t('nav.broadcastBoardBody')}
-                        label={t('nav.broadcastBoard')}
-                        to={routes.airing}
-                      />
-                    </div>
-                    <div className="grid content-start gap-1">
-                      <MenuEntry body={t('nav.seasonBody')} label={t('nav.season')} to={routes.season} />
-                      <MenuEntry body={t('nav.guideBody')} label={t('nav.guide')} to={routes.docsIntroduction} />
-                    </div>
-                    <div className="grid content-start gap-0.5 border-l border-[var(--ui-border-subtle)] pl-2">
-                      {[
-                        { label: t('nav.search'), to: routes.search },
-                        { label: t('nav.docs'), to: routes.docsIntroduction },
-                        { label: t('nav.community'), to: routes.communityPosts },
-                      ].map((link) => (
-                        <Link
-                          className="rounded-[6px] px-2.5 py-1.5 text-[13px] text-muted-foreground transition-colors hover:bg-[var(--ui-bg-subtle)] hover:text-foreground"
-                          key={link.to + link.label}
-                          {...resolvedRouteHref(link.to)}
-                        >
-                          {link.label}
-                        </Link>
-                      ))}
-                    </div>
+                <DropdownMenuContent align="center" className="w-[460px] p-2">
+                  {/* Described destinations, the way Linear groups a sub-menu. */}
+                  <div className="grid grid-cols-2 gap-1">
+                    <MenuEntry
+                      body={t('nav.airingCalendarBody')}
+                      label={t('nav.airingCalendar')}
+                      to={routes.calendar}
+                    />
+                    <MenuEntry body={t('nav.broadcastBoardBody')} label={t('nav.broadcastBoard')} to={routes.airing} />
                   </div>
                 </DropdownMenuContent>
               </DropdownMenu>
