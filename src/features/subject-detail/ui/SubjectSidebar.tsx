@@ -7,17 +7,19 @@ import type { SubjectDetail } from '@/shared/api';
 import { useI18n } from '@/shared/i18n';
 import { useMediaQuery } from '@/shared/lib/use-media-query';
 import { Button } from '@/shared/ui/Button';
+import { CoverImage } from '@/shared/ui/CoverImage';
 import { ErrorState } from '@/shared/ui/FeedbackState';
 import { FilterCombobox } from '@/shared/ui/FilterCombobox';
 import { Pagination } from '@/shared/ui/Pagination';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/Popover';
 import {
+  attributeLabelKeys,
+  attributeValueKey,
   bangumiSubjectIdOf,
   coverPlaceholder,
-  getInfoboxRows,
   groupStaffByRole,
   posterOf,
-  sortInfoboxRows,
+  subjectAttributes,
   titleOf,
 } from '../model/subject-detail';
 import { StaffDetail, type StaffDetailLabels } from './SubjectDetailPrimitives';
@@ -45,7 +47,7 @@ export function SubjectSidebar({ subject }: { subject: SubjectDetail }) {
     }),
   );
   const staffRolesQuery = useQuery(subjectQueries.staffRoles(subject.id));
-  const infoboxRows = sortInfoboxRows(getInfoboxRows(subject.infobox));
+  const attributes = subjectAttributes(subject);
   const staffGroups = groupStaffByRole(staffQuery.data?.results ?? []);
   const staffRoleOptions = [
     { label: t('subject.allRoles'), value: '' },
@@ -64,12 +66,9 @@ export function SubjectSidebar({ subject }: { subject: SubjectDetail }) {
 
   return (
     <aside className="grid content-start gap-4 self-start">
-      <img
+      <CoverImage
         alt={titleOf(subject, t('common.untitledSubject'))}
         className="aspect-[2/3] w-full rounded-[var(--ui-radius-surface)] bg-[var(--ui-bg-subtle)] object-cover ring-1 ring-[var(--ui-border)]"
-        decoding="async"
-        fetchPriority="high"
-        referrerPolicy="no-referrer"
         src={posterOf(subject)}
       />
 
@@ -122,27 +121,33 @@ export function SubjectSidebar({ subject }: { subject: SubjectDetail }) {
         onOpenChange={setInfoboxOpen}
       >
         <div className="hidden items-center justify-between gap-3 lg:flex">
-          <h2 className="text-sm font-semibold text-[var(--ui-text)]">{t('subject.infobox')}</h2>
+          <h2 className="text-sm font-semibold text-[var(--ui-text)]">{t('subject.info')}</h2>
           <span className="text-xs text-[var(--ui-text-subtle)]">
-            {infoboxRows.length} {t('common.items')}
+            {attributes.length} {t('common.items')}
           </span>
         </div>
         <Collapsible.Trigger className="group flex h-9 w-full items-center justify-between gap-3 rounded-[var(--ui-radius-control)] px-2 text-left text-sm font-semibold text-[var(--ui-text)] outline-none transition-colors hover:bg-[var(--ui-bg-subtle)] focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] lg:hidden">
-          <span>{t('subject.infobox')}</span>
+          <span>{t('subject.info')}</span>
           <span className="flex items-center gap-2 text-xs font-normal text-[var(--ui-text-subtle)]">
-            {infoboxRows.length} {t('common.items')}
+            {attributes.length} {t('common.items')}
             <ChevronDown className="size-4 transition-transform group-data-[panel-open]:rotate-180" />
           </span>
         </Collapsible.Trigger>
         <Collapsible.Panel className="h-[var(--collapsible-panel-height)] overflow-hidden transition-[height] duration-150 ease-out data-[ending-style]:h-0 data-[starting-style]:h-0 [&[hidden]:not([hidden='until-found'])]:hidden">
           <dl className="mt-3 divide-y divide-[var(--ui-border)] text-sm">
-            {infoboxRows.slice(0, 14).map((item) => (
+            {attributes.slice(0, 14).map((item) => (
               <div className="grid grid-cols-[88px_minmax(0,1fr)] gap-3 py-2.5" key={item.key}>
-                <dt className="text-[var(--ui-text-muted)]">{item.key}</dt>
-                <dd className="min-w-0 break-words leading-6 text-[var(--ui-text)]">{item.value}</dd>
+                <dt className="text-[var(--ui-text-muted)]">{t(attributeLabelKeys[item.key] ?? 'subject.info')}</dt>
+                <dd className="min-w-0 break-words leading-6 text-[var(--ui-text)]">
+                  {(() => {
+                    const valueKey = attributeValueKey(item.key, item.value);
+                    if (valueKey) return t(valueKey);
+                    return item.key === 'format' || item.key === 'type' ? item.value.toUpperCase() : item.value;
+                  })()}
+                </dd>
               </div>
             ))}
-            {infoboxRows.length === 0 ? (
+            {attributes.length === 0 ? (
               <div className="py-3 text-sm text-[var(--ui-text-muted)]">{emptyText}</div>
             ) : null}
           </dl>
