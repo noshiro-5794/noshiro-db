@@ -25,6 +25,11 @@ def preferred_name(entity: Entity, *, language: str = "") -> str:
         cache_name="_current_names",
         queryset=current_entity_names(),
     )
+    return _choose_name(names, language=language)
+
+
+def _choose_name(names: list, *, language: str = "") -> str:
+    """Pick the display name from an already-loaded name list."""
     if not names:
         return "Untitled"
     language = language or ""
@@ -143,6 +148,117 @@ def entity_summary(
         "collections": sorted(set(memberships)),
         "media": media,
     }
+
+
+def entity_summaries(
+    entities: list[Entity],
+    *,
+    safe: bool = True,
+    adult_allowed: bool = False,
+) -> dict:
+    """Summaries for many entities in a constant number of queries.
+
+    ``entity_summary`` is written for one entity and costs several queries per
+    call, so a list endpoint rendered hundreds of them and spent seconds in SQL.
+    This batches the same shape: redirect chains, clusters, works, memberships
+    and media are each read once and grouped in memory.
+    """
+    if not entities:
+        return {}
+    redirects = entity_resolution_service.redirect_map()
+    clusters = entity_resolution_service.cluster_map()
+
+    root_of = {
+        entity.pk: entity_resolution_service.resolve_with(redirects, entity.pk)
+        for entity in entities
+    }
+    cluster_ids_of = {
+        entity.pk: clusters.get(root_of[entity.pk], {root_of[entity.pk]})
+        for entity in entities
+    }
+    all_ids = {entity_id for ids in cluster_ids_of.values() for entity_id in ids}
+
+    cluster_entities: dict = {}
+    for item in Entity.objects.filter(pk__in=all_ids):
+        cluster_entities.setdefault(item.pk, []).append(item)
+
+    works: dict = {}
+    for work in (
+        Work.objects.filter(entity_id__in=all_ids)
+        .exclude(work_type=Work.WorkType.UNCLASSIFIED)
+        .order_by("created_at", "entity_id")
+    ):
+        works.setdefault(work.entity_id, work)
+
+    memberships: dict = {}
+    for membership in IndexMembership.objects.filter(
+        entity_id__in=all_ids
+    ).select_related("collection"):
+        if membership.listing_state == "listed":
+            memberships.setdefault(membership.entity_id, set()).add(
+                membership.collection.slug
+            )
+
+    media_links: dict = {}
+    for link in (
+        current_entity_media()
+        .filter(entity_id__in=all_ids)
+        .select_related(
+            "asset__provider_record__namespace__provider",
+            "observation__mapping_run",
+        )
+    ):
+        media_links.setdefault(link.entity_id, []).append(link)
+
+    names: dict = {}
+    for name in current_entity_names().filter(entity_id__in=all_ids):
+        names.setdefault(name.entity_id, []).append(name)
+
+    summaries: dict = {}
+    for entity in entities:
+        root_id = root_of[entity.pk]
+        root = next(item for item in cluster_entities[root_id] if item.pk == root_id)
+        members = cluster_entities[root_id]
+        audience = (
+            Entity.Audience.ADULT
+            if any(item.audience == Entity.Audience.ADULT for item in members)
+            else root.audience
+        )
+        work = works.get(root_id) or getattr(root, "work", None)
+        collections = sorted(memberships.get(root_id, set()))
+        media = []
+        content_allowed = not safe or adult_allowed or audience != Entity.Audience.ADULT
+        spoiler_allowed = not safe or all(item.spoiler_level <= 0 for item in members)
+        if content_allowed and spoiler_allowed:
+            media = [
+                {
+                    "url": link.asset.url,
+                    "purpose": link.purpose,
+                    "safety": link.asset.safety,
+                    "provenance": field_provenance(
+                        provider_record=link.asset.provider_record,
+                        observation=link.observation,
+                    ),
+                }
+                for link in media_links.get(root_id, [])
+                if (
+                    not safe
+                    or adult_allowed
+                    or link.asset.safety not in {"explicit", "suggestive"}
+                )
+                and link.asset.spoiler_level <= 0
+            ]
+        summaries[entity.pk] = {
+            "id": str(root_id),
+            "entity_type": root.kind,
+            "lifecycle": root.lifecycle,
+            "audience": audience,
+            "work_type": work.work_type if work else None,
+            "display_name": _choose_name(names.get(root_id, [])),
+            "collections": collections,
+            "media": media,
+        }
+    return summaries
 
 
 def entity_detail(

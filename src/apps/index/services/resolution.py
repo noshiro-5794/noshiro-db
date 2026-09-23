@@ -16,6 +16,42 @@ from apps.index.models import (
 class EntityResolutionService:
     MAX_REDIRECT_DEPTH = 32
 
+    def redirect_map(self) -> dict:
+        """Every active redirect as ``source -> target``, read in one query.
+
+        Resolving entities one at a time costs a query per hop, which turns a
+        list endpoint into thousands of queries. Callers that need many entities
+        can load the graph once and resolve in memory.
+        """
+        return dict(
+            EntityRedirect.objects.filter(is_active=True).values_list(
+                "source_entity_id", "target_entity_id"
+            )
+        )
+
+    def resolve_with(self, redirects: dict, entity_id) -> object:
+        """Follow the redirect chain for one id using a preloaded map."""
+        current = entity_id
+        visited: set = set()
+        for _ in range(self.MAX_REDIRECT_DEPTH):
+            if current in visited:
+                raise EntityResolutionError("Entity redirect cycle detected.")
+            visited.add(current)
+            target = redirects.get(current)
+            if target is None:
+                return current
+            current = target
+        raise EntityResolutionError("Entity redirect depth exceeded.")
+
+    def cluster_map(self) -> dict:
+        """Canonical id -> set of ids redirected into it, in one query."""
+        redirects = self.redirect_map()
+        clusters: dict = {}
+        for source in redirects:
+            root = self.resolve_with(redirects, source)
+            clusters.setdefault(root, {root}).add(source)
+        return clusters
+
     def resolve(self, entity: Entity) -> Entity:
         visited = set()
         current = entity
