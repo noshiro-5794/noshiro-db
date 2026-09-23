@@ -14,9 +14,7 @@ import {
   AIRING_TIME_ZONE,
   AIRING_TIME_ZONE_LABEL,
   addDays,
-  airingCalendarDate,
   buildOccurrences,
-  dateKey,
   groupOccurrences,
   monthGridRange,
   occurrenceFor,
@@ -29,11 +27,10 @@ import {
   type CalendarOccurrence,
 } from './calendar-model';
 import { BroadcastBoard } from './ui/BroadcastBoard';
-import { DayAgenda } from './ui/DayAgenda';
 import { EventDetails } from './ui/EventDetails';
 import { MonthGrid } from './ui/MonthGrid';
 import { IconButton, SegmentedControl } from './ui/primitives';
-import { WeekGrid } from './ui/WeekGrid';
+import { TimeGrid } from './ui/TimeGrid';
 import './calendar.css';
 
 type CalendarLayout = 'calendar' | 'chart';
@@ -62,21 +59,11 @@ export function CalendarPage() {
   const entries = useMemo(() => calendarQuery.data ?? [], [calendarQuery.data]);
   const subjectLinkState = useMemo(() => routeBackState(location, t('calendar.title')), [location, t]);
   /**
-   * The board covers its season plus the neighbouring months, so every month a
-   * visitor lands on can show the month before and after it. Announced premieres
-   * just past that window stay reachable too, while the outer bound still stops
-   * the weekly schedule from repeating forever.
+   * The board covers the previous, current and next month, so every month a
+   * visitor lands on can show the month before and after it while the outer
+   * bound still stops the weekly schedule from repeating forever.
    */
-  const season = useMemo(() => {
-    const base = boardWindow(entries[0]?.seasonKey ?? '');
-    if (!base) return null;
-    let to = base.to;
-    for (const entry of entries) {
-      const premieresOn = airingCalendarDate(entry.startsAt);
-      if (premieresOn && premieresOn > to) to = premieresOn;
-    }
-    return { from: base.from, to };
-  }, [entries]);
+  const season = useMemo(() => boardWindow(entries[0]), [entries]);
 
   const range = useMemo(() => {
     if (layout === 'chart') return weekRange(cursor);
@@ -144,63 +131,67 @@ export function CalendarPage() {
         title={t('calendar.title')}
       />
       <div className="grid gap-3 pb-10">
-        <header className="flex flex-wrap items-center gap-2">
-          <button
-            className="h-8 shrink-0 rounded-full border border-[var(--ui-border)] px-3.5 text-xs font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-bg-subtle)]"
-            onClick={goToday}
-            type="button"
-          >
-            {t('calendar.today')}
-          </button>
-          <span className="flex items-center">
-            <IconButton
-              className={canStep(-1) ? undefined : 'opacity-30'}
-              label={t('calendar.previous')}
-              onClick={() => {
-                move(-1);
-              }}
-            >
-              <ChevronLeft className="size-4" />
-            </IconButton>
-            <IconButton
-              className={canStep(1) ? undefined : 'opacity-30'}
-              label={t('calendar.next')}
-              onClick={() => {
-                move(1);
-              }}
-            >
-              <ChevronRight className="size-4" />
-            </IconButton>
-          </span>
-          <div className="flex min-w-0 flex-1 items-baseline gap-2">
-            <h1 className="min-w-0 truncate text-[22px] font-normal tracking-tight text-[var(--ui-text)]">{title}</h1>
+        <header className="grid gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <button
+                className="h-8 shrink-0 rounded-[8px] border border-[var(--ui-border)] px-3.5 text-xs font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-bg-subtle)]"
+                onClick={goToday}
+                type="button"
+              >
+                {t('calendar.today')}
+              </button>
+              <span className="flex items-center">
+                <IconButton
+                  className={canStep(-1) ? undefined : 'opacity-30'}
+                  label={t('calendar.previous')}
+                  onClick={() => {
+                    move(-1);
+                  }}
+                >
+                  <ChevronLeft className="size-4" />
+                </IconButton>
+                <IconButton
+                  className={canStep(1) ? undefined : 'opacity-30'}
+                  label={t('calendar.next')}
+                  onClick={() => {
+                    move(1);
+                  }}
+                >
+                  <ChevronRight className="size-4" />
+                </IconButton>
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <SegmentedControl
+                ariaLabel={t('calendar.layoutAria')}
+                onChange={setLayout}
+                options={layoutOptions.map((option) => ({ value: option.value, label: t(option.labelKey) }))}
+                value={layout}
+              />
+              {layout === 'calendar' ? (
+                <SegmentedControl
+                  ariaLabel={t('calendar.viewAria')}
+                  onChange={setView}
+                  options={viewOptions.map((option) => ({ value: option.value, label: t(option.labelKey) }))}
+                  value={view}
+                />
+              ) : null}
+            </div>
+          </div>
+          <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h1 className="min-w-0 truncate text-[28px] font-semibold tracking-tight text-[var(--ui-text)]">{title}</h1>
             {layout === 'chart' ? (
-              <span className="shrink-0 text-xs tabular-nums text-[var(--ui-text-muted)]">
+              <span className="text-xs tabular-nums text-[var(--ui-text-muted)]">
                 {`${entries.length} ${t('calendar.itemsUnit')}`}
               </span>
             ) : null}
             <span
-              className="shrink-0 rounded-[4px] border border-[var(--ui-border)] px-1 text-[10px] font-medium text-[var(--ui-text-subtle)]"
+              className="rounded-[6px] border border-[var(--cal-hairline)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--ui-text-subtle)]"
               title={AIRING_TIME_ZONE}
             >
               {AIRING_TIME_ZONE_LABEL}
             </span>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <SegmentedControl
-              ariaLabel={t('calendar.layoutAria')}
-              onChange={setLayout}
-              options={layoutOptions.map((option) => ({ value: option.value, label: t(option.labelKey) }))}
-              value={layout}
-            />
-            {layout === 'calendar' ? (
-              <SegmentedControl
-                ariaLabel={t('calendar.viewAria')}
-                onChange={setView}
-                options={viewOptions.map((option) => ({ value: option.value, label: t(option.labelKey) }))}
-                value={view}
-              />
-            ) : null}
           </div>
         </header>
 
@@ -232,9 +223,8 @@ export function CalendarPage() {
                   }}
                 />
               ) : null}
-              {view === 'week' ? <WeekGrid days={days} daysMap={daysMap} onOpenOccurrence={setSelected} /> : null}
-              {view === 'day' ? (
-                <DayAgenda date={cursor} day={daysMap.get(dateKey(cursor))} onOpenOccurrence={setSelected} />
+              {view === 'week' || view === 'day' ? (
+                <TimeGrid days={days} daysMap={daysMap} onOpenOccurrence={setSelected} />
               ) : null}
             </>
           )}
