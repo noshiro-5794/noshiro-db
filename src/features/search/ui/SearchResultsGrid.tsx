@@ -5,6 +5,7 @@ import type { CalendarSubjectItem, SubjectSummary } from '@/shared/api';
 import type { Locale } from '@/shared/i18n';
 import { useI18n } from '@/shared/i18n';
 import type { RouteBackState } from '@/shared/routing/route-state';
+import { CoverImage } from '@/shared/ui/CoverImage';
 import { calendarImageOf } from '../model/calendar-search';
 
 const coverPlaceholder = placeholderImagePaths.subjectCover;
@@ -37,12 +38,9 @@ function SearchPoster({
   return (
     <Link className="group grid min-w-0 gap-2" params={{ subjectId }} state={state} to="/entities/$subjectId">
       <div className="relative aspect-[2/3] overflow-hidden rounded-md bg-muted ring-1 ring-border transition-[background-color,box-shadow] duration-[var(--ui-transition-fast)] group-hover:bg-[var(--ui-bg-muted)] group-hover:ring-[var(--ui-border-strong)]">
-        <img
+        <CoverImage
           alt={title}
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-          decoding="async"
-          loading="lazy"
-          referrerPolicy="no-referrer"
           src={poster}
         />
         {badge ? (

@@ -8,6 +8,7 @@ import { routeBackState } from '@/shared/routing/route-state';
 import { routes } from '@/shared/routing/paths';
 import { Seo } from '@/shared/seo/Seo';
 import { Page } from '@/shared/ui/Page';
+import { PageHeading } from '@/shared/ui/PageHeading';
 import { ResultsState, type ResultsStatus } from '@/shared/ui/DataView';
 import {
   AIRING_TIME_ZONE,
@@ -112,16 +113,16 @@ export function CalendarPage() {
   }, [cursor, locale, view]);
 
   return (
-    <Page eyebrow={t('nav.groupDiscover')} seo={false} title={t('calendar.title')} width="wide">
+    <Page hideHeader seo={false} title={t('calendar.title')} width="wide">
       <Seo
         description="Browse the anime airing calendar by month, week, or day."
         path={routes.calendar}
-        title={t('calendar.title')}
+        title={t('nav.airingCalendar')}
       />
       <div className="grid gap-3 pb-10">
-        <header className="grid gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
+        <PageHeading
+          actions={
+            <>
               <button
                 className="h-8 shrink-0 rounded-[8px] border border-[var(--ui-border)] px-3.5 text-xs font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-bg-subtle)]"
                 onClick={goToday}
@@ -149,26 +150,25 @@ export function CalendarPage() {
                   <ChevronRight className="size-4" />
                 </IconButton>
               </span>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
               <SegmentedControl
                 ariaLabel={t('calendar.viewAria')}
                 onChange={setView}
                 options={viewOptions.map((option) => ({ value: option.value, label: t(option.labelKey) }))}
                 value={view}
               />
-            </div>
-          </div>
-          <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
-            <h1 className="min-w-0 truncate text-[28px] font-semibold tracking-tight text-[var(--ui-text)]">{title}</h1>
+            </>
+          }
+          eyebrow={t('nav.groupDiscover')}
+          meta={
             <span
-              className="rounded-[6px] border border-[var(--cal-hairline)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--ui-text-subtle)]"
+              className="rounded-[6px] border border-[var(--cal-hairline)] px-1.5 py-0.5 text-[10px] font-medium"
               title={AIRING_TIME_ZONE}
             >
               {AIRING_TIME_ZONE_LABEL}
             </span>
-          </div>
-        </header>
+          }
+          title={title}
+        />
 
         <ResultsState
           emptyTitle={t('calendar.empty')}
