@@ -2,10 +2,12 @@ import { placeholderImagePaths } from '@/shared/assets/public-assets';
 import { lazy, Suspense, useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import {
+  ArrowRight,
   Bell,
   Bookmark,
   BookOpen,
   CalendarDays,
+  ChevronDown,
   ChevronsUpDown,
   FileText,
   Home,
@@ -272,26 +274,84 @@ export function AppShell({ children }: AppShellProps) {
     return (
       <div className="min-h-screen bg-[var(--ui-bg-canvas)]" data-app-shell="public">
         <header className="sticky top-0 z-[var(--ui-layer-shell-header)] h-[var(--ui-shell-header-height)] border-b border-border-subtle bg-[color-mix(in_srgb,var(--ui-bg-canvas)_88%,transparent)] backdrop-blur-xl">
-          <div className="mx-auto flex h-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-5">
+          <div className="mx-auto flex h-full max-w-[1160px] items-center gap-3 px-4 sm:px-5">
             <Link className="flex min-w-0 items-center gap-2" to={routes.home} aria-label="Noshiro DB">
-              <img className="size-8 rounded-[var(--ui-radius-control)]" src="/favicon.svg" alt="" aria-hidden="true" />
-              <span className="truncate text-sm font-semibold">Noshiro DB</span>
+              <img className="size-6 rounded-[6px]" src="/favicon.svg" alt="" aria-hidden="true" />
+              <span className="truncate text-[15px] font-semibold">Noshiro DB</span>
             </Link>
 
-            <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-0.5 rounded-sm border border-border bg-muted p-0.5 lg:flex">
-              {publicNavItems.map((item) => (
+            {/* Linear-style nav: plain links where the current page keeps a quiet pill. */}
+            <nav className="ml-2 hidden items-center gap-0.5 lg:flex">
+              {publicNavItems.slice(0, 2).map((item) => (
                 <Link
                   activeOptions={{ exact: item.to === routes.home }}
-                  className="rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground data-[status=active]:bg-elevated data-[status=active]:text-foreground data-[status=active]:shadow-[var(--ui-shadow-control)]"
+                  className="rounded-[6px] px-2.5 py-1.5 text-[13.5px] font-medium text-muted-foreground transition-colors hover:bg-[var(--ui-bg-subtle)] hover:text-foreground data-[status=active]:bg-[var(--ui-bg-subtle)] data-[status=active]:text-foreground"
                   key={item.to}
                   {...resolvedRouteHref(item.to)}
                 >
                   {item.label}
                 </Link>
               ))}
+
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <button
+                      className="inline-flex items-center gap-1 rounded-[6px] px-2.5 py-1.5 text-[13.5px] font-medium text-muted-foreground transition-colors hover:bg-[var(--ui-bg-subtle)] hover:text-foreground"
+                      type="button"
+                    />
+                  }
+                >
+                  {t('nav.calendar')}
+                  <ChevronDown className="size-3.5" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-[540px] p-0">
+                  <div className="grid grid-cols-2 gap-1 p-2">
+                    <Link
+                      className="grid gap-1 rounded-[8px] p-3 transition-colors hover:bg-[var(--ui-bg-subtle)]"
+                      search={{ layout: 'calendar', view: 'month' }}
+                      to={routes.calendar}
+                    >
+                      <span className="text-[13.5px] font-medium text-foreground">{t('nav.monthGrid')}</span>
+                      <span className="text-[12.5px] leading-5 text-muted-foreground">{t('nav.monthGridBody')}</span>
+                    </Link>
+                    <Link
+                      className="grid gap-1 rounded-[8px] p-3 transition-colors hover:bg-[var(--ui-bg-subtle)]"
+                      search={{ layout: 'chart' }}
+                      to={routes.calendar}
+                    >
+                      <span className="text-[13.5px] font-medium text-foreground">{t('nav.broadcastBoard')}</span>
+                      <span className="text-[12.5px] leading-5 text-muted-foreground">
+                        {t('nav.broadcastBoardBody')}
+                      </span>
+                    </Link>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 border-t border-[var(--ui-border-subtle)] px-4 py-2.5">
+                    <span className="text-[12.5px] text-muted-foreground">
+                      <span className="mr-1.5 font-medium text-foreground">{t('nav.whatsNew')}</span>
+                      {t('nav.whatsNewBody')}
+                    </span>
+                    <Link
+                      className="inline-flex shrink-0 items-center gap-1 text-[12.5px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+                      search={{ layout: 'chart' }}
+                      to={routes.calendar}
+                    >
+                      {t('nav.learnMore')}
+                      <ArrowRight className="size-3.5" />
+                    </Link>
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <Link
+                className="rounded-[6px] px-2.5 py-1.5 text-[13.5px] font-medium text-muted-foreground transition-colors hover:bg-[var(--ui-bg-subtle)] hover:text-foreground data-[status=active]:bg-[var(--ui-bg-subtle)] data-[status=active]:text-foreground"
+                {...resolvedRouteHref(routes.docsIntroduction)}
+              >
+                {t('nav.docs')}
+              </Link>
             </nav>
 
-            <div className="flex items-center gap-2">
+            <div className="ml-auto flex items-center gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger
                   render={
@@ -316,6 +376,7 @@ export function AppShell({ children }: AppShellProps) {
                   <DropdownMenuItem render={<Link to={routes.login} />}>{t('auth.login')}</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              <span className="mx-1 hidden h-5 w-px bg-[var(--ui-border)] sm:block" />
               <Button asChild className="hidden sm:inline-flex" size="sm" variant="ghost">
                 <Link to={routes.login}>{t('auth.login')}</Link>
               </Button>

@@ -14,7 +14,7 @@ import {
   sourceLabel,
   titleOfEntry,
   weekdayName,
-} from '../calendar-model';
+} from '../model/calendar-model';
 import { SourceDot } from './primitives';
 
 const coverPlaceholder = placeholderImagePaths.subjectCover;
@@ -32,7 +32,8 @@ export function BroadcastBoard({
 }: {
   emptyLabel: string;
   entries: CalendarBoardEntry[];
-  onOpen: (entry: CalendarBoardEntry) => void;
+  /** Omit on read-only surfaces, where the hover panel stays informational. */
+  onOpen?: ((entry: CalendarBoardEntry) => void) | undefined;
   state: RouteBackState;
 }) {
   const { locale, t } = useI18n();
@@ -91,7 +92,7 @@ function BroadcastCard({
   state,
 }: {
   entry: CalendarBoardEntry;
-  onOpen: (entry: CalendarBoardEntry) => void;
+  onOpen?: ((entry: CalendarBoardEntry) => void) | undefined;
   state: RouteBackState;
 }) {
   const { locale, t } = useI18n();
@@ -162,15 +163,17 @@ function BroadcastCard({
             />
             {entry.format ? <Row label={t('calendar.detailFormat')} value={entry.format} /> : null}
           </dl>
-          <button
-            className="mt-2 w-full rounded-[4px] border border-[var(--ui-border)] px-2 py-1 text-[11px] font-medium text-[var(--ui-text-muted)] transition-colors hover:text-[var(--ui-text)]"
-            onClick={() => {
-              onOpen(entry);
-            }}
-            type="button"
-          >
-            {t('calendar.detailTitle')}
-          </button>
+          {onOpen ? (
+            <button
+              className="mt-2 w-full rounded-[4px] border border-[var(--ui-border)] px-2 py-1 text-[11px] font-medium text-[var(--ui-text-muted)] transition-colors hover:text-[var(--ui-text)]"
+              onClick={() => {
+                onOpen(entry);
+              }}
+              type="button"
+            >
+              {t('calendar.detailTitle')}
+            </button>
+          ) : null}
         </div>
       </div>
     </div>
