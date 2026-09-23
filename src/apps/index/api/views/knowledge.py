@@ -157,17 +157,13 @@ class EntityListView(APIView):
         page = paginator.paginate_queryset(qs, request, view=self)
         language = request.headers.get("Accept-Language", "").split(",", 1)[0]
         adult_allowed = request_allows_adult_content(request)
-        return paginator.get_paginated_response(
-            [
-                entity_summary(
-                    item,
-                    language=language,
-                    safe=True,
-                    adult_allowed=adult_allowed,
-                )
-                for item in page
-            ]
+        summaries = entity_summaries(
+            list(page),
+            language=language,
+            safe=True,
+            adult_allowed=adult_allowed,
         )
+        return paginator.get_paginated_response([summaries[item.pk] for item in page])
 
 
 class EntityDetailView(APIView):
