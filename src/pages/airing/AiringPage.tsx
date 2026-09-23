@@ -8,6 +8,7 @@ import { routeBackState } from '@/shared/routing/route-state';
 import { routes } from '@/shared/routing/paths';
 import { Seo } from '@/shared/seo/Seo';
 import { Page } from '@/shared/ui/Page';
+import { PageHeading } from '@/shared/ui/PageHeading';
 import { ResultsState, type ResultsStatus } from '@/shared/ui/DataView';
 
 /**
@@ -31,15 +32,19 @@ export function AiringPage() {
           : 'ready';
 
   return (
-    <Page eyebrow={t('nav.groupDiscover')} seo={false} title={t('nav.broadcastBoard')} width="wide">
+    <Page hideHeader seo={false} title={t('nav.broadcastBoard')} width="wide">
       <Seo description={t('nav.broadcastBoardBody')} path={routes.airing} title={t('nav.broadcastBoard')} />
       <div className="grid gap-4 pb-10">
-        <div className="flex items-baseline gap-3">
-          <h1 className="text-[28px] font-semibold tracking-tight text-[var(--ui-text)]">{t('nav.broadcastBoard')}</h1>
-          <span className="text-xs tabular-nums text-[var(--ui-text-muted)]">
-            {`${entries.length} ${t('calendar.itemsUnit')}`}
-          </span>
-        </div>
+        <PageHeading
+          description={t('nav.broadcastBoardBody')}
+          eyebrow={t('nav.groupDiscover')}
+          meta={
+            <span className="tabular-nums text-[var(--ui-text-muted)]">
+              {`${entries.length} ${t('calendar.itemsUnit')}`}
+            </span>
+          }
+          title={t('nav.broadcastBoard')}
+        />
         <ResultsState
           emptyTitle={t('calendar.empty')}
           errorDescription={t('calendar.errorBody')}

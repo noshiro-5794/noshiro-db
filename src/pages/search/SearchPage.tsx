@@ -18,6 +18,7 @@ import { routeBackState } from '@/shared/routing/route-state';
 import { Seo } from '@/shared/seo/Seo';
 import { ResultsMeta, ResultsState, type ResultsStatus } from '@/shared/ui/DataView';
 import { Page } from '@/shared/ui/Page';
+import { PageHeading } from '@/shared/ui/PageHeading';
 import { Pagination } from '@/shared/ui/Pagination';
 
 const pageSize = 30;
@@ -93,13 +94,14 @@ export function SearchPage() {
   }
 
   return (
-    <Page title={t('search.title')} eyebrow={t('nav.groupDiscover')} seo={false}>
+    <Page hideHeader title={t('search.title')} seo={false}>
       <Seo
-        title={t('search.title')}
+        title={t('nav.catalog')}
         description="Search anime and galgame entries by title, year, season, platform, episode count, content type, and source ID."
         path={routes.search}
       />
       <div className="grid gap-5 pb-8">
+        <PageHeading description={t('search.pageBody')} eyebrow={t('nav.groupDiscover')} title={t('nav.catalog')} />
         <SearchFilters search={search} onChange={updateSearchParam} />
 
         <ResultsMeta

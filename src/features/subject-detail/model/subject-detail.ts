@@ -1,4 +1,5 @@
 import { placeholderImagePaths } from '@/shared/assets/public-assets';
+import type { MessageKey } from '@/shared/i18n';
 import type { SubjectDetail, SubjectEpisode, SubjectRelation, SubjectStaff } from '@/shared/api';
 
 export const coverPlaceholder = placeholderImagePaths.subjectCover;
@@ -183,6 +184,127 @@ export function sortInfoboxRows(rows: InfoboxRow[]) {
     const bIndex = importantInfoboxKeys.findIndex((key) => b.key.includes(key));
     return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
   });
+}
+
+/**
+ * Facts arrive as provider-scoped predicates (`anilist-season`, `mal-status`),
+ * which is internal vocabulary a visitor cannot read. Normalise them into a
+ * short, ordered list of attributes the page can label in the reader's
+ * language, and drop provider bookkeeping such as cross-source ids.
+ */
+export type SubjectAttribute = {
+  /** Stable key the UI maps to a translated label. */
+  key: string;
+  /** Raw value, already normalised where the vocabulary is known. */
+  value: string;
+  /** Which provider the value came from, for the small source hint. */
+  provider: string;
+};
+
+const providerPrefix = /^(anilist|mal|bangumi|vndb|jikan)-/u;
+
+/** Predicates worth showing, in the order a reader looks for them. */
+const attributeOrder = [
+  'type',
+  'format',
+  'episodes',
+  'release-date',
+  'end-date',
+  'broadcast-day',
+  'broadcast-time',
+  'broadcast-timezone',
+  'season',
+  'status',
+];
+
+const weekdayLabels: Record<string, string> = {
+  monday: 'mon',
+  tuesday: 'tue',
+  wednesday: 'wed',
+  thursday: 'thu',
+  friday: 'fri',
+  saturday: 'sat',
+  sunday: 'sun',
+};
+
+export function subjectAttributes(subject: SubjectDetail): SubjectAttribute[] {
+  const rows = getInfoboxRows(subject.infobox);
+  const byKey = new Map<string, SubjectAttribute>();
+
+  for (const row of rows) {
+    const provider = providerPrefix.exec(row.key)?.[1] ?? '';
+    const key = row.key.replace(providerPrefix, '');
+    if (/-id-|^id$/u.test(key)) continue;
+    const index = attributeOrder.indexOf(key);
+    if (index === -1) continue;
+    const value = normaliseAttributeValue(key, row.value);
+    if (!value) continue;
+    // First writer wins: the order above already encodes which source is
+    // authoritative for a given attribute.
+    if (!byKey.has(key)) byKey.set(key, { key, value, provider });
+  }
+
+  return [...byKey.values()].sort((a, b) => attributeOrder.indexOf(a.key) - attributeOrder.indexOf(b.key));
+}
+
+function normaliseAttributeValue(key: string, value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  if (key === 'broadcast-day') return weekdayLabels[trimmed.toLowerCase()] ?? trimmed;
+  if (key === 'status') {
+    const status = trimmed.toLowerCase().replace(/\s+/gu, '_');
+    if (['releasing', 'currently_airing', 'airing'].includes(status)) return 'airing';
+    if (['finished', 'finished_airing'].includes(status)) return 'finished';
+    if (['not_yet_aired', 'not_yet_released', 'upcoming'].includes(status)) return 'upcoming';
+  }
+  if (key === 'type' || key === 'format') return trimmed.toLowerCase();
+  if (key === 'season') return trimmed.toLowerCase();
+  return trimmed;
+}
+
+/** Attribute key -> i18n label key. */
+export const attributeLabelKeys: Record<string, MessageKey> = {
+  type: 'subject.attrType',
+  format: 'subject.attrFormat',
+  episodes: 'subject.attrEpisodes',
+  'release-date': 'subject.attrReleaseDate',
+  'end-date': 'subject.attrEndDate',
+  'broadcast-day': 'subject.attrBroadcastDay',
+  'broadcast-time': 'subject.attrBroadcastTime',
+  'broadcast-timezone': 'subject.attrBroadcastTimezone',
+  season: 'subject.attrSeason',
+  status: 'subject.attrStatus',
+};
+
+const weekdayValueKeys: Record<string, MessageKey> = {
+  mon: 'subject.weekdayMon',
+  tue: 'subject.weekdayTue',
+  wed: 'subject.weekdayWed',
+  thu: 'subject.weekdayThu',
+  fri: 'subject.weekdayFri',
+  sat: 'subject.weekdaySat',
+  sun: 'subject.weekdaySun',
+};
+
+const statusValueKeys: Record<string, MessageKey> = {
+  airing: 'subject.statusAiring',
+  finished: 'subject.statusFinished',
+  upcoming: 'subject.statusUpcoming',
+};
+
+const seasonValueKeys: Record<string, MessageKey> = {
+  winter: 'subject.seasonWinter',
+  spring: 'subject.seasonSpring',
+  summer: 'subject.seasonSummer',
+  fall: 'subject.seasonFall',
+};
+
+/** Translated value for a normalised attribute, when the vocabulary is known. */
+export function attributeValueKey(key: string, value: string): MessageKey | null {
+  if (key === 'broadcast-day') return weekdayValueKeys[value] ?? null;
+  if (key === 'status') return statusValueKeys[value] ?? null;
+  if (key === 'season') return seasonValueKeys[value] ?? null;
+  return null;
 }
 
 export function groupStaffByRole(staff: SubjectStaff[]) {
