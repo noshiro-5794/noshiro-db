@@ -697,23 +697,64 @@ class CalendarEventListView(APIView):
             )
             ordered = self._collapse_weekday_sources(ordered)
         adult_allowed = request_allows_adult_content(request)
+        # Same batching as the board endpoint: resolve identity, public
+        # visibility and summaries for the whole page instead of per event.
+        redirects = entity_resolution_service.redirect_map()
+        clusters = entity_resolution_service.cluster_map()
+
+        def root_id_of(entity_id):
+            return entity_resolution_service.resolve_with(redirects, entity_id)
+
+        def members_of(root_id):
+            return clusters.get(root_id, {root_id})
+
+        work_roots = {root_id_of(event.work.entity_id) for event in ordered}
+        episode_roots = {
+            root_id_of(event.episode_entity_id)
+            for event in ordered
+            if event.episode_entity_id is not None
+        }
+        cluster_ids = {
+            member
+            for root_id in work_roots | episode_roots
+            for member in members_of(root_id)
+        }
+        entities_by_id = {
+            item.pk: item for item in Entity.objects.filter(pk__in=cluster_ids)
+        }
+
+        def publicly_visible(root_id) -> bool:
+            members = members_of(root_id)
+            return bool(members) and all(
+                entities_by_id[member].visibility == Entity.Visibility.PUBLIC
+                for member in members
+                if member in entities_by_id
+            )
+
+        summaries = entity_summaries(
+            [
+                entities_by_id[root_id]
+                for root_id in work_roots
+                if root_id in entities_by_id
+            ],
+            safe=True,
+            adult_allowed=adult_allowed,
+        )
         data = []
         seen = set()
         for event in ordered:
-            work_entity = entity_resolution_service.resolve(event.work.entity)
-            if not entity_resolution_service.is_public(work_entity):
+            work_entity = entities_by_id.get(root_id_of(event.work.entity_id))
+            if work_entity is None or not publicly_visible(work_entity.pk):
                 continue
-            summary = entity_summary(
-                work_entity,
-                safe=True,
-                adult_allowed=adult_allowed,
-            )
+            summary = summaries.get(work_entity.pk)
+            if summary is None:
+                continue
             if summary["audience"] == Entity.Audience.ADULT and not adult_allowed:
                 continue
             episode_id = None
             if event.episode_entity_id is not None:
-                episode = entity_resolution_service.resolve(event.episode_entity)
-                if not entity_resolution_service.is_public(episode):
+                episode = entities_by_id.get(root_id_of(event.episode_entity_id))
+                if episode is None or not publicly_visible(episode.pk):
                     continue
                 episode_id = episode.id
             key = (
