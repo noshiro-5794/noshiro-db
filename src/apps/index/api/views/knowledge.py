@@ -810,11 +810,40 @@ class AiringBoardEntryListView(APIView):
         # thousands of queries and made every page that reads this endpoint —
         # home, search and calendar included — take seconds to answer.
         visible: list[tuple[AiringBoardEntry, Entity]] = []
+        # Resolve and public-check in memory. Both helpers are written per
+        # entity and cost a query per hop, which dominated the request.
+        redirects = entity_resolution_service.redirect_map()
+        clusters = entity_resolution_service.cluster_map()
+        root_ids = {
+            entity_resolution_service.resolve_with(redirects, entry.work.entity_id)
+            for entry in entries
+        }
+        cluster_ids = {
+            entity_id
+            for root_id in root_ids
+            for entity_id in clusters.get(root_id, {root_id})
+        }
+        entities_by_id = {
+            item.pk: item for item in Entity.objects.filter(pk__in=cluster_ids)
+        }
+
+        def is_public(root_id: Any) -> bool:
+            members = clusters.get(root_id, {root_id})
+            return all(
+                entities_by_id[member_id].visibility == Entity.Visibility.PUBLIC
+                for member_id in members
+                if member_id in entities_by_id
+            ) and bool(members)
+
         for entry in entries:
-            work_entity = entity_resolution_service.resolve(entry.work.entity)
+            root_id = entity_resolution_service.resolve_with(
+                redirects, entry.work.entity_id
+            )
+            work_entity = entities_by_id.get(root_id)
             if (
-                work_entity.lifecycle != Entity.Lifecycle.ACTIVE
-                or not entity_resolution_service.is_public(work_entity)
+                work_entity is None
+                or work_entity.lifecycle != Entity.Lifecycle.ACTIVE
+                or not is_public(root_id)
             ):
                 continue
             visible.append((entry, work_entity))
