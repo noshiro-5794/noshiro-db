@@ -54,6 +54,9 @@ from apps.index.selectors.projections import (
     request_allows_adult_content,
 )
 from apps.index.services import entity_resolution_service
+from apps.index.services.airing_board_projection import (
+    airing_board_projection_service,
+)
 from shared.api.contracts import (
     PaginationQuerySerializer,
     api_responses,
@@ -787,6 +790,9 @@ class AiringBoardEntryListView(APIView):
         )
         if board is None:
             return Response([])
+        window_start, window_end = airing_board_projection_service.window_dates(
+            board.season_key
+        )
         adult_allowed = request_allows_adult_content(request)
         profiles = {
             entity_id: (format_value, premiered_on, ended_on, episode_count)
@@ -834,6 +840,8 @@ class AiringBoardEntryListView(APIView):
                 {
                     "id": entry.id,
                     "season_key": board.season_key,
+                    "window_start": window_start,
+                    "window_end": window_end,
                     "work_id": entry.work_id,
                     "episode_entity_id": entry.episode_entity_id,
                     "episode_number": entry.episode_number,
