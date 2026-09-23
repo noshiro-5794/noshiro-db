@@ -100,26 +100,6 @@ export function rangeDays(from: Date, to: Date): Date[] {
   return days;
 }
 
-/**
- * Broadcast window of a board, derived from its season key (`2026Q3`).
- *
- * The board is a weekly schedule for one season, so projecting it onto every
- * week forever would show the same works in a future year. The calendar clamps
- * both its projection and its navigation to this window; when the season rolls
- * over the next board supplies the next window.
- */
-export function seasonWindow(seasonKey: string): { from: Date; to: Date } | null {
-  const match = /^(\d{4})Q([1-4])$/.exec(seasonKey.trim().toUpperCase());
-  if (!match) return null;
-  const year = Number(match[1]);
-  const quarter = Number(match[2]);
-  const startMonth = (quarter - 1) * 3;
-  return {
-    from: new Date(year, startMonth, 1),
-    to: new Date(year, startMonth + 3, 0),
-  };
-}
-
 export function isWithin(date: Date, window: { from: Date; to: Date | null } | null): boolean {
   if (!window) return true;
   const value = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
@@ -127,15 +107,17 @@ export function isWithin(date: Date, window: { from: Date; to: Date | null } | n
 }
 
 /**
- * Months a visitor can browse for one board: the season plus the month before
- * and after it, so any month of the season can show its neighbours.
+ * Broadcast window the board covers: the previous, current and next month, as
+ * reported by the API. A month grid never reaches further than its neighbouring
+ * months, so every visible cell stays inside a window the data supports.
  */
-export function boardWindow(seasonKey: string): { from: Date; to: Date } | null {
-  const season = seasonWindow(seasonKey);
-  if (!season) return null;
+export function boardWindow(entry: CalendarBoardEntry | undefined): { from: Date; to: Date } | null {
+  const from = parseDateOnly(entry?.windowStart ?? null);
+  const to = parseDateOnly(entry?.windowEnd ?? null);
+  if (!from || !to) return null;
   return {
-    from: new Date(season.from.getFullYear(), season.from.getMonth() - 1, 1),
-    to: new Date(season.to.getFullYear(), season.to.getMonth() + 2, 0),
+    from,
+    to,
   };
 }
 

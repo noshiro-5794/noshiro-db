@@ -362,6 +362,8 @@ export function decodeCalendarBoardEntries(value: unknown): CalendarBoardEntry[]
     return {
       id: item['id'],
       seasonKey: isString(item['season_key']) ? item['season_key'] : '',
+      windowStart: isString(item['window_start']) ? item['window_start'] : '',
+      windowEnd: isString(item['window_end']) ? item['window_end'] : '',
       workId: item['work_id'],
       episodeEntityId: isNullableString(item['episode_entity_id']) ? item['episode_entity_id'] : null,
       episodeNumber: isInteger(item['episode_number']) ? item['episode_number'] : null,

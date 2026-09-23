@@ -41,12 +41,9 @@ export function MonthGrid({
 
   return (
     <Panel>
-      <div className="grid grid-cols-7 border-b border-[var(--ui-border-subtle)]">
+      <div className="grid grid-cols-7 border-b border-[var(--cal-hairline)]">
         {labels.map((label) => (
-          <div
-            className="border-r border-[var(--ui-border-subtle)] py-2 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--ui-text-subtle)] last:border-r-0"
-            key={label}
-          >
+          <div className="py-2.5 text-center text-[13px] font-medium text-[var(--cal-muted)]" key={label}>
             {label}
           </div>
         ))}
@@ -59,18 +56,18 @@ export function MonthGrid({
           return (
             <div
               className={cn(
-                'group/cell relative min-h-[124px] border-b border-r border-[var(--ui-border-subtle)] px-1 pb-1 pt-1.5 last:border-r-0',
+                'group/cell relative min-h-[132px] border-b border-r border-[var(--cal-hairline)] px-1.5 pb-2 pt-2 last:border-r-0',
                 'hover:bg-[var(--ui-bg-inset)]',
               )}
               key={dateKey(day)}
             >
-              <div className="mb-1 flex justify-center">
+              <div className="mb-1.5 flex justify-center">
                 <button
                   className={cn(
-                    'grid size-6 place-items-center rounded-full text-[11px] font-medium tabular-nums transition-colors',
+                    'grid h-6 min-w-6 place-items-center rounded-[6px] px-1.5 text-[13px] tabular-nums transition-colors',
                     outside ? 'text-[var(--ui-text-placeholder)]' : 'text-[var(--ui-text-muted)]',
                     isToday
-                      ? 'bg-[var(--ui-accent)] text-[var(--ui-accent-contrast)] hover:bg-[var(--ui-accent-hover)]'
+                      ? 'calendar-today font-semibold'
                       : 'hover:bg-[var(--ui-bg-muted)] hover:text-[var(--ui-text)]',
                   )}
                   onClick={() => {
@@ -81,7 +78,7 @@ export function MonthGrid({
                   {day.getDate()}
                 </button>
               </div>
-              <div className={cn('grid gap-0.5', outside && 'opacity-45')}>
+              <div className={cn('grid gap-[3px]', outside && 'opacity-45')}>
                 {entries.slice(0, MAX_BARS_PER_DAY).map((occurrence) => (
                   <EventBar key={occurrence.key} occurrence={occurrence} onOpen={onOpenOccurrence} />
                 ))}
@@ -118,9 +115,8 @@ function EventBar({
   return (
     <button
       className={cn(
-        'calendar-bar flex w-full min-w-0 items-center gap-1 overflow-hidden rounded-[4px] px-1.5 py-[3px] text-left text-[11px] font-medium',
-        'transition-[filter] hover:brightness-110 focus-visible:brightness-110',
-        occurrence.tentative && 'opacity-80',
+        'calendar-bar flex w-full min-w-0 items-center gap-1 overflow-hidden rounded-[6px] py-[3px] pl-1.5 pr-2 text-left text-[12px] font-medium',
+        occurrence.tentative && 'opacity-75',
       )}
       data-cal-source={provider}
       onClick={(event) => {
