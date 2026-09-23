@@ -5,6 +5,8 @@ export const routes = {
   resetPassword: '/password/reset',
   search: '/search',
   calendar: '/calendar',
+  airing: '/airing',
+  season: '/season',
   docsRoot: '/docs',
   docsIntroduction: '/docs/introduction',
   docsPattern: '/docs/:slug',

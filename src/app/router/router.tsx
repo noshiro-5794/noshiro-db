@@ -32,6 +32,7 @@ import { parseIntegerParam } from '@/shared/routing/search-params';
 import { parseUuid } from '@/shared/lib/validation';
 
 const AdminPage = lazyRouteComponent(() => import('@/pages/admin/AdminPage'), 'AdminPage');
+const AiringPage = lazyRouteComponent(() => import('@/pages/airing/AiringPage'), 'AiringPage');
 const BookmarksPage = lazyRouteComponent(() => import('@/pages/community/BookmarksPage'), 'BookmarksPage');
 const CalendarPage = lazyRouteComponent(() => import('@/pages/calendar/CalendarPage'), 'CalendarPage');
 const CollectionsPage = lazyRouteComponent(() => import('@/pages/collections/CollectionsPage'), 'CollectionsPage');
@@ -43,6 +44,7 @@ const CommunityPostsPage = lazyRouteComponent(
 const DocsPage = lazyRouteComponent(() => import('@/pages/docs/DocsPage'), 'DocsPage');
 const DocsIndexPage = lazyRouteComponent(() => import('@/pages/docs/DocsPage'), 'DocsIndexPage');
 const HomePage = lazyRouteComponent(() => import('@/pages/home/HomePage'), 'HomePage');
+const SeasonPage = lazyRouteComponent(() => import('@/pages/season/SeasonPage'), 'SeasonPage');
 const LibraryPage = lazyRouteComponent(() => import('@/pages/library/LibraryPage'), 'LibraryPage');
 const LoginPage = lazyRouteComponent(() => import('@/pages/auth/LoginPage'), 'LoginPage');
 const MePage = lazyRouteComponent(() => import('@/pages/profile/MePage'), 'MePage');
@@ -135,6 +137,8 @@ const routeTree = rootRoute.addChildren([
   route('/password/reset', ResetPasswordPage, validateEmptySearch),
   route('/search', SearchPage, validateSearchPageSearch),
   route('/calendar', CalendarPage, validateCalendarSearch),
+  route('/airing', AiringPage, validateEmptySearch),
+  route('/season', SeasonPage, validateEmptySearch),
   route('/docs', DocsIndexPage, validateEmptySearch),
   route('/docs/$slug', DocsPage, validateEmptySearch),
   route('/community/posts', authenticated(CommunityPostsPage), validateCommunityPostsSearch),
