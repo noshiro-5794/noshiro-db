@@ -504,7 +504,10 @@ def entity_queryset(
         qs = qs.filter(work__work_type=subject_type)
     if safe_only:
         qs = qs.exclude(audience=Entity.Audience.ADULT)
-    return qs.distinct().order_by("-updated_at", "id")
+    # No DISTINCT: the filter is on the primary key and every join below is
+    # one-to-one, so rows cannot repeat. Keeping it forced Postgres to sort and
+    # de-duplicate every entity column, which dominated the catalogue query.
+    return qs.order_by("-updated_at", "id")
 
 
 def _canonical_ids(entity_ids) -> set:
