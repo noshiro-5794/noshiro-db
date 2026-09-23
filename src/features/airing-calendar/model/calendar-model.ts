@@ -155,6 +155,35 @@ export function runWindowOf(entry: CalendarBoardEntry): { from: Date; to: Date |
   return { from, to: null };
 }
 
+export type SeasonBar = {
+  entry: CalendarBoardEntry;
+  from: Date;
+  /** Clamped to the board window; open-ended runs span to its last day. */
+  to: Date;
+};
+
+/**
+ * One row per work for the season timeline, ordered by premiere so the whole
+ * quarter reads as a schedule: what started when, and how long it runs.
+ */
+export function seasonBars(entries: CalendarBoardEntry[], window: { from: Date; to: Date } | null): SeasonBar[] {
+  if (!window) return [];
+  return entries
+    .flatMap((entry) => {
+      const run = runWindowOf(entry);
+      if (!run) return [];
+      const from = run.from < window.from ? window.from : run.from;
+      const rawTo = run.to ?? window.to;
+      const to = rawTo > window.to ? window.to : rawTo;
+      if (to < from) return [];
+      return [{ entry, from, to }];
+    })
+    .sort(
+      (left, right) =>
+        left.from.getTime() - right.from.getTime() || titleOfEntry(left.entry).localeCompare(titleOfEntry(right.entry)),
+    );
+}
+
 function entryWeekday(entry: CalendarBoardEntry): number | null {
   if (entry.weekday !== null) return entry.weekday;
   // A day-precision bar carries a one-off release date, not a weekly slot, so
