@@ -8,7 +8,7 @@ import {
   weekdayLabels,
   type CalendarDay,
   type CalendarOccurrence,
-} from '../calendar-model';
+} from '../model/calendar-model';
 import { Panel } from './primitives';
 
 const MAX_BARS_PER_DAY = 3;

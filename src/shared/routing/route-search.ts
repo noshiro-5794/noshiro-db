@@ -6,6 +6,28 @@ export function validateEmptySearch(): Record<never, never> {
   return {};
 }
 
+const calendarLayouts = ['calendar', 'chart'] as const;
+const calendarViews = ['month', 'week', 'day'] as const;
+
+export type CalendarSearch = {
+  layout?: (typeof calendarLayouts)[number];
+  view?: (typeof calendarViews)[number];
+};
+
+/**
+ * The airing calendar exposes its presentation as a URL parameter so the
+ * navigation can link straight to a module — the month grid, the time surface
+ * or the per-weekday broadcast board — instead of a single page with a switch.
+ */
+export function validateCalendarSearch(search: RawSearch): CalendarSearch {
+  const layout = optionalEnum(search['layout'], calendarLayouts);
+  const view = optionalEnum(search['view'], calendarViews);
+  return {
+    ...(layout ? { layout } : {}),
+    ...(view ? { view } : {}),
+  };
+}
+
 const collectionOrderings = [
   '-id',
   'id',
