@@ -1,4 +1,4 @@
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
 
 from apps.index.models import (
     ContentSafety,
@@ -487,7 +487,7 @@ def entity_queryset(
             collection__slug__in=collection_slugs,
             listing_state="listed",
         ).values_list("entity_id", flat=True)
-        qs = qs.filter(pk__in=_canonical_ids(listed_ids))
+        qs = qs.filter(_canonical_filter(listed_ids))
     if keyword:
         matching_ids = set(
             current_entity_names()
@@ -508,6 +508,24 @@ def entity_queryset(
     # one-to-one, so rows cannot repeat. Keeping it forced Postgres to sort and
     # de-duplicate every entity column, which dominated the catalogue query.
     return qs.order_by("-updated_at", "id")
+
+
+def _canonical_filter(entity_ids):
+    """Collapse ids onto their canonical entity inside SQL.
+
+    Listing the catalogue covers every membership row, and materialising those
+    ids in Python produced a filter with a hundred thousand parameters, which
+    Postgres then had to plan on both the page and its count query. Keeping the
+    redirect join in the query lets the database resolve it with an index.
+    """
+    redirects = EntityRedirect.objects.filter(is_active=True)
+    sources = redirects.filter(source_entity_id__in=entity_ids).values_list(
+        "source_entity_id", flat=True
+    )
+    targets = redirects.filter(source_entity_id__in=entity_ids).values_list(
+        "target_entity_id", flat=True
+    )
+    return Q(pk__in=targets) | (Q(pk__in=entity_ids) & ~Q(pk__in=sources))
 
 
 def _canonical_ids(entity_ids) -> set:
