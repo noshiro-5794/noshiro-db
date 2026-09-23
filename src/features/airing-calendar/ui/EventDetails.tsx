@@ -5,7 +5,7 @@ import { useI18n } from '@/shared/i18n';
 import { placeholderImagePaths } from '@/shared/assets/public-assets';
 import { routes } from '@/shared/routing/paths';
 import type { RouteBackState } from '@/shared/routing/route-state';
-import { formatDayTitle, formatTime, titleOf, weekdayName, type CalendarOccurrence } from '../calendar-model';
+import { formatDayTitle, formatTime, titleOf, weekdayName, type CalendarOccurrence } from '../model/calendar-model';
 import { IconButton } from './primitives';
 
 const coverPlaceholder = placeholderImagePaths.subjectCover;
