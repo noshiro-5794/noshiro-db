@@ -153,6 +153,7 @@ def entity_summary(
 def entity_summaries(
     entities: list[Entity],
     *,
+    language: str = "",
     safe: bool = True,
     adult_allowed: bool = False,
 ) -> dict:
@@ -254,7 +255,7 @@ def entity_summaries(
             "lifecycle": root.lifecycle,
             "audience": audience,
             "work_type": work.work_type if work else None,
-            "display_name": _choose_name(names.get(root_id, [])),
+            "display_name": _choose_name(names.get(root_id, []), language=language),
             "collections": collections,
             "media": media,
         }
@@ -486,11 +487,7 @@ def entity_queryset(
             collection__slug__in=collection_slugs,
             listing_state="listed",
         ).values_list("entity_id", flat=True)
-        canonical_ids = {
-            entity_resolution_service.resolve(entity).pk
-            for entity in Entity.objects.filter(pk__in=listed_ids)
-        }
-        qs = qs.filter(pk__in=canonical_ids)
+        qs = qs.filter(pk__in=_canonical_ids(listed_ids))
     if keyword:
         matching_ids = set(
             current_entity_names()
@@ -502,16 +499,26 @@ def entity_queryset(
             .filter(url__icontains=keyword)
             .values_list("entity_id", flat=True)
         )
-        canonical_ids = {
-            entity_resolution_service.resolve(entity).pk
-            for entity in Entity.objects.filter(pk__in=matching_ids)
-        }
-        qs = qs.filter(pk__in=canonical_ids)
+        qs = qs.filter(pk__in=_canonical_ids(matching_ids))
     if subject_type:
         qs = qs.filter(work__work_type=subject_type)
     if safe_only:
         qs = qs.exclude(audience=Entity.Audience.ADULT)
     return qs.distinct().order_by("-updated_at", "id")
+
+
+def _canonical_ids(entity_ids) -> set:
+    """Collapse ids onto their canonical entity using one redirect query.
+
+    Resolving each id individually walked the redirect table once per entity, so
+    listing the catalogue issued tens of thousands of queries and the endpoint
+    timed out. The whole redirect graph comfortably fits in memory.
+    """
+    redirects = entity_resolution_service.redirect_map()
+    return {
+        entity_resolution_service.resolve_with(redirects, entity_id)
+        for entity_id in entity_ids
+    }
 
 
 def _projection_rows(entity: Entity, *, cache_name: str, queryset) -> list:
