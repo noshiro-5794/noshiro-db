@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useLocation } from '@tanstack/react-router';
+import { getRouteApi, useLocation } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useI18n } from '@/shared/i18n';
@@ -25,16 +25,20 @@ import {
   startOfWeek,
   weekRange,
   type CalendarOccurrence,
-} from './calendar-model';
-import { BroadcastBoard } from './ui/BroadcastBoard';
-import { EventDetails } from './ui/EventDetails';
-import { MonthGrid } from './ui/MonthGrid';
-import { IconButton, SegmentedControl } from './ui/primitives';
-import { TimeGrid } from './ui/TimeGrid';
-import './calendar.css';
+} from '@/features/airing-calendar';
+import {
+  BroadcastBoard,
+  EventDetails,
+  IconButton,
+  MonthGrid,
+  SegmentedControl,
+  TimeGrid,
+} from '@/features/airing-calendar';
 
 type CalendarLayout = 'calendar' | 'chart';
 type CalendarView = 'month' | 'week' | 'day';
+
+const calendarRoute = getRouteApi('/calendar');
 
 const layoutOptions: { value: CalendarLayout; labelKey: 'calendar.layoutCalendar' | 'calendar.layoutChart' }[] = [
   { value: 'calendar', labelKey: 'calendar.layoutCalendar' },
@@ -50,10 +54,20 @@ const viewOptions: { value: CalendarView; labelKey: 'calendar.month' | 'calendar
 export function CalendarPage() {
   const { locale, t } = useI18n();
   const location = useLocation();
-  const [layout, setLayout] = useState<CalendarLayout>('calendar');
-  const [view, setView] = useState<CalendarView>('month');
+  const search = calendarRoute.useSearch();
+  const navigate = calendarRoute.useNavigate();
+  const layout: CalendarLayout = search.layout ?? 'calendar';
+  const view: CalendarView = search.view ?? 'month';
   const [cursor, setCursor] = useState(() => new Date());
   const [selected, setSelected] = useState<CalendarOccurrence | null>(null);
+
+  // Presentation lives in the URL so a link can point at one module directly.
+  const setLayout = (next: CalendarLayout) => {
+    void navigate({ replace: true, search: (current) => ({ ...current, layout: next }) });
+  };
+  const setView = (next: CalendarView) => {
+    void navigate({ replace: true, search: (current) => ({ ...current, view: next }) });
+  };
 
   const calendarQuery = useQuery(subjectQueries.calendarBoard());
   const entries = useMemo(() => calendarQuery.data ?? [], [calendarQuery.data]);
