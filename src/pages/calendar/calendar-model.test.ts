@@ -14,6 +14,8 @@ function entry(overrides: Partial<CalendarBoardEntry>): CalendarBoardEntry {
   return {
     id: 'entry',
     seasonKey: '2026Q3',
+    windowStart: '2026-08-01',
+    windowEnd: '2026-10-31',
     workId: 'work',
     episodeEntityId: null,
     episodeNumber: null,

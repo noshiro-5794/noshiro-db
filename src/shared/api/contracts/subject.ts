@@ -185,6 +185,9 @@ export type CalendarBoardWork = {
 export type CalendarBoardEntry = {
   id: UUID;
   seasonKey: string;
+  /** Inclusive first and last day the board covers, as `YYYY-MM-DD`. */
+  windowStart: DateString;
+  windowEnd: DateString;
   workId: UUID;
   episodeEntityId: UUID | null;
   episodeNumber: number | null;
