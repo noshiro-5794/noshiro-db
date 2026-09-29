@@ -150,6 +150,12 @@ class MALImportService:
             observation=observation,
             item=item,
         )
+        self._upsert_metrics(
+            entity=entity,
+            record=recorded.record,
+            observation=observation,
+            item=item,
+        )
         self._ensure_anime_membership(entity)
         return entity_resolution_service.resolve(entity)
 
@@ -310,6 +316,19 @@ class MALImportService:
                 value_type=value_type,
                 json_pointer=f"/{slugify(slug)}",
             )
+
+    @staticmethod
+    def _upsert_metrics(*, entity, record, observation, item) -> None:
+        knowledge_ingestion_service.record_metrics(
+            entity=entity,
+            provider_record=record,
+            observed_at=observation.observed_at,
+            values={
+                "members": item.get("num_list_users"),
+                "scoring-users": item.get("num_scoring_users"),
+                "score": item.get("mean"),
+            },
+        )
 
     @staticmethod
     def _ensure_anime_membership(entity: Entity) -> None:

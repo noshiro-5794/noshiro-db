@@ -321,6 +321,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.ai.tasks.evaluate_pending_candidates_task",
         "schedule": crontab(minute="*/30"),
     },
+    "refresh-popularity": {
+        "task": "apps.index.tasks.refresh_popularity_task",
+        "schedule": crontab(hour=5, minute=15),
+    },
     "worker-heartbeat": {
         "task": "apps.sync.tasks.maintenance.worker_heartbeat",
         "schedule": 60.0,
