@@ -108,3 +108,27 @@ class CollectionItemNotFound(UserError):
 class InvalidUserSubjectIds(UserError):
     default_code = "users.invalid_library_entry_ids"
     default_message = "One or more library entry IDs are invalid."
+
+
+class SocialLoginUnavailable(UserError):
+    default_code = "users.social_login_unavailable"
+    default_message = "This sign-in provider is not configured."
+    default_status = HTTPStatus.SERVICE_UNAVAILABLE
+
+
+class InvalidSocialState(UserError):
+    default_code = "users.invalid_social_state"
+    default_message = "The sign-in request is invalid or has expired."
+    default_status = HTTPStatus.BAD_REQUEST
+
+
+class SocialProviderError(UserError):
+    default_code = "users.social_provider_error"
+    default_message = "The sign-in provider could not be reached."
+    default_status = HTTPStatus.BAD_GATEWAY
+
+
+class SocialEmailMissing(UserError):
+    default_code = "users.social_email_missing"
+    default_message = "The provider did not return a verified email address."
+    default_status = HTTPStatus.CONFLICT
