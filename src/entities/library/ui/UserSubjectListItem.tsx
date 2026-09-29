@@ -34,7 +34,7 @@ function subtitleOf(item: UserSubject, t: ReturnType<typeof useI18n>['t']) {
   const { subject } = item;
   // The payload carries catalogue buckets ('anime'); a reader should see 动画.
   return (
-    subjectKindLabel(subject.display_subtitle, t) ||
+    subjectKindLabel(subject.display_subtitle ?? '', t) ||
     (subject.display_meta ?? [])
       .map((meta) => subjectKindLabel(meta, t))
       .filter(Boolean)
