@@ -48,7 +48,18 @@ function DataToolbarPrimary({ className, ...props }: ComponentProps<'div'>) {
 }
 
 function DataToolbarFilters({ className, ...props }: ComponentProps<'div'>) {
-  return <div className={cn('flex flex-wrap gap-2', className)} data-slot="data-toolbar-filters" {...props} />;
+  return (
+    <div
+      className={cn(
+        // A phone stacks five full-width selects and pushes the first result a
+        // screen down, so the row scrolls sideways there and wraps from sm up.
+        'flex flex-nowrap gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0',
+        className,
+      )}
+      data-slot="data-toolbar-filters"
+      {...props}
+    />
+  );
 }
 
 function SearchField({ className, ...props }: SearchFieldProps) {

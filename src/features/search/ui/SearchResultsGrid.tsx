@@ -11,6 +11,13 @@ function titleOf(item: Pick<SubjectSummary, 'display_title' | 'title' | 'title_c
   return item.display_title || item.title || item.title_cn || fallback;
 }
 
+/** Catalogue buckets are slugs; a visitor should read 动画 / Galgame. */
+function subjectKindLabel(kind: string, t: ReturnType<typeof useI18n>['t']) {
+  if (kind === 'anime') return t('search.anime');
+  if (kind === 'galgame') return t('search.galgame');
+  return kind;
+}
+
 function subjectPosterOf(subject: SubjectSummary) {
   return (
     subject.images?.poster || subject.images?.thumbnail || subject.image_thumbnail || subject.image || coverPlaceholder
@@ -65,7 +72,7 @@ export function SearchResultsGrid({ state, subjects }: { state: RouteBackState; 
           poster={subjectPosterOf(subject)}
           state={state}
           subjectId={subject.id}
-          subtitle={subject.display_subtitle || subject.subject_type}
+          subtitle={subject.display_subtitle || subjectKindLabel(subject.subject_type, t)}
           title={titleOf(subject, t('common.untitledSubject'))}
         />
       ))}

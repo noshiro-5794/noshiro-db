@@ -102,7 +102,7 @@ export function SearchFilters({
 
   return (
     <DataToolbar onSubmit={submit}>
-      <DataToolbarRow className="lg:grid-cols-[minmax(0,1fr)_auto]">
+      <DataToolbarRow className="grid-cols-[minmax(0,1fr)_auto]">
         <DataToolbarPrimary>
           <SearchField
             aria-label={t('search.keyword')}
@@ -116,7 +116,7 @@ export function SearchFilters({
             }}
           />
         </DataToolbarPrimary>
-        <Button className="w-full lg:w-auto" size="lg" type="submit" variant="secondary">
+        <Button size="lg" type="submit" variant="secondary">
           {t('search.title')}
         </Button>
       </DataToolbarRow>
@@ -126,8 +126,8 @@ export function SearchFilters({
           <div
             className={
               defaultSearchFilters.includes(filter)
-                ? 'w-full min-w-0 sm:w-44'
-                : 'grid w-full min-w-0 grid-cols-[minmax(0,1fr)_32px] gap-1 sm:w-[calc(11rem+2.25rem)]'
+                ? 'w-[9.5rem] min-w-0 shrink-0 sm:w-44'
+                : 'grid w-[calc(11rem+2.25rem)] min-w-0 shrink-0 grid-cols-[minmax(0,1fr)_32px] gap-1'
             }
             key={filter}
           >
