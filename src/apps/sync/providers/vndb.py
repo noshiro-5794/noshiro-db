@@ -199,7 +199,10 @@ class VNDBClient:
             results=1,
         )
         if not data["results"]:
-            raise VNDBAPIError(f"VNDB work {vndb_id} was not found.")
+            # VNDB returns an empty result set for a deleted or private id.
+            # Mark it as a terminal 404 so the campaign retires the work item
+            # instead of retrying an id that will never resolve.
+            raise VNDBAPIError(f"VNDB work {vndb_id} was not found.", status_code=404)
         return data["results"][0]
 
     def discover_vn_page(
