@@ -44,7 +44,8 @@ export type SubjectListQuery = PageQuery & {
   date_to?: string;
   episodes_min?: number;
   episodes_max?: number;
-  ordering?: 'date' | '-date' | 'title' | '-title' | 'updated_at' | '-updated_at' | 'created_at' | '-created_at';
+  ordering?:
+    'popular' | 'date' | '-date' | 'title' | '-title' | 'updated_at' | '-updated_at' | 'created_at' | '-created_at';
 };
 
 export type SubjectOrdering = NonNullable<SubjectListQuery['ordering']>;

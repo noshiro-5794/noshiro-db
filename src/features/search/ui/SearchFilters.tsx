@@ -186,9 +186,9 @@ export function SearchFilters({
               <FilterMenu
                 label={filterLabels.sort}
                 options={orderingOptions.map((option) => ({ label: t(option.labelKey), value: option.value }))}
-                value={search.ordering ?? '-date'}
+                value={search.ordering ?? 'popular'}
                 onChange={(value) => {
-                  onChange('ordering', value === '-date' ? '' : value);
+                  onChange('ordering', value === 'popular' ? '' : value);
                 }}
               />
             ) : null}
