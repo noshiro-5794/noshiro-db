@@ -63,6 +63,50 @@ class User(AbstractUser):
         return self.email
 
 
+class SocialIdentity(models.Model):
+    """Link between a local account and an external sign-in provider.
+
+    Kept separate from the user row so someone who registered with a password
+    can attach GitHub later, and so one account can carry several providers
+    without the user table growing a column per provider.
+    """
+
+    class Provider(models.TextChoices):
+        GITHUB = "github", "GitHub"
+
+    user = models.ForeignKey(
+        "users.User",
+        on_delete=models.CASCADE,
+        related_name="social_identities",
+    )
+    provider = models.CharField(max_length=32, choices=Provider.choices)
+    # The provider's own stable user id, never the handle: handles are renameable.
+    subject = models.CharField(max_length=191)
+    handle = models.CharField(max_length=191, blank=True)
+    email = models.EmailField(blank=True)
+    avatar_url = models.URLField(max_length=1024, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "social_identity"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["provider", "subject"],
+                name="uq_social_identity_subject",
+            )
+        ]
+        indexes = [
+            models.Index(
+                fields=["user", "provider"],
+                name="idx_social_identity_user",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.provider}:{self.handle or self.subject}"
+
+
 class EmailVerification(models.Model):
     class Purpose(models.TextChoices):
         REGISTER = "register", "Register"
