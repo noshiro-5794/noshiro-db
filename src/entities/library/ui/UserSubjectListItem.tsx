@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { Star } from 'lucide-react';
 import type { UserSubject } from '@/shared/api';
 import { useI18n } from '@/shared/i18n';
+import { subjectKindLabel, subjectStatusLabel } from '@/shared/i18n/subject-labels';
 import { formatDate } from '@/shared/lib/date';
 import { routes } from '@/shared/routing/paths';
 import type { RouteBackState } from '@/shared/routing/route-state';
@@ -23,38 +24,25 @@ function metadataOf(item: UserSubject, episodeUnit: string) {
       : '';
   const hasSubtitle = Boolean(subject.display_subtitle);
 
-  return [
-    subject.subject_type,
-    subject.platform || '',
-    !hasSubtitle && year ? String(year) : '',
-    !hasSubtitle ? episodes : '',
-  ]
+  return [subject.platform || '', !hasSubtitle && year ? String(year) : '', !hasSubtitle ? episodes : '']
     .filter(Boolean)
     .filter((value, index, values) => values.indexOf(value) === index)
     .slice(0, 4);
 }
 
-function subtitleOf(item: UserSubject) {
+function subtitleOf(item: UserSubject, t: ReturnType<typeof useI18n>['t']) {
   const { subject } = item;
+  // The payload carries catalogue buckets ('anime'); a reader should see 动画.
   return (
-    subject.display_subtitle ||
-    subject.display_meta?.join(' / ') ||
+    subjectKindLabel(subject.display_subtitle, t) ||
+    (subject.display_meta ?? [])
+      .map((meta) => subjectKindLabel(meta, t))
+      .filter(Boolean)
+      .join(' / ') ||
     subject.date ||
     subject.platform ||
-    subject.subject_type ||
-    ''
+    subjectKindLabel(subject.subject_type, t)
   );
-}
-
-function statusLabel(status: string, t: ReturnType<typeof useI18n>['t']) {
-  const labels: Record<string, string> = {
-    wish: t('status.wish'),
-    doing: t('status.doing'),
-    done: t('status.done'),
-    on_hold: t('status.onHold'),
-    drop: t('status.drop'),
-  };
-  return labels[status] ?? status.replaceAll('_', ' ');
 }
 
 function SimpleRating({ value }: { value: number | null }) {
@@ -108,8 +96,8 @@ export function UserSubjectListItem({
           <span className="line-clamp-1 font-semibold text-[var(--ui-text)]">
             {titleOf(item, t('common.untitledSubject'))}
           </span>
-          {subtitleOf(item) ? (
-            <span className="line-clamp-1 text-sm text-[var(--ui-text-muted)]">{subtitleOf(item)}</span>
+          {subtitleOf(item, t) ? (
+            <span className="line-clamp-1 text-sm text-[var(--ui-text-muted)]">{subtitleOf(item, t)}</span>
           ) : null}
         </span>
         <span className="flex min-w-0 flex-wrap gap-1.5">
@@ -141,7 +129,7 @@ export function UserSubjectListItem({
         ) : null}
       </span>
       <span className="grid justify-items-end gap-2 self-center max-sm:col-start-2 max-sm:justify-items-start">
-        <Badge variant="secondary">{statusLabel(item.status, t)}</Badge>
+        <Badge variant="secondary">{subjectStatusLabel(item.status, t)}</Badge>
         <span className="grid justify-items-end gap-1 text-sm text-[var(--ui-text-muted)] max-sm:justify-items-start">
           {item.rating ? <strong className="font-semibold text-[var(--ui-text)]">{item.rating}</strong> : null}
           <SimpleRating value={item.simple_rating} />
