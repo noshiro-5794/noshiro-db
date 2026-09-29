@@ -120,11 +120,12 @@ export function SubjectPage() {
         title={titleOf(subject, t('common.untitledSubject'))}
       />
       <div className="grid items-start gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
-        <div className="order-2 min-w-0 lg:order-1">
+        {/* Artwork leads on a phone; the sections follow the cover. */}
+        <div className="order-1 min-w-0 lg:order-1">
           <SubjectSidebar key={subject.id} subject={subject} />
         </div>
 
-        <div className="order-1 grid gap-5 self-start lg:order-2">
+        <div className="order-2 grid gap-5 self-start lg:order-2">
           <div className="grid gap-x-6 gap-y-5 lg:grid-cols-2">
             <SubjectMarkSection
               className={overviewSectionClass}
