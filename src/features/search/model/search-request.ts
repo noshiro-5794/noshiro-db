@@ -1,9 +1,5 @@
 import type { SearchPageSearch } from '@/shared/routing/route-search';
 
-export function usesSubjectDatabaseSearch(search: SearchPageSearch) {
-  return Boolean(search.keyword?.trim());
-}
-
 export function buildSubjectSearchQuery(search: SearchPageSearch, pageSize: number) {
   const keyword = search.keyword?.trim();
   return {
