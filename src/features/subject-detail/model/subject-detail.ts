@@ -350,6 +350,10 @@ export function groupRelationsForDisplay(relations: SubjectRelation[], fallback:
   const groups = new Map<string, RelationDisplayGroup>();
 
   for (const relation of relations) {
+    // Episodes are part of the work, not a related work: they already have
+    // their own section, and repeating all twelve here buried the real
+    // relations under a second episode list.
+    if (relation.subject.subject_type === 'episode') continue;
     const label = relation.relation.trim() || fallback;
     const tier = isPrimaryRelation(relation) ? 'primary' : 'other';
     const key = `${tier}:${label}`;

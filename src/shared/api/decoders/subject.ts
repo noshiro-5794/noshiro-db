@@ -113,9 +113,9 @@ function buildSubjectSummary(value: EntitySummary): SubjectSummary {
   const images = buildSubjectImages(value.media);
   const nsfw = value.audience === 'adult';
   const platform = null;
-  const displayMeta = [value.work_type, value.entity_type, value.lifecycle, value.audience].filter(
-    (item): item is string => typeof item === 'string' && Boolean(item),
-  );
+  // Only the work kind belongs on a card. Entity type, lifecycle and audience
+  // are pipeline vocabulary — visitors were reading "episode · active · general".
+  const displayMeta = [value.work_type].filter((item): item is string => typeof item === 'string' && Boolean(item));
 
   return {
     ...value,
