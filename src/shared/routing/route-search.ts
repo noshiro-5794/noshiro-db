@@ -62,7 +62,7 @@ const publicSubjectOrderings = [
   'watch_start_date',
 ] as const;
 const reviewOrderings = ['-created_at', 'created_at', '-id', 'id'] as const;
-const searchOrderings = ['-date', 'date', 'title', '-title'] as const;
+const searchOrderings = ['popular', '-date', 'date', 'title', '-title'] as const;
 const searchSeasons = ['winter', 'spring', 'summer', 'fall'] as const;
 const searchPlatforms = ['TV', 'WEB', 'OVA', '剧场版', 'PC'] as const;
 const episodeRanges = ['short', 'standard', 'long'] as const;

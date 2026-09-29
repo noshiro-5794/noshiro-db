@@ -15,6 +15,7 @@ export const subjectTypeOptions: Array<{ value: SubjectTypeFilter; labelKey: Mes
 ];
 
 export const orderingOptions: Array<{ value: SubjectOrdering; labelKey: MessageKey }> = [
+  { value: 'popular', labelKey: 'search.popular' },
   { value: '-date', labelKey: 'search.latest' },
   { value: 'date', labelKey: 'search.oldest' },
   { value: 'title', labelKey: 'search.titleAsc' },

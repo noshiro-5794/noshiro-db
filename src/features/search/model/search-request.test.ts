@@ -20,12 +20,17 @@ describe('subject search request', () => {
       query: 'visual novel',
       subject_type: 'galgame',
       nsfw: false,
+      ordering: '-date',
       page: 3,
       page_size: 30,
     });
   });
 
-  it('omits empty keyword queries', () => {
-    expect(buildSubjectSearchQuery({ keyword: '  ' }, 20)).toEqual({ page: 1, page_size: 20 });
+  it('omits empty keyword queries and defaults to popularity', () => {
+    expect(buildSubjectSearchQuery({ keyword: '  ' }, 20)).toEqual({
+      ordering: 'popular',
+      page: 1,
+      page_size: 20,
+    });
   });
 });
