@@ -68,7 +68,7 @@ export function SubjectSidebar({ subject }: { subject: SubjectDetail }) {
     <aside className="grid content-start gap-4 self-start">
       <CoverImage
         alt={titleOf(subject, t('common.untitledSubject'))}
-        className="aspect-[2/3] w-full rounded-[var(--ui-radius-surface)] bg-[var(--ui-bg-subtle)] object-cover ring-1 ring-[var(--ui-border)]"
+        className="mx-auto aspect-[2/3] w-full max-w-[190px] rounded-[var(--ui-radius-surface)] bg-[var(--ui-bg-subtle)] object-cover ring-1 ring-[var(--ui-border)] lg:mx-0 lg:max-w-none"
         src={posterOf(subject)}
       />
 
