@@ -6,6 +6,12 @@ type FeedbackStateProps = {
   title: string;
   description?: string;
   action?: ReactNode;
+  /**
+   * `inline` drops the bordered card. Sections inside a detail page use it so a
+   * work with little data reads as a short list of quiet lines instead of a
+   * stack of empty boxes.
+   */
+  variant?: 'card' | 'inline';
 };
 
 type FeedbackStateViewProps = FeedbackStateProps & {
@@ -21,7 +27,16 @@ function FeedbackStateView({
   loading = false,
   title,
   tone = 'neutral',
+  variant = 'card',
 }: FeedbackStateViewProps) {
+  if (variant === 'inline') {
+    return (
+      <p className="m-0 flex items-center gap-2 px-1 py-2 text-[13px] text-[var(--ui-text-subtle)]">
+        <Icon aria-hidden="true" className={cn('size-3.5 shrink-0', loading && 'animate-spin')} />
+        <span className="min-w-0">{title}</span>
+      </p>
+    );
+  }
   return (
     <div
       className={cn(

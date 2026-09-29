@@ -103,7 +103,9 @@ export function CharactersSection({ className, subjectId }: { className?: string
             ))}
           </ul>
         ) : null}
-        {!query.isFetching && !query.isError && characterRows.length === 0 ? <EmptyState title={emptyText} /> : null}
+        {!query.isFetching && !query.isError && characterRows.length === 0 ? (
+          <EmptyState title={emptyText} variant="inline" />
+        ) : null}
         {characterRows.length > 0 ? (
           <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
         ) : null}
