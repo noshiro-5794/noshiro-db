@@ -158,7 +158,7 @@ export function PublicCollectionPage() {
             <EmptyState title={t('profile.noCollectionItemsTitle')} description={t('profile.noCollectionItemsBody')} />
           ) : null}
           {itemsStatus === 'ready' ? (
-            <ul className="m-0 grid list-none gap-x-4 gap-y-6 p-0 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            <ul className="m-0 grid list-none grid-cols-2 gap-x-4 gap-y-6 p-0 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {items.map((item) => (
                 <li className="min-w-0" key={item.id}>
                   <PublicCollectionItemCard item={item} />
