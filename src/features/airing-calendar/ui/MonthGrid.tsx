@@ -56,7 +56,7 @@ export function MonthGrid({
           return (
             <div
               className={cn(
-                'group/cell relative min-h-[132px] border-b border-r border-[var(--cal-hairline)] px-1.5 pb-2 pt-2 last:border-r-0',
+                'group/cell relative min-h-[64px] border-b border-r border-[var(--cal-hairline)] px-1 pb-1.5 pt-1.5 last:border-r-0 md:min-h-[132px] md:px-1.5 md:pb-2 md:pt-2',
                 'hover:bg-[var(--ui-bg-inset)]',
               )}
               key={dateKey(day)}
@@ -78,7 +78,24 @@ export function MonthGrid({
                   {day.getDate()}
                 </button>
               </div>
-              <div className={cn('grid gap-[3px]', outside && 'opacity-45')}>
+              {/*
+               * Seven text bars do not fit a phone. Below md a cell shows the
+               * provider colours as dots, which keeps the month readable at a
+               * glance; tapping the day opens the agenda.
+               */}
+              <div className={cn('flex flex-wrap gap-1 px-0.5 md:hidden', outside && 'opacity-45')}>
+                {entries.slice(0, 4).map((occurrence) => (
+                  <span
+                    className="calendar-dot size-1.5 rounded-full"
+                    data-cal-source={occurrence.entry.sources[0]?.provider ?? 'unknown'}
+                    key={occurrence.key}
+                  />
+                ))}
+                {entries.length > 4 ? (
+                  <span className="text-[9px] leading-[6px] text-[var(--ui-text-subtle)]">{`+${entries.length - 4}`}</span>
+                ) : null}
+              </div>
+              <div className={cn('hidden gap-[3px] md:grid', outside && 'opacity-45')}>
                 {entries.slice(0, MAX_BARS_PER_DAY).map((occurrence) => (
                   <EventBar key={occurrence.key} occurrence={occurrence} onOpen={onOpenOccurrence} />
                 ))}
