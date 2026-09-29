@@ -47,6 +47,11 @@ from apps.users.api.views.reviews import (
     PublicEntityReviewListView,
     PublicReviewDetailView,
 )
+from apps.users.api.views.social import (
+    GitHubLoginCallbackView,
+    GitHubLoginStartView,
+    SocialProviderListView,
+)
 
 auth_urlpatterns = [
     path("verification-codes/", SendCodeView.as_view(), name="auth-verification-code"),
@@ -58,6 +63,21 @@ auth_urlpatterns = [
     path("sessions/refresh/", CookieTokenRefreshView.as_view(), name="auth-refresh"),
     path("session/", LogoutView.as_view(), name="auth-session"),
     path("password-resets/", ResetPasswordView.as_view(), name="auth-password-reset"),
+    path(
+        "social/providers/",
+        SocialProviderListView.as_view(),
+        name="auth-social-providers",
+    ),
+    path(
+        "social/github/start/",
+        GitHubLoginStartView.as_view(),
+        name="auth-social-github-start",
+    ),
+    path(
+        "social/github/callback/",
+        GitHubLoginCallbackView.as_view(),
+        name="auth-social-github-callback",
+    ),
 ]
 
 user_urlpatterns = [
