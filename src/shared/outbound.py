@@ -34,9 +34,21 @@ def httpx_client_kwargs(*, use_proxy: bool = True, **kwargs: Any) -> dict[str, A
     # Passing a proxy explicitly makes httpx ignore NO_PROXY, so the exclusion
     # list has to be applied here. Providers that must never be proxied also
     # pass use_proxy=False.
-    host = urlparse(str(kwargs.get("base_url") or "")).hostname or ""
-    if use_proxy and not host_bypasses_proxy(host):
-        proxies = outbound_proxies()
-        if proxies is not None:
-            kwargs.setdefault("proxy", proxies["http://"])
+    if use_proxy:
+        proxy = proxy_for_url(str(kwargs.get("base_url") or ""))
+        if proxy is not None:
+            kwargs.setdefault("proxy", proxy)
     return kwargs
+
+
+def proxy_for_url(url: str) -> str | None:
+    """Return the proxy a one-off request to ``url`` should use, if any.
+
+    Callers that cannot use ``httpx.Client`` (a plain ``httpx.post``, say) need
+    the proxy decision on its own rather than as client kwargs.
+    """
+    host = urlparse(url).hostname or ""
+    if host_bypasses_proxy(host):
+        return None
+    proxies = outbound_proxies()
+    return proxies["http://"] if proxies is not None else None
