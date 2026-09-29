@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ShieldCheck } from 'lucide-react';
 import { libraryQueries } from '@/entities/library';
 import { useI18n } from '@/shared/i18n';
+import { subjectStatusLabel } from '@/shared/i18n/subject-labels';
 import type { CurrentUserProfile, UserSubject } from '@/shared/api';
 import { routes } from '@/shared/routing/paths';
 import { Badge } from '@/shared/ui/Badge';
@@ -20,14 +21,7 @@ function subjectTitle(item: UserSubject, fallback: string) {
 }
 
 function statusLabel(status: string | undefined, t: ReturnType<typeof useI18n>['t']) {
-  const labels: Record<string, string> = {
-    wish: t('status.wish'),
-    doing: t('status.doing'),
-    done: t('status.done'),
-    on_hold: t('status.onHold'),
-    drop: t('status.drop'),
-  };
-  return labels[status ?? ''] ?? status?.replaceAll('_', ' ') ?? t('status.marked');
+  return subjectStatusLabel(status, t);
 }
 
 function ListSkeleton({ rows = 3, showMedia = true }: { rows?: number; showMedia?: boolean }) {
