@@ -103,6 +103,9 @@ class SyncCampaignService:
     DEFAULT_PAGE_SIZE = 100
     DEFAULT_DISCOVERY_PAGES_PER_STEP = 1
     DEFAULT_FETCH_BATCH_SIZE = 50
+    # AniList refuses page depths beyond 5000 entries, so a delta crawl advances
+    # its watermark every window_pages pages and restarts pagination.
+    DELTA_WINDOW_PAGES = 80
     DEFAULT_MAX_ATTEMPTS = 5
     DEFAULT_RETRY_BASE_SECONDS = 30
     DEFAULT_AI_BATCH_SIZE = 50
@@ -382,6 +385,12 @@ class SyncCampaignService:
                 )
                 if pending is not None:
                     params["pending_watermark"] = pending
+                    self._promote_delta_window(
+                        params=params,
+                        discovery=discovery,
+                        pending=pending,
+                        total_pages=total_pages,
+                    )
             if getattr(page, "total_count", None) is not None:
                 campaign.total_items = max(campaign.total_items, page.total_count)
             else:
@@ -392,7 +401,10 @@ class SyncCampaignService:
             campaign.parameters = params
             campaign.save(update_fields=["parameters", "total_items", "updated_at"])
             pages += 1
-            cursor = page.next_cursor
+            # Follow the persisted cursor: a window promotion restarts the crawl
+            # at page 1 under the new watermark, and the in-step cursor must
+            # agree with it or the next page would skip the new window.
+            cursor = discovery["next_cursor"]
             if max_pages is not None and total_pages >= self._positive_int(
                 max_pages, total_pages
             ):
@@ -435,6 +447,34 @@ class SyncCampaignService:
         if campaign.provider_slug == "bangumi":
             return "0" if campaign.campaign_type == "incremental" else "1:0"
         return "1"
+
+    @classmethod
+    def _promote_delta_window(
+        cls,
+        *,
+        params: dict,
+        discovery: dict,
+        pending: str,
+        total_pages: int,
+    ) -> None:
+        """Advance a delta crawl once its window is deep enough.
+
+        Providers cap how deep a single cursor may page — AniList refuses
+        requests beyond 5000 entries — so a crawl that keeps one watermark while
+        paging stalls at the cap. Promoting the watermark and restarting from
+        page one keeps every window inside the provider's limit.
+        """
+        window_pages = cls._positive_int(
+            params.get("delta_window_pages"), cls.DELTA_WINDOW_PAGES
+        )
+        if (
+            discovery.get("next_cursor")
+            and int(pending) > int(params.get("watermark") or "0")
+            and total_pages % window_pages == 0
+        ):
+            params["watermark"] = pending
+            params.pop("pending_watermark", None)
+            discovery["next_cursor"] = "1"
 
     def _fetch(self, campaign: SyncCampaign, *, max_items: int | None) -> bool:
         provider = self.provider_for(campaign.provider_slug)
