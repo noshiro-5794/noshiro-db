@@ -134,6 +134,37 @@ def test_forbidden_storage_provider_is_not_requested(
     getattr(http_client, request_method).assert_not_called()
 
 
+def test_vndb_retired_id_is_a_terminal_not_found() -> None:
+    """A deleted VN must look like a 404, not a retryable failure.
+
+    VNDB answers an unknown id with an empty result set instead of an HTTP
+    error. That answer is final, so the client marks it as not found to stop
+    the campaign from retrying the same retired id forever.
+    """
+    http_client = Mock()
+    http_client.post.return_value.json.return_value = {"results": []}
+    with patch("apps.sync.providers.vndb.Provider.objects.filter") as provider_filter:
+        provider_filter.return_value.first.return_value = None
+        with pytest.raises(VNDBAPIError) as excinfo:
+            VNDBClient(http_client).fetch_vn("v56842")
+
+    assert excinfo.value.is_not_found is True
+    assert excinfo.value.retryable is False
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        BangumiAPIError("boom", status_code=404),
+        VNDBAPIError("boom", status_code=404),
+        AniListAPIError("boom", status_code=404),
+    ],
+)
+def test_provider_errors_expose_not_found_consistently(error) -> None:
+    assert error.is_not_found is True
+    assert error.retryable is False
+
+
 def test_vndb_catalog_discovery_is_page_based_and_counts_on_first_page() -> None:
     http_client = Mock()
     response = http_client.post.return_value
