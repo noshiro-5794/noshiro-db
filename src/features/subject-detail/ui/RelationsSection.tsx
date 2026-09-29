@@ -71,7 +71,9 @@ export function RelationsSection({
             title={t('subject.relationsErrorTitle')}
           />
         ) : null}
-        {!query.isFetching && !query.isError && rows.length === 0 ? <EmptyState title={emptyText} /> : null}
+        {!query.isFetching && !query.isError && rows.length === 0 ? (
+          <EmptyState title={emptyText} variant="inline" />
+        ) : null}
         {rows.length > 0 ? (
           <div className="grid gap-5">
             {visibleGroups.map((group, groupIndex) => {
