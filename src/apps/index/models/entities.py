@@ -94,10 +94,22 @@ class Work(TimestampedModel):
         choices=WorkType.choices,
         default=WorkType.UNCLASSIFIED,
     )
+    # Derived popularity used only to rank catalogue listings. It is rebuilt
+    # daily from provider engagement metrics, never authored by hand, and never
+    # surfaced as a number: visitors see the ordering, not the score.
+    popularity = models.DecimalField(
+        max_digits=12,
+        decimal_places=6,
+        default=0,
+    )
+    popularity_refreshed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = "work"
-        indexes = [models.Index(fields=["work_type"], name="idx_work_type")]
+        indexes = [
+            models.Index(fields=["work_type"], name="idx_work_type"),
+            models.Index(fields=["-popularity"], name="idx_work_popularity"),
+        ]
 
 
 class AnimeProfile(TimestampedModel):

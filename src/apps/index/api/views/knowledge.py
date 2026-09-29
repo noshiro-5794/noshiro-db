@@ -112,6 +112,7 @@ class CollectionEntityListView(APIView):
             scope="index",
             subject_type=serializer.validated_data.get("subject_type", ""),
             safe_only=serializer.validated_data.get("nsfw", False) is False,
+            ordering=serializer.validated_data.get("ordering", ""),
         )
         paginator = DefaultPageNumberPagination()
         page = paginator.paginate_queryset(qs, request, view=self)
@@ -153,6 +154,7 @@ class EntityListView(APIView):
             scope=values.get("scope", "index"),
             subject_type=values.get("subject_type", ""),
             safe_only=values.get("nsfw", False) is False,
+            ordering=values.get("ordering", ""),
         )
         paginator = DefaultPageNumberPagination()
         page = paginator.paginate_queryset(qs, request, view=self)

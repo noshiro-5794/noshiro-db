@@ -147,6 +147,38 @@ class KnowledgeIngestionService:
             defaults={"observation": observation},
         )
 
+    @staticmethod
+    def record_metrics(
+        *,
+        entity: Entity,
+        provider_record: ProviderRecord,
+        observed_at,
+        values: dict[str, Any],
+    ) -> int:
+        """Persist engagement metrics onto their shared time series.
+
+        ``MetricSnapshot`` is the one store every provider's numbers live in,
+        so ranking code never has to know which source a count came from.
+        Values that cannot be read as a number are skipped rather than failing
+        the import, because a missing metric must not cost us a whole record.
+        """
+        written = 0
+        for metric, raw_value in values.items():
+            if raw_value is None or raw_value == "":
+                continue
+            try:
+                value = Decimal(str(raw_value))
+            except (InvalidOperation, TypeError, ValueError):
+                continue
+            MetricSnapshot.objects.update_or_create(
+                provider_record=provider_record,
+                metric=metric,
+                observed_at=observed_at,
+                defaults={"entity": entity, "value": value},
+            )
+            written += 1
+        return written
+
     @transaction.atomic
     def record_fact(
         self,
