@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import { KeyRound, LockKeyhole, Mail } from 'lucide-react';
 import { env } from '@/shared/config/env';
 import { authApi } from '@/entities/session';
-import { CaptchaSentStatus, HCaptchaBox } from '@/features/auth';
+import { CaptchaSentStatus, HCaptchaBox, SocialLoginButtons } from '@/features/auth';
 import { AuthField, AuthPageLayout } from '@/features/auth';
 import { useAuth } from '@/entities/session';
 import { formatCodeCooldownLabel, useCodeCooldown } from '@/features/auth';
@@ -102,6 +102,8 @@ export function LoginPage() {
           <img className="size-12 rounded-lg" src="/favicon.svg" alt="" aria-hidden="true" />
           <h1 className="mt-5 text-2xl font-semibold tracking-normal text-[var(--ui-text)]">{t('login.title')}</h1>
         </div>
+
+        <SocialLoginButtons onError={setErrorMessage} redirect={returnTo} />
 
         <ToggleGroup
           aria-label={t('login.title')}
