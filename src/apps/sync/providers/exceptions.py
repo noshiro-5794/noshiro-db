@@ -18,6 +18,17 @@ class ProviderAPIError(RuntimeError):
         self.error_code = error_code
         self.unavailable_reason = unavailable_reason
 
+    @property
+    def is_not_found(self) -> bool:
+        """Whether the provider confirmed the record no longer exists.
+
+        A retired id is a terminal answer, not a transient failure: retrying it
+        can never succeed, so callers retire the work item instead of burning
+        the retry budget. Providers that surface 404s without a status code can
+        raise with ``error_code="not_found"``.
+        """
+        return self.status_code == 404 or self.error_code == "not_found"
+
 
 class BangumiAPIError(ProviderAPIError):
     def __init__(
@@ -34,10 +45,6 @@ class BangumiAPIError(ProviderAPIError):
             error_code=f"http_{status_code}" if status_code else "request_error",
         )
         self.retryable = status_code == 429 or status_code is None or status_code >= 500
-
-    @property
-    def is_not_found(self) -> bool:
-        return self.status_code == 404
 
 
 class VNDBAPIError(ProviderAPIError):
