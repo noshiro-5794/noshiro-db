@@ -191,7 +191,7 @@ export function EpisodesSection({
           </div>
         ) : null}
         {!episodesQuery.isFetching && !episodesQuery.isError && episodeRows.length === 0 ? (
-          <EmptyState title={emptyText} />
+          <EmptyState title={emptyText} variant="inline" />
         ) : null}
         {episodeRows.length > 0 ? (
           <Pagination currentPage={episodePage} totalPages={episodeTotalPages} onPageChange={setEpisodePage} />
@@ -290,7 +290,7 @@ export function EpisodesSection({
               />
             </>
           ) : (
-            <EmptyState title={emptyText} />
+            <EmptyState title={emptyText} variant="inline" />
           )}
         </DialogContent>
       </Dialog>
