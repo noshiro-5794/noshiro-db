@@ -1,12 +1,9 @@
 import { placeholderImagePaths } from '@/shared/assets/public-assets';
-import { useMemo } from 'react';
 import { Link } from '@tanstack/react-router';
-import type { CalendarSubjectItem, SubjectSummary } from '@/shared/api';
-import type { Locale } from '@/shared/i18n';
+import type { SubjectSummary } from '@/shared/api';
 import { useI18n } from '@/shared/i18n';
 import type { RouteBackState } from '@/shared/routing/route-state';
 import { CoverImage } from '@/shared/ui/CoverImage';
-import { calendarImageOf } from '../model/calendar-search';
 
 const coverPlaceholder = placeholderImagePaths.subjectCover;
 
@@ -57,52 +54,21 @@ function SearchPoster({
   );
 }
 
-export function SearchResultsGrid({
-  calendarItems,
-  locale,
-  state,
-  subjects,
-  useDatabaseResults,
-}: {
-  calendarItems: CalendarSubjectItem[];
-  locale: Locale;
-  state: RouteBackState;
-  subjects: SubjectSummary[];
-  useDatabaseResults: boolean;
-}) {
+export function SearchResultsGrid({ state, subjects }: { state: RouteBackState; subjects: SubjectSummary[] }) {
   const { t } = useI18n();
-  const numberFormatters = useMemo(
-    () => ({
-      compact: new Intl.NumberFormat(locale, { notation: 'compact' }),
-      standard: new Intl.NumberFormat(locale),
-    }),
-    [locale],
-  );
 
   return (
     <div className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-      {useDatabaseResults
-        ? subjects.map((subject) => (
-            <SearchPoster
-              key={subject.id}
-              poster={subjectPosterOf(subject)}
-              state={state}
-              subjectId={subject.id}
-              subtitle={subject.display_subtitle || subject.subject_type}
-              title={titleOf(subject, t('common.untitledSubject'))}
-            />
-          ))
-        : calendarItems.map((item) => (
-            <SearchPoster
-              badge={(item.doing >= 10_000 ? numberFormatters.compact : numberFormatters.standard).format(item.doing)}
-              key={item.subject_id}
-              poster={calendarImageOf(item) || coverPlaceholder}
-              state={state}
-              subjectId={item.subject_id}
-              subtitle={item.display_subtitle || item.subject_type}
-              title={titleOf(item, t('common.untitledSubject'))}
-            />
-          ))}
+      {subjects.map((subject) => (
+        <SearchPoster
+          key={subject.id}
+          poster={subjectPosterOf(subject)}
+          state={state}
+          subjectId={subject.id}
+          subtitle={subject.display_subtitle || subject.subject_type}
+          title={titleOf(subject, t('common.untitledSubject'))}
+        />
+      ))}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { defineMessages } from '../define-messages';
 export const authMessages = defineMessages({
   'zh-CN': {
     'auth.login': '登录',
+    'auth.backHome': '返回首页',
     'auth.register': '注册账号',
     'auth.email': '邮箱',
     'auth.nickname': '昵称',
@@ -40,6 +41,7 @@ export const authMessages = defineMessages({
   },
   'en-US': {
     'auth.login': 'Log in',
+    'auth.backHome': 'Back to home',
     'auth.register': 'Create account',
     'auth.email': 'Email',
     'auth.nickname': 'Nickname',
@@ -77,6 +79,7 @@ export const authMessages = defineMessages({
   },
   'ja-JP': {
     'auth.login': 'ログイン',
+    'auth.backHome': 'ホームへ戻る',
     'auth.register': 'アカウント作成',
     'auth.email': 'メールアドレス',
     'auth.nickname': 'ニックネーム',

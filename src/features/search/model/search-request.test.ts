@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { buildSubjectSearchQuery, usesSubjectDatabaseSearch } from './search-request';
+import { buildSubjectSearchQuery } from './search-request';
 
 describe('subject search request', () => {
-  it('uses calendar browsing while no keyword is entered', () => {
-    expect(usesSubjectDatabaseSearch({ subject_type: 'anime', ordering: 'title', nsfw: false })).toBe(false);
-  });
-
   it('maps validated database filters to the API contract', () => {
     const search = {
       episodes: 'standard' as const,
@@ -20,7 +16,6 @@ describe('subject search request', () => {
       year: 2025,
     };
 
-    expect(usesSubjectDatabaseSearch(search)).toBe(true);
     expect(buildSubjectSearchQuery(search, 30)).toEqual({
       query: 'visual novel',
       subject_type: 'galgame',
