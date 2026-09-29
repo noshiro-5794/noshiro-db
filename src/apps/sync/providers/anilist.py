@@ -1,4 +1,5 @@
 import time
+from datetime import date, timedelta
 from typing import Any
 
 import httpx
@@ -85,6 +86,8 @@ ANILIST_TAG_NAMESPACE = SourceNamespaceSpec(
 
 
 class AniListClient:
+    # First air date the catalogue walk starts from (FuzzyDateInt).
+    DELTA_START_WATERMARK = 19400101
     MAX_ATTEMPTS = 3
 
     CATALOG_QUERY = """
@@ -96,12 +99,12 @@ class AniListClient:
     }
     """
     DELTA_QUERY = """
-    query ($page: Int!, $perPage: Int!, $updatedAfter: Int!) {
+    query ($page: Int!, $perPage: Int!, $startedAfter: FuzzyDateInt!) {
       Page(page: $page, perPage: $perPage) {
         pageInfo { hasNextPage }
-        media(type: ANIME, sort: UPDATED_AT, updatedAt_greater: $updatedAfter) {
+        media(type: ANIME, sort: START_DATE, startDate_greater: $startedAfter) {
           id
-          updatedAt
+          startDate { year month day }
         }
       }
     }
@@ -429,19 +432,28 @@ class AniListClient:
         cursor: str | None = None,
         page_size: int = 50,
     ) -> DeltaPage:
+        """Walk the catalogue by air date.
+
+        AniList has no "updated since" filter and refuses page depths beyond
+        5000 entries, so a crawl partitions the catalogue by ``startDate`` and
+        moves the window forward as it goes. Titles with no air date are not
+        reachable this way; the season and airing syncs cover those.
+        """
         try:
-            updated_after = int(watermark)
+            started_after = int(watermark)
         except (TypeError, ValueError) as exc:
             raise AniListAPIError(
-                "AniList delta watermark must be a Unix timestamp."
+                "AniList delta watermark must be a FuzzyDateInt (YYYYMMDD)."
             ) from exc
+        if started_after <= 0:
+            started_after = self.DELTA_START_WATERMARK
         page = max(1, int(cursor or "1"))
         data = self._post(
             self.DELTA_QUERY,
             {
                 "page": page,
                 "perPage": min(max(page_size, 1), 50),
-                "updatedAfter": updated_after,
+                "startedAfter": started_after,
             },
         )
         page_data = data.get("Page")
@@ -453,20 +465,49 @@ class AniListClient:
             for item in items
             if isinstance(item, dict) and isinstance(item.get("id"), int)
         )
-        page_updated = max(
+        page_watermark = max(
             (
-                int(item["updatedAt"])
+                self._fuzzy_date(item.get("startDate"))
                 for item in items
-                if isinstance(item, dict) and isinstance(item.get("updatedAt"), int)
+                if isinstance(item, dict)
             ),
-            default=updated_after,
+            default=started_after,
         )
         page_info = page_data.get("pageInfo") or {}
         return DeltaPage(
             external_ids=external_ids,
             next_cursor=str(page + 1) if page_info.get("hasNextPage") else None,
-            watermark=str(page_updated),
+            # Step back a day so titles sharing the boundary date are re-listed
+            # in the next window instead of being skipped; duplicate work items
+            # are ignored on insert.
+            watermark=str(max(started_after, self._previous_day(page_watermark))),
         )
+
+    @staticmethod
+    def _fuzzy_date(value: Any) -> int:
+        """Render AniList's ``{year, month, day}`` as a FuzzyDateInt."""
+        if not isinstance(value, dict):
+            return 0
+        year = value.get("year")
+        if not isinstance(year, int) or year <= 0:
+            return 0
+        month = value.get("month") if isinstance(value.get("month"), int) else 0
+        day = value.get("day") if isinstance(value.get("day"), int) else 0
+        return year * 10_000 + month * 100 + day
+
+    @staticmethod
+    def _previous_day(fuzzy_date: int) -> int:
+        if fuzzy_date <= 0:
+            return 0
+        year, remainder = divmod(fuzzy_date, 10_000)
+        month, day = divmod(remainder, 100)
+        if not month or not day:
+            return fuzzy_date
+        try:
+            previous = date(year, month, day) - timedelta(days=1)
+        except ValueError:
+            return fuzzy_date
+        return previous.year * 10_000 + previous.month * 100 + previous.day
 
     def close(self) -> None:
         if self._client is not None:

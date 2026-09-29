@@ -141,29 +141,31 @@ def test_campaign_provider_registry_wires_delta_and_discovery_contract() -> None
     assert PROVIDERS["bangumi"].discovery_complete is False
 
 
-def test_anilist_delta_watermark_advances_to_max_seen() -> None:
+def test_anilist_delta_watermark_advances_to_max_air_date() -> None:
     client = AniListClient(Mock())
     client._post = Mock(
         return_value={
             "Page": {
                 "pageInfo": {"hasNextPage": True},
                 "media": [
-                    {"id": 1, "updatedAt": 100},
-                    {"id": 2, "updatedAt": 120},
+                    {"id": 1, "startDate": {"year": 2025, "month": 12, "day": 30}},
+                    {"id": 2, "startDate": {"year": 2026, "month": 1, "day": 3}},
                 ],
             }
         }
     )
 
-    page = client.discover_anime_delta_page(watermark="90", cursor="1", page_size=50)
+    page = client.discover_anime_delta_page(
+        watermark="20250101", cursor="1", page_size=50
+    )
 
     assert page.external_ids == ("1", "2")
     assert page.next_cursor == "2"
-    assert page.watermark == "120"
+    assert page.watermark == "20260102"
     assert client._post.call_args.args[1] == {
         "page": 1,
         "perPage": 50,
-        "updatedAfter": 90,
+        "startedAfter": 20250101,
     }
 
 
