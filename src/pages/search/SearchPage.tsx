@@ -2,15 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { getRouteApi, useLocation } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { subjectQueries } from '@/entities/subject';
-import {
-  buildSubjectSearchQuery,
-  filterCalendarItems,
-  flattenCalendarGroups,
-  SearchFilters,
-  SearchResultsGrid,
-  sortCalendarItems,
-  usesSubjectDatabaseSearch,
-} from '@/features/search';
+import { buildSubjectSearchQuery, SearchFilters, SearchResultsGrid } from '@/features/search';
 import { useI18n } from '@/shared/i18n';
 import { routes } from '@/shared/routing/paths';
 import { validateSearchPageSearch, type SearchPageSearch } from '@/shared/routing/route-search';
@@ -25,45 +17,21 @@ const pageSize = 30;
 const searchRoute = getRouteApi('/search');
 
 export function SearchPage() {
-  const { locale, t } = useI18n();
+  const { t } = useI18n();
   const location = useLocation();
   const navigate = searchRoute.useNavigate();
   const search = searchRoute.useSearch();
   const currentPage = search.page ?? 1;
-  const ordering = search.ordering ?? '-date';
-  const safety = search.nsfw === false ? 'safe' : 'all';
-  const shouldUseSubjectSearch = usesSubjectDatabaseSearch(search);
   const subjectQueryParams = useMemo(() => buildSubjectSearchQuery(search, pageSize), [search]);
-  const subjectsQuery = useQuery({
-    ...subjectQueries.list(subjectQueryParams),
-    enabled: shouldUseSubjectSearch,
-  });
-  const calendarQuery = useQuery({ ...subjectQueries.calendar(), enabled: !shouldUseSubjectSearch });
-  const calendarItems = useMemo(
-    () =>
-      sortCalendarItems(
-        filterCalendarItems(flattenCalendarGroups(calendarQuery.data), {
-          ordering,
-          safety,
-          subjectType: search.subject_type ?? '',
-        }),
-        ordering,
-      ),
-    [calendarQuery.data, ordering, safety, search.subject_type],
-  );
-  const resultCount = shouldUseSubjectSearch ? subjectsQuery.data?.count : calendarItems.length;
-  const hasResolvedResults = shouldUseSubjectSearch
-    ? subjectsQuery.data !== undefined
-    : calendarQuery.data !== undefined;
+  // The catalogue is the source for this page. It used to browse the season
+  // calendar until a keyword was typed, which made a 79k catalogue look like a
+  // 198-item list with seven pages.
+  const subjectsQuery = useQuery(subjectQueries.list(subjectQueryParams));
+  const resultCount = subjectsQuery.data?.count;
+  const hasResolvedResults = subjectsQuery.data !== undefined;
   const totalPages = Math.max(1, Math.ceil((resultCount ?? 0) / pageSize));
-  const visibleCalendarItems = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return calendarItems.slice(start, start + pageSize);
-  }, [calendarItems, currentPage]);
-  const isFetching = shouldUseSubjectSearch ? subjectsQuery.isFetching : calendarQuery.isFetching;
-  const isLoading = shouldUseSubjectSearch ? subjectsQuery.isLoading : calendarQuery.isLoading;
-  const isError = shouldUseSubjectSearch ? subjectsQuery.isError : calendarQuery.isError;
-  const isEmpty = shouldUseSubjectSearch ? (subjectsQuery.data?.results.length ?? 0) === 0 : calendarItems.length === 0;
+  const { isError, isFetching, isLoading } = subjectsQuery;
+  const isEmpty = (subjectsQuery.data?.results.length ?? 0) === 0;
   const resultsStatus: ResultsStatus =
     !hasResolvedResults && isLoading
       ? 'loading'
@@ -120,13 +88,7 @@ export function SearchPage() {
           status={resultsStatus}
         >
           <>
-            <SearchResultsGrid
-              calendarItems={visibleCalendarItems}
-              locale={locale}
-              state={subjectLinkState}
-              subjects={subjectsQuery.data?.results ?? []}
-              useDatabaseResults={shouldUseSubjectSearch}
-            />
+            <SearchResultsGrid state={subjectLinkState} subjects={subjectsQuery.data?.results ?? []} />
 
             <Pagination
               currentPage={currentPage}
