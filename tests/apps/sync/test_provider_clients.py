@@ -272,14 +272,16 @@ def test_anilist_maintenance_403_is_unavailable_not_permanent() -> None:
     sleep.assert_not_called()
 
 
-def test_anilist_delta_discovery_uses_updated_watermark() -> None:
+def test_anilist_delta_discovery_walks_by_air_date() -> None:
     http_client = Mock()
     response = http_client.post.return_value
     response.json.return_value = {
         "data": {
             "Page": {
                 "pageInfo": {"hasNextPage": True},
-                "media": [{"id": 10, "updatedAt": 1700000000}],
+                "media": [
+                    {"id": 10, "startDate": {"year": 2026, "month": 3, "day": 2}}
+                ],
             }
         }
     }
@@ -288,14 +290,15 @@ def test_anilist_delta_discovery_uses_updated_watermark() -> None:
     ) as provider_filter:
         provider_filter.return_value.first.return_value = None
         page = AniListClient(http_client).discover_anime_delta_page(
-            watermark="1690000000", cursor="2", page_size=25
+            watermark="20260101", cursor="2", page_size=25
         )
 
     assert page.external_ids == ("10",)
     assert page.next_cursor == "3"
-    assert page.watermark == "1700000000"
+    # One day behind the newest air date so a shared boundary date is re-listed.
+    assert page.watermark == "20260301"
     variables = http_client.post.call_args.kwargs["json"]["variables"]
-    assert variables == {"page": 2, "perPage": 25, "updatedAfter": 1690000000}
+    assert variables == {"page": 2, "perPage": 25, "startedAfter": 20260101}
 
 
 def test_vndb_embedded_staff_ids_are_unique() -> None:
