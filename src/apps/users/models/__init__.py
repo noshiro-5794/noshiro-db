@@ -1,4 +1,4 @@
-from .account import EmailVerification, User, UserManager
+from .account import EmailVerification, SocialIdentity, User, UserManager
 from .collection import Collection, CollectionItem
 from .library import (
     UserEpisodeProgress,
@@ -16,6 +16,7 @@ __all__ = (
     "CollectionItem",
     "EmailVerification",
     "Review",
+    "SocialIdentity",
     "User",
     "UserEpisodeProgress",
     "UserManager",

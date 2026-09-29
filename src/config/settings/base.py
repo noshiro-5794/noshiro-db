@@ -347,6 +347,22 @@ EMAIL_FROM = env("EMAIL_FROM", default="noreply@localhost")
 
 FRONTEND_SITE_URL = env("FRONTEND_SITE_URL", default="http://localhost:5173")
 
+# Public base URL of this API, used to build absolute OAuth callback links that
+# GitHub posts the browser back to.
+API_BASE_URL = env("API_BASE_URL", default="http://localhost:8000")
+
+# GitHub sign-in. The feature stays dark until both values are configured, so
+# an unconfigured deployment simply hides the button.
+GITHUB_OAUTH_CLIENT_ID = env("GITHUB_OAUTH_CLIENT_ID", default="")
+GITHUB_OAUTH_CLIENT_SECRET = env("GITHUB_OAUTH_CLIENT_SECRET", default="")
+GITHUB_OAUTH_SCOPES = env("GITHUB_OAUTH_SCOPES", default="read:user user:email")
+GITHUB_OAUTH_TIMEOUT = env.float("GITHUB_OAUTH_TIMEOUT", default=20)
+GITHUB_OAUTH_REDIRECT_URI = env(
+    "GITHUB_OAUTH_REDIRECT_URI",
+    default=f"{API_BASE_URL.rstrip('/')}/api/v1/auth/social/github/callback/",
+)
+GITHUB_OAUTH_STATE_TTL = env.int("GITHUB_OAUTH_STATE_TTL", default=600)
+
 PROBLEM_BASE_URI = env(
     "PROBLEM_BASE_URI",
     default=f"{FRONTEND_SITE_URL.rstrip('/')}/problems/",
