@@ -41,6 +41,7 @@ from apps.index.selectors.current import (
     current_credits,
     current_entity_relation_evidence,
     current_entity_relations,
+    current_facts,
     current_release_work_evidence,
     current_release_work_links,
     supplementary_current_airing_events,
@@ -344,9 +345,39 @@ class EntityEpisodeListView(APIView):
             .distinct()
             .order_by("id")
         )
+        # Episodes carry their position as a fact, not a column, and entities are
+        # keyed by random UUID — ordering by id listed them as 10, 11, 7, 2, 1.
+        # Read the couple of facts needed to order them once, then sort in memory.
+        episode_list = list(episode_entities)
+        ordering_facts = {
+            (fact.entity_id, fact.predicate.slug): fact.value
+            for fact in current_facts()
+            .filter(
+                entity_id__in=[episode.id for episode in episode_list],
+                predicate__slug__in=("disc", "episode-number", "sort"),
+            )
+            .select_related("predicate")
+        }
+
+        def episode_order(episode: Entity) -> tuple:
+            def number(slug: str) -> float:
+                raw = ordering_facts.get((episode.id, slug))
+                try:
+                    return float(raw)  # type: ignore[arg-type]
+                except (TypeError, ValueError):
+                    return float("inf")
+
+            return (
+                number("disc"),
+                number("sort"),
+                number("episode-number"),
+                str(episode.id),
+            )
+
+        episode_list.sort(key=episode_order)
         paginator = DefaultPageNumberPagination()
         paginator.page_size = 64
-        page = paginator.paginate_queryset(episode_entities, request, view=self)
+        page = paginator.paginate_queryset(episode_list, request, view=self)
         data = []
         for episode_entity in page:
             if not entity_resolution_service.is_public(episode_entity):
