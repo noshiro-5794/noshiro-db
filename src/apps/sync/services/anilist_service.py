@@ -202,6 +202,17 @@ class AniListImportService:
             media=media,
         )
         self._upsert_work_facts(entity=entity, observation=observation, media=media)
+        knowledge_ingestion_service.record_metrics(
+            entity=entity,
+            provider_record=recorded.record,
+            observed_at=observation.observed_at,
+            values={
+                "popularity": media.get("popularity"),
+                "favourites": media.get("favourites"),
+                "trending": media.get("trending"),
+                "score": media.get("averageScore"),
+            },
+        )
         self._ensure_anime_membership(entity)
         self._upsert_genres_and_tags(
             entity=entity, observation=observation, media=media
