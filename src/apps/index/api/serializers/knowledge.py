@@ -28,6 +28,14 @@ class EntityQuerySerializer(serializers.Serializer):
         choices=Work.WorkType.choices,
     )
     nsfw = serializers.BooleanField(required=False)
+    # ``popular`` lists by the derived engagement ranking; any other value —
+    # including the client-side sort ids the catalogue already recognises —
+    # keeps the historical recency order.
+    ordering = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=32,
+    )
 
 
 class FieldProvenanceSerializer(serializers.Serializer):
