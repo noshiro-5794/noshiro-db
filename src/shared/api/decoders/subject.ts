@@ -168,7 +168,9 @@ function buildSubjectDetail(value: EntityDetail): SubjectDetail {
     staff_count: 0,
     character_count: 0,
     infobox: value.facts.map((fact) => ({ key: fact.predicate, value: fact.value })),
-    tags: value.collections,
+    // Collections are catalogue buckets ('anime', 'galgame'), not tags a reader
+    // would recognise, so they are not surfaced as chips here.
+    tags: [],
     ...(value.sources[0] ? { source: { provider: value.sources[0].provider, id: value.sources[0].external_id } } : {}),
     ...(value.sources[0] ? { source_id: value.sources[0].external_id } : {}),
   };

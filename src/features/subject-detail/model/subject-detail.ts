@@ -60,8 +60,25 @@ export function titleOf(subject: SubjectDetail, fallback = 'Untitled') {
   return subject.display_title || subject.title || subject.title_cn || fallback;
 }
 
-export function metaOf(subject: SubjectDetail) {
-  return [subject.subject_type, subject.platform, subject.date].filter(Boolean).join(' · ');
+/**
+ * One-line summary under the title: what it is, when it started, whether it is
+ * still running. Built from the same normalised attributes as the sidebar, so
+ * the page never shows a raw provider slug like `anime` or `currently_airing`.
+ */
+export function metaOf(subject: SubjectDetail, t?: (key: MessageKey) => string) {
+  const attributes = subjectAttributes(subject);
+  const value = (key: string) => {
+    const item = attributes.find((attribute) => attribute.key === key);
+    if (!item) return '';
+    const valueKey = attributeValueKey(item.key, item.value);
+    if (valueKey && t) return t(valueKey);
+    return item.key === 'format' || item.key === 'type' ? item.value.toUpperCase() : item.value;
+  };
+  return (
+    [value('format') || value('type') || subject.subject_type, value('release-date'), value('status')]
+      .filter(Boolean)
+      .join(' · ') || subject.subject_type
+  );
 }
 
 export function seoDescriptionOf(subject: SubjectDetail) {

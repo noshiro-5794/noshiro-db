@@ -29,6 +29,7 @@ import { Seo } from '@/shared/seo/Seo';
 import { Button } from '@/shared/ui/Button';
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/FeedbackState';
 import { Page } from '@/shared/ui/Page';
+import { PageHeading } from '@/shared/ui/PageHeading';
 
 const subjectRoute = getRouteApi('/entities/$subjectId');
 
@@ -90,27 +91,7 @@ export function SubjectPage() {
   const loginState = { returnTo: currentRoutePath(location) };
 
   return (
-    <Page
-      title={titleOf(subject, t('common.untitledSubject'))}
-      eyebrow={t('subject.title')}
-      description={metaOf(subject)}
-      seo={false}
-      actions={
-        <Button
-          asChild
-          aria-label={t('subject.graph')}
-          className="border-[var(--ui-accent-border)] text-[var(--ui-accent-text)] hover:bg-[var(--ui-accent-soft)]"
-          size="icon"
-          tooltip={t('subject.graph')}
-          type="button"
-          variant="secondary"
-        >
-          <Link params={{ subjectId: subject.id }} title={t('subject.graph')} to="/entities/$subjectId/graph">
-            <Network className="size-4" />
-          </Link>
-        </Button>
-      }
-    >
+    <Page hideHeader seo={false} title={titleOf(subject, t('common.untitledSubject'))}>
       <Seo
         title={titleOf(subject, t('common.untitledSubject'))}
         description={seoDescriptionOf(subject)}
@@ -118,6 +99,26 @@ export function SubjectPage() {
         path={routes.entity(subject.id)}
       />
       <SubjectSectionNav />
+      <PageHeading
+        actions={
+          <Button
+            asChild
+            aria-label={t('subject.graph')}
+            className="border-[var(--ui-accent-border)] text-[var(--ui-accent-text)] hover:bg-[var(--ui-accent-soft)]"
+            size="icon"
+            tooltip={t('subject.graph')}
+            type="button"
+            variant="secondary"
+          >
+            <Link params={{ subjectId: subject.id }} title={t('subject.graph')} to="/entities/$subjectId/graph">
+              <Network className="size-4" />
+            </Link>
+          </Button>
+        }
+        description={metaOf(subject, t)}
+        eyebrow={t('subject.title')}
+        title={titleOf(subject, t('common.untitledSubject'))}
+      />
       <div className="grid items-start gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
         <div className="order-2 min-w-0 lg:order-1">
           <SubjectSidebar key={subject.id} subject={subject} />
