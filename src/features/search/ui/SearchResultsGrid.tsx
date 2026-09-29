@@ -66,7 +66,7 @@ export function SearchResultsGrid({ state, subjects }: { state: RouteBackState; 
           poster={subjectPosterOf(subject)}
           state={state}
           subjectId={subject.id}
-          subtitle={subject.display_subtitle || subjectKindLabel(subject.subject_type, t)}
+          subtitle={subjectKindLabel(subject.display_subtitle || subject.subject_type, t)}
           title={titleOf(subject, t('common.untitledSubject'))}
         />
       ))}
