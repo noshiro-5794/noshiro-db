@@ -92,8 +92,9 @@ export function PublicCollectionPage() {
   return (
     <Page
       seoDescription={collection.note || undefined}
-      title={collection.name}
-      eyebrow={t('profile.publicCollections')}
+      // The bar names the section, the page body names the collection; showing
+      // the collection title in both places read as a duplicate heading.
+      title={t('profile.publicCollections')}
       headerMode="context"
       leading={
         <Button asChild aria-label={t('common.back')} size="icon-sm" tooltip={t('common.back')} variant="ghost">
