@@ -1,4 +1,4 @@
-from django.db.models import Prefetch, Q
+from django.db.models import F, Prefetch, Q
 
 from apps.index.models import (
     ContentSafety,
@@ -456,6 +456,11 @@ def entity_detail(
     return data
 
 
+# The catalogue's only explicit ordering today. Listing by popularity is opt-in
+# so internal callers that expect recency keep it.
+POPULAR_ORDERING = "popular"
+
+
 def entity_queryset(
     *,
     keyword: str = "",
@@ -463,6 +468,7 @@ def entity_queryset(
     scope: str = "",
     subject_type: str = "",
     safe_only: bool = False,
+    ordering: str = "",
 ):
     qs = Entity.objects.filter(
         lifecycle=Entity.Lifecycle.ACTIVE,
@@ -507,6 +513,13 @@ def entity_queryset(
     # No DISTINCT: the filter is on the primary key and every join below is
     # one-to-one, so rows cannot repeat. Keeping it forced Postgres to sort and
     # de-duplicate every entity column, which dominated the catalogue query.
+    if ordering == POPULAR_ORDERING:
+        # Popularity is a derived ranking, so ties fall back to recency and
+        # then the primary key to keep pagination stable. Works without a score
+        # sort last instead of jumping ahead on a NULL.
+        return qs.order_by(
+            F("work__popularity").desc(nulls_last=True), "-updated_at", "id"
+        )
     return qs.order_by("-updated_at", "id")
 
 
