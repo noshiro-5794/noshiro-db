@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { PencilLine, Plus, Star } from 'lucide-react';
 import type { UserSubjectContext } from '@/shared/api';
 import { useI18n } from '@/shared/i18n';
+import { subjectStatusLabel } from '@/shared/i18n/subject-labels';
 import { routes } from '@/shared/routing/paths';
 import type { RouteBackState } from '@/shared/routing/route-state';
 import { Badge } from '@/shared/ui/Badge';
@@ -38,14 +39,7 @@ export function SubjectMarkSection({
   const titleId = useId();
   const emptyText = t('common.none');
   const userSubject = context?.user_subject ?? null;
-  const statusLabels: Record<string, string> = {
-    wish: t('status.wish'),
-    doing: t('status.doing'),
-    done: t('status.done'),
-    on_hold: t('status.onHold'),
-    drop: t('status.drop'),
-  };
-  const statusLabel = statusLabels[userSubject?.status ?? ''] ?? userSubject?.status ?? '';
+  const statusLabel = userSubject ? subjectStatusLabel(userSubject.status, t) : '';
   const markMeta = userSubject
     ? `${statusLabel} · ${t(userSubject.is_public ? 'common.public' : 'common.private')}`
     : undefined;

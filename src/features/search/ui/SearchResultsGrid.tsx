@@ -2,6 +2,7 @@ import { placeholderImagePaths } from '@/shared/assets/public-assets';
 import { Link } from '@tanstack/react-router';
 import type { SubjectSummary } from '@/shared/api';
 import { useI18n } from '@/shared/i18n';
+import { subjectKindLabel } from '@/shared/i18n/subject-labels';
 import type { RouteBackState } from '@/shared/routing/route-state';
 import { CoverImage } from '@/shared/ui/CoverImage';
 
@@ -9,13 +10,6 @@ const coverPlaceholder = placeholderImagePaths.subjectCover;
 
 function titleOf(item: Pick<SubjectSummary, 'display_title' | 'title' | 'title_cn'>, fallback: string) {
   return item.display_title || item.title || item.title_cn || fallback;
-}
-
-/** Catalogue buckets are slugs; a visitor should read 动画 / Galgame. */
-function subjectKindLabel(kind: string, t: ReturnType<typeof useI18n>['t']) {
-  if (kind === 'anime') return t('search.anime');
-  if (kind === 'galgame') return t('search.galgame');
-  return kind;
 }
 
 function subjectPosterOf(subject: SubjectSummary) {

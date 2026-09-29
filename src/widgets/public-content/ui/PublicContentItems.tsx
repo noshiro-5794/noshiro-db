@@ -6,6 +6,7 @@ import { Star } from 'lucide-react';
 import { CommunityContentCard } from '@/entities/community';
 import { CollectionCoverStack } from '@/entities/library';
 import { useI18n } from '@/shared/i18n';
+import { subjectKindLabel, subjectStatusLabel } from '@/shared/i18n/subject-labels';
 import { useVisibleOnce } from '@/shared/lib/use-visible-once';
 import { publicUserQueries } from '@/entities/user';
 import type { Collection, CollectionItem, Review } from '@/shared/api';
@@ -25,12 +26,12 @@ function collectionSubjectTitle(item: CollectionItem, fallback: string) {
   return item.subject.display_title || item.subject.title || item.subject.title_cn || fallback;
 }
 
-function collectionSubjectSubtitle(item: CollectionItem, fallback: string) {
+function collectionSubjectSubtitle(item: CollectionItem, fallback: string, t: ReturnType<typeof useI18n>['t']) {
   const parts = [
-    item.subject.subject_type,
+    subjectKindLabel(item.subject.subject_type, t),
     item.subject.date,
     item.subject.platform,
-    item.user_subject.status ? item.user_subject.status.replaceAll('_', ' ') : null,
+    item.user_subject.status ? subjectStatusLabel(item.user_subject.status, t) : null,
   ].filter(Boolean);
 
   return parts.join(' / ') || fallback;
@@ -182,7 +183,7 @@ export function PublicCollectionItemCard({ item }: { item: CollectionItem }) {
           </Link>
         </h3>
         <p className="line-clamp-2 text-xs leading-5 text-muted-foreground">
-          {collectionSubjectSubtitle(item, t('common.noMetadata'))}
+          {collectionSubjectSubtitle(item, t('common.noMetadata'), t)}
         </p>
         <div className="flex flex-wrap gap-1.5">
           {item.relation ? <Badge variant="accent">{item.relation}</Badge> : null}
