@@ -58,7 +58,7 @@ from apps.sync.providers.vndb import (
     VNDBImportBatch,
     vndb_client,
 )
-from apps.sync.services.source_record_service import source_record_service
+from apps.sync.services.provider_record_service import provider_record_service
 
 
 class VNDBImportService:
@@ -74,7 +74,7 @@ class VNDBImportService:
     @transaction.atomic
     def _persist_batch(self, *, vndb_id: str, batch: VNDBImportBatch) -> Entity:
         data = batch.work
-        recorded = source_record_service.record(
+        recorded = provider_record_service.record(
             namespace_spec=VNDB_VN_NAMESPACE,
             fetched=FetchedSourceRecord(
                 external_id=vndb_id,
@@ -188,7 +188,7 @@ class VNDBImportService:
                 "characters": batch.characters,
                 "contributors": batch.contributors,
             }
-            related_recorded = source_record_service.record(
+            related_recorded = provider_record_service.record(
                 namespace_spec=VNDB_RELATED_NAMESPACE,
                 fetched=FetchedSourceRecord(
                     external_id=vndb_id,
@@ -242,7 +242,7 @@ class VNDBImportService:
             external_id = item.get("id")
             if not isinstance(external_id, str):
                 continue
-            recorded = source_record_service.record(
+            recorded = provider_record_service.record(
                 namespace_spec=VNDB_RELEASE_NAMESPACE,
                 fetched=FetchedSourceRecord(
                     external_id=external_id,
@@ -368,7 +368,7 @@ class VNDBImportService:
             external_id = item.get("id")
             if not isinstance(external_id, str):
                 continue
-            recorded = source_record_service.record(
+            recorded = provider_record_service.record(
                 namespace_spec=VNDB_CHARACTER_NAMESPACE,
                 fetched=FetchedSourceRecord(
                     external_id=external_id,
@@ -468,7 +468,7 @@ class VNDBImportService:
             external_id = item.get("id")
             if not isinstance(external_id, str):
                 continue
-            recorded = source_record_service.record(
+            recorded = provider_record_service.record(
                 namespace_spec=VNDB_STAFF_NAMESPACE,
                 fetched=FetchedSourceRecord(
                     external_id=external_id,
@@ -590,7 +590,7 @@ class VNDBImportService:
         external_id = item.get("id")
         if not isinstance(external_id, str):
             return None
-        record = source_record_service.ensure_record(
+        record = provider_record_service.ensure_record(
             namespace_spec=VNDB_PRODUCER_NAMESPACE,
             external_id=external_id,
             origin=ProviderRecord.Origin.API,
@@ -727,7 +727,7 @@ class VNDBImportService:
         external_id = item.get("id")
         if not isinstance(external_id, str):
             return None
-        record = source_record_service.ensure_record(
+        record = provider_record_service.ensure_record(
             namespace_spec=VNDB_VN_NAMESPACE,
             external_id=external_id,
             origin=ProviderRecord.Origin.API,
@@ -750,7 +750,7 @@ class VNDBImportService:
         external_id = item.get("id")
         if not isinstance(external_id, str):
             return None
-        record = source_record_service.ensure_record(
+        record = provider_record_service.ensure_record(
             namespace_spec=VNDB_STAFF_NAMESPACE,
             external_id=external_id,
             origin=ProviderRecord.Origin.API,
@@ -772,7 +772,7 @@ class VNDBImportService:
         external_id = item.get("id")
         if not isinstance(external_id, str):
             return None
-        record = source_record_service.ensure_record(
+        record = provider_record_service.ensure_record(
             namespace_spec=VNDB_CHARACTER_NAMESPACE,
             external_id=external_id,
             origin=ProviderRecord.Origin.API,
@@ -865,7 +865,7 @@ class VNDBImportService:
     ) -> None:
         if not isinstance(aid, int) or isinstance(aid, bool):
             return
-        record = source_record_service.ensure_record(
+        record = provider_record_service.ensure_record(
             namespace_spec=VNDB_STAFF_ALIAS_NAMESPACE,
             external_id=str(aid),
             origin=ProviderRecord.Origin.API,
@@ -911,7 +911,7 @@ class VNDBImportService:
             name = item.get("name")
             if not isinstance(trait_id, str) or not isinstance(name, str):
                 continue
-            record = source_record_service.ensure_record(
+            record = provider_record_service.ensure_record(
                 namespace_spec=VNDB_TRAIT_NAMESPACE,
                 external_id=trait_id,
                 origin=ProviderRecord.Origin.API,
@@ -1317,7 +1317,7 @@ class VNDBImportService:
             name = item.get("name")
             if not isinstance(tag_id, str) or not isinstance(name, str):
                 continue
-            record = source_record_service.ensure_record(
+            record = provider_record_service.ensure_record(
                 namespace_spec=VNDB_TAG_NAMESPACE,
                 external_id=tag_id,
                 origin=ProviderRecord.Origin.API,

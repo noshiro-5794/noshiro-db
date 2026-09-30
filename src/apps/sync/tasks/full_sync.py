@@ -1,4 +1,4 @@
-from apps.index.models import ProviderRepresentation, SourceRecord
+from apps.index.models import ProviderRecord, ProviderRepresentation
 from apps.sync.providers.bangumi import BANGUMI_SUBJECT_NAMESPACE
 from apps.sync.services.character_service import character_service
 from apps.sync.services.episode_service import episode_service
@@ -14,7 +14,7 @@ def _has_bangumi_subject(bangumi_id: int) -> bool:
         provider_record__namespace__provider__slug=BANGUMI_SUBJECT_NAMESPACE.source.slug,
         provider_record__namespace__slug=BANGUMI_SUBJECT_NAMESPACE.slug,
         provider_record__external_id=external_id,
-        provider_record__status=SourceRecord.Status.ACTIVE,
+        provider_record__status=ProviderRecord.Status.ACTIVE,
         is_active=True,
     ).exists()
 

@@ -49,8 +49,8 @@ from apps.sync.providers.anilist import (
     anilist_client,
 )
 from apps.sync.providers.contracts import FetchedSourceRecord
+from apps.sync.services.provider_record_service import provider_record_service
 from apps.sync.services.relation_types import canonical_relation_type
-from apps.sync.services.source_record_service import source_record_service
 
 
 class AniListImportService:
@@ -131,7 +131,7 @@ class AniListImportService:
     @transaction.atomic
     def _persist_media(self, media: dict[str, Any]) -> Entity:
         external_id = str(media["id"])
-        recorded = source_record_service.record(
+        recorded = provider_record_service.record(
             namespace_spec=ANILIST_ANIME_NAMESPACE,
             fetched=FetchedSourceRecord(
                 external_id=external_id,
@@ -412,7 +412,7 @@ class AniListImportService:
             for name in values:
                 if not isinstance(name, str) or not name:
                     continue
-                record = source_record_service.ensure_record(
+                record = provider_record_service.ensure_record(
                     namespace_spec=namespace_spec,
                     external_id=slugify(name),
                     origin=ProviderRecord.Origin.API,
@@ -469,7 +469,7 @@ class AniListImportService:
         if not isinstance(anilist_id, int):
             return None
         external_id = str(anilist_id)
-        record = source_record_service.ensure_record(
+        record = provider_record_service.ensure_record(
             namespace_spec=ANILIST_ANIME_NAMESPACE,
             external_id=external_id,
             origin=ProviderRecord.Origin.API,
@@ -553,7 +553,7 @@ class AniListImportService:
         anilist_id = node.get("id")
         if not isinstance(anilist_id, int):
             return None
-        record = source_record_service.ensure_record(
+        record = provider_record_service.ensure_record(
             namespace_spec=ANILIST_CHARACTER_NAMESPACE,
             external_id=str(anilist_id),
             origin=ProviderRecord.Origin.API,
@@ -622,7 +622,7 @@ class AniListImportService:
         anilist_id = node.get("id")
         if not isinstance(anilist_id, int):
             return None
-        record = source_record_service.ensure_record(
+        record = provider_record_service.ensure_record(
             namespace_spec=ANILIST_STAFF_NAMESPACE,
             external_id=str(anilist_id),
             origin=ProviderRecord.Origin.API,
@@ -661,7 +661,7 @@ class AniListImportService:
         anilist_id = node.get("id")
         if not isinstance(anilist_id, int):
             return None
-        record = source_record_service.ensure_record(
+        record = provider_record_service.ensure_record(
             namespace_spec=ANILIST_STUDIO_NAMESPACE,
             external_id=str(anilist_id),
             origin=ProviderRecord.Origin.API,
@@ -712,7 +712,7 @@ class AniListImportService:
             ]
         if not isinstance(nodes, list) or not nodes:
             return
-        calendar_recorded = source_record_service.record(
+        calendar_recorded = provider_record_service.record(
             namespace_spec=ANILIST_CALENDAR_NAMESPACE,
             fetched=FetchedSourceRecord(
                 external_id=str(media["id"]),
@@ -799,7 +799,7 @@ class AniListImportService:
         }
         if not stable_item:
             stable_item = {"id": external_id, "airingAt": item.get("airingAt")}
-        recorded = source_record_service.record(
+        recorded = provider_record_service.record(
             namespace_spec=ANILIST_EPISODE_NAMESPACE,
             fetched=FetchedSourceRecord(
                 external_id=str(external_id),

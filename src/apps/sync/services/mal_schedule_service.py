@@ -22,10 +22,10 @@ from apps.sync.providers.mal import (
     mal_api_client,
     season_name_for_quarter,
 )
+from apps.sync.services.provider_record_service import provider_record_service
 from apps.sync.services.provider_snapshot_retention_service import (
     provider_snapshot_retention_service,
 )
-from apps.sync.services.source_record_service import source_record_service
 from apps.sync.services.sync_job_service import sync_job_service
 
 
@@ -159,7 +159,7 @@ class MALScheduleService:
         items: list[dict[str, Any]],
     ) -> Any:
         external_id = f"season-now:{season_key}"
-        recorded = source_record_service.record(
+        recorded = provider_record_service.record(
             namespace_spec=MAL_SEASON_NAMESPACE,
             fetched=FetchedSourceRecord(
                 external_id=external_id,
@@ -230,7 +230,7 @@ class MALScheduleService:
             )
             for external_id, payload in items.items()
         ]
-        recorded = source_record_service.record_many(
+        recorded = provider_record_service.record_many(
             namespace_spec=MAL_SCHEDULE_ITEM_NAMESPACE,
             fetched_records=fetched_records,
         )

@@ -38,7 +38,7 @@ from apps.sync.providers.mal import (
     MAL_SCHEDULE_ITEM_NAMESPACE,
     mal_api_client,
 )
-from apps.sync.services.source_record_service import source_record_service
+from apps.sync.services.provider_record_service import provider_record_service
 
 
 class MALImportService:
@@ -47,7 +47,7 @@ class MALImportService:
     def import_anime(self, mal_id: int) -> Entity:
         if not isinstance(mal_id, int) or isinstance(mal_id, bool) or mal_id <= 0:
             raise ValueError("MAL anime ids must be positive integers.")
-        item = mal_api_client.fetch_anime_full(mal_id)
+        item = mal_api_client.fetch_anime(mal_id)
         return self._persist_anime(item)
 
     def import_saved_anime(self, mal_id: int) -> Entity:
@@ -74,7 +74,7 @@ class MALImportService:
     @transaction.atomic
     def _persist_anime(self, item: dict[str, Any]) -> Entity:
         external_id = str(item["id"])
-        recorded = source_record_service.record(
+        recorded = provider_record_service.record(
             namespace_spec=MAL_ANIME_NAMESPACE,
             fetched=FetchedSourceRecord(
                 external_id=external_id,

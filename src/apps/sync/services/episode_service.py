@@ -13,7 +13,7 @@ from apps.sync.providers.bangumi import (
 )
 from apps.sync.providers.contracts import FetchedSourceRecord
 from apps.sync.services.data_mapping import clean_string
-from apps.sync.services.source_record_service import source_record_service
+from apps.sync.services.provider_record_service import provider_record_service
 from apps.sync.services.subject_service import subject_service
 
 
@@ -59,7 +59,7 @@ class EpisodeService:
             external_id = str(item["id"])
             id_map[external_id] = item
             index_by_id[external_id] = index
-        collection_recorded = source_record_service.record(
+        collection_recorded = provider_record_service.record(
             namespace_spec=BANGUMI_SUBJECT_EPISODES_NAMESPACE,
             fetched=FetchedSourceRecord(
                 external_id=subject_external_id,
@@ -80,7 +80,7 @@ class EpisodeService:
         if not id_map:
             return
 
-        recorded_by_id = source_record_service.record_many(
+        recorded_by_id = provider_record_service.record_many(
             namespace_spec=BANGUMI_EPISODE_NAMESPACE,
             fetched_records=[
                 FetchedSourceRecord(
