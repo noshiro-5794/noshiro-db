@@ -20,6 +20,13 @@ Replace every placeholder. Validate allowed hosts, CORS and CSRF origins, secure
 refresh cookies, PostgreSQL, Redis, MinIO, email, captcha, provider settings, and
 timeouts. Never commit `.env.production` or put secrets in an image or Compose file.
 
+Outbound HTTP proxying is configured only by `OUTBOUND_PROXY_URL` and
+`OUTBOUND_NO_PROXY_HOSTS` in this file; the application applies them through
+`shared.outbound`. Do not re-declare those keys in a Compose `environment:` block:
+`${VAR:-}` interpolation reads the Compose project environment rather than the env
+file, so a plain `docker compose up -d` would silently replace a configured proxy
+with an empty string.
+
 Infrastructure images are pinned to avoid surprise minor-version drift:
 
 - PostgreSQL `15.18-bookworm`
@@ -93,7 +100,9 @@ backfill environment.
 Before a production database change:
 
 1. Inspect `showmigrations index users community sync ai`.
-2. Create a custom-format `pg_dump` and restore it to a temporary PostgreSQL database.
+2. `scripts/backup_postgres.sh` writes a checksummed custom-format dump.
+   `scripts/rehearse_migrations.sh` restores it into a throwaway PostgreSQL and
+   applies every pending migration to that copy.
 3. Apply migrations and run each backfill twice to verify idempotency.
 4. Interrupt and resume large backfills from their stored checkpoints.
 5. Reconcile entity, relation, and user-data counts against the source database.
@@ -118,6 +127,26 @@ ENV_FILE=.env.production docker compose \
 
 Run the rehearsed backfill and reconciliation before restarting services. Remove old
 tables only in a later release after another restore rehearsal passes.
+
+## Long-Running Sync Campaigns
+
+A provider-wide sync is durable and sharded, so it is driven step by step rather
+than by one long request. `--watch` keeps stepping until the campaign finishes and
+prints one progress line per step; run it under `tmux`, because a full catalogue
+takes hours at the provider's rate limit:
+
+```bash
+ENV_FILE=.env.production docker compose \
+  -f docker-compose.app.yml \
+  --env-file .env.production \
+  exec -T web python /app/src/manage.py sync_campaign mal \
+    --campaign-type full --ai-mode off --idempotency-key mal-full-1 --watch
+```
+
+Leave `--ai-mode off` for a bulk sync: AI enrichment is sampled deliberately
+afterwards rather than paid for on every record. Interrupting the loop is safe —
+the campaign resumes from its own work items, and a work item whose provider
+answers 404 is retired instead of retried.
 
 ## Rollback
 
