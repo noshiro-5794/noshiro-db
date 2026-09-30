@@ -1,12 +1,11 @@
 name: noshiro-db
 
-x-app-environment: &app-environment
-  TZ: ${TZ:-Asia/Shanghai}
-  OUTBOUND_PROXY_URL: ${OUTBOUND_PROXY_URL:-}
-  HTTP_PROXY: ${OUTBOUND_PROXY_URL:-}
-  HTTPS_PROXY: ${OUTBOUND_PROXY_URL:-}
-  NO_PROXY: localhost,127.0.0.1,postgres,redis-broker,redis-cache,minio,${OUTBOUND_NO_PROXY_HOSTS:-}
-
+# Outbound proxying is configured by OUTBOUND_PROXY_URL and
+# OUTBOUND_NO_PROXY_HOSTS in the env file and applied by shared.outbound, so the
+# containers must not re-declare those keys here. Interpolation like
+# "${OUTBOUND_PROXY_URL:-}" reads the compose project environment, not the env
+# file, so an operator running plain "docker compose up -d" silently replaced a
+# configured proxy with an empty string and broke every Bangumi request.
 x-app-image: &app-image "${APP_IMAGE:-noshiro-db/backend}:${APP_IMAGE_TAG:-local}"
 
 services:
@@ -19,7 +18,6 @@ services:
     env_file:
       - ${ENV_FILE:-.env.production}
     environment:
-      <<: *app-environment
       COLLECT_STATIC: "true"
     ports:
       - "${WEB_BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-8008}:8008"
@@ -52,8 +50,6 @@ services:
     entrypoint: []
     env_file:
       - ${ENV_FILE:-.env.production}
-    environment:
-      <<: *app-environment
     healthcheck:
       test: ["CMD", "/app/docker/celery_healthcheck.sh"]
       interval: 20s
@@ -75,8 +71,6 @@ services:
     entrypoint: []
     env_file:
       - ${ENV_FILE:-.env.production}
-    environment:
-      <<: *app-environment
     healthcheck:
       test: ["CMD", "/app/docker/celery_healthcheck.sh"]
       interval: 20s
@@ -98,8 +92,6 @@ services:
     entrypoint: []
     env_file:
       - ${ENV_FILE:-.env.production}
-    environment:
-      <<: *app-environment
     healthcheck:
       test: ["CMD", "/app/docker/celery_healthcheck.sh"]
       interval: 20s
@@ -121,8 +113,6 @@ services:
     entrypoint: []
     env_file:
       - ${ENV_FILE:-.env.production}
-    environment:
-      <<: *app-environment
     healthcheck:
       test: ["CMD", "/app/docker/beat_healthcheck.sh"]
       interval: 30s
@@ -143,7 +133,6 @@ services:
     env_file:
       - ${ENV_FILE:-.env.production}
     environment:
-      <<: *app-environment
       MCP_HOST: 0.0.0.0
       MCP_PORT: 8010
     ports:
@@ -162,8 +151,6 @@ services:
     entrypoint: []
     env_file:
       - ${ENV_FILE:-.env.production}
-    environment:
-      <<: *app-environment
     command: python /app/src/manage.py migrate --noinput
     networks:
       - noshiro_net
