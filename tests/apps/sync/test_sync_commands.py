@@ -302,23 +302,12 @@ def test_sync_campaign_accepts_every_registered_provider() -> None:
     assert "mal" in provider_action.choices
 
 
-def test_sync_campaign_watch_steps_until_terminal() -> None:
-    """--watch keeps stepping and reports progress instead of running once."""
+def test_sync_campaign_watch_delegates_to_the_service_loop() -> None:
+    """--watch hands the loop to the service and wires progress reporting."""
     from types import SimpleNamespace
 
-    running = SimpleNamespace(
+    completed = SimpleNamespace(
         pk="00000000-0000-0000-0000-000000000002",
-        provider_slug="mal",
-        status="fetching",
-        processed_items=10,
-        total_items=100,
-        synced_items=9,
-        skipped_items=1,
-        failed_items=0,
-        refresh_from_db=lambda: None,
-    )
-    done = SimpleNamespace(
-        pk=running.pk,
         provider_slug="mal",
         status="completed",
         processed_items=100,
@@ -326,7 +315,6 @@ def test_sync_campaign_watch_steps_until_terminal() -> None:
         synced_items=98,
         skipped_items=2,
         failed_items=0,
-        refresh_from_db=lambda: None,
     )
     with (
         patch(
@@ -337,13 +325,40 @@ def test_sync_campaign_watch_steps_until_terminal() -> None:
             return_value="key-2",
         ),
     ):
-        service.create_campaign.return_value = running
-        service.run.side_effect = [running, done]
-        output = _run("sync_campaign", "mal", watch=True, watch_delay=1)
+        service.create_campaign.return_value = completed
+        service.watch.return_value = completed
+        output = _run(
+            "sync_campaign", "mal", watch=True, watch_delay=5, watch_timeout=60
+        )
 
-    assert service.run.call_count == 2
-    assert "proc 100/100" in output
+    assert service.run.call_count == 0
+    watch_kwargs = service.watch.call_args.kwargs
+    assert watch_kwargs["delay"] == 5
+    assert watch_kwargs["timeout"] == 60
+    assert callable(watch_kwargs["on_step"])
     assert "Campaign 00000000-0000-0000-0000-000000000002 mal: completed" in output
+
+
+def test_sync_campaign_progress_line_reports_rate_and_eta() -> None:
+    from types import SimpleNamespace
+
+    from apps.sync.management.commands.sync_campaign import progress_line
+
+    campaign = SimpleNamespace(
+        status="fetching",
+        processed_items=50,
+        total_items=100,
+        synced_items=48,
+        skipped_items=2,
+        failed_items=0,
+    )
+
+    line = progress_line(campaign, {})
+
+    assert "fetching" in line
+    assert "proc 50/100" in line
+    assert "synced 48" in line
+    assert "eta" in line
 
 
 def test_incremental_sync_status_reports_task_states() -> None:
