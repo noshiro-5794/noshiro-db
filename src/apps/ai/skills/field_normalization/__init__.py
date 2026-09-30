@@ -1,5 +1,5 @@
 from .handler import FieldNormalizationSkill, field_normalization_skill
-from .policy import FieldNormalizationPolicy, audit_legacy_term_aliases
+from .policy import FieldNormalizationPolicy
 from .schemas import (
     FieldNormalizationInput,
     FieldNormalizationOutput,
@@ -12,6 +12,5 @@ __all__ = [
     "FieldNormalizationPolicy",
     "FieldNormalizationSkill",
     "ProposedLabel",
-    "audit_legacy_term_aliases",
     "field_normalization_skill",
 ]
