@@ -169,10 +169,6 @@ class MALAPIClient:
             raise MALAPIError(f"MAL anime {mal_id} was not found.")
         return payload
 
-    def fetch_anime_full(self, mal_id: int) -> dict[str, Any]:
-        """Backwards-compatible full-detail fetch (same as ``fetch_anime``)."""
-        return self.fetch_anime(mal_id)
-
     def discover_anime_page(
         self, *, cursor: str | None = None, page_size: int = 100
     ) -> CatalogPage:

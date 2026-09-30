@@ -4,8 +4,8 @@ from django.db import transaction
 
 from apps.index.models import (
     Entity,
+    ProviderRecord,
     ProviderRepresentation,
-    SourceRecord,
     Work,
 )
 from apps.index.services import knowledge_ingestion_service
@@ -17,7 +17,7 @@ from apps.sync.providers.bangumi import (
 from apps.sync.providers.contracts import FetchedSourceRecord
 from apps.sync.services.data_mapping import clean_string
 from apps.sync.services.name_normalizer import name_normalizer
-from apps.sync.services.source_record_service import source_record_service
+from apps.sync.services.provider_record_service import provider_record_service
 
 
 class SubjectService:
@@ -28,7 +28,7 @@ class SubjectService:
         data = bangumi_client.fetch_subject(bangumi_id)
         if not isinstance(data, dict) or not data:
             raise BangumiAPIError("Bangumi subject response must be an object.")
-        recorded = source_record_service.record(
+        recorded = provider_record_service.record(
             namespace_spec=BANGUMI_SUBJECT_NAMESPACE,
             fetched=FetchedSourceRecord(
                 external_id=str(bangumi_id),
@@ -49,10 +49,10 @@ class SubjectService:
 
     def provide_subject(self, bangumi_id: int | str) -> Entity:
         external_id = str(bangumi_id)
-        record = source_record_service.ensure_record(
+        record = provider_record_service.ensure_record(
             namespace_spec=BANGUMI_SUBJECT_NAMESPACE,
             external_id=external_id,
-            origin=SourceRecord.Origin.API,
+            origin=ProviderRecord.Origin.API,
             canonical_url=f"https://bgm.tv/subject/{external_id}",
         )
         with transaction.atomic():
@@ -72,7 +72,7 @@ class SubjectService:
             )
 
     @staticmethod
-    def _resolve_entity(record: SourceRecord) -> Entity | None:
+    def _resolve_entity(record: ProviderRecord) -> Entity | None:
         representation = (
             ProviderRepresentation.objects.filter(
                 provider_record=record,

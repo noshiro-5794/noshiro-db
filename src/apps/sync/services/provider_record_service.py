@@ -7,10 +7,10 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.index.models import (
-    CatalogSource,
-    SourceNamespace,
-    SourceRecord,
-    SourceRecordRevision,
+    Provider,
+    ProviderNamespace,
+    ProviderRecord,
+    ProviderRevision,
 )
 from apps.sync.exceptions import SourceCatalogConflict
 from apps.sync.providers.contracts import FetchedSourceRecord, SourceNamespaceSpec
@@ -21,13 +21,13 @@ from apps.sync.services.provider_raw_policy import (
 
 
 @dataclass(frozen=True, slots=True)
-class RecordedSource:
-    record: SourceRecord
-    revision: SourceRecordRevision
+class ProviderRecordWrite:
+    record: ProviderRecord
+    revision: ProviderRevision
     changed: bool
 
 
-class SourceRecordService:
+class ProviderRecordService:
     def ensure_record(
         self,
         *,
@@ -35,7 +35,7 @@ class SourceRecordService:
         external_id: str,
         origin: str,
         canonical_url: str = "",
-    ) -> SourceRecord:
+    ) -> ProviderRecord:
         return self.ensure_records(
             namespace_spec=namespace_spec,
             external_ids=[external_id],
@@ -48,8 +48,8 @@ class SourceRecordService:
         *,
         namespace_spec: SourceNamespaceSpec,
         fetched: FetchedSourceRecord,
-        origin: str = SourceRecord.Origin.API,
-    ) -> RecordedSource:
+        origin: str = ProviderRecord.Origin.API,
+    ) -> ProviderRecordWrite:
         return self.record_many(
             namespace_spec=namespace_spec,
             fetched_records=[fetched],
@@ -64,7 +64,7 @@ class SourceRecordService:
         external_ids: list[str],
         origin: str,
         canonical_urls: dict[str, str] | None = None,
-    ) -> dict[str, SourceRecord]:
+    ) -> dict[str, ProviderRecord]:
         cleaned_ids = {external_id.strip() for external_id in external_ids}
         if "" in cleaned_ids:
             raise ValueError("Source external_id must not be empty.")
@@ -73,13 +73,13 @@ class SourceRecordService:
 
         namespace = self.get_or_create_namespace(namespace_spec)
         now = timezone.now()
-        SourceRecord.objects.bulk_create(
+        ProviderRecord.objects.bulk_create(
             [
-                SourceRecord(
+                ProviderRecord(
                     namespace=namespace,
                     external_id=external_id,
                     canonical_url=(canonical_urls or {}).get(external_id, ""),
-                    status=SourceRecord.Status.ACTIVE,
+                    status=ProviderRecord.Status.ACTIVE,
                     origin=origin,
                     raw_state=stub_state_for_namespace(
                         provider_slug=namespace_spec.source.slug
@@ -93,7 +93,7 @@ class SourceRecordService:
         )
         records = {
             record.external_id: record
-            for record in SourceRecord.objects.filter(
+            for record in ProviderRecord.objects.filter(
                 namespace=namespace,
                 external_id__in=cleaned_ids,
             )
@@ -105,12 +105,12 @@ class SourceRecordService:
             canonical_url = (canonical_urls or {}).get(external_id)
             if canonical_url:
                 record.canonical_url = canonical_url
-            record.status = SourceRecord.Status.ACTIVE
+            record.status = ProviderRecord.Status.ACTIVE
             record.origin = origin
             record.last_seen_at = now
             record.updated_at = now
             records_to_update.append(record)
-        SourceRecord.objects.bulk_update(
+        ProviderRecord.objects.bulk_update(
             records_to_update,
             fields=[
                 "canonical_url",
@@ -128,8 +128,8 @@ class SourceRecordService:
         *,
         namespace_spec: SourceNamespaceSpec,
         fetched_records: list[FetchedSourceRecord],
-        origin: str = SourceRecord.Origin.API,
-    ) -> dict[str, RecordedSource]:
+        origin: str = ProviderRecord.Origin.API,
+    ) -> dict[str, ProviderRecordWrite]:
         if not fetched_records:
             return {}
 
@@ -141,13 +141,13 @@ class SourceRecordService:
             for external_id, fetched in fetched_by_id.items()
         }
 
-        SourceRecord.objects.bulk_create(
+        ProviderRecord.objects.bulk_create(
             [
-                SourceRecord(
+                ProviderRecord(
                     namespace=namespace,
                     external_id=external_id,
                     canonical_url=fetched.canonical_url,
-                    status=SourceRecord.Status.ACTIVE,
+                    status=ProviderRecord.Status.ACTIVE,
                     origin=origin,
                     raw_state=stub_state_for_namespace(
                         provider_slug=namespace_spec.source.slug
@@ -161,7 +161,7 @@ class SourceRecordService:
         )
         records = {
             record.external_id: record
-            for record in SourceRecord.objects.select_for_update().filter(
+            for record in ProviderRecord.objects.select_for_update().filter(
                 namespace=namespace,
                 external_id__in=fetched_by_id,
             )
@@ -178,7 +178,7 @@ class SourceRecordService:
             if not changed_by_id[external_id]:
                 continue
             revisions_to_create.append(
-                SourceRecordRevision(
+                ProviderRevision(
                     record=records[external_id],
                     payload=fetched.payload,
                     payload_hash=payload_hashes[external_id],
@@ -189,12 +189,12 @@ class SourceRecordService:
                 )
             )
         if revisions_to_create:
-            SourceRecordRevision.objects.bulk_create(
+            ProviderRevision.objects.bulk_create(
                 revisions_to_create,
                 ignore_conflicts=True,
             )
 
-        revision_rows = SourceRecordRevision.objects.filter(
+        revision_rows = ProviderRevision.objects.filter(
             record_id__in=[record.pk for record in records.values()],
             payload_hash__in=payload_hashes.values(),
         )
@@ -215,7 +215,7 @@ class SourceRecordService:
                 )
 
             record.canonical_url = fetched.canonical_url or record.canonical_url
-            record.status = SourceRecord.Status.ACTIVE
+            record.status = ProviderRecord.Status.ACTIVE
             record.origin = origin
             record.raw_state = raw_state_for_namespace(
                 provider_slug=namespace_spec.source.slug,
@@ -226,13 +226,13 @@ class SourceRecordService:
             record.latest_revision = revision
             record.updated_at = now
             records_to_update.append(record)
-            results[external_id] = RecordedSource(
+            results[external_id] = ProviderRecordWrite(
                 record=record,
                 revision=revision,
                 changed=changed_by_id[external_id],
             )
 
-        SourceRecord.objects.bulk_update(
+        ProviderRecord.objects.bulk_update(
             records_to_update,
             fields=[
                 "canonical_url",
@@ -272,8 +272,8 @@ class SourceRecordService:
         return hashlib.sha256(serialized).hexdigest()
 
     @staticmethod
-    def get_or_create_namespace(spec: SourceNamespaceSpec) -> SourceNamespace:
-        source, _ = CatalogSource.objects.get_or_create(
+    def get_or_create_namespace(spec: SourceNamespaceSpec) -> ProviderNamespace:
+        source, _ = Provider.objects.get_or_create(
             slug=spec.source.slug,
             defaults={
                 "name": spec.source.name,
@@ -285,11 +285,11 @@ class SourceRecordService:
         )
         if not source.is_enabled:
             raise SourceCatalogConflict(f"Provider {source.slug} is disabled.")
-        if source.storage_policy == CatalogSource.UsagePolicy.FORBIDDEN:
+        if source.storage_policy == Provider.UsagePolicy.FORBIDDEN:
             raise SourceCatalogConflict(
                 f"Provider {source.slug} forbids source payload storage."
             )
-        namespace, created = SourceNamespace.objects.get_or_create(
+        namespace, created = ProviderNamespace.objects.get_or_create(
             provider=source,
             slug=spec.slug,
             defaults={
@@ -305,4 +305,4 @@ class SourceRecordService:
         return namespace
 
 
-source_record_service = SourceRecordService()
+provider_record_service = ProviderRecordService()

@@ -37,7 +37,7 @@ from apps.sync.providers.contracts import (
     FetchedSourceRecord,
     SourceNamespaceSpec,
 )
-from apps.sync.services.source_record_service import source_record_service
+from apps.sync.services.provider_record_service import provider_record_service
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -103,7 +103,7 @@ def _record_mal_season_observation(
         "duration_minutes": 24,
         **(item_overrides or {}),
     }
-    recorded = source_record_service.record(
+    recorded = provider_record_service.record(
         namespace_spec=season_namespace,
         fetched=FetchedSourceRecord(
             external_id=f"season-now:{season_key}",
