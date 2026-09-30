@@ -4,7 +4,7 @@ from apps.sync.providers.contracts import (
     FetchedSourceRecord,
     SourceNamespaceSpec,
 )
-from apps.sync.services.source_record_service import source_record_service
+from apps.sync.services.provider_record_service import provider_record_service
 
 SOURCE = CatalogSourceSpec(
     slug="projection-test",
@@ -29,7 +29,7 @@ ALTERNATE_NAMESPACE = SourceNamespaceSpec(
 
 
 def observation(payload: dict, *, namespace_spec=NAMESPACE):
-    recorded = source_record_service.record(
+    recorded = provider_record_service.record(
         namespace_spec=namespace_spec,
         fetched=FetchedSourceRecord(
             external_id="work-1",

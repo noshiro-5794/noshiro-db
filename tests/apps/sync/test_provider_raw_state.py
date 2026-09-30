@@ -24,10 +24,10 @@ from apps.sync.services.provider_raw_policy import (
 from apps.sync.services.provider_raw_state_service import (
     provider_raw_state_service,
 )
+from apps.sync.services.provider_record_service import provider_record_service
 from apps.sync.services.provider_stub_backfill_service import (
     provider_stub_backfill_service,
 )
-from apps.sync.services.source_record_service import source_record_service
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -150,8 +150,8 @@ def test_audit_provider_raw_command_reports_json() -> None:
     assert '"classification"' in out.getvalue()
 
 
-def test_source_record_service_marks_raw_state_on_write() -> None:
-    slim = source_record_service.record(
+def test_provider_record_service_marks_raw_state_on_write() -> None:
+    slim = provider_record_service.record(
         namespace_spec=ANILIST_EPISODE_NAMESPACE,
         fetched=FetchedSourceRecord(
             external_id="ep-1",
@@ -160,7 +160,7 @@ def test_source_record_service_marks_raw_state_on_write() -> None:
             mapper_version="anilist-episode-v1",
         ),
     )
-    raw = source_record_service.record(
+    raw = provider_record_service.record(
         namespace_spec=MAL_ANIME_NAMESPACE,
         fetched=FetchedSourceRecord(
             external_id="5114",
@@ -169,7 +169,7 @@ def test_source_record_service_marks_raw_state_on_write() -> None:
             mapper_version="mal-anime-v2",
         ),
     )
-    stub = source_record_service.ensure_record(
+    stub = provider_record_service.ensure_record(
         namespace_spec=ANILIST_STAFF_NAMESPACE,
         external_id="1",
         origin="api",

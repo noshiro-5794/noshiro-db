@@ -8,8 +8,8 @@ from django.db.models.functions import Cast
 from django.utils import timezone
 
 from apps.index.models import (
+    ProviderRecord,
     ProviderRepresentation,
-    SourceRecord,
 )
 from apps.sync.exceptions import SyncTaskAlreadyRunning
 from apps.sync.models import SyncError, SyncState
@@ -323,7 +323,7 @@ class IncrementalSyncService:
             ),
             provider_record__namespace__slug=BANGUMI_SUBJECT_NAMESPACE.slug,
             provider_record__external_id=external_id,
-            provider_record__status=SourceRecord.Status.ACTIVE,
+            provider_record__status=ProviderRecord.Status.ACTIVE,
             is_active=True,
         ).exists()
 
@@ -439,10 +439,10 @@ class IncrementalSyncService:
         }[config.cursor_source]
         numeric_external_id = Cast("external_id", IntegerField())
         source_value = (
-            SourceRecord.objects.filter(
+            ProviderRecord.objects.filter(
                 namespace__provider__slug=namespace_spec.source.slug,
                 namespace__slug=namespace_spec.slug,
-                status=SourceRecord.Status.ACTIVE,
+                status=ProviderRecord.Status.ACTIVE,
                 external_id__regex=r"^[0-9]+$",
             )
             .annotate(numeric_external_id=numeric_external_id)

@@ -1,6 +1,6 @@
 from django.db import transaction
 
-from apps.index.models import Contributor, ProviderRepresentation, SourceRecord
+from apps.index.models import Contributor, ProviderRecord, ProviderRepresentation
 from apps.index.services import knowledge_ingestion_service
 from apps.sync.providers.bangumi import (
     BANGUMI_PERSON_NAMESPACE,
@@ -10,7 +10,7 @@ from apps.sync.providers.bangumi import (
 from apps.sync.providers.contracts import FetchedSourceRecord
 from apps.sync.services.data_mapping import clean_string
 from apps.sync.services.name_normalizer import name_normalizer
-from apps.sync.services.source_record_service import source_record_service
+from apps.sync.services.provider_record_service import provider_record_service
 
 
 class StaffService:
@@ -20,7 +20,7 @@ class StaffService:
         data = bangumi_client.fetch_person(bangumi_id)
         if not isinstance(data, dict) or not data:
             raise BangumiAPIError("Bangumi person response must be an object.")
-        recorded = source_record_service.record(
+        recorded = provider_record_service.record(
             namespace_spec=BANGUMI_PERSON_NAMESPACE,
             fetched=FetchedSourceRecord(
                 external_id=str(bangumi_id),
@@ -42,10 +42,10 @@ class StaffService:
 
     def provide_staff(self, bangumi_id: int | str) -> Contributor:
         external_id = str(bangumi_id)
-        record = source_record_service.ensure_record(
+        record = provider_record_service.ensure_record(
             namespace_spec=BANGUMI_PERSON_NAMESPACE,
             external_id=external_id,
-            origin=SourceRecord.Origin.API,
+            origin=ProviderRecord.Origin.API,
             canonical_url=f"https://bgm.tv/person/{external_id}",
         )
         with transaction.atomic():
@@ -69,7 +69,7 @@ class StaffService:
             )
 
     @staticmethod
-    def _resolve_entity(record: SourceRecord):
+    def _resolve_entity(record: ProviderRecord):
         representation = (
             ProviderRepresentation.objects.filter(
                 provider_record=record,

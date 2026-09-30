@@ -21,8 +21,8 @@ from apps.sync.providers.bangumi import (
 from apps.sync.providers.contracts import FetchedSourceRecord
 from apps.sync.services.character_service import character_service
 from apps.sync.services.name_normalizer import name_normalizer
+from apps.sync.services.provider_record_service import provider_record_service
 from apps.sync.services.relation_types import canonical_relation_type
-from apps.sync.services.source_record_service import source_record_service
 from apps.sync.services.staff_service import staff_service
 from apps.sync.services.subject_service import subject_service
 
@@ -53,7 +53,7 @@ class RelationService:
         target_map = self._map_subjects(target_ids)
 
         with transaction.atomic():
-            source_record = source_record_service.record(
+            source_record = provider_record_service.record(
                 namespace_spec=BANGUMI_SUBJECT_RELATIONS_NAMESPACE,
                 fetched=FetchedSourceRecord(
                     external_id=str(bangumi_id),
@@ -110,7 +110,7 @@ class RelationService:
         staff_map = self._map_staff(staff_ids)
 
         with transaction.atomic():
-            source_record = source_record_service.record(
+            source_record = provider_record_service.record(
                 namespace_spec=BANGUMI_SUBJECT_STAFF_NAMESPACE,
                 fetched=FetchedSourceRecord(
                     external_id=str(bangumi_id),
@@ -174,7 +174,7 @@ class RelationService:
         actor_map = self._map_staff(actor_ids)
 
         with transaction.atomic():
-            source_record = source_record_service.record(
+            source_record = provider_record_service.record(
                 namespace_spec=BANGUMI_SUBJECT_CHARACTERS_NAMESPACE,
                 fetched=FetchedSourceRecord(
                     external_id=str(bangumi_id),
