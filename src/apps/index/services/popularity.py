@@ -1,20 +1,32 @@
-"""Derive a single, provider-neutral popularity score for every work.
+"""Rank every work by the engagement number of one authoritative source.
 
-The catalogue has to order works by how much of an audience actually cares
-about them, but the four providers report that in incompatible units: MAL
-counts list members, VNDB and Bangumi count ratings, AniList reports reach and
-recent activity. Comparing the raw numbers is meaningless — a niche visual
-novel and a mainstream anime never share a scale.
+Reach is reported in units that cannot be compared across providers: MAL counts
+list members, VNDB counts ratings, AniList counts list members, Bangumi counts
+its own users. Averaging them produced a number that belonged to no source in
+particular, so each catalogue type follows a single source instead:
 
-So each engagement metric is first turned into a percentile rank inside its own
-metric, then those ranks are combined with fixed weights. The result is a
-0-100 score the API never exposes: it only decides the ordering a visitor sees.
+* anime -> AniList ``popularity`` (users who keep it on their list)
+* galgame -> VNDB rating count
+
+Which source is authoritative is a coverage question, not a taste question. MAL
+is the natural anime master, but it has never been full-synced, so it knows a
+few hundred entries out of the whole anime catalogue. AniList is full-synced
+and carries the same "how many people list it" number, so it ranks anime until
+a MAL full sync makes the switch worthwhile — that switch is the one line in
+``PRIMARY_SIGNALS`` below.
+
+Other providers keep contributing facts and metrics; they simply do not
+influence the ordering.
+
+The raw number is never compared across sources, only inside its own series: it
+is turned into a percentile, so the score is a 0-100 standing within the
+source's own population. The API never exposes it — it only decides the order a
+visitor sees.
 """
 
 from __future__ import annotations
 
 import logging
-from collections import defaultdict
 from dataclasses import dataclass
 from decimal import Decimal
 
@@ -28,99 +40,82 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
-class PopularitySignal:
-    """One engagement metric and how much it should influence the score."""
+class PrimarySignal:
+    """The one source whose number ranks a catalogue type."""
 
+    work_type: str
+    source: str
     metric: str
-    weight: Decimal
 
 
-# Weights express "how many people care", not "how well it was received".
-# Review scores and rank positions are deliberately absent: they measure
-# reception, and mixing them with reach made a beloved niche title outrank a
-# title with ten times the audience.
-POPULARITY_SIGNALS: tuple[PopularitySignal, ...] = (
-    PopularitySignal("members", Decimal("1.0")),
-    PopularitySignal("votes", Decimal("0.9")),
-    PopularitySignal("popularity", Decimal("0.7")),
-    PopularitySignal("trending", Decimal("0.6")),
-    PopularitySignal("scoring-users", Decimal("0.6")),
-    PopularitySignal("favourites", Decimal("0.5")),
+PRIMARY_SIGNALS: tuple[PrimarySignal, ...] = (
+    PrimarySignal(Work.WorkType.ANIME, "anilist", "popularity"),
+    PrimarySignal(Work.WorkType.GALGAME, "vndb", "votes"),
 )
 
 SCORE_SCALE = Decimal("100")
 
 
 class PopularityService:
-    """Rebuild ``Work.popularity`` from the metric time series."""
+    """Rebuild ``Work.popularity`` from each type's primary source."""
 
     def refresh(self, *, now=None) -> int:
         """Recompute every work's popularity and return how many were scored.
 
         The whole table is rebuilt rather than incrementally patched: the score
-        is a percentile, so one new record shifts the scale for everyone.
+        is a percentile, so one new record shifts the standing for everyone.
         """
         now = now or timezone.now()
-        metrics = tuple(signal.metric for signal in POPULARITY_SIGNALS)
-        latest = self._latest_metrics(metrics)
-        if not latest:
-            logger.info("Popularity refresh found no engagement metrics.")
-            return 0
         redirects = entity_resolution_service.redirect_map()
-        canonical = self._collapse_to_canonical(latest, redirects)
-        scores = self._score(canonical)
+        scores: dict = {}
+        for signal in PRIMARY_SIGNALS:
+            scores.update(self._rank(signal, redirects))
+        if not scores:
+            logger.info("Popularity refresh found no primary engagement metrics.")
+            return 0
         return self._persist(scores, now=now)
 
     @staticmethod
-    def _latest_metrics(metrics: tuple[str, ...]) -> dict[tuple, Decimal]:
-        """Keep only the newest observation of each metric per entity."""
+    def _rank(signal: PrimarySignal, redirects: dict) -> dict:
+        """Percentile standing of each work inside its source's own series."""
+        # ``entity__work__work_type`` restricts the series to the type this
+        # source ranks, so a stray metric on the wrong kind of record cannot
+        # move anyone's position.
         rows = (
-            MetricSnapshot.objects.filter(metric__in=metrics)
-            .order_by("entity_id", "metric", "-observed_at")
-            .distinct("entity_id", "metric")
-            .values_list("entity_id", "metric", "value")
+            MetricSnapshot.objects.filter(
+                metric=signal.metric,
+                provider_record__namespace__provider__slug=signal.source,
+                entity__work__work_type=signal.work_type,
+            )
+            .order_by("entity_id", "-observed_at")
+            .distinct("entity_id")
+            .values_list("entity_id", "value")
         )
-        return {(entity_id, metric): value for entity_id, metric, value in rows}
-
-    @staticmethod
-    def _collapse_to_canonical(
-        latest: dict[tuple, Decimal], redirects: dict
-    ) -> dict[tuple, Decimal]:
-        """Move merged entities' metrics onto the entity visitors land on."""
-        canonical: dict[tuple, Decimal] = {}
-        for (entity_id, metric), value in latest.items():
+        latest: dict = {}
+        for entity_id, value in rows:
             root = entity_resolution_service.resolve_with(redirects, entity_id)
-            key = (root, metric)
-            current = canonical.get(key)
+            current = latest.get(root)
             if current is None or value > current:
-                canonical[key] = value
-        return canonical
-
-    @staticmethod
-    def _score(canonical: dict[tuple, Decimal]) -> dict:
-        """Blend each entity's normalised signals into a 0-100 score."""
-        by_metric: dict[str, list[tuple]] = defaultdict(list)
-        for (entity_id, metric), value in canonical.items():
-            by_metric[metric].append((value, entity_id))
-        weights = {signal.metric: signal.weight for signal in POPULARITY_SIGNALS}
-        totals: dict = defaultdict(Decimal)
-        weight_sums: dict = defaultdict(Decimal)
-        for metric, rows in by_metric.items():
-            rows.sort()
-            denominator = len(rows) - 1
-            for index, (_, entity_id) in enumerate(rows):
-                rank = (
-                    Decimal(1)
-                    if denominator <= 0
-                    else Decimal(index) / Decimal(denominator)
-                )
-                weight = weights[metric]
-                totals[entity_id] += weight * rank
-                weight_sums[entity_id] += weight
-        return {
-            entity_id: (totals[entity_id] / weight_sums[entity_id] * SCORE_SCALE)
-            for entity_id in totals
-        }
+                latest[root] = value
+        if not latest:
+            return {}
+        ordered = sorted(latest.items(), key=lambda item: (item[1], str(item[0])))
+        denominator = len(ordered) - 1
+        scores: dict = {}
+        previous_value = None
+        previous_rank = Decimal(0)
+        for index, (entity_id, value) in enumerate(ordered):
+            if value == previous_value:
+                # Equal reach is an equal standing; sharing the lower rank keeps
+                # the order stable instead of inventing a difference.
+                rank = previous_rank
+            elif denominator <= 0:
+                rank = Decimal(1)
+            else:
+                rank = Decimal(index) / Decimal(denominator)
+            previous_value, previous_rank = value, rank
+            scores[entity_id] = rank * SCORE_SCALE
+        return scores
 
     @transaction.atomic
     def _persist(self, scores: dict, *, now) -> int:
@@ -142,7 +137,7 @@ class PopularityService:
             works, ["popularity", "popularity_refreshed_at"], batch_size=1000
         )
         # Every scorable work already carries this run's timestamp, so a work
-        # that lost all of its signals must not keep last round's score.
+        # that lost its primary signal must not keep last round's score.
         Work.objects.filter(entity_id__in=scorable).exclude(
             entity_id__in=scored_ids
         ).update(popularity=0, popularity_refreshed_at=now)
@@ -156,8 +151,8 @@ popularity_service = PopularityService()
 
 
 __all__ = [
-    "POPULARITY_SIGNALS",
+    "PRIMARY_SIGNALS",
     "PopularityService",
-    "PopularitySignal",
+    "PrimarySignal",
     "popularity_service",
 ]
