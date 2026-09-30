@@ -280,7 +280,6 @@ class SocialLoginService:
         return candidate
 
 
-github_oauth_client = GitHubOAuthClient()
 social_login_service = SocialLoginService()
 
 
@@ -288,6 +287,5 @@ __all__ = [
     "GitHubOAuthClient",
     "SocialLoginService",
     "SocialProfile",
-    "github_oauth_client",
     "social_login_service",
 ]
