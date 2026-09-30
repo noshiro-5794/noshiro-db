@@ -14,10 +14,10 @@ from apps.sync.providers.anilist import (
     anilist_client,
 )
 from apps.sync.providers.contracts import FetchedSourceRecord
+from apps.sync.services.provider_record_service import provider_record_service
 from apps.sync.services.provider_snapshot_retention_service import (
     provider_snapshot_retention_service,
 )
-from apps.sync.services.source_record_service import source_record_service
 
 
 class AniListSeasonSyncService:
@@ -82,7 +82,7 @@ class AniListSeasonSyncService:
             next_cursor = str(page_count + 1)
 
         season_key = f"{season.lower()}:{season_year}"
-        recorded = source_record_service.record(
+        recorded = provider_record_service.record(
             namespace_spec=ANILIST_SEASON_NAMESPACE,
             fetched=FetchedSourceRecord(
                 external_id="airing:current",
@@ -158,7 +158,7 @@ class AniListSeasonSyncService:
             next_cursor = str(page_count + 1)
 
         season_key = f"{season.lower()}:{season_year}"
-        recorded = source_record_service.record(
+        recorded = provider_record_service.record(
             namespace_spec=ANILIST_SEASON_NAMESPACE,
             fetched=FetchedSourceRecord(
                 external_id=f"season:{season_key}",
@@ -211,7 +211,7 @@ class AniListSeasonSyncService:
             )
             for external_id, payload in items.items()
         ]
-        recorded = source_record_service.record_many(
+        recorded = provider_record_service.record_many(
             namespace_spec=ANILIST_SEASON_ITEM_NAMESPACE,
             fetched_records=fetched,
         )

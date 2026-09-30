@@ -1,4 +1,4 @@
-from .base import ContentSafety, LegacySourceModel, TimestampedModel
+from .base import ContentSafety, TimestampedModel
 from .entities import (
     AnimeProfile,
     Contributor,
@@ -36,7 +36,6 @@ from .knowledge import (
     ReleaseWorkEvidence,
     VoicePerformance,
 )
-from .operations import DataMigrationCheckpoint, DataMigrationRun
 from .resolution import (
     EntityRedirect,
     MatchCandidate,
@@ -48,14 +47,10 @@ from .resolution import (
     SplitEvent,
 )
 from .sources import (
-    CatalogSource,
     Provider,
     ProviderNamespace,
     ProviderRecord,
     ProviderRevision,
-    SourceNamespace,
-    SourceRecord,
-    SourceRecordRevision,
 )
 from .taxonomy import (
     EntityTerm,
@@ -72,14 +67,11 @@ __all__ = [
     "AiringEvent",
     "AnimeProfile",
     "Appearance",
-    "CatalogSource",
     "ContentRating",
     "ContentSafety",
     "Contributor",
     "Credit",
     "CurrentObservation",
-    "DataMigrationCheckpoint",
-    "DataMigrationRun",
     "Entity",
     "EntityDescription",
     "EntityMedia",
@@ -94,7 +86,6 @@ __all__ = [
     "GalgameProfile",
     "IndexCollection",
     "IndexMembership",
-    "LegacySourceModel",
     "MappingRun",
     "MatchCandidate",
     "MatchDecision",
@@ -115,9 +106,6 @@ __all__ = [
     "ReleaseWork",
     "ReleaseWorkEvidence",
     "ResolutionDecision",
-    "SourceNamespace",
-    "SourceRecord",
-    "SourceRecordRevision",
     "SplitEvent",
     "Taxonomy",
     "Term",

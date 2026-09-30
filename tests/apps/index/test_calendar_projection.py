@@ -12,7 +12,7 @@ from apps.sync.providers.contracts import (
     FetchedSourceRecord,
     SourceNamespaceSpec,
 )
-from apps.sync.services.source_record_service import source_record_service
+from apps.sync.services.provider_record_service import provider_record_service
 from apps.users.models import User
 from apps.users.services.profile.profile_service import ProfileService
 
@@ -40,7 +40,7 @@ def _anilist_calendar_observation(payload: dict):
         slug="calendar",
         resource_type="schedule",
     )
-    recorded = source_record_service.record(
+    recorded = provider_record_service.record(
         namespace_spec=namespace,
         fetched=FetchedSourceRecord(
             external_id="189046",
