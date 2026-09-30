@@ -458,6 +458,10 @@ MAL_RATE_LIMIT_INTERVAL = env.float(
     "MAL_RATE_LIMIT_INTERVAL",
     default=1.0,
 )
+# MAL has no catalog endpoint, so a full sync sweeps the id space. The ceiling
+# is the highest id observed upstream; newer entries arrive through the daily
+# season and airing refreshes.
+MAL_MAX_ANIME_ID = env.int("MAL_MAX_ANIME_ID", default=65500)
 
 AI_AGENT_API_BASE_URL = env(
     "AI_AGENT_API_BASE_URL",
