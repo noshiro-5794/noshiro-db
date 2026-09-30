@@ -18,6 +18,9 @@ from apps.index.models import (
     Work,
 )
 from apps.index.services import knowledge_ingestion_service
+from apps.sync.management.commands.sync_campaign import (
+    Command as SyncCampaignCommand,
+)
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -283,6 +286,64 @@ def test_sync_campaign_command_reports_status() -> None:
     created_params = service.create_campaign.call_args.kwargs["parameters"]
     assert created_params["max_pages"] == 2
     assert created_params["discovery_pages_per_step"] == 1
+
+
+def test_sync_campaign_accepts_every_registered_provider() -> None:
+    """The CLI choices come from the registry, so MAL cannot be left out."""
+    from apps.sync.services.campaign_service import PROVIDERS
+
+    command = SyncCampaignCommand()
+    parser = command.create_parser("manage.py", "sync_campaign")
+    provider_action = next(
+        action for action in parser._actions if action.dest == "provider"
+    )
+
+    assert set(provider_action.choices) == set(PROVIDERS)
+    assert "mal" in provider_action.choices
+
+
+def test_sync_campaign_watch_steps_until_terminal() -> None:
+    """--watch keeps stepping and reports progress instead of running once."""
+    from types import SimpleNamespace
+
+    running = SimpleNamespace(
+        pk="00000000-0000-0000-0000-000000000002",
+        provider_slug="mal",
+        status="fetching",
+        processed_items=10,
+        total_items=100,
+        synced_items=9,
+        skipped_items=1,
+        failed_items=0,
+        refresh_from_db=lambda: None,
+    )
+    done = SimpleNamespace(
+        pk=running.pk,
+        provider_slug="mal",
+        status="completed",
+        processed_items=100,
+        total_items=100,
+        synced_items=98,
+        skipped_items=2,
+        failed_items=0,
+        refresh_from_db=lambda: None,
+    )
+    with (
+        patch(
+            "apps.sync.management.commands.sync_campaign.sync_campaign_service"
+        ) as service,
+        patch(
+            "apps.sync.management.commands.sync_campaign.campaign_idempotency_key",
+            return_value="key-2",
+        ),
+    ):
+        service.create_campaign.return_value = running
+        service.run.side_effect = [running, done]
+        output = _run("sync_campaign", "mal", watch=True, watch_delay=1)
+
+    assert service.run.call_count == 2
+    assert "proc 100/100" in output
+    assert "Campaign 00000000-0000-0000-0000-000000000002 mal: completed" in output
 
 
 def test_incremental_sync_status_reports_task_states() -> None:
