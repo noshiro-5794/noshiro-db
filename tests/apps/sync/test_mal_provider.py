@@ -37,6 +37,36 @@ def test_quarter_maps_to_mal_season_name() -> None:
         season_name_for_quarter(5)
 
 
+@override_settings(MAL_MAX_ANIME_ID=65500)
+def test_mal_full_discovery_sweeps_the_id_space() -> None:
+    """MAL has no catalog endpoint, so the sweep is the enumeration."""
+    client = MALAPIClient(Mock())
+
+    first = client.discover_anime_page(cursor=None, page_size=3)
+    assert first.external_ids == ("1", "2", "3")
+    assert first.next_cursor == "4"
+    assert first.total_count == 65500
+
+    middle = client.discover_anime_page(cursor="65498", page_size=3)
+    assert middle.external_ids == ("65498", "65499", "65500")
+    assert middle.next_cursor is None
+
+    exhausted = client.discover_anime_page(cursor="70000", page_size=100)
+    assert exhausted.external_ids == ()
+    assert exhausted.next_cursor is None
+
+
+def test_mal_is_a_registered_campaign_provider() -> None:
+    from apps.sync.services.campaign_service import PROVIDERS
+
+    provider = PROVIDERS["mal"]
+
+    assert provider.namespace_slug == MAL_ANIME_NAMESPACE.slug
+    # A sweep cannot prove a record is gone, so MISSING marking stays off.
+    assert provider.discovery_complete is False
+    assert provider.discover_delta is None
+
+
 @override_settings(
     MAL_API_BASE_URL="https://api.myanimelist.net/v2",
     MAL_API_CLIENT_ID="test-client-id",
