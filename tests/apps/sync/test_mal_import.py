@@ -92,7 +92,7 @@ def test_persist_anime_is_idempotent() -> None:
 def test_import_anime_fetches_full_record() -> None:
     with patch.object(
         mal_api_client,
-        "fetch_anime_full",
+        "fetch_anime",
         return_value=_anime_item(),
     ) as fetch:
         entity = mal_import_service.import_anime(5114)

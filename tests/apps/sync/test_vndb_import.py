@@ -45,7 +45,7 @@ from apps.sync.providers.contracts import (
     SourceNamespaceSpec,
 )
 from apps.sync.providers.vndb import VNDBAPIError, VNDBImportBatch
-from apps.sync.services.source_record_service import source_record_service
+from apps.sync.services.provider_record_service import provider_record_service
 from apps.sync.services.vndb_service import vndb_import_service
 
 pytestmark = pytest.mark.django_db
@@ -374,7 +374,7 @@ def test_relation_survives_when_another_current_provider_observation_supports_it
         slug="work",
         resource_type="subject",
     )
-    other_recorded = source_record_service.record(
+    other_recorded = provider_record_service.record(
         namespace_spec=other_namespace,
         fetched=FetchedSourceRecord(
             external_id="v-other-support",

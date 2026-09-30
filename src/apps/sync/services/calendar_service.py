@@ -11,7 +11,6 @@ from apps.index.models import (
     Observation,
     ProviderRecord,
     ProviderRepresentation,
-    SourceRecord,
     Work,
 )
 from apps.index.services import knowledge_ingestion_service
@@ -26,7 +25,7 @@ from apps.sync.providers.bangumi import (
 from apps.sync.providers.contracts import FetchedSourceRecord
 from apps.sync.services.calendar_image_service import calendar_image_service
 from apps.sync.services.manual_sync_service import manual_subject_sync_service
-from apps.sync.services.source_record_service import source_record_service
+from apps.sync.services.provider_record_service import provider_record_service
 from apps.sync.services.subject_service import subject_service
 from apps.sync.services.sync_job_service import sync_job_service
 
@@ -176,7 +175,7 @@ class CalendarSyncService:
             "removed_ids": removed_ids,
         }
         with transaction.atomic():
-            calendar_recorded = source_record_service.record(
+            calendar_recorded = provider_record_service.record(
                 namespace_spec=BANGUMI_CALENDAR_NAMESPACE,
                 fetched=FetchedSourceRecord(
                     external_id="weekly",
@@ -432,7 +431,7 @@ class CalendarSyncService:
                     BANGUMI_SUBJECT_NAMESPACE.source.slug
                 ),
                 provider_record__namespace__slug=BANGUMI_SUBJECT_NAMESPACE.slug,
-                provider_record__status=SourceRecord.Status.ACTIVE,
+                provider_record__status=ProviderRecord.Status.ACTIVE,
                 is_active=True,
             )
             .select_related("provider_record")

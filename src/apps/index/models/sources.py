@@ -84,11 +84,6 @@ class ProviderNamespace(TimestampedModel):
     def __str__(self) -> str:
         return f"{self.provider.slug}:{self.slug}"
 
-    @property
-    def source(self):
-        """Compatibility alias for pre-Provider synchronizer code."""
-        return self.provider
-
 
 class ProviderRecord(TimestampedModel):
     class Status(models.TextChoices):
@@ -194,10 +189,3 @@ class ProviderRevision(models.Model):
 
     def __str__(self) -> str:
         return f"{self.record}:{self.payload_hash[:12]}"
-
-
-# Backwards-compatible aliases used by the provider synchronizers.
-CatalogSource = Provider
-SourceNamespace = ProviderNamespace
-SourceRecord = ProviderRecord
-SourceRecordRevision = ProviderRevision
