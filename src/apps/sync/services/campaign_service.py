@@ -114,6 +114,13 @@ class CampaignProviderNotFound(ValueError):
 class SyncCampaignService:
     """Create, resume, and execute one durable provider synchronization."""
 
+    TERMINAL_STATUSES = frozenset(
+        {
+            SyncCampaign.Status.COMPLETED,
+            SyncCampaign.Status.CANCELLED,
+            SyncCampaign.Status.PAUSED,
+        }
+    )
     DEFAULT_PAGE_SIZE = 100
     DEFAULT_DISCOVERY_PAGES_PER_STEP = 1
     DEFAULT_FETCH_BATCH_SIZE = 50
@@ -256,6 +263,49 @@ class SyncCampaignService:
                 lease_owner="", lease_expires_at=None, heartbeat_at=timezone.now()
             )
         return SyncCampaign.objects.get(pk=campaign.pk)
+
+    def watch(
+        self,
+        campaign: SyncCampaign,
+        *,
+        delay: float = 15.0,
+        max_items: int | None = None,
+        timeout: float = 0.0,
+        on_step: Callable[[SyncCampaign], Any] | None = None,
+    ) -> SyncCampaign:
+        """Step a campaign until it reaches a terminal state.
+
+        Each step is bounded and durable, so the loop can be interrupted at any
+        moment: progress lives in the campaign's work items, not in this call.
+        A provider-wide full sync takes hours at the provider's rate limit,
+        which is why this loop exists rather than one long request.
+        """
+        pace = max(1.0, float(delay))
+        deadline = time.monotonic() + timeout if timeout and timeout > 0 else None
+        while True:
+            campaign.refresh_from_db()
+            if campaign.status in self.TERMINAL_STATUSES:
+                return campaign
+            if campaign.status == SyncCampaign.Status.FAILED:
+                campaign = self.resume(campaign)
+            try:
+                campaign = self.run(campaign, max_items=max_items)
+            except Exception:
+                # ``run`` already records its own failures; this catches the
+                # rare blow-up outside a step, and backs off before retrying.
+                logger.exception(
+                    "Sync campaign step crashed",
+                    extra={"campaign_id": str(campaign.pk)},
+                )
+                time.sleep(min(600.0, pace * 4))
+                continue
+            campaign.refresh_from_db()
+            if on_step is not None:
+                on_step(campaign)
+            if deadline is not None and time.monotonic() >= deadline:
+                return campaign
+            if campaign.status not in self.TERMINAL_STATUSES:
+                time.sleep(pace)
 
     @transaction.atomic
     def pause(self, campaign: SyncCampaign) -> SyncCampaign:

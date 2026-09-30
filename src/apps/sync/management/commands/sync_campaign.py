@@ -9,12 +9,6 @@ from apps.sync.services.campaign_service import (
     sync_campaign_service,
 )
 
-TERMINAL_STATUSES = {
-    SyncCampaign.Status.COMPLETED,
-    SyncCampaign.Status.CANCELLED,
-    SyncCampaign.Status.PAUSED,
-}
-
 
 class Command(BaseCommand):
     help = "Run a durable provider-wide sync campaign."
@@ -101,7 +95,16 @@ class Command(BaseCommand):
                 idempotency_key=key,
             )
             if options["watch"]:
-                campaign = self._watch(campaign, options)
+                sample: dict = {}
+                campaign = sync_campaign_service.watch(
+                    campaign,
+                    delay=options["watch_delay"],
+                    max_items=options.get("max_items"),
+                    timeout=options["watch_timeout"],
+                    on_step=lambda stepped: self.stdout.write(
+                        progress_line(stepped, sample)
+                    ),
+                )
             else:
                 campaign = sync_campaign_service.run(
                     campaign, max_items=options.get("max_items")
@@ -114,57 +117,30 @@ class Command(BaseCommand):
             )
         )
 
-    def _watch(self, campaign: SyncCampaign, options: dict) -> SyncCampaign:
-        """Step the campaign until it completes, pausing between steps.
 
-        Each step is bounded and durable, so the loop can be interrupted at any
-        point: the campaign resumes from its own work items rather than from
-        anything this command remembers.
-        """
-        max_items = options.get("max_items")
-        delay = max(1.0, float(options["watch_delay"]))
-        timeout = float(options["watch_timeout"] or 0)
-        deadline = time.monotonic() + timeout if timeout > 0 else None
-        sample: dict = {}
-        while True:
-            campaign.refresh_from_db()
-            if campaign.status in TERMINAL_STATUSES:
-                return campaign
-            if campaign.status == SyncCampaign.Status.FAILED:
-                campaign = sync_campaign_service.resume(campaign)
-            try:
-                campaign = sync_campaign_service.run(campaign, max_items=max_items)
-            except Exception as exc:
-                self.stderr.write(f"step failed: {type(exc).__name__}: {exc}")
-                time.sleep(min(600.0, delay * 4))
-                continue
-            campaign.refresh_from_db()
-            self._report(campaign, sample)
-            if deadline is not None and time.monotonic() >= deadline:
-                return campaign
-            if campaign.status not in TERMINAL_STATUSES:
-                time.sleep(delay)
+def progress_line(campaign: SyncCampaign, sample: dict) -> str:
+    """One progress line with a rate measured between steps, not since boot.
 
-    def _report(self, campaign: SyncCampaign, sample: dict) -> None:
-        """One progress line per step with a rate measured between steps."""
-        now = time.monotonic()
-        done = campaign.processed_items
-        previous_at, previous_done = sample.get("at"), sample.get("done")
-        if previous_at is not None and now > previous_at:
-            instant = max(0.0, (done - previous_done) / (now - previous_at))
-            previous_rate = sample.get("rate")
-            sample["rate"] = (
-                instant
-                if previous_rate is None
-                else previous_rate * 0.6 + instant * 0.4
-            )
-        sample["at"], sample["done"] = now, done
-        rate = sample.get("rate") or 0.0
-        remaining = max(0, campaign.total_items - done)
-        eta = f"{remaining / rate / 3600:.1f}h" if rate > 0.01 else "?"
-        self.stdout.write(
-            f"{time.strftime('%Y-%m-%d %H:%M:%S')} {campaign.status} "
-            f"proc {done}/{campaign.total_items} "
-            f"synced {campaign.synced_items} skipped {campaign.skipped_items} "
-            f"failed {campaign.failed_items} {rate:.2f}/s eta {eta}"
+    A campaign keeps its counters across restarts, so a cumulative average would
+    divide work already done by this run's uptime and report an ETA that is
+    orders of magnitude too short.
+    """
+    now = time.monotonic()
+    done = campaign.processed_items
+    previous_at, previous_done = sample.get("at"), sample.get("done")
+    if previous_at is not None and now > previous_at:
+        instant = max(0.0, (done - previous_done) / (now - previous_at))
+        previous_rate = sample.get("rate")
+        sample["rate"] = (
+            instant if previous_rate is None else previous_rate * 0.6 + instant * 0.4
         )
+    sample["at"], sample["done"] = now, done
+    rate = sample.get("rate") or 0.0
+    remaining = max(0, campaign.total_items - done)
+    eta = f"{remaining / rate / 3600:.1f}h" if rate > 0.01 else "?"
+    return (
+        f"{time.strftime('%Y-%m-%d %H:%M:%S')} {campaign.status} "
+        f"proc {done}/{campaign.total_items} "
+        f"synced {campaign.synced_items} skipped {campaign.skipped_items} "
+        f"failed {campaign.failed_items} {rate:.2f}/s eta {eta}"
+    )

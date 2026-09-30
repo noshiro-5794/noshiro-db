@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 
 from apps.sync.services.campaign_service import (
@@ -97,3 +99,63 @@ class TestDeltaWindow:
         )
 
         assert params["watermark"] == "100"
+
+
+class _FakeCampaign:
+    """Campaign stand-in whose persisted status only moves when a step runs."""
+
+    def __init__(self, status: str) -> None:
+        self.status = status
+        self.processed_items = 0
+        self.total_items = 0
+        self.refreshed = 0
+
+    def refresh_from_db(self) -> None:
+        self.refreshed += 1
+
+
+class _StubCampaignService(SyncCampaignService):
+    """Real watch loop, stubbed stepping."""
+
+    def __init__(self, campaign: _FakeCampaign, step_statuses: list[str]) -> None:
+        self.campaign = campaign
+        self.step_statuses = list(step_statuses)
+        self.runs = 0
+        self.resumes = 0
+
+    def run(self, campaign, *, max_items=None):
+        self.runs += 1
+        if self.step_statuses:
+            self.campaign.status = self.step_statuses.pop(0)
+        return self.campaign
+
+    def resume(self, campaign):
+        self.resumes += 1
+        return self.campaign
+
+
+def test_watch_steps_and_reports_until_the_campaign_is_terminal() -> None:
+    campaign = _FakeCampaign("fetching")
+    service = _StubCampaignService(campaign, ["fetching", "completed"])
+    seen: list[str] = []
+
+    with patch("apps.sync.services.campaign_service.time.sleep"):
+        result = service.watch(
+            campaign, delay=0, on_step=lambda stepped: seen.append(stepped.status)
+        )
+
+    assert result is campaign
+    assert seen == ["fetching", "completed"]
+    assert campaign.refreshed >= 2
+
+
+def test_watch_resumes_a_failed_campaign() -> None:
+    campaign = _FakeCampaign("failed")
+    service = _StubCampaignService(campaign, ["completed"])
+
+    with patch("apps.sync.services.campaign_service.time.sleep"):
+        result = service.watch(campaign, delay=0)
+
+    assert result is campaign
+    assert service.resumes == 1
+    assert service.runs == 1
