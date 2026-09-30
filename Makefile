@@ -4,7 +4,7 @@ MANAGE ?= $(RUN) python src/manage.py
 HOST ?= 0.0.0.0
 PORT ?= 8008
 
-.PHONY: sync lock upgrade format lint test coverage check migrations bootstrap-db migrate run worker beat shell incremental-status
+.PHONY: sync lock upgrade format lint test coverage check migrations bootstrap-db migrate run worker beat shell incremental-status openapi preflight
 
 sync:
 	$(UV) sync --frozen
@@ -32,6 +32,15 @@ coverage:
 check: lint test
 	$(MANAGE) check
 	$(MANAGE) makemigrations --check --dry-run
+
+# Regenerate the committed API contract; preflight fails when it is stale.
+openapi:
+	$(MANAGE) spectacular --format openapi-json --validate --fail-on-warn \
+		--file tests/snapshots/openapi.json
+
+# Validate Compose, lint, Django checks, and contract drift before a deploy.
+preflight:
+	scripts/preflight.sh
 
 migrations:
 	$(MANAGE) makemigrations
