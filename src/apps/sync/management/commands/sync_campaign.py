@@ -1,17 +1,27 @@
+import time
+
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.sync.models import SyncCampaign
 from apps.sync.services.campaign_service import (
+    PROVIDERS,
     campaign_idempotency_key,
     sync_campaign_service,
 )
+
+TERMINAL_STATUSES = {
+    SyncCampaign.Status.COMPLETED,
+    SyncCampaign.Status.CANCELLED,
+    SyncCampaign.Status.PAUSED,
+}
 
 
 class Command(BaseCommand):
     help = "Run a durable provider-wide sync campaign."
 
     def add_arguments(self, parser):
-        parser.add_argument("provider", choices=("vndb", "anilist", "bangumi"))
+        # Taken from the registry so a new provider cannot be missing here.
+        parser.add_argument("provider", choices=tuple(sorted(PROVIDERS)))
         parser.add_argument(
             "--campaign-type",
             choices=("full", "incremental"),
@@ -44,6 +54,27 @@ class Command(BaseCommand):
             type=int,
             help="Pages of discovery consumed per invocation (default 1).",
         )
+        parser.add_argument(
+            "--watch",
+            action="store_true",
+            help=(
+                "Keep stepping the campaign until it reaches a terminal state, "
+                "printing one progress line per step. A long full sync runs for "
+                "hours, so this is the mode to run under tmux."
+            ),
+        )
+        parser.add_argument(
+            "--watch-delay",
+            type=float,
+            default=15.0,
+            help="Seconds to wait between watch steps (default 15).",
+        )
+        parser.add_argument(
+            "--watch-timeout",
+            type=float,
+            default=0.0,
+            help="Stop watching after this many seconds (zero runs until terminal).",
+        )
 
     def handle(self, *args, **options):
         provider = options["provider"]
@@ -69,13 +100,71 @@ class Command(BaseCommand):
                 parameters=parameters,
                 idempotency_key=key,
             )
-            campaign = sync_campaign_service.run(
-                campaign, max_items=options.get("max_items")
-            )
+            if options["watch"]:
+                campaign = self._watch(campaign, options)
+            else:
+                campaign = sync_campaign_service.run(
+                    campaign, max_items=options.get("max_items")
+                )
         except Exception as exc:
             raise CommandError(str(exc)) from exc
         self.stdout.write(
             self.style.SUCCESS(
                 f"Campaign {campaign.pk} {campaign.provider_slug}: {campaign.status}"
             )
+        )
+
+    def _watch(self, campaign: SyncCampaign, options: dict) -> SyncCampaign:
+        """Step the campaign until it completes, pausing between steps.
+
+        Each step is bounded and durable, so the loop can be interrupted at any
+        point: the campaign resumes from its own work items rather than from
+        anything this command remembers.
+        """
+        max_items = options.get("max_items")
+        delay = max(1.0, float(options["watch_delay"]))
+        timeout = float(options["watch_timeout"] or 0)
+        deadline = time.monotonic() + timeout if timeout > 0 else None
+        sample: dict = {}
+        while True:
+            campaign.refresh_from_db()
+            if campaign.status in TERMINAL_STATUSES:
+                return campaign
+            if campaign.status == SyncCampaign.Status.FAILED:
+                campaign = sync_campaign_service.resume(campaign)
+            try:
+                campaign = sync_campaign_service.run(campaign, max_items=max_items)
+            except Exception as exc:
+                self.stderr.write(f"step failed: {type(exc).__name__}: {exc}")
+                time.sleep(min(600.0, delay * 4))
+                continue
+            campaign.refresh_from_db()
+            self._report(campaign, sample)
+            if deadline is not None and time.monotonic() >= deadline:
+                return campaign
+            if campaign.status not in TERMINAL_STATUSES:
+                time.sleep(delay)
+
+    def _report(self, campaign: SyncCampaign, sample: dict) -> None:
+        """One progress line per step with a rate measured between steps."""
+        now = time.monotonic()
+        done = campaign.processed_items
+        previous_at, previous_done = sample.get("at"), sample.get("done")
+        if previous_at is not None and now > previous_at:
+            instant = max(0.0, (done - previous_done) / (now - previous_at))
+            previous_rate = sample.get("rate")
+            sample["rate"] = (
+                instant
+                if previous_rate is None
+                else previous_rate * 0.6 + instant * 0.4
+            )
+        sample["at"], sample["done"] = now, done
+        rate = sample.get("rate") or 0.0
+        remaining = max(0, campaign.total_items - done)
+        eta = f"{remaining / rate / 3600:.1f}h" if rate > 0.01 else "?"
+        self.stdout.write(
+            f"{time.strftime('%Y-%m-%d %H:%M:%S')} {campaign.status} "
+            f"proc {done}/{campaign.total_items} "
+            f"synced {campaign.synced_items} skipped {campaign.skipped_items} "
+            f"failed {campaign.failed_items} {rate:.2f}/s eta {eta}"
         )
