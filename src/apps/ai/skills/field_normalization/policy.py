@@ -20,10 +20,3 @@ class FieldNormalizationPolicy:
         if confidence < Decimal(str(self.policy.minimum_score)):
             return "review", "Confidence is below the configured policy threshold."
         return "auto_apply", "Passed the field-normalization policy gate."
-
-
-def audit_legacy_term_aliases() -> dict[str, int]:
-    from apps.index.models import TermAlias
-
-    aliases = TermAlias.objects.filter(origin=TermAlias.Origin.LEGACY_UNKNOWN)
-    return {"total": aliases.count()}
