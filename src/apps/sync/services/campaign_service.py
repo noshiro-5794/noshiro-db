@@ -34,10 +34,12 @@ from apps.sync.providers.anilist import ANILIST_ANIME_NAMESPACE, anilist_client
 from apps.sync.providers.bangumi import BANGUMI_SUBJECT_NAMESPACE, bangumi_client
 from apps.sync.providers.contracts import CatalogPage
 from apps.sync.providers.exceptions import ProviderAPIError
+from apps.sync.providers.mal import MAL_ANIME_NAMESPACE, mal_api_client
 from apps.sync.providers.vndb import VNDB_VN_NAMESPACE, vndb_client
 from apps.sync.services.anilist_service import anilist_import_service
 from apps.sync.services.campaign_ai import SyncAIContext, sync_ai_service
 from apps.sync.services.campaign_state import SyncCampaignStateMachine
+from apps.sync.services.mal_service import mal_import_service
 from apps.sync.services.manual_sync_service import manual_subject_sync_service
 from apps.sync.services.vndb_service import vndb_import_service
 
@@ -84,6 +86,18 @@ PROVIDERS: dict[str, CampaignProvider] = {
             int(external_id)
         ),
         discover_delta=anilist_client.discover_anime_delta_page,
+    ),
+    "mal": CampaignProvider(
+        slug="mal",
+        namespace_slug=MAL_ANIME_NAMESPACE.slug,
+        discover=mal_api_client.discover_anime_page,
+        import_item=lambda external_id: mal_import_service.import_anime(
+            int(external_id)
+        ),
+        discover_delta=None,
+        # The sweep hands out every id in the space, including ids that were
+        # never issued, so it cannot be used to mark records as missing.
+        discovery_complete=False,
     ),
 }
 

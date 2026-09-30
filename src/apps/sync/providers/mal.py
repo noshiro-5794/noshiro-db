@@ -17,6 +17,7 @@ from django.conf import settings
 
 from apps.index.models import Provider, ProviderNamespace
 from apps.sync.providers.contracts import (
+    CatalogPage,
     CatalogSourceSpec,
     SourceNamespaceSpec,
 )
@@ -171,6 +172,29 @@ class MALAPIClient:
     def fetch_anime_full(self, mal_id: int) -> dict[str, Any]:
         """Backwards-compatible full-detail fetch (same as ``fetch_anime``)."""
         return self.fetch_anime(mal_id)
+
+    def discover_anime_page(
+        self, *, cursor: str | None = None, page_size: int = 100
+    ) -> CatalogPage:
+        """Enumerate candidate anime ids by sweeping the id space.
+
+        MAL exposes no "list every anime" endpoint: the season and search
+        endpoints are partial views, and the ranking endpoint returns positions
+        rather than records. Anime ids are dense positive integers, so the only
+        complete enumeration is the id space itself — the sweep hands out
+        candidates and the importer retires the ids that answer 404, which is
+        cheap because a missing id costs exactly one request.
+        """
+        ceiling = int(settings.MAL_MAX_ANIME_ID)
+        start = max(1, int(cursor or "1"))
+        if start > ceiling:
+            return CatalogPage(external_ids=(), next_cursor=None, total_count=ceiling)
+        end = min(ceiling, start + max(1, int(page_size)) - 1)
+        return CatalogPage(
+            external_ids=tuple(str(mal_id) for mal_id in range(start, end + 1)),
+            next_cursor=str(end + 1) if end < ceiling else None,
+            total_count=ceiling,
+        )
 
     def fetch_season(
         self,
