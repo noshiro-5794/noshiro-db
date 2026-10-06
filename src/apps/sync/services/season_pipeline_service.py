@@ -12,6 +12,7 @@ from collections.abc import Callable
 from typing import Any
 
 from apps.index.models import ProviderRecord
+from apps.index.services import airing_board_projection_service
 from apps.sync.providers.anilist import ANILIST_SEASON_ITEM_NAMESPACE
 from apps.sync.services.anilist_season_service import anilist_season_service
 from apps.sync.services.anilist_service import anilist_import_service
@@ -36,12 +37,14 @@ class SeasonPipelineService:
         created_ids = self._created_candidate_ids(sources)
         if evaluate and created_ids:
             self._dispatch_ai_evaluations(created_ids)
+        board = self._run_isolated(self._rebuild_board)
 
         anilist_detail = _detail(sources.get("anilist"))
         mal_detail = _detail(sources.get("mal"))
         anilist_ids = anilist_detail.get("candidate_ids") or []
         return {
             "sources": sources,
+            "board": board,
             "overall": self._overall_status(sources),
             # Legacy convenience aliases kept for existing callers/CLI output.
             "anilist_snapshot": anilist_detail.get("snapshot"),
@@ -91,6 +94,18 @@ class SeasonPipelineService:
                 "retry_after": getattr(exc, "retry_after", None),
             }
         return {"status": "succeeded", "detail": detail}
+
+    @staticmethod
+    def _rebuild_board() -> dict[str, Any]:
+        """Project the refreshed sources onto the board visitors actually see.
+
+        The season legs only refresh provider snapshots. Turning those into the
+        weekly bars is a separate projection step, and until now nothing in the
+        daily automation ran it: the board was rebuilt only when someone
+        remembered the management command, so a new quarter opened with an empty
+        calendar.
+        """
+        return airing_board_projection_service.rebuild()
 
     @classmethod
     def _created_candidate_ids(cls, sources: dict[str, dict[str, Any]]) -> list[str]:
