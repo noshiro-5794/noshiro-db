@@ -322,7 +322,7 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(minute="*/30"),
     },
     "refresh-popularity": {
-        "task": "apps.index.tasks.refresh_popularity_task",
+        "task": "apps.index.tasks.popularity.refresh_popularity_task",
         "schedule": crontab(hour=5, minute=15),
     },
     "worker-heartbeat": {

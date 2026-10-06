@@ -53,3 +53,32 @@ class TestNormalizeMinioEndpoint:
         endpoint, uses_https = _normalize_minio_endpoint("minio:9000")
         assert endpoint == "minio:9000"
         assert uses_https is None
+
+
+def test_every_scheduled_task_is_registered_with_celery() -> None:
+    """A beat entry that names an unregistered task fails silently at 5am.
+
+    Celery binds ``@shared_task`` to the defining module, so a schedule has to
+    carry the full module path. A short path looked fine in review while the
+    worker answered "Received unregistered task" and the ranking went stale for
+    a week.
+    """
+    from config.celery import app
+
+    app.loader.import_default_modules()
+    registered = set(app.tasks)
+    scheduled = {
+        key: entry["task"] for key, entry in settings.CELERY_BEAT_SCHEDULE.items()
+    }
+
+    missing = {key: name for key, name in scheduled.items() if name not in registered}
+
+    assert missing == {}
+
+
+def test_scheduled_task_names_point_at_their_defining_module() -> None:
+    """Guards against a schedule that only matches because of an alias."""
+    scheduled = {entry["task"] for entry in settings.CELERY_BEAT_SCHEDULE.values()}
+
+    assert all("." in name and not name.endswith("._task") for name in scheduled)
+    assert "apps.index.tasks.popularity.refresh_popularity_task" in scheduled
