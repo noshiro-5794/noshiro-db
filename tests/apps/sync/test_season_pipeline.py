@@ -104,3 +104,44 @@ def test_anilist_maintenance_does_not_block_mal_leg() -> None:
         max_items=None,
     )
     dispatch.assert_called_once_with(["m1"])
+
+
+def test_run_projects_the_board_from_the_refreshed_sources() -> None:
+    """The season legs refresh snapshots; the board still has to be projected.
+
+    Nothing else in the daily automation did it, so a new quarter opened with an
+    empty calendar and the airing refresh had no targets to work from.
+    """
+    with (
+        patch.object(season_pipeline_service, "_run_anilist_leg", return_value={}),
+        patch.object(season_pipeline_service, "_run_mal_leg", return_value={}),
+        patch(
+            "apps.sync.services.season_pipeline_service.airing_board_projection_service.rebuild",
+            return_value={"entries": 334, "candidates": 24589},
+        ) as rebuild,
+    ):
+        result = season_pipeline_service.run()
+
+    assert rebuild.call_count == 1
+    assert result["board"]["status"] == "succeeded"
+    assert result["board"]["detail"]["entries"] == 334
+
+
+def test_board_projection_failure_does_not_hide_the_source_results() -> None:
+    with (
+        patch.object(
+            season_pipeline_service,
+            "_run_anilist_leg",
+            return_value={"imported": 3},
+        ),
+        patch.object(season_pipeline_service, "_run_mal_leg", return_value={}),
+        patch(
+            "apps.sync.services.season_pipeline_service.airing_board_projection_service.rebuild",
+            side_effect=RuntimeError("projection blew up"),
+        ),
+    ):
+        result = season_pipeline_service.run()
+
+    assert result["overall"] == "succeeded"
+    assert result["board"]["status"] == "failed"
+    assert "projection blew up" in result["board"]["error"]

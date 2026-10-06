@@ -30,6 +30,7 @@ from apps.index.models import (
     AiringEvent,
     ProviderRepresentation,
 )
+from apps.index.services import airing_board_projection_service
 from apps.sync.models import SyncError, SyncState
 from apps.sync.providers.bangumi import BangumiAPIError
 from apps.sync.services.anilist_service import anilist_import_service
@@ -54,6 +55,31 @@ SUPPORTED_PROVIDER_SLUGS = ("bangumi", "anilist", "mal")
 class AiringDailySyncService:
     TASK_NAME = "airing_daily"
     DEFAULT_SHARD = "airing"
+
+    @staticmethod
+    def _ensure_board_is_projected() -> None:
+        """Fill an empty board before looking for refresh targets.
+
+        Targets come from the bars the board already holds, so a board that was
+        created empty stays empty: there is nothing for the daily refresh to
+        iterate over. Rebuilding the projection once is cheap next to a calendar
+        that never appears.
+        """
+        board = (
+            AiringBoard.objects.filter(status=AiringBoard.Status.ACTIVE)
+            .only("id", "observation_id")
+            .first()
+        )
+        if board is None:
+            return
+        if AiringBoardEntry.objects.filter(board=board).exists():
+            return
+        if (
+            board.observation_id is not None
+            and AiringEvent.objects.filter(observation_id=board.observation_id).exists()
+        ):
+            return
+        airing_board_projection_service.rebuild()
 
     def board_targets(self) -> tuple[list[AiringTarget], str | None]:
         board = (
@@ -163,6 +189,7 @@ class AiringDailySyncService:
         job_id: str | None = None,
         verbose: bool = False,
     ) -> dict:
+        self._ensure_board_is_projected()
         targets, season_key = self.board_targets()
         shard = self.shard_for(season_key=season_key)
         batch_size = max(1, int(batch_size or settings.AIRING_DAILY_BATCH_SIZE))

@@ -196,3 +196,35 @@ def test_cancel_stale_seasons_retires_old_sync_shards() -> None:
     current.refresh_from_db()
     assert old.status == SyncState.Status.FINISHED
     assert current.status == SyncState.Status.RUNNING
+
+
+def test_empty_board_is_projected_before_targets_are_collected() -> None:
+    """A board created empty must be filled, not skipped.
+
+    Targets are read from the board's own bars, so an empty board would leave
+    the daily refresh with nothing to do and the calendar blank until someone
+    ran the rebuild command by hand.
+    """
+    airing_board_service.refresh(observation=None, season_key="2026Q4", item_count=0)
+
+    with patch(
+        "apps.sync.services.airing_daily_sync_service.airing_board_projection_service.rebuild",
+        return_value={"entries": 3},
+    ) as rebuild:
+        airing_daily_sync_service._ensure_board_is_projected()
+
+    assert rebuild.call_count == 1
+
+
+def test_projected_board_is_not_rebuilt_again() -> None:
+    observation = _calendar_board(1)
+    airing_board_service.refresh(
+        observation=observation, season_key="2026Q4", item_count=1
+    )
+
+    with patch(
+        "apps.sync.services.airing_daily_sync_service.airing_board_projection_service.rebuild"
+    ) as rebuild:
+        airing_daily_sync_service._ensure_board_is_projected()
+
+    assert rebuild.call_count == 0
