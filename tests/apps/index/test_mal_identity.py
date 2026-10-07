@@ -12,7 +12,9 @@ from apps.index.models import (
     ProviderRepresentation,
     Work,
 )
-from apps.index.services import mal_identity_service
+from unittest.mock import patch
+
+from apps.index.services import entity_resolution_service, mal_identity_service
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -110,3 +112,71 @@ def test_official_dry_run_creates_no_candidates() -> None:
     assert summary["bound"] == 0
     assert MatchCandidate.objects.count() == 0
     assert mal_entity.lifecycle == Entity.Lifecycle.ACTIVE
+
+
+def test_each_pair_commits_on_its_own() -> None:
+    """A failure on a later pair must not roll back the merges already made.
+
+    The sweep used to run inside one transaction: a time limit or a single bad
+    pair discarded every binding the run had produced, which is how the daily
+    season task merged nothing for weeks.
+    """
+    first_mal = _work_entity(
+        provider_slug="mal", namespace_slug="anime", external_id="10"
+    )
+    first_anilist = _work_entity(
+        provider_slug="anilist", namespace_slug="anime", external_id="100"
+    )
+    _record_mal_id_fact(entity=first_anilist, mal_id=10)
+    second_mal = _work_entity(
+        provider_slug="mal", namespace_slug="anime", external_id="11"
+    )
+    second_anilist = _work_entity(
+        provider_slug="anilist", namespace_slug="anime", external_id="101"
+    )
+    _record_mal_id_fact(entity=second_anilist, mal_id=11)
+
+    original = entity_resolution_service.decide_candidate
+    calls = {"n": 0}
+
+    def explode_on_second(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] > 1:
+            raise RuntimeError("provider hiccup")
+        return original(*args, **kwargs)
+
+    with patch.object(
+        entity_resolution_service, "decide_candidate", side_effect=explode_on_second
+    ):
+        with pytest.raises(RuntimeError):
+            mal_identity_service.reconcile_official_links()
+
+    # The first merge survived the second pair's failure.
+    assert (
+        MatchCandidate.objects.filter(
+            policy_version=mal_identity_service.OFFICIAL_POLICY,
+            status=MatchCandidate.Status.ACCEPTED,
+        ).count()
+        == 1
+    )
+    merged = EntityRedirect.objects.filter(is_active=True).count()
+    assert merged == 1
+
+
+def test_limit_bounds_one_run() -> None:
+    for index in range(3):
+        mal_entity = _work_entity(
+            provider_slug="mal", namespace_slug="anime", external_id=str(100 + index)
+        )
+        anilist_entity = _work_entity(
+            provider_slug="anilist",
+            namespace_slug="anime",
+            external_id=str(900 + index),
+        )
+        _record_mal_id_fact(entity=anilist_entity, mal_id=100 + index)
+        assert mal_entity.pk != anilist_entity.pk
+
+    summary = mal_identity_service.reconcile_official_links(limit=2)
+
+    assert summary["examined"] == 2
+    assert summary["bound"] == 2

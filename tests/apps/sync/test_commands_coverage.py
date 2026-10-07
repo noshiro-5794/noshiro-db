@@ -57,7 +57,7 @@ def test_reconcile_mal_identities_command_runs_service() -> None:
     ) as run:
         output = _run("reconcile_mal_identities", "--dry-run")
 
-    run.assert_called_once_with(create=False, apply=False)
+    run.assert_called_once_with(create=False, apply=False, limit=None)
     assert '"bound": 0' in output
 
 
