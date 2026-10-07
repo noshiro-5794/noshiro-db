@@ -203,3 +203,59 @@ def test_mal_source_can_match_bangumi_work() -> None:
     )
     assert evidence.value["provider_pair"] == "mal:bangumi"
     assert mal.id in {candidate.left_entity_id, candidate.right_entity_id}
+
+
+def test_generation_skips_entities_that_already_have_a_candidate() -> None:
+    """A daily pass must not re-run the trigram lookup for every known title.
+
+    One query runs per source name, so sweeping the whole catalogue took hours
+    and consumed the season task's entire budget.
+    """
+    source = _entity(
+        provider_slug="anilist",
+        namespace_slug="anime",
+        external_id="20",
+        name="Skip Me",
+        make_work=True,
+    )
+    _entity(
+        provider_slug="bangumi",
+        namespace_slug="subject",
+        external_id="200",
+        name="Skip Me",
+        make_work=True,
+    )
+    first = provider_candidate_service.generate_candidates(min_similarity=0.6, top_k=5)
+    assert first["candidates_created"] == 1
+
+    second = provider_candidate_service.generate_candidates(min_similarity=0.6, top_k=5)
+
+    assert second["candidates_created"] == 0
+    assert second["skipped_processed"] == 1
+    assert str(source.pk) in provider_candidate_service._processed_source_ids(
+        policy_version="title-similarity-v1", provider_slug="anilist"
+    )
+
+
+def test_generation_limit_bounds_a_single_run() -> None:
+    for index in range(3):
+        _entity(
+            provider_slug="anilist",
+            namespace_slug="anime",
+            external_id=str(300 + index),
+            name=f"Bounded Title {index}",
+        )
+        _entity(
+            provider_slug="bangumi",
+            namespace_slug="subject",
+            external_id=str(400 + index),
+            name=f"Bounded Title {index}",
+            make_work=True,
+        )
+
+    summary = provider_candidate_service.generate_candidates(
+        min_similarity=0.6, top_k=5, limit=1
+    )
+
+    assert summary["source_entities"] == 1
+    assert summary["limited"] is True

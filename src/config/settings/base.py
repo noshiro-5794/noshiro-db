@@ -505,6 +505,10 @@ BANGUMI_SUBJECT_REFRESH_BATCH_SIZE = env.int(
 # Confident AI match proposals bound per day. The evaluator runs every half
 # hour; this is what turns its verdicts into canonical merges.
 MATCH_APPLY_BATCH_SIZE = env.int("MATCH_APPLY_BATCH_SIZE", default=500)
+# Source entities examined per candidate-generation run. Each one costs a
+# trigram lookup per name, so an unbounded sweep of the whole catalogue runs
+# into hours and eats the season task's budget.
+MATCH_CANDIDATE_BATCH_SIZE = env.int("MATCH_CANDIDATE_BATCH_SIZE", default=400)
 
 AI_AGENT_API_BASE_URL = env(
     "AI_AGENT_API_BASE_URL",
