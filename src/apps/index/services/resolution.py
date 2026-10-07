@@ -2,7 +2,7 @@ from django.db import transaction
 from django.db.models import Count
 from django.utils import timezone
 
-from apps.index.exceptions import EntityResolutionError
+from apps.index.exceptions import EntityResolutionError, UserLibraryConflict
 from apps.index.models import (
     Entity,
     EntityRedirect,
@@ -254,9 +254,7 @@ class EntityResolutionService:
             entity_id__in=self.cluster_ids(target),
             user_id__in=source_users,
         ).exists():
-            raise EntityResolutionError(
-                "Cannot merge entities with conflicting user library entries."
-            )
+            raise UserLibraryConflict()
 
     def _merge_snapshot(self, *, source: Entity, target: Entity) -> dict:
         from apps.users.models import UserSubject

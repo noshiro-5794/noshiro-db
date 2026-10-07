@@ -16,6 +16,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.ai.models import AIProposal
+from apps.index.exceptions import UserLibraryConflict
 from apps.index.models import MatchCandidate, MatchDecision
 from apps.index.services import entity_resolution_service
 from apps.users.models import UserSubject
@@ -51,6 +52,7 @@ class MatchApplyService:
             "accepted": 0,
             "abstained": 0,
             "already_bound": 0,
+            "blocked": 0,
             "deferred": 0,
             "errors": [],
             "rows": [],
@@ -87,6 +89,8 @@ class MatchApplyService:
                 )
                 if outcome == "already_bound":
                     summary["already_bound"] += 1
+                elif outcome == "blocked":
+                    summary["blocked"] += 1
                 elif eligible:
                     summary["accepted"] += 1
                 else:
@@ -164,12 +168,32 @@ class MatchApplyService:
                 f"Admin conservative batch: AI bind at {proposal.confidence} "
                 f"confidence on candidate score {candidate.score}."
             )
-            entity_resolution_service.decide_candidate(
-                candidate=candidate,
-                outcome=MatchDecision.Outcome.BIND,
-                decided_by="admin_batch",
-                reason=reason,
-            )
+            try:
+                entity_resolution_service.decide_candidate(
+                    candidate=candidate,
+                    outcome=MatchDecision.Outcome.BIND,
+                    decided_by="admin_batch",
+                    reason=reason,
+                )
+            except UserLibraryConflict:
+                # Permanent until the user's own library entries are merged.
+                # Recording it keeps the pair out of every future batch instead
+                # of reporting the same error each day.
+                reason = (
+                    "Admin conservative batch: blocked by conflicting user "
+                    "library entries."
+                )
+                entity_resolution_service.decide_candidate(
+                    candidate=candidate,
+                    outcome=MatchDecision.Outcome.ABSTAIN,
+                    decided_by="admin_batch",
+                    reason=reason,
+                )
+                proposal.status = AIProposal.Status.ABSTAINED
+                proposal.policy_reason = reason
+                proposal.decided_at = timezone.now()
+                proposal.save(update_fields=["status", "policy_reason", "decided_at"])
+                return "blocked"
             proposal.status = AIProposal.Status.ACCEPTED
             proposal.policy_reason = reason
         else:
