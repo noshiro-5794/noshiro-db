@@ -503,8 +503,11 @@ BANGUMI_SUBJECT_REFRESH_BATCH_SIZE = env.int(
     default=2000,
 )
 # Confident AI match proposals bound per day. The evaluator runs every half
-# hour; this is what turns its verdicts into canonical merges.
-MATCH_APPLY_BATCH_SIZE = env.int("MATCH_APPLY_BATCH_SIZE", default=500)
+# hour; this is what turns its verdicts into canonical merges. Each binding is
+# a merge, so the batch is sized to the hourly task limit rather than to a
+# trickle: 500 a day would take a week to clear a single generation run's
+# backlog.
+MATCH_APPLY_BATCH_SIZE = env.int("MATCH_APPLY_BATCH_SIZE", default=2000)
 # Source entities examined per candidate-generation run. Each one costs a
 # trigram lookup per name, so an unbounded sweep of the whole catalogue runs
 # into hours and eats the season task's budget.
