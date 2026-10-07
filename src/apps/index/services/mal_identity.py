@@ -5,8 +5,6 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
-from django.db import transaction
-
 from apps.index.models import (
     Entity,
     Fact,
@@ -30,15 +28,25 @@ class MALIdentityService:
     OFFICIAL_POLICY = "official-mal-anilist-id-v1"
     ANILIST_ID_MAL_PREDICATE = "anilist-id-mal"
 
-    @transaction.atomic
     def reconcile_official_links(
         self,
         *,
         create: bool = True,
         apply: bool = True,
+        limit: int | None = None,
     ) -> dict[str, Any]:
+        """Bind MAL works to their AniList twin using AniList's official id.
+
+        Every pair commits on its own. An earlier version wrapped the whole
+        sweep in a single transaction, which meant a run of thirty thousand
+        pairs held locks for the entire pass, hid its progress from every other
+        connection, and rolled the lot back if the last pair failed or the task
+        hit its time limit — the daily season task did exactly that and had been
+        merging nothing for weeks.
+        """
         summary = {
             "mal_entities": 0,
+            "examined": 0,
             "anilist_matches": 0,
             "candidates_created": 0,
             "candidates_existing": 0,
@@ -57,7 +65,9 @@ class MALIdentityService:
                 entity__lifecycle=Entity.Lifecycle.ACTIVE,
             )
             .select_related("entity", "provider_record")
-            .order_by("provider_record__external_id")
+            # Active entities first so a bounded run always makes progress:
+            # already merged records would otherwise fill every batch.
+            .order_by("entity__lifecycle", "provider_record__external_id")
         )
         for representation in mal_rows:
             mal_entity = entity_resolution_service.resolve(representation.entity)
@@ -65,8 +75,12 @@ class MALIdentityService:
                 # Already redirected into a canonical work; the MAL record is
                 # represented on the root, so a fresh pair would be redundant.
                 summary["skipped_redirected"] += 1
+                summary["examined"] += 1
                 continue
+            if limit is not None and summary["examined"] >= limit:
+                break
             summary["mal_entities"] += 1
+            summary["examined"] += 1
             mal_id = int(representation.provider_record.external_id)
             for anilist_entity in self._anilist_entities_for_mal_id(mal_id):
                 summary["anilist_matches"] += 1
