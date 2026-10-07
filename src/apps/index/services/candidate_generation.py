@@ -15,7 +15,7 @@ from typing import Any
 
 from django.db import connection, transaction
 
-from apps.index.models import MatchCandidate, MatchEvidence
+from apps.index.models import MatchCandidate, MatchEvidence, ProviderRepresentation
 
 
 class ProviderCandidateService:
@@ -31,8 +31,18 @@ class ProviderCandidateService:
         min_similarity: float = 0.6,
         top_k: int = 5,
         create: bool = True,
+        limit: int | None = None,
+        skip_processed: bool = True,
     ) -> dict[str, Any]:
-        """Match active source anime works against target anime subject works."""
+        """Match active source anime works against target anime subject works.
+
+        One query runs per source name, so a sweep over every AniList entity is
+        tens of thousands of trigram lookups — hours of work that quietly ate
+        the season task's whole budget. ``skip_processed`` looks only at entities
+        that have never produced a candidate for this policy, and ``limit`` caps
+        a single run, so the daily pass is bounded and still works through the
+        backlog over successive days.
+        """
         source_names = self._source_names(
             provider_slug=source_provider,
             namespace_slug=source_namespace,
@@ -44,12 +54,24 @@ class ProviderCandidateService:
             "target_provider": target_provider,
             "anilist_entities": 0,
             "candidates_created": 0,
+            "skipped_processed": 0,
+            "limited": False,
             "created_ids": [],
             "pairs": [],
         }
         entities: dict[str, list[dict[str, Any]]] = {}
         for name_row in source_names:
             entities.setdefault(str(name_row["entity_id"]), []).append(name_row)
+        if skip_processed:
+            processed = self._processed_source_ids(
+                policy_version=policy_version, provider_slug=source_provider
+            )
+            for entity_id in [key for key in entities if key in processed]:
+                entities.pop(entity_id)
+                summary["skipped_processed"] += 1
+        if limit is not None and limit > 0 and len(entities) > limit:
+            entities = dict(list(entities.items())[:limit])
+            summary["limited"] = True
         for entity_id, names in entities.items():
             summary["source_entities"] += 1
             if source_provider == "anilist":
@@ -103,6 +125,8 @@ class ProviderCandidateService:
         min_similarity: float = 0.6,
         top_k: int = 5,
         create: bool = True,
+        limit: int | None = None,
+        skip_processed: bool = True,
     ) -> dict[str, Any]:
         return self.generate_candidates(
             source_provider="mal",
@@ -112,7 +136,35 @@ class ProviderCandidateService:
             min_similarity=min_similarity,
             top_k=top_k,
             create=create,
+            limit=limit,
+            skip_processed=skip_processed,
         )
+
+    @staticmethod
+    def _processed_source_ids(*, policy_version: str, provider_slug: str) -> set:
+        """Entities of the source provider that already have a candidate.
+
+        A candidate records both sides, so the ids are narrowed to the ones the
+        source provider actually represents; the target provider's ids must not
+        be mistaken for processed sources.
+        """
+        involved: set = set()
+        for left, right in MatchCandidate.objects.filter(
+            policy_version=policy_version
+        ).values_list("left_entity_id", "right_entity_id"):
+            involved.add(left)
+            involved.add(right)
+        if not involved:
+            return set()
+        # Strings, because the caller keys source entities by string id.
+        return {
+            str(entity_id)
+            for entity_id in ProviderRepresentation.objects.filter(
+                is_active=True,
+                entity_id__in=list(involved),
+                provider_record__namespace__provider__slug=provider_slug,
+            ).values_list("entity_id", flat=True)
+        }
 
     @staticmethod
     def _policy_version(source_provider: str, target_provider: str) -> str:

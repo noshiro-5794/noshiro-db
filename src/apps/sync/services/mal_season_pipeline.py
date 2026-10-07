@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from django.conf import settings
 from django.db import transaction
 
 from apps.index.models import Entity, ProviderRecord, ProviderRepresentation
@@ -42,7 +43,10 @@ class MALSeasonPipelineService:
             if reconcile_identities
             else None
         )
-        candidate_summary = provider_candidate_service.generate_mal_bangumi_candidates()
+        candidate_summary = provider_candidate_service.generate_mal_bangumi_candidates(
+            limit=settings.MATCH_CANDIDATE_BATCH_SIZE,
+            skip_processed=True,
+        )
         created_ids = list(candidate_summary["created_ids"])
         board_summary = airing_board_projection_service.rebuild()
         if evaluate and created_ids:
