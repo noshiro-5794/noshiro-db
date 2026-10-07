@@ -196,11 +196,28 @@ class MALIdentityService:
                 entity_id__in=(left_entity.pk, right_entity.pk)
             ).values_list("work_type", flat=True)
         )
-        return (
-            MatchDecision.Outcome.BIND
-            if types <= {Work.WorkType.ANIME}
-            else MatchDecision.Outcome.ABSTAIN
+        if types - {Work.WorkType.ANIME}:
+            return MatchDecision.Outcome.ABSTAIN
+        if MALIdentityService._premieres_conflict(left_entity, right_entity):
+            # AniList's idMal is authoritative about identity, but the same title
+            # a generation apart is a remake: either the mapping or one side's
+            # date is wrong, and silently collapsing the two rewrites history.
+            return MatchDecision.Outcome.ABSTAIN
+        return MatchDecision.Outcome.BIND
+
+    @staticmethod
+    def _premieres_conflict(left_entity: Entity, right_entity: Entity) -> bool:
+        from apps.index.models import AnimeProfile
+
+        years = list(
+            AnimeProfile.objects.filter(
+                work__entity_id__in=(left_entity.pk, right_entity.pk),
+                premiered_on__isnull=False,
+            ).values_list("premiered_on", flat=True)
         )
+        if len(years) < 2:
+            return False
+        return abs(years[0].year - years[1].year) > 1
 
 
 mal_identity_service = MALIdentityService()
