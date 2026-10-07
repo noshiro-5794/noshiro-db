@@ -11,6 +11,7 @@ from apps.sync.tasks.manual import (
 )
 from apps.sync.tasks.refresh import refresh_bangumi_subjects_task
 from apps.sync.tasks.season import (
+    apply_match_proposals_task,
     check_season_rollover_task,
     reconcile_official_mal_links_task,
     run_season_pipeline_task,
@@ -18,6 +19,7 @@ from apps.sync.tasks.season import (
 from apps.sync.tasks.vndb import import_vndb_work_task
 
 __all__ = (
+    "apply_match_proposals_task",
     "check_season_rollover_task",
     "import_anilist_media_task",
     "import_mal_media_task",

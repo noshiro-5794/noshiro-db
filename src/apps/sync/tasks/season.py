@@ -2,6 +2,7 @@ from celery import shared_task
 from django.conf import settings
 
 from apps.index.services import mal_identity_service
+from apps.sync.services.match_apply_service import match_apply_service
 from apps.sync.services.season_pipeline_service import season_pipeline_service
 from apps.sync.services.season_rollover_service import season_rollover_service
 
@@ -36,4 +37,21 @@ def reconcile_official_mal_links_task(limit: int | None = None) -> dict:
         create=True,
         apply=True,
         limit=max(1, int(batch)),
+    )
+
+
+@shared_task(soft_time_limit=3600, time_limit=3900)
+def apply_match_proposals_task(limit: int | None = None) -> dict:
+    """Bind the AI-adjudicated match proposals that pass the evidence gates.
+
+    Generating candidates and evaluating them were both scheduled; applying the
+    verdicts was not, so thousands of confident proposals sat pending until an
+    admin ran the command by hand. Pairs that fail a gate stay pending for
+    review instead of being retired by an unattended pass.
+    """
+    batch = limit if limit is not None else settings.MATCH_APPLY_BATCH_SIZE
+    return match_apply_service.run(
+        limit=max(1, int(batch)),
+        apply=True,
+        abstain_ineligible=False,
     )
