@@ -47,6 +47,15 @@ class IncrementalSyncService:
             handler_name="_sync_subject",
             cursor_source="subject",
         ),
+        # The rotating refresh writes its failures to the same ledger, so the
+        # retry command has to know how to re-run one of them; otherwise they
+        # could only ever be pruned.
+        "bangumi_subject_refresh": IncrementalTaskConfig(
+            task_name="bangumi_subject_refresh",
+            full_task_name="full_subject",
+            handler_name="_sync_subject",
+            cursor_source="subject",
+        ),
         "incremental_episode": IncrementalTaskConfig(
             task_name="incremental_episode",
             full_task_name="full_episode",
