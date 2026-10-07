@@ -121,16 +121,12 @@ def test_each_pair_commits_on_its_own() -> None:
     pair discarded every binding the run had produced, which is how the daily
     season task merged nothing for weeks.
     """
-    _work_entity(
-        provider_slug="mal", namespace_slug="anime", external_id="10"
-    )
+    _work_entity(provider_slug="mal", namespace_slug="anime", external_id="10")
     first_anilist = _work_entity(
         provider_slug="anilist", namespace_slug="anime", external_id="100"
     )
     _record_mal_id_fact(entity=first_anilist, mal_id=10)
-    _work_entity(
-        provider_slug="mal", namespace_slug="anime", external_id="11"
-    )
+    _work_entity(provider_slug="mal", namespace_slug="anime", external_id="11")
     second_anilist = _work_entity(
         provider_slug="anilist", namespace_slug="anime", external_id="101"
     )
