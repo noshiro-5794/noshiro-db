@@ -1,3 +1,4 @@
+import hashlib
 import re
 import unicodedata
 
@@ -34,9 +35,13 @@ class NameNormalizer:
             if result.action in {"map_existing", "propose_new"}:
                 return result.preferred_term[:256]
         normalized_key = self.normalize_key(original)
+        # The lookup text is hashed: a key carrying spaces or CJK characters
+        # makes Django warn on every lookup, because a memcached-style backend
+        # cannot store it. The readable prefix stays for debugging.
+        digest = hashlib.sha256(normalized_key.encode("utf-8")).hexdigest()[:32]
         cache_key = (
             f"noshiro:term-alias:{vocabulary}:"
-            f"{provider_namespace_id or ''}:{language}:{normalized_key}"
+            f"{provider_namespace_id or ''}:{language}:{digest}"
         )
         cached = cache.get(cache_key)
         if cached is not None:

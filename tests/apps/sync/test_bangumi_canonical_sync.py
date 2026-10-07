@@ -340,3 +340,23 @@ def test_empty_episode_snapshot_retracts_current_links_without_deleting_history(
         ).count()
         == 1
     )
+
+
+def test_term_alias_cache_key_is_safe_for_any_language() -> None:
+    """A CJK lookup text must not end up verbatim in a cache key.
+
+    Django warns on every lookup when a key carries spaces or non-ASCII
+    characters, because a memcached-style backend cannot store it.
+    """
+    from unittest.mock import patch
+
+    from apps.sync.services.name_normalizer import name_normalizer
+
+    with patch("apps.sync.services.name_normalizer.cache") as cache_backend:
+        cache_backend.get.return_value = None
+        name_normalizer.normalize_name("cg 导演", vocabulary="legacy")
+
+    key = cache_backend.set.call_args.args[0]
+    assert key.isascii()
+    assert " " not in key
+    assert key.startswith("noshiro:term-alias:legacy:")
