@@ -175,6 +175,8 @@ class SeasonPipelineService:
         return imported
 
     def _generate_anilist_candidates(self) -> dict[str, Any]:
+        from django.conf import settings
+
         from apps.index.services import provider_candidate_service
 
         return provider_candidate_service.generate_candidates(
@@ -185,6 +187,8 @@ class SeasonPipelineService:
             min_similarity=0.6,
             top_k=5,
             create=True,
+            limit=settings.MATCH_CANDIDATE_BATCH_SIZE,
+            skip_processed=True,
         )
 
     def _dispatch_ai_evaluations(self, candidate_ids: list[str]) -> None:
