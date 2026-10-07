@@ -23,6 +23,9 @@ from apps.users.models import UserSubject
 
 MIN_CANDIDATE_SCORE = Decimal("0.9500")
 MIN_CONFIDENCE = Decimal("0.9200")
+# Sources disagree about a premiere by a year often enough that one year of
+# slack is expected; two or more decades-coded remakes apart is not.
+RELEASE_YEAR_TOLERANCE = 1
 
 
 class MatchApplyService:
@@ -116,9 +119,35 @@ class MatchApplyService:
             reasons.append("hard_conflicts")
         if candidate.left_entity.kind != candidate.right_entity.kind:
             reasons.append("entity_kind_mismatch")
+        if MatchApplyService._release_years_conflict(candidate):
+            reasons.append("release_year_conflict")
         if MatchApplyService._has_conflicting_user_library(candidate):
             reasons.append("conflicting_user_library")
         return reasons
+
+    @staticmethod
+    def _release_years_conflict(candidate: MatchCandidate) -> bool:
+        """Distinguish a duplicate from a remake.
+
+        Two works whose premieres are years apart are different productions — a
+        reboot, a remake, a second adaptation — and the titles being identical
+        is exactly why a title-similarity candidate looks confident. Binding
+        them silently rewrites the history of both.
+        """
+        from apps.index.models import AnimeProfile
+
+        years = []
+        for entity_id in (candidate.left_entity_id, candidate.right_entity_id):
+            premiered = (
+                AnimeProfile.objects.filter(work__entity_id=entity_id)
+                .values_list("premiered_on", flat=True)
+                .first()
+            )
+            if premiered is not None:
+                years.append(premiered.year)
+        if len(years) < 2:
+            return False
+        return abs(years[0] - years[1]) > RELEASE_YEAR_TOLERANCE
 
     @staticmethod
     def _has_conflicting_user_library(candidate: MatchCandidate) -> bool:
