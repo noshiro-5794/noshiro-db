@@ -178,3 +178,35 @@ def test_limit_bounds_one_run() -> None:
 
     assert summary["examined"] == 2
     assert summary["bound"] == 2
+
+
+def test_official_id_link_abstains_when_the_premieres_disagree() -> None:
+    """AniList's idMal is authoritative, but a remake is still a different work.
+
+    The mapping (or one side's date) is wrong when the same title sits a
+    generation apart, and binding them silently rewrites both.
+    """
+    import datetime
+
+    from apps.index.models import AnimeProfile, MatchDecision
+
+    mal_entity = _work_entity(
+        provider_slug="mal", namespace_slug="anime", external_id="4190"
+    )
+    anilist_entity = _work_entity(
+        provider_slug="anilist", namespace_slug="anime", external_id="119675"
+    )
+    AnimeProfile.objects.create(
+        work=Work.objects.get(entity=mal_entity), premiered_on=datetime.date(2001, 7, 4)
+    )
+    AnimeProfile.objects.create(
+        work=Work.objects.get(entity=anilist_entity),
+        premiered_on=datetime.date(2021, 4, 1),
+    )
+    _record_mal_id_fact(entity=anilist_entity, mal_id=4190)
+
+    summary = mal_identity_service.reconcile_official_links()
+
+    assert summary["bound"] == 0
+    assert summary["abstained"] == 1
+    assert MatchDecision.objects.filter(outcome=MatchDecision.Outcome.ABSTAIN).exists()
