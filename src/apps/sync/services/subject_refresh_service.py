@@ -18,7 +18,7 @@ from typing import Any
 
 from django.db.models import F
 
-from apps.index.models import ProviderRecord
+from apps.index.models import IndexMembership, ProviderRecord
 from apps.sync.models import SyncError
 from apps.sync.providers.bangumi import BANGUMI_SOURCE, BangumiAPIError
 from apps.sync.services.subject_service import subject_service
@@ -112,10 +112,16 @@ class SubjectRefreshService:
             status=ProviderRecord.Status.ACTIVE,
         )
         if catalogue_only:
-            # Only records a visible work actually points at: refreshing the
-            # deep tail of the id space would spend the whole budget on entries
-            # no visitor can reach.
-            base = base.filter(representations__is_active=True).distinct()
+            # Only records behind a work the catalogue actually lists: spending
+            # the budget on the deep tail would leave the entries a visitor can
+            # reach still stored as legacy rows. A merely *represented* record is
+            # not enough — most of those are not in a collection.
+            base = base.filter(
+                representations__is_active=True,
+                representations__entity__index_memberships__listing_state=(
+                    IndexMembership.State.LISTED
+                ),
+            ).distinct()
         order = (F("last_seen_at").asc(nulls_first=True), "external_id")
         legacy = list(
             base.filter(raw_state=ProviderRecord.RawState.LEGACY)
