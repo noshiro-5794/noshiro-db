@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 
 from apps.index.models import (
@@ -12,8 +14,6 @@ from apps.index.models import (
     ProviderRepresentation,
     Work,
 )
-from unittest.mock import patch
-
 from apps.index.services import entity_resolution_service, mal_identity_service
 
 pytestmark = pytest.mark.django_db(transaction=True)
@@ -121,14 +121,14 @@ def test_each_pair_commits_on_its_own() -> None:
     pair discarded every binding the run had produced, which is how the daily
     season task merged nothing for weeks.
     """
-    first_mal = _work_entity(
+    _work_entity(
         provider_slug="mal", namespace_slug="anime", external_id="10"
     )
     first_anilist = _work_entity(
         provider_slug="anilist", namespace_slug="anime", external_id="100"
     )
     _record_mal_id_fact(entity=first_anilist, mal_id=10)
-    second_mal = _work_entity(
+    _work_entity(
         provider_slug="mal", namespace_slug="anime", external_id="11"
     )
     second_anilist = _work_entity(
@@ -145,11 +145,13 @@ def test_each_pair_commits_on_its_own() -> None:
             raise RuntimeError("provider hiccup")
         return original(*args, **kwargs)
 
-    with patch.object(
-        entity_resolution_service, "decide_candidate", side_effect=explode_on_second
+    with (
+        patch.object(
+            entity_resolution_service, "decide_candidate", side_effect=explode_on_second
+        ),
+        pytest.raises(RuntimeError),
     ):
-        with pytest.raises(RuntimeError):
-            mal_identity_service.reconcile_official_links()
+        mal_identity_service.reconcile_official_links()
 
     # The first merge survived the second pair's failure.
     assert (
