@@ -156,6 +156,7 @@ class EntityResolutionService:
         )
 
     @transaction.atomic
+    @transaction.atomic
     def decide_candidate(
         self,
         *,
