@@ -30,6 +30,7 @@ class MatchApplyService:
         *,
         limit: int = 200,
         apply: bool = False,
+        abstain_ineligible: bool = True,
     ) -> dict[str, Any]:
         proposals = list(
             AIProposal.objects.filter(
@@ -49,6 +50,7 @@ class MatchApplyService:
             "would_bind": 0,
             "accepted": 0,
             "abstained": 0,
+            "deferred": 0,
             "errors": [],
             "rows": [],
         }
@@ -71,6 +73,12 @@ class MatchApplyService:
                 }
             )
             if not apply:
+                continue
+            if not eligible and not abstain_ineligible:
+                # An unattended run must not retire a pair it merely could not
+                # confirm: a weak score today may be a strong one once the
+                # source names or the policy improve, and abstaining is final.
+                summary["deferred"] += 1
                 continue
             try:
                 self._decide(proposal=proposal, candidate=candidate, eligible=eligible)

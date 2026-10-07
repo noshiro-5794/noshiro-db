@@ -156,7 +156,7 @@ def test_apply_match_proposals_command_reports_summary() -> None:
         monkeypatch.setattr(
             match_apply_service,
             "run",
-            lambda limit=None, apply=None: {
+            lambda limit=None, apply=None, abstain_ineligible=True: {
                 "processed": 1,
                 "would_bind": 1,
                 "accepted": 0,
@@ -168,3 +168,41 @@ def test_apply_match_proposals_command_reports_summary() -> None:
         call_command("apply_match_proposals", stdout=out)
 
     assert '"would_bind": 1' in out.getvalue()
+
+
+def test_keep_pending_defers_ineligible_proposals() -> None:
+    """An unattended run must not retire a pair it could not confirm."""
+    from types import SimpleNamespace
+    from unittest.mock import patch
+
+    from apps.sync.services.match_apply_service import match_apply_service
+
+    proposal = SimpleNamespace(
+        pk="11111111-1111-1111-1111-111111111111",
+        confidence=0.5,
+        payload={"decision": "bind"},
+        match_candidate=SimpleNamespace(
+            pk="22222222-2222-2222-2222-222222222222",
+            score=0.4,
+            left_entity_id="33333333-3333-3333-3333-333333333333",
+            right_entity_id="44444444-4444-4444-4444-444444444444",
+            hard_conflicts=[],
+            left_entity=SimpleNamespace(kind="work"),
+            right_entity=SimpleNamespace(kind="work"),
+        ),
+    )
+    with (
+        patch(
+            "apps.sync.services.match_apply_service.AIProposal.objects.filter"
+        ) as proposals,
+        patch.object(match_apply_service, "_decide") as decide,
+    ):
+        proposals.return_value.select_related.return_value.order_by.return_value.__getitem__.return_value = [
+            proposal
+        ]
+        result = match_apply_service.run(limit=1, apply=True, abstain_ineligible=False)
+
+    assert result["deferred"] == 1
+    assert result["accepted"] == 0
+    assert result["abstained"] == 0
+    assert decide.call_count == 0

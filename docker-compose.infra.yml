@@ -4,6 +4,12 @@ services:
   postgres:
     image: postgres:15.18-bookworm
     restart: unless-stopped
+    # Docker's default /dev/shm is 64 MB. PostgreSQL parallel workers size
+    # their shared-memory segments from it, so a wide analytical query — a
+    # catalogue scan, a board rebuild — fails with "could not resize shared
+    # memory segment ... No space left on device" while the host has plenty of
+    # disk and RAM.
+    shm_size: ${POSTGRES_SHM_SIZE:-512mb}
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-noshiro_db}
       POSTGRES_USER: ${POSTGRES_USER:-noshiro}

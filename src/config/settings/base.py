@@ -333,6 +333,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.sync.tasks.refresh.refresh_bangumi_subjects_task",
         "schedule": crontab(hour=5, minute=0),
     },
+    "apply-match-proposals": {
+        "task": "apps.sync.tasks.season.apply_match_proposals_task",
+        "schedule": crontab(hour=4, minute=15),
+    },
     "worker-heartbeat": {
         "task": "apps.sync.tasks.maintenance.worker_heartbeat",
         "schedule": 60.0,
@@ -482,6 +486,9 @@ BANGUMI_SUBJECT_REFRESH_BATCH_SIZE = env.int(
     "BANGUMI_SUBJECT_REFRESH_BATCH_SIZE",
     default=2000,
 )
+# Confident AI match proposals bound per day. The evaluator runs every half
+# hour; this is what turns its verdicts into canonical merges.
+MATCH_APPLY_BATCH_SIZE = env.int("MATCH_APPLY_BATCH_SIZE", default=500)
 
 AI_AGENT_API_BASE_URL = env(
     "AI_AGENT_API_BASE_URL",
