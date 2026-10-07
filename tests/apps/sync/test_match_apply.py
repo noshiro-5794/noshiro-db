@@ -303,3 +303,50 @@ def test_pair_already_bound_by_another_rule_leaves_the_queue() -> None:
     assert result["errors"] == []
     assert proposal.status == AIProposal.Status.ACCEPTED
     assert candidate.status == MatchCandidate.Status.ABSTAINED
+
+
+def test_user_library_conflict_is_recorded_not_retried() -> None:
+    """A permanent conflict leaves the queue instead of erroring every run."""
+    from apps.ai.models import AIProposal
+    from apps.index.models import MatchCandidate
+    from apps.sync.services.match_apply_service import match_apply_service
+
+    left = _work_entity(provider_slug="anilist", external_id="800")
+    right = _work_entity(provider_slug="bangumi", external_id="801")
+    candidate = MatchCandidate.objects.create(
+        left_entity=left,
+        right_entity=right,
+        score=Decimal("1.0000"),
+        runner_up_margin=Decimal("1.0000"),
+        policy_version="title-similarity-v1",
+    )
+    run = _AIRun()
+    proposal = AIProposal.objects.create(
+        run=run,
+        match_candidate=candidate,
+        confidence=Decimal("0.9900"),
+        payload={"decision": "bind"},
+        status=AIProposal.Status.PENDING,
+    )
+
+    from unittest.mock import patch
+
+    from apps.index.exceptions import UserLibraryConflict
+    from apps.index.models import MatchDecision
+
+    def decide(*, candidate, outcome, decided_by, reason):
+        # Only the bind is refused; the follow-up abstain has to go through.
+        if outcome == MatchDecision.Outcome.BIND:
+            raise UserLibraryConflict()
+        return None
+
+    with patch(
+        "apps.sync.services.match_apply_service.entity_resolution_service.decide_candidate",
+        side_effect=decide,
+    ):
+        result = match_apply_service.run(limit=5, apply=True, abstain_ineligible=False)
+
+    proposal.refresh_from_db()
+    assert result["blocked"] == 1
+    assert result["errors"] == []
+    assert proposal.status == AIProposal.Status.ABSTAINED
