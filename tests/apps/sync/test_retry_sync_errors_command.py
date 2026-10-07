@@ -79,3 +79,17 @@ class TestRetrySyncErrors:
 
         sync_one.assert_not_called()
         assert SyncError.objects.filter(pk=entry.pk).exists()
+
+
+def test_refresh_task_failures_are_retryable() -> None:
+    """Every task that writes to the ledger must be actionable by the command.
+
+    The rotating Bangumi refresh records failures; without a config entry the
+    retry command could only prune them.
+    """
+    from apps.sync.services.incremental_sync_service import IncrementalSyncService
+
+    config = IncrementalSyncService.TASKS.get("bangumi_subject_refresh")
+
+    assert config is not None
+    assert config.handler_name == "_sync_subject"
