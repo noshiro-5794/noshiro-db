@@ -115,6 +115,22 @@ CACHES = {
     "default": env.cache_url("CACHE_URL", default="locmemcache://"),
 }
 
+# A stalled Redis connection must raise instead of parking the worker on a
+# socket read: redis-py defaults to no timeout, so one half-open connection
+# hangs the task — and the distributed rate limiter it holds — until Celery's
+# soft time limit kills it. That is how a season refresh sat idle for two hours
+# with nothing in its log.
+if CACHES["default"]["BACKEND"].endswith("RedisCache"):
+    CACHES["default"].setdefault("OPTIONS", {}).update(
+        {
+            "socket_timeout": env.float("CACHE_SOCKET_TIMEOUT", default=5),
+            "socket_connect_timeout": env.float(
+                "CACHE_SOCKET_CONNECT_TIMEOUT", default=5
+            ),
+            "retry_on_timeout": env.bool("CACHE_RETRY_ON_TIMEOUT", default=False),
+        }
+    )
+
 # Authentication and API
 
 AUTH_USER_MODEL = "users.User"
