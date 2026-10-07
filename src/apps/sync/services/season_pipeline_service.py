@@ -13,7 +13,10 @@ from typing import Any
 
 from apps.index.models import ProviderRecord
 from apps.index.services import airing_board_projection_service
-from apps.sync.providers.anilist import ANILIST_SEASON_ITEM_NAMESPACE
+from apps.sync.providers.anilist import (
+    ANILIST_ANIME_NAMESPACE,
+    ANILIST_SEASON_ITEM_NAMESPACE,
+)
 from apps.sync.services.anilist_season_service import anilist_season_service
 from apps.sync.services.anilist_service import anilist_import_service
 from apps.sync.services.mal_season_pipeline import mal_season_pipeline_service
@@ -135,6 +138,18 @@ class SeasonPipelineService:
         return "failed"
 
     def _promote_anilist_records(self, *, max_items: int | None) -> list[str]:
+        """Promote season snapshot records that no work represents yet.
+
+        The list is filtered to genuinely new items: re-importing every saved
+        record every day re-fetched characters, staff, studios and relations for
+        the whole season, which alone exhausted the task's ninety minute limit.
+        """
+        promoted = ProviderRecord.objects.filter(
+            namespace__provider__slug="anilist",
+            namespace__slug=ANILIST_ANIME_NAMESPACE.slug,
+            status=ProviderRecord.Status.ACTIVE,
+            representations__is_active=True,
+        ).values_list("external_id", flat=True)
         external_ids = (
             ProviderRecord.objects.filter(
                 namespace__provider__slug="anilist",
@@ -142,6 +157,7 @@ class SeasonPipelineService:
                 status=ProviderRecord.Status.ACTIVE,
                 latest_revision__isnull=False,
             )
+            .exclude(external_id__in=promoted)
             .order_by("external_id")
             .values_list("external_id", flat=True)
             .distinct()
