@@ -1,3 +1,4 @@
+from decimal import Decimal
 from io import StringIO
 from unittest.mock import patch
 
@@ -125,3 +126,80 @@ def test_sync_season_command_runs_pipeline() -> None:
 
     run.assert_called_once_with(max_items_per_source=3, evaluate=True)
     assert '"anilist_imported": 0' in output
+
+
+def test_split_conflicting_merges_command_splits_a_remake_pair() -> None:
+    """The repair must actually reverse the merge it reports."""
+    import datetime
+
+    from apps.index.models import (
+        AnimeProfile,
+        Entity,
+        EntityRedirect,
+        MatchCandidate,
+        MatchDecision,
+        MergeEvent,
+        Provider,
+        ProviderNamespace,
+        ProviderRecord,
+        ProviderRepresentation,
+        Work,
+    )
+
+    def work(provider_slug: str, external_id: str, premiered: datetime.date) -> Entity:
+        provider, _ = Provider.objects.get_or_create(
+            slug=provider_slug, defaults={"name": provider_slug}
+        )
+        namespace, _ = ProviderNamespace.objects.get_or_create(
+            provider=provider,
+            slug="subject" if provider_slug == "bangumi" else "anime",
+            defaults={"resource_type": ProviderNamespace.ResourceType.SUBJECT},
+        )
+        record = ProviderRecord.objects.create(
+            namespace=namespace, external_id=external_id, origin="api", status="active"
+        )
+        entity = Entity.objects.create(kind=Entity.Kind.WORK)
+        Work.objects.create(entity=entity, work_type=Work.WorkType.ANIME)
+        AnimeProfile.objects.create(
+            work=Work.objects.get(entity=entity), premiered_on=premiered
+        )
+        ProviderRepresentation.objects.create(
+            entity=entity,
+            provider_record=record,
+            mapping_kind=ProviderRepresentation.MappingKind.EXACT,
+            method=ProviderRepresentation.Method.PROVIDER,
+        )
+        return entity
+
+    old = work("anilist", "1", datetime.date(2001, 7, 4))
+    remake = work("bangumi", "2", datetime.date(2021, 4, 1))
+    merge = MergeEvent.objects.create(
+        source_entity=old,
+        target_entity=remake,
+        method=MergeEvent.Method.AI_POLICY,
+        reason="test",
+    )
+    EntityRedirect.objects.create(
+        source_entity=old, target_entity=remake, merge_event=merge
+    )
+    candidate = MatchCandidate.objects.create(
+        left_entity=old,
+        right_entity=remake,
+        score=Decimal("1.0000"),
+        runner_up_margin=Decimal("1.0000"),
+        policy_version="title-similarity-v1",
+    )
+    MatchDecision.objects.create(
+        candidate=candidate,
+        outcome=MatchDecision.Outcome.BIND,
+        decided_by="admin_batch",
+        policy_version="title-similarity-v1",
+        reason="test",
+        decision_data={"merge_event_id": str(merge.pk)},
+    )
+
+    output = _run("split_conflicting_merges", "--apply", "--limit", "10")
+
+    merge.refresh_from_db()
+    assert merge.reversed_at is not None
+    assert '"split": 1' in output

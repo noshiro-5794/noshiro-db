@@ -350,3 +350,59 @@ def test_user_library_conflict_is_recorded_not_retried() -> None:
     assert result["blocked"] == 1
     assert result["errors"] == []
     assert proposal.status == AIProposal.Status.ABSTAINED
+
+
+def test_same_title_years_apart_is_not_a_duplicate() -> None:
+    """A remake shares its title with the original, and must not be bound to it.
+
+    "SHAMAN KING" is both the 2001 series and the 2021 reboot; a title-similarity
+    candidate scores them near identical, so the gate has to look at the era.
+    """
+    import datetime
+
+    from apps.index.models import AnimeProfile, MatchCandidate, Work
+    from apps.sync.services.match_apply_service import match_apply_service
+
+    left = _work_entity(provider_slug="anilist", external_id="900")
+    right = _work_entity(provider_slug="bangumi", external_id="901")
+    AnimeProfile.objects.create(
+        work=Work.objects.get(entity=left), premiered_on=datetime.date(2001, 7, 4)
+    )
+    AnimeProfile.objects.create(
+        work=Work.objects.get(entity=right), premiered_on=datetime.date(2021, 4, 1)
+    )
+    candidate = MatchCandidate.objects.create(
+        left_entity=left,
+        right_entity=right,
+        score=Decimal("1.0000"),
+        runner_up_margin=Decimal("1.0000"),
+        policy_version="title-similarity-v1",
+    )
+
+    reasons = match_apply_service._gate_reasons(
+        type(
+            "Proposal",
+            (),
+            {
+                "confidence": Decimal("1.0"),
+                "payload": {"decision": "bind"},
+                "match_candidate": candidate,
+            },
+        )()
+    )
+
+    assert "release_year_conflict" in reasons
+
+    # A pair without dates cannot be judged this way and stays eligible.
+    AnimeProfile.objects.all().delete()
+    assert "release_year_conflict" not in match_apply_service._gate_reasons(
+        type(
+            "Proposal",
+            (),
+            {
+                "confidence": Decimal("1.0"),
+                "payload": {"decision": "bind"},
+                "match_candidate": candidate,
+            },
+        )()
+    )
