@@ -329,6 +329,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.sync.tasks.season.reconcile_official_mal_links_task",
         "schedule": crontab(hour=4, minute=45),
     },
+    "refresh-bangumi-subjects": {
+        "task": "apps.sync.tasks.refresh.refresh_bangumi_subjects_task",
+        "schedule": crontab(hour=5, minute=0),
+    },
     "worker-heartbeat": {
         "task": "apps.sync.tasks.maintenance.worker_heartbeat",
         "schedule": 60.0,
@@ -471,6 +475,12 @@ MAL_MAX_ANIME_ID = env.int("MAL_MAX_ANIME_ID", default=65500)
 MAL_IDENTITY_RECONCILE_BATCH_SIZE = env.int(
     "MAL_IDENTITY_RECONCILE_BATCH_SIZE",
     default=4000,
+)
+# Known Bangumi subjects re-fetched per day, legacy rows first. At Bangumi's
+# one-request-per-second ceiling this is roughly thirty-five minutes of work.
+BANGUMI_SUBJECT_REFRESH_BATCH_SIZE = env.int(
+    "BANGUMI_SUBJECT_REFRESH_BATCH_SIZE",
+    default=2000,
 )
 
 AI_AGENT_API_BASE_URL = env(

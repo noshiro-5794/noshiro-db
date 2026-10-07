@@ -9,6 +9,7 @@ from apps.sync.tasks.manual import (
     sync_subject_by_bangumi_id_task,
     sync_subject_by_uuid_task,
 )
+from apps.sync.tasks.refresh import refresh_bangumi_subjects_task
 from apps.sync.tasks.season import (
     check_season_rollover_task,
     reconcile_official_mal_links_task,
@@ -22,6 +23,7 @@ __all__ = (
     "import_mal_media_task",
     "import_vndb_work_task",
     "reconcile_official_mal_links_task",
+    "refresh_bangumi_subjects_task",
     "run_airing_daily_task",
     "run_incremental_sync_task",
     "run_mal_season_pipeline_task",
