@@ -532,7 +532,10 @@ AI_REASONING_MODEL = env(
 )
 
 AI_AGENT_TIMEOUT = env.float("AI_AGENT_TIMEOUT", default=30)
-AI_MATCH_EVAL_BATCH_SIZE = env.int("AI_MATCH_EVAL_BATCH_SIZE", default=50)
+# Candidates dispatched to the adjudicator every half hour. The worker spends
+# five to twelve seconds per verdict, so 50 left it idle and a single
+# generation run's backlog took days to evaluate; 300 keeps it saturated.
+AI_MATCH_EVAL_BATCH_SIZE = env.int("AI_MATCH_EVAL_BATCH_SIZE", default=300)
 
 # Web evidence for AI enrichment. WEB_SEARCH_PROVIDER is one of "tavily",
 # "none"; without a key the harness degrades to model-only evidence.
