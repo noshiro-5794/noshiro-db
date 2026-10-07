@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -35,9 +35,15 @@ def test_run_chains_anilist_promotion_candidates_and_mal_pipeline() -> None:
             return_value={"identity": {"bound": 0}},
         ) as mal_run,
     ):
-        records.return_value.order_by.return_value.values_list.return_value.distinct.return_value = [
+        # ``_promote_anilist_records`` asks twice: once for the records already
+        # represented by a work, once for the season snapshot records.
+        already_promoted = MagicMock()
+        already_promoted.values_list.return_value = []
+        snapshot_records = MagicMock()
+        snapshot_records.exclude.return_value.order_by.return_value.values_list.return_value.distinct.return_value = [
             "189046"
         ]
+        records.side_effect = [already_promoted, snapshot_records]
         result = season_pipeline_service.run(
             max_items_per_source=2,
             evaluate=True,

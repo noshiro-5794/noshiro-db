@@ -12,7 +12,7 @@ from apps.index.services import (
     mal_identity_service,
     provider_candidate_service,
 )
-from apps.sync.providers.mal import MAL_SCHEDULE_ITEM_NAMESPACE
+from apps.sync.providers.mal import MAL_ANIME_NAMESPACE, MAL_SCHEDULE_ITEM_NAMESPACE
 from apps.sync.services.mal_schedule_service import mal_schedule_service
 
 
@@ -25,6 +25,7 @@ class MALSeasonPipelineService:
         fetch_season: bool = True,
         evaluate: bool = False,
         max_items: int | None = None,
+        reconcile_identities: bool = False,
     ) -> dict[str, Any]:
         season_summary = mal_schedule_service.sync() if fetch_season else None
         saved_ids = self._saved_anime_ids(max_items=max_items)
@@ -33,7 +34,14 @@ class MALSeasonPipelineService:
             for external_id in saved_ids
             if (entity := self._import_one(external_id)) is not None
         ]
-        identity_summary = mal_identity_service.reconcile_official_links()
+        # The AniList-id reconciliation walks every MAL record, so it runs as its
+        # own bounded daily job rather than inside the season refresh, where it
+        # held the whole task open for the better part of an hour.
+        identity_summary = (
+            mal_identity_service.reconcile_official_links()
+            if reconcile_identities
+            else None
+        )
         candidate_summary = provider_candidate_service.generate_mal_bangumi_candidates()
         created_ids = list(candidate_summary["created_ids"])
         board_summary = airing_board_projection_service.rebuild()
@@ -51,6 +59,14 @@ class MALSeasonPipelineService:
 
     @staticmethod
     def _saved_anime_ids(*, max_items: int | None) -> list[str]:
+        """Season records that no anime work represents yet."""
+        promoted = ProviderRepresentation.objects.filter(
+            is_active=True,
+            provider_record__namespace__provider__slug=(
+                MAL_SCHEDULE_ITEM_NAMESPACE.source.slug
+            ),
+            provider_record__namespace__slug=MAL_ANIME_NAMESPACE.slug,
+        ).values_list("provider_record__external_id", flat=True)
         records = (
             ProviderRecord.objects.filter(
                 namespace__provider__slug=MAL_SCHEDULE_ITEM_NAMESPACE.source.slug,
@@ -58,6 +74,7 @@ class MALSeasonPipelineService:
                 status=ProviderRecord.Status.ACTIVE,
                 latest_revision__isnull=False,
             )
+            .exclude(external_id__in=promoted)
             .order_by("external_id")
             .values_list("external_id", flat=True)
             .distinct()

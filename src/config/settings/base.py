@@ -325,6 +325,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.index.tasks.popularity.refresh_popularity_task",
         "schedule": crontab(hour=5, minute=15),
     },
+    "reconcile-official-mal-links": {
+        "task": "apps.sync.tasks.season.reconcile_official_mal_links_task",
+        "schedule": crontab(hour=4, minute=45),
+    },
     "worker-heartbeat": {
         "task": "apps.sync.tasks.maintenance.worker_heartbeat",
         "schedule": 60.0,
@@ -462,6 +466,12 @@ MAL_RATE_LIMIT_INTERVAL = env.float(
 # is the highest id observed upstream; newer entries arrive through the daily
 # season and airing refreshes.
 MAL_MAX_ANIME_ID = env.int("MAL_MAX_ANIME_ID", default=65500)
+# How many MAL records the official-id reconciliation examines per day. Each
+# pair commits on its own, so the number only bounds one day's work.
+MAL_IDENTITY_RECONCILE_BATCH_SIZE = env.int(
+    "MAL_IDENTITY_RECONCILE_BATCH_SIZE",
+    default=4000,
+)
 
 AI_AGENT_API_BASE_URL = env(
     "AI_AGENT_API_BASE_URL",

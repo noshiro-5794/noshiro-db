@@ -77,7 +77,8 @@ def test_pipeline_promotes_saved_schedule_record_to_entity() -> None:
     assert result["season"] is None
     assert result["saved_anime_ids"] == 1
     assert result["imported_entities"] == 1
-    assert result["identity"]["bound"] == 0
+    # The identity sweep is its own bounded daily job now.
+    assert result["identity"] is None
     candidates.assert_called_once()
     entity = Entity.objects.get(kind=Entity.Kind.WORK)
     work = Work.objects.get(entity=entity)
