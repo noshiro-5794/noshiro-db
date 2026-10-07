@@ -151,6 +151,51 @@ def test_apply_abstains_low_confidence_proposal() -> None:
     assert proposal.status == AIProposal.Status.ABSTAINED
 
 
+def _work_entity(*, provider_slug: str, external_id: str):
+    from apps.index.models import (
+        Entity,
+        Provider,
+        ProviderNamespace,
+        ProviderRecord,
+        ProviderRepresentation,
+        Work,
+    )
+
+    provider, _ = Provider.objects.get_or_create(
+        slug=provider_slug, defaults={"name": provider_slug}
+    )
+    namespace, _ = ProviderNamespace.objects.get_or_create(
+        provider=provider,
+        slug="anime" if provider_slug != "bangumi" else "subject",
+        defaults={"resource_type": ProviderNamespace.ResourceType.SUBJECT},
+    )
+    record = ProviderRecord.objects.create(
+        namespace=namespace, external_id=external_id, origin="api", status="active"
+    )
+    entity = Entity.objects.create(kind=Entity.Kind.WORK)
+    Work.objects.create(entity=entity, work_type=Work.WorkType.ANIME)
+    ProviderRepresentation.objects.create(
+        entity=entity,
+        provider_record=record,
+        mapping_kind=ProviderRepresentation.MappingKind.EXACT,
+        method=ProviderRepresentation.Method.PROVIDER,
+    )
+    return entity
+
+
+def _AIRun():
+    from apps.ai.models import AIRun
+
+    return AIRun.objects.create(
+        use_case="entity_matching",
+        provider="test",
+        model="test",
+        prompt_version="v1",
+        input_hash="hash",
+        status="succeeded",
+    )
+
+
 def test_apply_match_proposals_command_reports_summary() -> None:
     with pytest.MonkeyPatch.context() as monkeypatch:
         monkeypatch.setattr(
@@ -206,3 +251,55 @@ def test_keep_pending_defers_ineligible_proposals() -> None:
     assert result["accepted"] == 0
     assert result["abstained"] == 0
     assert decide.call_count == 0
+
+
+def test_pair_already_bound_by_another_rule_leaves_the_queue() -> None:
+    """A proposal whose pair another rule already merged must not error forever.
+
+    The official-id sweep and the AI batch cover overlapping pairs; without this
+    the proposal stays pending, the daily task retries it, and the candidate
+    raises "already resolve together" on every run.
+    """
+    from apps.ai.models import AIProposal
+    from apps.index.models import (
+        EntityRedirect,
+        MatchCandidate,
+        MergeEvent,
+    )
+    from apps.sync.services.match_apply_service import match_apply_service
+
+    left = _work_entity(provider_slug="anilist", external_id="700")
+    right = _work_entity(provider_slug="bangumi", external_id="701")
+    merge = MergeEvent.objects.create(
+        source_entity=left,
+        target_entity=right,
+        method=MergeEvent.Method.RULE,
+        reason="test",
+    )
+    EntityRedirect.objects.create(
+        source_entity=left, target_entity=right, merge_event=merge
+    )
+    candidate = MatchCandidate.objects.create(
+        left_entity=left,
+        right_entity=right,
+        score=Decimal("1.0000"),
+        runner_up_margin=Decimal("1.0000"),
+        policy_version="title-similarity-v1",
+    )
+    run = _AIRun()
+    proposal = AIProposal.objects.create(
+        run=run,
+        match_candidate=candidate,
+        confidence=Decimal("0.9900"),
+        payload={"decision": "bind"},
+        status=AIProposal.Status.PENDING,
+    )
+
+    result = match_apply_service.run(limit=5, apply=True, abstain_ineligible=False)
+
+    proposal.refresh_from_db()
+    candidate.refresh_from_db()
+    assert result["already_bound"] == 1
+    assert result["errors"] == []
+    assert proposal.status == AIProposal.Status.ACCEPTED
+    assert candidate.status == MatchCandidate.Status.ABSTAINED

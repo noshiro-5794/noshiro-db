@@ -50,6 +50,7 @@ class MatchApplyService:
             "would_bind": 0,
             "accepted": 0,
             "abstained": 0,
+            "already_bound": 0,
             "deferred": 0,
             "errors": [],
             "rows": [],
@@ -81,8 +82,12 @@ class MatchApplyService:
                 summary["deferred"] += 1
                 continue
             try:
-                self._decide(proposal=proposal, candidate=candidate, eligible=eligible)
-                if eligible:
+                outcome = self._decide(
+                    proposal=proposal, candidate=candidate, eligible=eligible
+                )
+                if outcome == "already_bound":
+                    summary["already_bound"] += 1
+                elif eligible:
                     summary["accepted"] += 1
                 else:
                     summary["abstained"] += 1
@@ -128,14 +133,32 @@ class MatchApplyService:
         proposal: AIProposal,
         candidate: MatchCandidate,
         eligible: bool,
-    ) -> None:
+    ) -> str:
         candidate = MatchCandidate.objects.select_for_update().get(pk=candidate.pk)
         if candidate.status != MatchCandidate.Status.PENDING:
             proposal.status = AIProposal.Status.ABSTAINED
             proposal.policy_reason = "Candidate was already decided by another run."
             proposal.decided_at = timezone.now()
             proposal.save(update_fields=["status", "policy_reason", "decided_at"])
-            return
+            return "already_decided"
+        left = entity_resolution_service.resolve(candidate.left_entity)
+        right = entity_resolution_service.resolve(candidate.right_entity)
+        if left.pk == right.pk:
+            # Another rule (the official id sweep, most often) already bound the
+            # pair. Retrying would raise "already resolve together" forever and
+            # leave the proposal stuck in the queue, so record the outcome and
+            # move on.
+            entity_resolution_service.decide_candidate(
+                candidate=candidate,
+                outcome=MatchDecision.Outcome.ABSTAIN,
+                decided_by="admin_batch",
+                reason="Already bound by another rule.",
+            )
+            proposal.status = AIProposal.Status.ACCEPTED
+            proposal.policy_reason = "Pair already bound by another rule."
+            proposal.decided_at = timezone.now()
+            proposal.save(update_fields=["status", "policy_reason", "decided_at"])
+            return "already_bound"
         if eligible:
             reason = (
                 f"Admin conservative batch: AI bind at {proposal.confidence} "
@@ -160,6 +183,7 @@ class MatchApplyService:
             )
         proposal.decided_at = timezone.now()
         proposal.save(update_fields=["status", "policy_reason", "decided_at"])
+        return "accepted" if eligible else "abstained"
 
 
 match_apply_service = MatchApplyService()
