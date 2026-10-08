@@ -6,6 +6,7 @@ from typing import Any
 
 from apps.index.models import MatchCandidate
 from config.celery import app as celery_app
+from integrations.ai.gateway import ai_gateway
 
 
 class AIMatchingBatchService:
@@ -18,6 +19,11 @@ class AIMatchingBatchService:
         )
 
     def dispatch(self, *, limit: int) -> dict[str, Any]:
+        if not ai_gateway.provider_available():
+            # The provider is refusing every call (an unpaid balance, most
+            # often). Queueing another batch only writes a failure row per
+            # candidate, so wait for the breaker to close.
+            return {"dispatched": 0, "reason": "ai_provider_unavailable"}
         candidates = self.pending_candidates(limit=limit)
         candidate_ids = [str(candidate.pk) for candidate in candidates]
         for candidate_id in candidate_ids:
