@@ -189,3 +189,52 @@ def test_production_policy_abstains_when_any_bind_gate_fails(
     assert proposal.status == AIProposal.Status.ABSTAINED
     assert candidate.status == MatchCandidate.Status.ABSTAINED
     assert MatchDecision.objects.get(candidate=candidate).outcome == "abstain"
+
+
+def test_prune_only_deletes_unreferenced_failures() -> None:
+    """A failed run another row depends on must survive the prune."""
+    from io import StringIO
+
+    from django.core.management import call_command
+
+    from apps.ai.models import AgentRun, AgentStep, AIRun
+    from apps.index.models import MatchCandidate
+
+    standalone = AIRun.objects.create(
+        use_case="entity_matching",
+        provider="test",
+        model="test",
+        prompt_version="v1",
+        input_hash="h1",
+        status=AIRun.Status.FAILED,
+        error="402 Payment Required",
+    )
+    agent_run = AgentRun.objects.create(
+        kind=AgentRun.Kind.ADMIN_SYNC,
+        status=AgentRun.Status.SUCCEEDED,
+        idempotency_scope="prune-test",
+        idempotency_key="prune-test",
+    )
+    step = AgentStep.objects.create(
+        run=agent_run,
+        sequence=0,
+        kind=AgentStep.Kind.MODEL,
+        status=AgentStep.Status.SUCCEEDED,
+    )
+    attached = AIRun.objects.create(
+        use_case="field_normalization",
+        provider="test",
+        model="test",
+        prompt_version="v1",
+        input_hash="h2",
+        status=AIRun.Status.FAILED,
+        error="kept",
+        agent_step=step,
+    )
+
+    out = StringIO()
+    call_command("prune_ai_failures", "--apply", stdout=out)
+    assert '"deleted"' in out.getvalue()
+    assert not AIRun.objects.filter(pk=standalone.pk).exists()
+    assert AIRun.objects.filter(pk=attached.pk).exists()
+    assert MatchCandidate.objects.count() == 0
