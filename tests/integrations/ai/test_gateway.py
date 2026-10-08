@@ -218,3 +218,89 @@ class TestGatewayClientWithoutApiKey:
                     _ = gw.client
                     call_kwargs = mock_httpx.Client.call_args[1]
                     assert "Authorization" not in call_kwargs.get("headers", {})
+
+
+class TestProviderFailureHandling:
+    """A dead account must not be retried forever, and transient errors must be."""
+
+    def test_account_failures_are_terminal(self) -> None:
+        from integrations.ai.exceptions import AIProviderError
+
+        assert AIProviderError("nope", status_code=402).retryable is False
+        assert AIProviderError("nope", status_code=402).is_account_problem is True
+        assert AIProviderError("nope", status_code=401).retryable is False
+        assert AIProviderError("nope", status_code=403).is_account_problem is True
+
+    def test_transient_failures_are_retryable(self) -> None:
+        from integrations.ai.exceptions import AIProviderError
+
+        assert AIProviderError("nope", status_code=429).retryable is True
+        assert AIProviderError("nope", status_code=503).retryable is True
+        assert AIProviderError("nope").retryable is True
+
+    def test_a_dead_account_opens_the_breaker_and_is_not_retried(self) -> None:
+        from unittest.mock import Mock
+
+        import httpx
+        from django.core.cache import cache
+
+        from integrations.ai.gateway import OpenAICompatibleGateway
+
+        cache.delete("noshiro:ai:provider-unavailable")
+        response = Mock()
+        response.status_code = 402
+        response.text = "Payment Required"
+        response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "402", request=Mock(), response=response
+        )
+        client = Mock()
+        client.post.return_value = response
+
+        gateway = OpenAICompatibleGateway(client)
+        with pytest.raises(AIProviderError) as excinfo:
+            gateway._post(url="https://example.test/v1/chat/completions", payload={})
+
+        assert excinfo.value.status_code == 402
+
+        assert client.post.call_count == 1
+        assert OpenAICompatibleGateway.provider_available() is False
+        cache.delete("noshiro:ai:provider-unavailable")
+
+    def test_transient_failure_is_retried_then_succeeds(self) -> None:
+        from unittest.mock import Mock, patch
+
+        import httpx
+
+        from integrations.ai.gateway import OpenAICompatibleGateway
+
+        failure = Mock()
+        failure.status_code = 503
+        failure.text = "unavailable"
+        failure.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "503", request=Mock(), response=failure
+        )
+        success = Mock()
+        success.raise_for_status.return_value = None
+        success.json.return_value = {"ok": True}
+        client = Mock()
+        client.post.side_effect = [failure, success]
+
+        gateway = OpenAICompatibleGateway(client)
+        with patch("integrations.ai.gateway.time.sleep"):
+            data = gateway._post(url="https://example.test/v1", payload={})
+
+        assert data == {"ok": True}
+        assert client.post.call_count == 2
+
+    def test_the_dispatcher_waits_while_the_breaker_is_open(self) -> None:
+        from django.core.cache import cache
+
+        from apps.ai.services.matching_batch import ai_matching_batch_service
+
+        cache.set("noshiro:ai:provider-unavailable", "402 Payment Required", timeout=60)
+        try:
+            result = ai_matching_batch_service.dispatch(limit=100)
+        finally:
+            cache.delete("noshiro:ai:provider-unavailable")
+
+        assert result == {"dispatched": 0, "reason": "ai_provider_unavailable"}

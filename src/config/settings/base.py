@@ -532,6 +532,13 @@ AI_REASONING_MODEL = env(
 )
 
 AI_AGENT_TIMEOUT = env.float("AI_AGENT_TIMEOUT", default=30)
+# Retries for calls the provider asks us to repeat (429, 5xx, dropped
+# connections). Account failures are not retried at all.
+AI_AGENT_MAX_ATTEMPTS = env.int("AI_AGENT_MAX_ATTEMPTS", default=3)
+AI_AGENT_RETRY_BASE_SECONDS = env.float("AI_AGENT_RETRY_BASE_SECONDS", default=2.0)
+# How long the gateway stays closed after an account-level refusal (401/402/403)
+# so a dead balance does not queue hundreds of doomed calls.
+AI_PROVIDER_BREAKER_SECONDS = env.int("AI_PROVIDER_BREAKER_SECONDS", default=900)
 # Candidates dispatched to the adjudicator every half hour. The worker spends
 # five to twelve seconds per verdict, so 50 left it idle and a single
 # generation run's backlog took days to evaluate; 300 keeps it saturated.
