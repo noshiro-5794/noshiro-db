@@ -7,7 +7,6 @@ import { Seo } from '@/shared/seo/Seo';
 import { routes } from '@/shared/routing/paths';
 import { Field, FieldLabel } from '@/shared/ui/Field';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/shared/ui/InputGroup';
-import '@/shared/ui/motion.css';
 
 type AuthPageLayoutProps = {
   children: ReactNode;

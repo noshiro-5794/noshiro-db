@@ -39,7 +39,7 @@ function DialogContent({ children, className, closeLabel, placement = 'center', 
             'relative grid w-full border border-control-border bg-elevated text-foreground shadow-[var(--ui-shadow-dialog)] outline-none transition-[opacity,transform] duration-[var(--ui-transition-standard)] data-[ending-style]:opacity-0 data-[starting-style]:opacity-0',
             placement === 'left'
               ? 'h-full max-w-[304px] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-[var(--ui-radius-frame)] data-[ending-style]:-translate-x-2 data-[starting-style]:-translate-x-2'
-              : 'max-h-[calc(100dvh-2rem)] max-w-lg gap-4 overflow-y-auto overscroll-contain rounded-[var(--ui-radius-surface)] p-4 data-[ending-style]:scale-[0.985] data-[starting-style]:scale-[0.985] sm:p-5',
+              : 'max-h-[calc(100dvh-2rem)] max-w-lg gap-4 overflow-y-auto overscroll-contain rounded-[var(--ui-radius-surface)] p-4 data-[ending-style]:scale-[0.96] data-[starting-style]:scale-[0.96] sm:p-5',
             className,
           )}
           data-slot="dialog-content"
