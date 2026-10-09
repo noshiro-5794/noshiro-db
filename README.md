@@ -63,3 +63,11 @@ neither stack reaches into the other.
 
 Commits follow Conventional Commits; `pnpm commit` inside `apps/web` walks
 through the format.
+
+## License
+
+GNU Affero General Public License v3.0 — see [LICENSE](LICENSE). Copyright (c)
+2025-2026 Noshiro_5794.
+
+Running a modified version as a network service means offering its source to the
+users of that service; section 13 of the license spells out what that requires.
