@@ -55,6 +55,12 @@ production database is never the first environment to apply new migrations.
 Deploy from `apps/api` inside the monorepo checkout; the compose files, the
 env file, and the Docker build context all live there.
 
+Moving an existing server from the split repositories is a one-time change: clone
+`https://github.com/noshiro-5794/noshiro-db.git` (or fetch it into the existing
+checkout) and run the same commands from its `apps/api` directory. If
+`APP_IMAGE` is pinned in the env file, point it at `noshiro-db/api`; the old
+image can then be removed with `docker image prune`.
+
 Start infrastructure first:
 
 ```bash
