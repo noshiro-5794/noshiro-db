@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router';
+import { publicAssetPaths } from '@/shared/assets/public-assets';
 import { useI18n } from '@/shared/i18n';
 import { routes } from '@/shared/routing/paths';
 
@@ -42,7 +43,7 @@ export function PublicFooter({ variant = 'public' }: PublicFooterProps) {
             to={routes.home}
             aria-label="Noshiro DB"
           >
-            <img className="size-6 rounded-md" src="/favicon.svg" alt="" aria-hidden="true" />
+            <img className="size-6 rounded-md" src={publicAssetPaths.appIcon} alt="" aria-hidden="true" />
           </Link>
           <span>© 2026 Noshiro DB</span>
         </div>
