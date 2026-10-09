@@ -3,3 +3,8 @@ enableGlobalVirtualStore: false
 fund: false
 minimumReleaseAge: 1440
 strictPeerDependencies: true
+
+# seroval reaches us through @tanstack/router-core; 1.6.2 and earlier carry a
+# memory-exhaustion advisory in JSON deserialization.
+overrides:
+  seroval: '>=1.6.3'
