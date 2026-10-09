@@ -1,15 +1,16 @@
 {
-  "name": "noshiro-db-frontend",
+  "name": "noshiro-db-web",
   "private": true,
   "description": "React frontend for the Noshiro DB anime and galgame catalog",
   "license": "MIT",
   "homepage": "https://app.noshiro.moe",
   "repository": {
     "type": "git",
-    "url": "https://github.com/noshiro-5794/noshiro-db-frontend.git"
+    "url": "https://github.com/noshiro-5794/noshiro-db.git",
+    "directory": "apps/web"
   },
   "bugs": {
-    "url": "https://github.com/noshiro-5794/noshiro-db-frontend/issues"
+    "url": "https://github.com/noshiro-5794/noshiro-db/issues"
   },
   "type": "module",
   "packageManager": "pnpm@11.17.0",

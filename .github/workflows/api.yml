@@ -1,16 +1,26 @@
-name: CI
+name: API
 
 on:
   pull_request:
+    paths:
+      - apps/api/**
+      - .github/workflows/api.yml
   push:
     branches: [main]
+    paths:
+      - apps/api/**
+      - .github/workflows/api.yml
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: api-${{ github.ref }}
   cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: apps/api
 
 jobs:
   quality:
@@ -94,15 +104,15 @@ jobs:
       - name: Build image
         uses: docker/build-push-action@v7
         with:
-          context: .
+          context: apps/api
           load: true
           push: false
-          tags: noshiro-db-backend:ci
+          tags: noshiro-db/backend:ci
 
       - name: Scan image
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: noshiro-db-backend:ci
+          image-ref: noshiro-db/backend:ci
           exit-code: "1"
           ignore-unfixed: true
           severity: CRITICAL
