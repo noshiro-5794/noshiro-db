@@ -21,7 +21,7 @@ const variantClasses: Record<ButtonVariant, string> = {
 
 const sizeClasses: Record<ButtonSize, string> = {
   default: 'h-[var(--ui-control-height)] px-[var(--ui-control-padding-x)]',
-  xs: 'h-6 gap-1 px-[var(--ui-control-padding-x-xs)] text-xs [&_svg]:size-[var(--ui-control-glyph-sm)]',
+  xs: 'h-[var(--ui-control-height-2xs)] gap-1 px-[var(--ui-control-padding-x-xs)] text-xs [&_svg]:size-[var(--ui-control-glyph-sm)]',
   sm: 'h-[var(--ui-control-height-xs)] px-[var(--ui-control-padding-x-xs)] text-xs [&_svg]:size-[var(--ui-control-glyph-sm)]',
   lg: 'h-[var(--ui-control-height-lg)] px-[var(--ui-control-padding-x-lg)]',
   icon: 'size-[var(--ui-control-height)] px-0',

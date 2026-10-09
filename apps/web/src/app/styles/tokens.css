@@ -83,6 +83,8 @@
   --ui-control-height-xs: 28px;
   --ui-control-height: 32px;
   --ui-control-height-lg: 36px;
+  /* The dense rung: a 24px control, for a toolbar that cannot spare more. */
+  --ui-control-height-2xs: 24px;
   /* Control rungs, after plane's control system: the padding, gap and glyph
      size travel with the height, so a small control is not a big control with
      smaller text. */
