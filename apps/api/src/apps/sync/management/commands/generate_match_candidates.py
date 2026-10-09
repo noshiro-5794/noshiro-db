@@ -1,0 +1,80 @@
+"""Generate idempotent title-similarity match candidates (AniList -> Bangumi)."""
+
+from __future__ import annotations
+
+from django.core.management.base import BaseCommand
+
+from apps.index.services import provider_candidate_service
+from config.celery import app as celery_app
+
+EVALUATE_TASK = "apps.ai.tasks.evaluate_match_candidate_task"
+
+
+class Command(BaseCommand):
+    help = (
+        "Create title-similarity match candidates between a supported anime "
+        "source and Bangumi subject works. No entity is merged; AI evaluation "
+        "is optional."
+    )
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--min-similarity",
+            type=float,
+            default=0.6,
+            help="pg_trgm similarity threshold for candidate titles.",
+        )
+        parser.add_argument("--top-k", type=int, default=5)
+        parser.add_argument(
+            "--source",
+            choices=("anilist", "mal"),
+            default="anilist",
+            help="Provider whose anime records are matched toward Bangumi.",
+        )
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Print candidate pairs without writing rows.",
+        )
+        parser.add_argument(
+            "--evaluate",
+            action="store_true",
+            help="Dispatch AI evaluation for each newly created candidate.",
+        )
+
+    def handle(self, *args, **options):
+        if options["source"] == "mal":
+            summary = provider_candidate_service.generate_mal_bangumi_candidates(
+                min_similarity=options["min_similarity"],
+                top_k=options["top_k"],
+                create=not options["dry_run"],
+            )
+        else:
+            summary = provider_candidate_service.generate_candidates(
+                min_similarity=options["min_similarity"],
+                top_k=options["top_k"],
+                create=not options["dry_run"],
+            )
+        if options["evaluate"] and not options["dry_run"]:
+            for candidate_id in summary["created_ids"]:
+                celery_app.send_task(
+                    EVALUATE_TASK,
+                    args=[str(candidate_id)],
+                    queue="ai",
+                )
+
+        mode = "dry-run" if options["dry_run"] else "created"
+        self.stdout.write(
+            f"[{mode}] {options['source']}_entities={summary['source_entities']} "
+            f"candidates_created={summary['candidates_created']} "
+            f"pairs_reported={len(summary['pairs'])}"
+        )
+        for pair in summary["pairs"][:50]:
+            self.stdout.write(
+                f"  {pair['similarity']:.2f} {pair['source_text'][:40]!r} "
+                f"-> {pair['target_text'][:50]!r}"
+            )
+        if options["evaluate"] and not options["dry_run"]:
+            self.stdout.write(
+                f"AI evaluation dispatched for {len(summary['created_ids'])} candidates"
+            )
