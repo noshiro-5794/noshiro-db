@@ -5,8 +5,8 @@ import { Input } from '@/shared/ui/Input';
 type InputGroupSize = 'default' | 'lg';
 
 const sizeClasses: Record<InputGroupSize, string> = {
-  default: 'h-[var(--ui-control-height)]',
-  lg: 'h-[var(--ui-control-height-lg)]',
+  default: 'h-[var(--ui-control-height)] [--ui-field-current-inset:var(--ui-field-inset)]',
+  lg: 'h-[var(--ui-control-height-lg)] [--ui-field-current-inset:var(--ui-field-inset-lg)]',
 };
 
 type InputGroupProps = ComponentProps<'div'> & {
@@ -20,8 +20,9 @@ function InputGroup({ className, size = 'default', ...props }: InputGroupProps) 
       className={cn(
         'group/input-group relative flex w-full min-w-0 items-center rounded-[var(--ui-radius-control)] border border-control-border bg-elevated',
         'shadow-[var(--ui-shadow-control)] outline-none',
-        // Controls carry their own type scale so an addon cannot drift a pixel off the value beside it.
-        'text-[13px]',
+        // A field carries its own type scale and inset, so an addon cannot drift
+        // a pixel off the value beside it.
+        'gap-[var(--ui-control-gap)] px-[var(--ui-field-current-inset)] text-sm',
         'transition-[border-color,box-shadow,background-color] duration-[var(--ui-transition-fast)] ease-[var(--ui-ease-gentle)]',
         'hover:border-[var(--ui-border-strong)] focus-within:border-ring focus-within:ring-2 focus-within:ring-[var(--ui-focus-halo)]',
         'has-[input[aria-invalid=true]]:border-destructive has-[input[aria-invalid=true]]:ring-2 has-[input[aria-invalid=true]]:ring-[var(--ui-danger-soft)]',
@@ -40,7 +41,7 @@ function InputGroupAddon({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div
       className={cn(
-        'flex h-full shrink-0 cursor-text items-center justify-center pl-[var(--ui-control-padding-x)] text-subtle-foreground [&_svg]:pointer-events-none [&_svg]:size-[var(--ui-control-glyph)] [&_svg]:shrink-0',
+        'flex h-full shrink-0 cursor-text items-center justify-center text-subtle-foreground [&_svg]:pointer-events-none [&_svg]:size-[var(--ui-control-glyph)] [&_svg]:shrink-0',
         className,
       )}
       data-slot="input-group-addon"
@@ -57,7 +58,7 @@ function InputGroupInput({ className, ...props }: ComponentProps<typeof Input>) 
   return (
     <Input
       className={cn(
-        'h-full min-w-0 flex-1 border-0 bg-transparent px-2.5 shadow-none hover:border-transparent focus:border-transparent focus:ring-0',
+        'h-full min-w-0 flex-1 border-0 bg-transparent px-0 shadow-none hover:border-transparent focus:border-transparent focus:ring-0',
         className,
       )}
       data-slot="input-group-control"
