@@ -16,13 +16,13 @@ function ComboboxTrigger({ className, ...props }: ComponentProps<typeof BaseComb
   return (
     <BaseCombobox.Trigger
       className={cn(
-        'group/combobox-trigger grid size-7 shrink-0 place-items-center rounded-[var(--ui-radius-control)] text-subtle-foreground outline-none transition-colors duration-[var(--ui-transition-fast)] hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-[var(--ui-focus-halo)]',
+        'group/combobox-trigger grid size-[var(--ui-control-height-xs)] shrink-0 place-items-center rounded-[var(--ui-radius-control)] text-subtle-foreground outline-none transition-colors duration-[var(--ui-transition-fast)] hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-[var(--ui-focus-halo)]',
         className,
       )}
       data-slot="combobox-trigger"
       {...props}
     >
-      <ChevronDown className="size-4 transition-transform duration-[var(--ui-transition-fast)] group-data-[popup-open]/combobox-trigger:rotate-180" />
+      <ChevronDown className="size-[var(--ui-control-glyph-sm)] transition-transform duration-[var(--ui-transition-fast)] group-data-[popup-open]/combobox-trigger:rotate-180" />
     </BaseCombobox.Trigger>
   );
 }

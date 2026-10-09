@@ -87,6 +87,7 @@ export function CollectionListSidebar({
             <SearchField
               aria-label={t('collections.searchPlaceholder')}
               maxLength={200}
+              size="lg"
               placeholder={t('collections.searchPlaceholder')}
               value={draftKeyword}
               onChange={(event) => {

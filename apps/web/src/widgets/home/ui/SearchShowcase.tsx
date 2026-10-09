@@ -114,6 +114,7 @@ export function SearchShowcase() {
               aria-label={t('search.keyword')}
               maxLength={200}
               placeholder={t('public.searchPlaceholder')}
+              size="lg"
               value={keyword}
               onChange={(event) => {
                 handleKeywordChange(event.target.value);
@@ -123,16 +124,20 @@ export function SearchShowcase() {
           <FilterMenu
             label={t('search.type')}
             options={subjectTypeOptions.map((option) => ({ label: t(option.labelKey), value: option.value }))}
+            size="lg"
             value={subjectType}
             onChange={setSubjectType}
           />
           <FilterMenu
             label={t('search.safety')}
             options={safetyOptions.map((option) => ({ label: t(option.labelKey), value: option.value }))}
+            size="lg"
             value={safety}
             onChange={setSafety}
           />
-          <Button type="submit">{t('search.title')}</Button>
+          <Button size="lg" type="submit">
+            {t('search.title')}
+          </Button>
         </DataToolbarRow>
       </DataToolbar>
 
