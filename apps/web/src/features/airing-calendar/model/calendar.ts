@@ -37,16 +37,6 @@ export type WeekdayBucket = {
 /** ISO weekday order used by both the grid header and the broadcast board. */
 export const isoWeekdays = [1, 2, 3, 4, 5, 6, 7] as const;
 
-export const sourceLabels: Record<string, string> = {
-  anilist: 'AniList',
-  mal: 'MAL',
-  bangumi: 'Bangumi',
-};
-
-export function sourceLabel(provider: string): string {
-  return sourceLabels[provider] ?? provider.toUpperCase();
-}
-
 export function dateKey(date: Date): string {
   const year = date.getFullYear();
   const month = `${date.getMonth() + 1}`.padStart(2, '0');
@@ -393,10 +383,6 @@ export function layoutOccurrences(occurrences: CalendarOccurrence[]): Positioned
 
 export function titleOf(occurrence: CalendarOccurrence): string {
   return titleOfEntry(occurrence.entry);
-}
-
-export function providerOf(entry: CalendarBoardEntry): string {
-  return entry.sources[0]?.provider ?? 'unknown';
 }
 
 export function weekdaysOf(entry: CalendarBoardEntry): (number | null)[] {

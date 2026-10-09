@@ -1,16 +1,6 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/shared/lib/cn';
 
-export function SourceDot({ className, provider }: { className?: string; provider: string }) {
-  return (
-    <span
-      aria-hidden
-      className={cn('calendar-dot inline-block size-2 shrink-0 rounded-full', className)}
-      data-cal-source={provider}
-    />
-  );
-}
-
 export function IconButton({
   children,
   className,
