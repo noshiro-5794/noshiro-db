@@ -1,8 +1,8 @@
 from celery import current_task, shared_task
 
+from apps.sync.services.mal import mal_import_service
 from apps.sync.services.mal_season_pipeline import mal_season_pipeline_service
-from apps.sync.services.mal_service import mal_import_service
-from apps.sync.services.sync_job_service import sync_job_service
+from apps.sync.services.sync_job import sync_job_service
 
 
 @shared_task(soft_time_limit=900, time_limit=960)

@@ -369,7 +369,7 @@ def test_vndb_release_resolution_is_always_json() -> None:
     from unittest.mock import patch
 
     from apps.index.models import Predicate
-    from apps.sync.services.vndb_service import VNDBImportService
+    from apps.sync.services.vndb import VNDBImportService
 
     captured = []
 
@@ -380,7 +380,7 @@ def test_vndb_release_resolution_is_always_json() -> None:
         return None
 
     with patch(
-        "apps.sync.services.vndb_service.knowledge_ingestion_service.record_fact",
+        "apps.sync.services.vndb.knowledge_ingestion_service.record_fact",
         side_effect=fake_record_fact,
     ):
         VNDBImportService()._upsert_release_resolution(

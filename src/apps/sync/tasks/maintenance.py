@@ -7,8 +7,8 @@ from django.core.cache import cache
 from django.utils import timezone
 
 from apps.sync.models import SyncState
-from apps.sync.services.incremental_sync_service import IncrementalSyncService
-from apps.sync.services.sync_job_service import sync_job_service
+from apps.sync.services.incremental_sync import IncrementalSyncService
+from apps.sync.services.sync_job import sync_job_service
 
 logger = logging.getLogger(__name__)
 

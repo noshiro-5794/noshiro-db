@@ -13,10 +13,10 @@ from apps.community.api.serializers.relationships import (
     UserMuteResponseSerializer,
 )
 from apps.community.models import Activity, UserBlock, UserFollow, UserMute
-from apps.community.selectors.follow_selector import UserFollowSelector
-from apps.community.selectors.relationship_selector import UserRelationshipSelector
-from apps.community.services.follow_service import UserFollowService
-from apps.community.services.relationship_service import UserRelationshipService
+from apps.community.selectors.follow import UserFollowSelector
+from apps.community.selectors.relationship import UserRelationshipSelector
+from apps.community.services.follow import UserFollowService
+from apps.community.services.relationship import UserRelationshipService
 from shared.api.contracts import api_responses
 
 

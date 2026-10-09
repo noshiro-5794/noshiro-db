@@ -10,11 +10,11 @@ from apps.sync.providers.anilist import (
     ANILIST_SEASON_NAMESPACE,
     anilist_client,
 )
-from apps.sync.services.anilist_season_service import (
+from apps.sync.services.anilist_season import (
     anilist_season_service,
     current_anilist_season,
 )
-from apps.sync.services.schedule_coverage_service import schedule_coverage_service
+from apps.sync.services.schedule_coverage import schedule_coverage_service
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -34,7 +34,7 @@ pytestmark = pytest.mark.django_db(transaction=True)
 )
 def test_current_anilist_season_mapping(month: int, season: str) -> None:
     with patch(
-        "apps.sync.services.anilist_season_service.timezone.localdate",
+        "apps.sync.services.anilist_season.timezone.localdate",
         return_value=date(2026, month, 15),
     ):
         assert current_anilist_season() == (season, 2026)
@@ -140,7 +140,7 @@ def test_season_sync_feeds_schedule_coverage_report() -> None:
 
 
 def test_season_item_can_be_promoted_to_canonical_entity() -> None:
-    from apps.sync.services.anilist_service import anilist_import_service
+    from apps.sync.services.anilist import anilist_import_service
 
     with patch.object(anilist_client, "fetch_season_page", return_value=_season_page()):
         anilist_season_service.sync_season(season="FALL", season_year=2026)
@@ -154,7 +154,7 @@ def test_season_item_can_be_promoted_to_canonical_entity() -> None:
 
 
 def test_anilist_episode_payload_drops_volatile_time_until_airing() -> None:
-    from apps.sync.services.anilist_service import anilist_import_service
+    from apps.sync.services.anilist import anilist_import_service
 
     with patch.object(anilist_client, "fetch_season_page", return_value=_season_page()):
         anilist_season_service.sync_season(season="FALL", season_year=2026)

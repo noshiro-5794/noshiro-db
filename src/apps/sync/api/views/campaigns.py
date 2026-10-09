@@ -19,7 +19,7 @@ from apps.sync.api.serializers.campaigns import (
     SyncWorkItemSerializer,
 )
 from apps.sync.models import SyncCampaign, SyncWorkItem
-from apps.sync.services.campaign_service import sync_campaign_service
+from apps.sync.services.campaign import sync_campaign_service
 from apps.sync.tasks.campaign import run_sync_campaign_task
 from shared.api.pagination import DefaultPageNumberPagination
 

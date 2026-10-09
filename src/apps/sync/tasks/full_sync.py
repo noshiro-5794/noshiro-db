@@ -1,10 +1,10 @@
 from apps.index.models import ProviderRecord, ProviderRepresentation
 from apps.sync.providers.bangumi import BANGUMI_SUBJECT_NAMESPACE
-from apps.sync.services.character_service import character_service
-from apps.sync.services.episode_service import episode_service
-from apps.sync.services.relation_service import relation_service
-from apps.sync.services.staff_service import staff_service
-from apps.sync.services.subject_service import subject_service
+from apps.sync.services.character import character_service
+from apps.sync.services.episode import episode_service
+from apps.sync.services.relation import relation_service
+from apps.sync.services.staff import staff_service
+from apps.sync.services.subject import subject_service
 from apps.sync.tasks.base import BaseSyncTask
 
 

@@ -6,7 +6,7 @@ from apps.community.api.serializers.common import (
 )
 from apps.community.api.serializers.contracts import TargetReferenceSerializer
 from apps.community.models import CommunityReport, ModerationAction
-from apps.community.selectors.target_selector import CommunityTargetSelector
+from apps.community.selectors.target import CommunityTargetSelector
 
 
 class CommunityReportCreateRequestSerializer(serializers.Serializer):

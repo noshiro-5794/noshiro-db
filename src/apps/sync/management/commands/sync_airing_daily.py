@@ -3,8 +3,8 @@ import json
 from django.core.management.base import BaseCommand
 
 from apps.sync.models import SyncJob
-from apps.sync.services.airing_daily_sync_service import airing_daily_sync_service
-from apps.sync.services.sync_job_service import sync_job_service
+from apps.sync.services.airing_daily_sync import airing_daily_sync_service
+from apps.sync.services.sync_job import sync_job_service
 
 
 class Command(BaseCommand):

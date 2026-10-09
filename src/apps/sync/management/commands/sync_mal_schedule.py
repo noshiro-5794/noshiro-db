@@ -2,7 +2,7 @@ import json
 
 from django.core.management.base import BaseCommand
 
-from apps.sync.services.mal_schedule_service import mal_schedule_service
+from apps.sync.services.mal_schedule import mal_schedule_service
 
 
 class Command(BaseCommand):

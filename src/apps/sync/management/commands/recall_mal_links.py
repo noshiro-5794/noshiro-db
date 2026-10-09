@@ -2,7 +2,7 @@ import json
 
 from django.core.management.base import BaseCommand
 
-from apps.sync.services.mal_link_recall_service import mal_link_recall_service
+from apps.sync.services.mal_link_recall import mal_link_recall_service
 
 
 class Command(BaseCommand):

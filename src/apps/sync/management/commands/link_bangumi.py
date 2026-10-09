@@ -2,7 +2,7 @@ import json
 
 from django.core.management.base import BaseCommand
 
-from apps.sync.services.bangumi_link_service import bangumi_link_service
+from apps.sync.services.bangumi_link import bangumi_link_service
 
 
 class Command(BaseCommand):

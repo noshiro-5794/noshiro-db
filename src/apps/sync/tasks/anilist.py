@@ -1,7 +1,7 @@
 from celery import current_task, shared_task
 
-from apps.sync.services.anilist_service import anilist_import_service
-from apps.sync.services.sync_job_service import sync_job_service
+from apps.sync.services.anilist import anilist_import_service
+from apps.sync.services.sync_job import sync_job_service
 
 
 @shared_task(soft_time_limit=900, time_limit=960)

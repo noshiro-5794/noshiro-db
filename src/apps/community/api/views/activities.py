@@ -7,8 +7,8 @@ from apps.community.api.serializers.activities import (
     ActivityResponseSerializer,
     FeedListRequestSerializer,
 )
-from apps.community.selectors.activity_selector import ActivitySelector
-from apps.users.selectors.public.public_profile_selector import PublicProfileSelector
+from apps.community.selectors.activity import ActivitySelector
+from apps.users.selectors.public.public_profile import PublicProfileSelector
 from shared.api.contracts import (
     CursorPaginationQuerySerializer,
     api_responses,

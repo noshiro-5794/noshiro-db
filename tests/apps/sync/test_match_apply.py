@@ -17,7 +17,7 @@ from apps.index.models import (
     ProviderRepresentation,
     Work,
 )
-from apps.sync.services.match_apply_service import match_apply_service
+from apps.sync.services.match_apply import match_apply_service
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -220,7 +220,7 @@ def test_keep_pending_defers_ineligible_proposals() -> None:
     from types import SimpleNamespace
     from unittest.mock import patch
 
-    from apps.sync.services.match_apply_service import match_apply_service
+    from apps.sync.services.match_apply import match_apply_service
 
     proposal = SimpleNamespace(
         pk="11111111-1111-1111-1111-111111111111",
@@ -237,9 +237,7 @@ def test_keep_pending_defers_ineligible_proposals() -> None:
         ),
     )
     with (
-        patch(
-            "apps.sync.services.match_apply_service.AIProposal.objects.filter"
-        ) as proposals,
+        patch("apps.sync.services.match_apply.AIProposal.objects.filter") as proposals,
         patch.object(match_apply_service, "_decide") as decide,
     ):
         proposals.return_value.select_related.return_value.order_by.return_value.__getitem__.return_value = [
@@ -266,7 +264,7 @@ def test_pair_already_bound_by_another_rule_leaves_the_queue() -> None:
         MatchCandidate,
         MergeEvent,
     )
-    from apps.sync.services.match_apply_service import match_apply_service
+    from apps.sync.services.match_apply import match_apply_service
 
     left = _work_entity(provider_slug="anilist", external_id="700")
     right = _work_entity(provider_slug="bangumi", external_id="701")
@@ -309,7 +307,7 @@ def test_user_library_conflict_is_recorded_not_retried() -> None:
     """A permanent conflict leaves the queue instead of erroring every run."""
     from apps.ai.models import AIProposal
     from apps.index.models import MatchCandidate
-    from apps.sync.services.match_apply_service import match_apply_service
+    from apps.sync.services.match_apply import match_apply_service
 
     left = _work_entity(provider_slug="anilist", external_id="800")
     right = _work_entity(provider_slug="bangumi", external_id="801")
@@ -341,7 +339,7 @@ def test_user_library_conflict_is_recorded_not_retried() -> None:
         return None
 
     with patch(
-        "apps.sync.services.match_apply_service.entity_resolution_service.decide_candidate",
+        "apps.sync.services.match_apply.entity_resolution_service.decide_candidate",
         side_effect=decide,
     ):
         result = match_apply_service.run(limit=5, apply=True, abstain_ineligible=False)
@@ -361,7 +359,7 @@ def test_same_title_years_apart_is_not_a_duplicate() -> None:
     import datetime
 
     from apps.index.models import AnimeProfile, MatchCandidate, Work
-    from apps.sync.services.match_apply_service import match_apply_service
+    from apps.sync.services.match_apply import match_apply_service
 
     left = _work_entity(provider_slug="anilist", external_id="900")
     right = _work_entity(provider_slug="bangumi", external_id="901")

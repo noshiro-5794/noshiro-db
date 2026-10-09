@@ -2,7 +2,7 @@ import json
 
 from django.core.management.base import BaseCommand
 
-from apps.sync.services.match_apply_service import match_apply_service
+from apps.sync.services.match_apply import match_apply_service
 
 
 class Command(BaseCommand):

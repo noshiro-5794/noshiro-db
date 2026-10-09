@@ -14,8 +14,8 @@ from apps.index.models import (
     ProviderRepresentation,
 )
 from apps.sync.models import SyncCampaign, SyncWorkItem
+from apps.sync.services.campaign import sync_campaign_service
 from apps.sync.services.campaign_ai import SyncAIContext, sync_ai_service
-from apps.sync.services.campaign_service import sync_campaign_service
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -115,9 +115,7 @@ def test_enrich_item_skips_when_entity_is_missing() -> None:
     )
     item = _work_item(campaign, shard=1)
 
-    with patch(
-        "apps.sync.services.campaign_service.sync_ai_service.enrich_entity"
-    ) as mock:
+    with patch("apps.sync.services.campaign.sync_ai_service.enrich_entity") as mock:
         result = sync_campaign_service._enrich_item(
             campaign,
             item,

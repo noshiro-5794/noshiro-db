@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.sync.exceptions import SyncOperationError
-from apps.sync.services.manual_sync_service import manual_subject_sync_service
+from apps.sync.services.manual_sync import manual_subject_sync_service
 
 
 class Command(BaseCommand):

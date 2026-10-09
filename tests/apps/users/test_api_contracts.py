@@ -27,8 +27,8 @@ from apps.users.api.serializers.profile import (
 )
 from apps.users.exceptions import InvalidWatchDateRange, UserNotFound
 from apps.users.models import User, UserSubject, UserSubjectTag, UserTag
-from apps.users.selectors.public.public_profile_selector import PublicProfileSelector
-from apps.users.services.library.subject_service import UserSubjectService
+from apps.users.selectors.public.public_profile import PublicProfileSelector
+from apps.users.services.library.subject import UserSubjectService
 
 
 def test_profile_stats_reject_unknown_timezones() -> None:
@@ -270,7 +270,7 @@ def test_legacy_refresh_token_is_upgraded_once_without_logging_out_the_user() ->
 
 @pytest.mark.django_db
 def test_password_reset_blacklists_all_outstanding_refresh_tokens() -> None:
-    from apps.users.services.auth.password_service import PasswordService
+    from apps.users.services.auth.password import PasswordService
 
     user = User.objects.create_user(email="revoke-all@example.com")
     RefreshToken.for_user(user)
@@ -286,7 +286,7 @@ def test_blocked_public_profiles_are_masked_as_not_found() -> None:
     viewer = Mock(pk=1, is_authenticated=True)
 
     with patch(
-        "apps.users.selectors.public.public_profile_selector.UserBlock.objects.filter"
+        "apps.users.selectors.public.public_profile.UserBlock.objects.filter"
     ) as filter_blocks:
         filter_blocks.return_value.exists.return_value = True
 

@@ -1,7 +1,7 @@
 from celery import current_task, shared_task
 
-from apps.sync.services.manual_sync_service import manual_subject_sync_service
-from apps.sync.services.sync_job_service import sync_job_service
+from apps.sync.services.manual_sync import manual_subject_sync_service
+from apps.sync.services.sync_job import sync_job_service
 
 
 class ManualSyncTask:

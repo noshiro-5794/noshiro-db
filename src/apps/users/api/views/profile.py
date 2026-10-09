@@ -18,7 +18,7 @@ from apps.users.api.serializers.profile import (
     UserSettingsUpdateRequestSerializer,
 )
 from apps.users.selectors.profile import ProfileSelector
-from apps.users.services.profile.profile_service import ProfileService
+from apps.users.services.profile.profile import ProfileService
 from shared.api.contracts import api_responses
 
 

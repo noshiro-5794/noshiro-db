@@ -15,11 +15,11 @@ from apps.community.api.serializers.posts import (
     CommunityPostResponseSerializer,
     CommunityPostUpdateRequestSerializer,
 )
-from apps.community.selectors.comment_selector import CommunityCommentSelector
-from apps.community.selectors.post_selector import CommunityPostSelector
-from apps.community.services.comment_service import CommunityCommentService
-from apps.community.services.moderation_service import CommunityModerationService
-from apps.community.services.post_service import CommunityPostService
+from apps.community.selectors.comment import CommunityCommentSelector
+from apps.community.selectors.post import CommunityPostSelector
+from apps.community.services.comment import CommunityCommentService
+from apps.community.services.moderation import CommunityModerationService
+from apps.community.services.post import CommunityPostService
 from apps.index.models import Entity
 from shared.api.contracts import (
     PaginationQuerySerializer,
