@@ -21,14 +21,13 @@ export const publicMessages = defineMessages({
     'public.viewSchedule': '查看放送表',
 
     'public.seasonHeading': '本季放送',
-    'public.seasonNote': '每周放送时间',
-
     'public.searchBody': '按标题、类型或年份筛选，从作品库里找到想看的那一部。',
     'public.searchPlaceholder': '搜索标题',
     'public.searchEmpty': '暂无可展示的作品条目。',
     'public.more': '查看更多',
 
     'public.whyHeading': '你可以在这里做什么',
+    'public.whyBody': '同一部作品只保留一个条目，搜索、放送表和清单都建立在它之上。',
     'public.whySearchTitle': '搜得到',
     'public.whySearchBody': '日语、中文、英文标题和别名，都指向同一部作品。',
     'public.whyScheduleTitle': '跟得上',
@@ -55,14 +54,13 @@ export const publicMessages = defineMessages({
     'public.viewSchedule': 'See the weekly schedule',
 
     'public.seasonHeading': 'Airing this season',
-    'public.seasonNote': 'Weekly airtimes',
-
     'public.searchBody': 'Filter by title, type or year to find what to watch next.',
     'public.searchPlaceholder': 'Search titles',
     'public.searchEmpty': 'No works are ready to display yet.',
     'public.more': 'View more',
 
     'public.whyHeading': 'What you can do here',
+    'public.whyBody': 'One record per work — search, the season board and your lists all build on it.',
     'public.whySearchTitle': 'Find any title',
     'public.whySearchBody': 'Japanese, Chinese and English titles all point at the same work.',
     'public.whyScheduleTitle': 'Follow the season',
@@ -89,14 +87,13 @@ export const publicMessages = defineMessages({
     'public.viewSchedule': '放送スケジュールを見る',
 
     'public.seasonHeading': '今期の放送',
-    'public.seasonNote': '毎週の放送時間',
-
     'public.searchBody': 'タイトル・種別・年で絞り込み、次に観たい作品を見つけましょう。',
     'public.searchPlaceholder': 'タイトルを検索',
     'public.searchEmpty': '表示できる作品がまだありません。',
     'public.more': 'もっと見る',
 
     'public.whyHeading': 'ここでできること',
+    'public.whyBody': '一つの作品に一つのレコード。検索も放送表もリストも、その上に成り立ちます。',
     'public.whySearchTitle': 'タイトルで探す',
     'public.whySearchBody': '日本語・中国語・英語のタイトルも、同じ作品に行き着きます。',
     'public.whyScheduleTitle': '放送を追う',
