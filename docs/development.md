@@ -48,9 +48,17 @@ pnpm check:dead-code
 pnpm check:dependencies
 ```
 
-Brand, platform, placeholder, and social images are authored outside the repository and committed as
-versioned production assets under `public/`. When changing the app icon, update its SVG, PNG, ICO,
-maskable, and Apple Touch variants together so every platform receives the same release.
+Brand artwork lives in `public/assets/brand/mark.png`: the illustration, trimmed to its own bounds
+and centred on a square canvas. Every platform icon is generated from that single file:
+
+```bash
+pnpm icons
+```
+
+The script writes `favicon.ico`, `favicon-16x16.png`, `favicon-32x32.png`, `apple-touch-icon.png`,
+`icon-192.png`, `icon-512.png`, the maskable pair, and `og-image.png`. Change the master or the
+geometry constants in `tools/generate-icons.mjs` and re-run it, rather than editing one size by
+hand — otherwise the browser tab, the installed app, and the share card drift apart.
 
 ## Remote Development
 

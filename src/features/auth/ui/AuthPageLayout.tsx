@@ -1,6 +1,7 @@
 import { useId, type ComponentProps, type ReactNode } from 'react';
 import { Link } from '@tanstack/react-router';
 import { ArrowLeft } from 'lucide-react';
+import { publicAssetPaths } from '@/shared/assets/public-assets';
 import { useI18n } from '@/shared/i18n';
 import { Seo } from '@/shared/seo/Seo';
 import { routes } from '@/shared/routing/paths';
@@ -30,7 +31,7 @@ export function AuthPageLayout({ children, title }: AuthPageLayoutProps) {
       <header className="border-b border-[var(--ui-border-subtle)]">
         <div className="mx-auto flex h-14 w-full max-w-[1160px] items-center justify-between gap-4 px-4 sm:px-5">
           <Link className="flex items-center gap-2" aria-label="Noshiro DB" to={routes.home}>
-            <img alt="" aria-hidden="true" className="size-6 rounded-[6px]" src="/favicon.svg" />
+            <img alt="" aria-hidden="true" className="size-6 rounded-[6px]" src={publicAssetPaths.appIcon} />
             <span className="text-[15px] font-semibold">Noshiro DB</span>
           </Link>
           <Link
