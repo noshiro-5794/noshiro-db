@@ -17,7 +17,7 @@ from apps.users.api.serializers.reviews import (
     ReviewUpdateRequestSerializer,
 )
 from apps.users.models import Review
-from apps.users.services.library.review_service import ReviewService
+from apps.users.services.library.review import ReviewService
 from shared.api.contracts import (
     PaginationQuerySerializer,
     api_responses,

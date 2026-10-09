@@ -7,7 +7,7 @@ from rest_framework.test import APIClient
 from apps.users.api.views.social import safe_redirect_path
 from apps.users.exceptions import InvalidSocialState
 from apps.users.models import SocialIdentity, User, UserProfile
-from apps.users.services.auth.social_service import (
+from apps.users.services.auth.social import (
     SocialLoginService,
     SocialProfile,
     social_login_service,

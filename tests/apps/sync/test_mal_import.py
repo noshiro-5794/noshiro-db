@@ -4,7 +4,7 @@ import pytest
 
 from apps.index.models import Entity, EntityName, ProviderRecord, Work
 from apps.sync.providers.mal import MAL_ANIME_NAMESPACE, mal_api_client
-from apps.sync.services.mal_service import mal_import_service
+from apps.sync.services.mal import mal_import_service
 
 pytestmark = pytest.mark.django_db(transaction=True)
 

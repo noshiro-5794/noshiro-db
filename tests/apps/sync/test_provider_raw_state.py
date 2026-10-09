@@ -21,11 +21,11 @@ from apps.sync.services.provider_raw_policy import (
     raw_state_for_namespace,
     stub_state_for_namespace,
 )
-from apps.sync.services.provider_raw_state_service import (
+from apps.sync.services.provider_raw_state import (
     provider_raw_state_service,
 )
-from apps.sync.services.provider_record_service import provider_record_service
-from apps.sync.services.provider_stub_backfill_service import (
+from apps.sync.services.provider_record import provider_record_service
+from apps.sync.services.provider_stub_backfill import (
     provider_stub_backfill_service,
 )
 
@@ -192,8 +192,7 @@ def test_stub_backfill_dry_run_then_fetches_anilist_anime() -> None:
     assert dry_run["backfilled"] == 0
 
     with patch(
-        "apps.sync.services.provider_stub_backfill_service."
-        "anilist_import_service.import_media"
+        "apps.sync.services.provider_stub_backfill.anilist_import_service.import_media"
     ) as import_media:
         applied = provider_stub_backfill_service.backfill(apply=True)
 
@@ -209,8 +208,7 @@ def test_stub_backfill_marks_upstream_404_missing() -> None:
     )
 
     with patch(
-        "apps.sync.services.provider_stub_backfill_service."
-        "anilist_import_service.import_media",
+        "apps.sync.services.provider_stub_backfill.anilist_import_service.import_media",
         side_effect=AniListAPIError("Not Found", status_code=404),
     ):
         result = provider_stub_backfill_service.backfill(apply=True)

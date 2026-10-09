@@ -1,4 +1,4 @@
-from apps.sync.services.anilist_service import AniListImportService
+from apps.sync.services.anilist import AniListImportService
 
 
 def test_anilist_integer_and_date_helpers() -> None:

@@ -23,11 +23,11 @@ from apps.index.selectors.current import (
     current_entity_relations,
 )
 from apps.sync.providers.bangumi import BangumiAPIError, bangumi_client
-from apps.sync.services.calendar_service import calendar_sync_service
-from apps.sync.services.episode_service import episode_service
-from apps.sync.services.relation_service import relation_service
+from apps.sync.services.calendar import calendar_sync_service
+from apps.sync.services.episode import episode_service
+from apps.sync.services.relation import relation_service
 from apps.users.models import User, UserSubject
-from apps.users.services.profile.profile_service import ProfileService
+from apps.users.services.profile.profile import ProfileService
 from integrations.mcp.queries import get_public_entity
 
 pytestmark = pytest.mark.django_db(transaction=True)
@@ -87,19 +87,19 @@ def test_relation_import_projects_canonical_rows_and_retracts_only_bangumi() -> 
             side_effect=([character], []),
         ),
         patch(
-            "apps.sync.services.relation_service.name_normalizer.normalize_name",
+            "apps.sync.services.relation.name_normalizer.normalize_name",
             side_effect=lambda value: value,
         ),
         patch(
-            "apps.sync.services.relation_service.subject_service.provide_subject",
+            "apps.sync.services.relation.subject_service.provide_subject",
             side_effect=lambda value: subject if str(value) == "1" else target,
         ),
         patch(
-            "apps.sync.services.relation_service.staff_service.provide_staff",
+            "apps.sync.services.relation.staff_service.provide_staff",
             side_effect=lambda value: staff_member if str(value) == "10" else actor,
         ),
         patch(
-            "apps.sync.services.relation_service.character_service.provide_character",
+            "apps.sync.services.relation.character_service.provide_character",
             return_value=character_entity,
         ),
     ):
@@ -132,7 +132,7 @@ def test_episode_import_creates_canonical_entity_and_collection_observation() ->
     with (
         patch.object(bangumi_client, "fetch_subject_episodes", return_value=response),
         patch(
-            "apps.sync.services.episode_service.subject_service.provide_subject",
+            "apps.sync.services.episode.subject_service.provide_subject",
             return_value=subject,
         ),
     ):
@@ -169,11 +169,11 @@ def test_calendar_import_creates_current_canonical_airing_event() -> None:
     with (
         patch.object(bangumi_client, "fetch_calendar", return_value=payload),
         patch(
-            "apps.sync.services.calendar_service.subject_service.upsert_subject",
+            "apps.sync.services.calendar.subject_service.upsert_subject",
             return_value=subject,
         ),
         patch(
-            "apps.sync.services.calendar_service.calendar_image_service.cache_cover",
+            "apps.sync.services.calendar.calendar_image_service.cache_cover",
             return_value="",
         ),
     ):
@@ -215,7 +215,7 @@ def test_adult_episode_description_requires_confirmed_rest_preference() -> None:
     with (
         patch.object(bangumi_client, "fetch_subject_episodes", return_value=response),
         patch(
-            "apps.sync.services.episode_service.subject_service.provide_subject",
+            "apps.sync.services.episode.subject_service.provide_subject",
             return_value=subject,
         ),
     ):
@@ -262,7 +262,7 @@ def test_episode_pagination_failure_does_not_persist_partial_results() -> None:
             side_effect=(first_page, BangumiAPIError("provider unavailable")),
         ),
         patch(
-            "apps.sync.services.episode_service.subject_service.provide_subject"
+            "apps.sync.services.episode.subject_service.provide_subject"
         ) as provide_subject,
         pytest.raises(BangumiAPIError, match="provider unavailable"),
     ):
@@ -287,7 +287,7 @@ def test_empty_episode_snapshot_retracts_current_links_without_deleting_history(
     with (
         patch.object(bangumi_client, "fetch_subject_episodes", side_effect=responses),
         patch(
-            "apps.sync.services.episode_service.subject_service.provide_subject",
+            "apps.sync.services.episode.subject_service.provide_subject",
             return_value=subject,
         ),
     ):

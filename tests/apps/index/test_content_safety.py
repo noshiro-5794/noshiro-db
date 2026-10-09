@@ -15,7 +15,7 @@ from apps.index.models import (
 )
 from apps.index.services import knowledge_ingestion_service
 from apps.users.models import User
-from apps.users.services.profile.profile_service import ProfileService
+from apps.users.services.profile.profile import ProfileService
 from integrations.mcp.queries import get_public_entity
 
 from .projection_fixtures import observation

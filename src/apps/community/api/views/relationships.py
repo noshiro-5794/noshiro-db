@@ -6,7 +6,7 @@ from apps.community.api.serializers.relationships import (
     UserBlockResponseSerializer,
     UserMuteResponseSerializer,
 )
-from apps.community.selectors.relationship_selector import UserRelationshipSelector
+from apps.community.selectors.relationship import UserRelationshipSelector
 from shared.api.contracts import (
     PaginationQuerySerializer,
     api_responses,

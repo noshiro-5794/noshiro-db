@@ -6,8 +6,8 @@ from django.test import override_settings
 from django.utils import timezone
 
 from apps.sync.models import SyncJob, SyncState
-from apps.sync.services.incremental_sync_service import IncrementalSyncService
-from apps.sync.services.sync_job_service import sync_job_service
+from apps.sync.services.incremental_sync import IncrementalSyncService
+from apps.sync.services.sync_job import sync_job_service
 from apps.sync.tasks.maintenance import (
     scan_stale_sync_jobs,
     scan_stale_sync_states,

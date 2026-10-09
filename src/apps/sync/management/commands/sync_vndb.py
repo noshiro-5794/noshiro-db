@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand, CommandError
 
-from apps.sync.services.vndb_service import vndb_import_service
+from apps.sync.services.vndb import vndb_import_service
 
 
 class Command(BaseCommand):

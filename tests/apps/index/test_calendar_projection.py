@@ -12,9 +12,9 @@ from apps.sync.providers.contracts import (
     FetchedSourceRecord,
     SourceNamespaceSpec,
 )
-from apps.sync.services.provider_record_service import provider_record_service
+from apps.sync.services.provider_record import provider_record_service
 from apps.users.models import User
-from apps.users.services.profile.profile_service import ProfileService
+from apps.users.services.profile.profile import ProfileService
 
 from .projection_fixtures import observation
 

@@ -2,7 +2,7 @@ import json
 
 from django.core.management.base import BaseCommand
 
-from apps.sync.services.provider_snapshot_retention_service import (
+from apps.sync.services.provider_snapshot_retention import (
     provider_snapshot_retention_service,
 )
 

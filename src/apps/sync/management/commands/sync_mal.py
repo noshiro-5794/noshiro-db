@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand, CommandError
 
-from apps.sync.services.mal_service import mal_import_service
+from apps.sync.services.mal import mal_import_service
 
 
 class Command(BaseCommand):
