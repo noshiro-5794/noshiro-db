@@ -458,8 +458,7 @@ export function subjectImage(subject: SubjectRelation['subject']) {
 }
 
 export function episodeMeta(episode: SubjectEpisode, fallback: string) {
-  return (
-    [episode.date, episode.duration, episode.sort !== null ? `sort ${episode.sort}` : ''].filter(Boolean).join(' · ') ||
-    fallback
-  );
+  // The sort index is the episode number the card already prints, and a
+  // visitor has no use for the provider's ordering field.
+  return [episode.date, episode.duration].filter(Boolean).join(' · ') || fallback;
 }

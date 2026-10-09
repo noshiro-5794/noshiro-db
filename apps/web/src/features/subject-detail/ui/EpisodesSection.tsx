@@ -139,7 +139,7 @@ export function EpisodesSection({
               return (
                 <article
                   className={cn(
-                    'grid min-h-24 grid-rows-[auto_1fr] gap-2 rounded-sm border border-border bg-surface px-3 py-3 transition-colors hover:border-[var(--ui-border-strong)]',
+                    'grid min-h-24 grid-rows-[auto_1fr] gap-2 rounded-[var(--ui-radius-surface)] border border-border bg-surface px-3 py-3 transition-colors duration-[var(--ui-transition-fast)] hover:border-[var(--ui-border-strong)]',
                     checked &&
                       'border-[color-mix(in_srgb,var(--ui-accent)_24%,var(--ui-border))] bg-[color-mix(in_srgb,var(--ui-accent-soft)_52%,var(--ui-bg-surface))]',
                   )}
@@ -154,7 +154,7 @@ export function EpisodesSection({
                       aria-label={`${episodeLabel(episode)}: ${progressLabel}`}
                       aria-pressed={checked}
                       className={cn(
-                        'inline-flex shrink-0 items-center gap-1 rounded-sm px-1.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+                        'inline-flex shrink-0 items-center gap-1 rounded-[var(--ui-radius-control)] px-1.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors duration-[var(--ui-transition-fast)] hover:bg-muted hover:text-foreground',
                         checked && 'bg-[var(--ui-accent-soft)] text-[var(--ui-accent-text)]',
                       )}
                       disabled={pendingEpisodeId !== null}
@@ -170,7 +170,7 @@ export function EpisodesSection({
                   </span>
                   <Button
                     aria-haspopup="dialog"
-                    className="group grid min-h-0 grid-rows-[1fr_auto] gap-2 rounded-sm text-left"
+                    className="group grid min-h-0 grid-rows-[1fr_auto] gap-2 rounded-[var(--ui-radius-control)] text-left"
                     type="button"
                     variant="unstyled"
                     onClick={() => {
@@ -182,7 +182,11 @@ export function EpisodesSection({
                     </span>
                     <span className="flex min-w-0 items-center justify-between gap-2 text-xs text-muted-foreground">
                       <span className="truncate">{episodeMeta(episode, emptyText)}</span>
-                      <span className="font-semibold text-[var(--ui-accent-text)]">{episode.type}</span>
+                      {/* The list is episodes: printing "EP" beside "EP 7" is noise.
+                          Specials keep their own label. */}
+                      {episode.type === 'EP' ? null : (
+                        <span className="font-semibold text-[var(--ui-accent-text)]">{episode.type}</span>
+                      )}
                     </span>
                   </Button>
                 </article>
