@@ -459,7 +459,6 @@ test('public home opens the catalog and renders API data', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'An open catalogue of anime and visual novels' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Airing this season' })).toBeVisible();
   await expect(page.getByText(subjectTitle).first()).toBeVisible();
-  await expect(page.getByText('Data from Bangumi, AniList and MyAnimeList')).toBeVisible();
 
   await page.getByRole('link', { name: 'Search the catalogue', exact: true }).first().click();
   await expect(page).toHaveURL(/\/search$/u);

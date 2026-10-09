@@ -1,26 +1,29 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation } from '@tanstack/react-router';
-import { CalendarDays, ChevronDown, LayoutGrid, Menu } from 'lucide-react';
+import { CalendarDays, ChevronDown, Clapperboard, LayoutGrid, Menu, Search, Sparkles } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 import { publicAssetPaths } from '@/shared/assets/public-assets';
 import { useI18n } from '@/shared/i18n';
 import { cn } from '@/shared/lib/cn';
+import { easeStandard } from '@/shared/lib/motion';
 import { routes } from '@/shared/routing/paths';
 import { resolvedRouteHref } from '@/shared/routing/resolved-href';
 import { Button } from '@/shared/ui/Button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/ui/Dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/shared/ui/DropdownMenu';
 
-const barLinkClassName = cn(
-  'relative inline-flex h-8 items-center gap-1 rounded-[var(--ui-radius-control)] px-2.5 text-[13px] font-medium',
+type MenuEntry = { body?: string; icon: ReactNode; label: string; to: string };
+type MenuSection = { entries: MenuEntry[]; key: string; label: string };
+
+/** How long the pointer may leave the bar before the panel closes. */
+const closeGraceMs = 140;
+
+const triggerClassName = cn(
+  'group inline-flex h-9 items-center gap-1 rounded-[var(--ui-radius-control)] px-3 text-[14px] font-medium',
   'text-[var(--ui-text-muted)] outline-none',
   'transition-colors duration-[var(--ui-transition-standard)] ease-[var(--ui-ease-gentle)] hover:text-[var(--ui-text)]',
   'focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ui-bg-canvas)]',
-  'data-[status=active]:text-[var(--ui-text)]',
-  // A short underline marks the current section, the way Linear's site does.
-  'after:pointer-events-none after:absolute after:inset-x-2.5 after:-bottom-1 after:h-[2px] after:rounded-full',
-  'after:bg-[var(--ui-accent)] after:opacity-0',
-  'after:transition-opacity after:duration-[var(--ui-transition-standard)] after:ease-[var(--ui-ease-gentle)]',
-  'data-[status=active]:after:opacity-100',
+  // dub marks the trigger whose panel is open with a soft surface, not a colour.
+  'data-[open]:bg-[var(--ui-bg-subtle)] data-[open]:text-[var(--ui-text)]',
 );
 
 function useHeaderElevation() {
@@ -45,7 +48,7 @@ function Wordmark() {
   return (
     <Link
       aria-label="Noshiro DB"
-      className="flex min-w-0 items-center gap-2 rounded-[var(--ui-radius-control)]"
+      className="flex min-w-0 items-center gap-2 rounded-[var(--ui-radius-control)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"
       to={routes.home}
     >
       <img alt="" aria-hidden="true" className="size-6 rounded-[6px]" src={publicAssetPaths.appIcon} />
@@ -55,43 +58,109 @@ function Wordmark() {
 }
 
 /**
- * The bar a visitor sees.
+ * The bar a visitor sees, built on dub's.
  *
- * Linear's composition: the wordmark holds the left edge, the sections sit
- * centred in the bar, and only the account actions live on the right. It
- * carries no search field — search belongs to the page, not to the chrome.
+ * The wordmark holds the left edge, the sections sit centred, and the account
+ * actions close the right. Sections with more than one destination open a panel
+ * spanning the bar; moving between two menus slides the panel's contents
+ * sideways rather than closing and reopening it, and the trigger underneath
+ * stays highlighted while its panel is up.
  */
 export function PublicTopBar() {
   const { t } = useI18n();
   const location = useLocation();
   const isElevated = useHeaderElevation();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [openMenuKey, setOpenMenuKey] = useState<string | null>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const navItems = [
-    { exact: true, label: t('nav.home'), to: routes.home },
-    { exact: false, label: t('nav.catalog'), to: routes.search },
-  ];
-  const airingItems = [
+  const menus: MenuSection[] = [
     {
-      body: t('nav.airingCalendarBody'),
-      icon: <CalendarDays className="size-4" />,
-      label: t('nav.airingCalendar'),
-      to: routes.calendar,
+      entries: [
+        {
+          body: t('public.searchBody'),
+          icon: <Search className="size-4" />,
+          label: t('nav.catalog'),
+          to: routes.search,
+        },
+        {
+          icon: <Clapperboard className="size-4" />,
+          label: t('search.anime'),
+          to: `${routes.search}?subject_type=anime`,
+        },
+        {
+          icon: <Sparkles className="size-4" />,
+          label: t('search.galgame'),
+          to: `${routes.search}?subject_type=galgame`,
+        },
+      ],
+      key: 'catalogue',
+      label: t('nav.catalog'),
     },
     {
-      body: t('nav.broadcastBoardBody'),
-      icon: <LayoutGrid className="size-4" />,
-      label: t('nav.broadcastBoard'),
-      to: routes.airing,
+      entries: [
+        {
+          body: t('nav.airingCalendarBody'),
+          icon: <CalendarDays className="size-4" />,
+          label: t('nav.airingCalendar'),
+          to: routes.calendar,
+        },
+        {
+          body: t('nav.broadcastBoardBody'),
+          icon: <LayoutGrid className="size-4" />,
+          label: t('nav.broadcastBoard'),
+          to: routes.airing,
+        },
+      ],
+      key: 'airing',
+      label: t('nav.airing'),
     },
   ];
-  const menuItems = [
-    ...navItems,
-    { exact: false, label: t('nav.airingCalendar'), to: routes.calendar },
-    { exact: false, label: t('nav.broadcastBoard'), to: routes.airing },
-    { exact: false, label: t('nav.docs'), to: routes.docsIntroduction },
-  ];
-  const isAiringActive = [routes.calendar, routes.airing].some((path) => location.pathname.startsWith(path));
+
+  const openIndex = menus.findIndex((menu) => menu.key === openMenuKey);
+  const isOpen = openIndex >= 0;
+
+  function cancelClose() {
+    if (closeTimer.current !== null) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  }
+
+  function openMenu(key: string) {
+    cancelClose();
+    setOpenMenuKey(key);
+  }
+
+  function scheduleClose() {
+    cancelClose();
+    closeTimer.current = setTimeout(() => {
+      setOpenMenuKey(null);
+    }, closeGraceMs);
+  }
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpenMenuKey(null);
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  // Navigating always leaves the panel behind.
+  useEffect(() => {
+    setOpenMenuKey(null);
+  }, [location.pathname]);
+
+  useEffect(
+    () => () => {
+      cancelClose();
+    },
+    [],
+  );
 
   return (
     <>
@@ -100,96 +169,135 @@ export function PublicTopBar() {
           'sticky top-0 z-[var(--ui-layer-shell-header)] h-[var(--ui-shell-header-height)] border-b',
           'bg-[color-mix(in_srgb,var(--ui-bg-canvas)_85%,transparent)] backdrop-blur-xl',
           'transition-[border-color,box-shadow] duration-[var(--ui-transition-standard)] ease-[var(--ui-ease-gentle)]',
-          isElevated
+          isElevated || isOpen
             ? 'border-[var(--ui-border)] shadow-[var(--ui-shadow-header)]'
             : 'border-[var(--ui-border-subtle)]',
         )}
       >
-        <div className="mx-auto flex h-full max-w-[1160px] items-center gap-3 px-4 sm:px-5">
-          <Wordmark />
+        <div className="relative mx-auto h-full max-w-[1160px] px-4 sm:px-5" onMouseLeave={scheduleClose}>
+          <div className="flex h-full items-center gap-3">
+            <Wordmark />
 
-          <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 lg:flex">
-            {navItems.map((item) => (
+            <nav className="absolute left-1/2 hidden h-full -translate-x-1/2 items-center gap-0.5 lg:flex">
               <Link
-                activeOptions={{ exact: item.exact }}
-                className={barLinkClassName}
-                key={item.to}
-                {...resolvedRouteHref(item.to)}
+                activeOptions={{ exact: true }}
+                className={cn(triggerClassName, 'data-[status=active]:text-[var(--ui-text)]')}
+                {...resolvedRouteHref(routes.home)}
               >
-                {item.label}
+                {t('nav.home')}
               </Link>
-            ))}
 
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <button
-                    className={cn(
-                      'group',
-                      barLinkClassName,
-                      isAiringActive && 'text-[var(--ui-text)]',
-                      // dub marks an open trigger with a soft surface rather than a colour.
-                      'data-[popup-open]:bg-[var(--ui-bg-subtle)] data-[popup-open]:text-[var(--ui-text)]',
-                    )}
-                    type="button"
-                  >
-                    {t('nav.airing')}
-                    <ChevronDown className="size-3.5 transition-transform group-data-[popup-open]:rotate-180" />
-                  </button>
-                }
-              />
-              <DropdownMenuContent align="center" className="w-[420px] p-1.5" sideOffset={10}>
-                <div className="grid">
-                  {airingItems.map((item) => (
-                    <Link
-                      className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3 rounded-[var(--ui-radius-surface)] px-3 py-2.5 transition-colors duration-[var(--ui-transition-fast)] hover:bg-[var(--ui-bg-subtle)]"
-                      key={item.to}
-                      to={item.to}
-                    >
-                      <span className="mt-0.5 grid size-7 place-items-center rounded-[var(--ui-radius-control)] border border-[var(--ui-border-subtle)] bg-[var(--ui-bg-surface)] text-[var(--ui-text-muted)]">
-                        {item.icon}
-                      </span>
-                      <span className="grid gap-0.5">
-                        <span className="text-[13.5px] font-medium text-[var(--ui-text)]">{item.label}</span>
-                        <span className="text-[12.5px] leading-5 text-[var(--ui-text-muted)]">{item.body}</span>
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              {menus.map((menu) => (
+                <button
+                  aria-expanded={openMenuKey === menu.key}
+                  className={triggerClassName}
+                  data-open={openMenuKey === menu.key ? '' : undefined}
+                  key={menu.key}
+                  type="button"
+                  onClick={() => {
+                    setOpenMenuKey((current) => (current === menu.key ? null : menu.key));
+                  }}
+                  onFocus={() => {
+                    openMenu(menu.key);
+                  }}
+                  onMouseEnter={() => {
+                    openMenu(menu.key);
+                  }}
+                >
+                  {menu.label}
+                  <ChevronDown className="size-3.5 transition-transform duration-[var(--ui-transition-standard)] ease-[var(--ui-ease-standard)] group-data-[open]:rotate-180" />
+                </button>
+              ))}
 
-            <Link className={barLinkClassName} {...resolvedRouteHref(routes.docsIntroduction)}>
-              {t('nav.docs')}
-            </Link>
-          </nav>
+              <Link className={triggerClassName} {...resolvedRouteHref(routes.docsIntroduction)}>
+                {t('nav.docs')}
+              </Link>
+            </nav>
 
-          <div className="ml-auto flex items-center gap-1.5">
-            {/* dub's pair: an outlined log-in beside a solid sign-up. */}
-            <Button asChild className="hidden sm:inline-flex" size="default" variant="secondary">
-              <Link to={routes.login}>{t('auth.login')}</Link>
-            </Button>
-            <Button asChild size="default">
-              <Link to={routes.register}>{t('auth.register')}</Link>
-            </Button>
-            <Button
-              aria-label={t('public.openMenu')}
-              className="lg:hidden"
-              size="icon"
-              tooltip={t('public.openMenu')}
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                setIsMenuOpen(true);
-              }}
-            >
-              <Menu className="size-4" />
-            </Button>
+            <div className="ml-auto flex items-center gap-1.5">
+              <Button asChild className="hidden sm:inline-flex" size="default" variant="secondary">
+                <Link to={routes.login}>{t('auth.login')}</Link>
+              </Button>
+              <Button asChild size="default">
+                <Link to={routes.register}>{t('auth.register')}</Link>
+              </Button>
+              <Button
+                aria-label={t('public.openMenu')}
+                className="lg:hidden"
+                size="icon"
+                tooltip={t('public.openMenu')}
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setIsDrawerOpen(true);
+                }}
+              >
+                <Menu className="size-4" />
+              </Button>
+            </div>
           </div>
+
+          {/*
+           * One panel for every menu: the open section owns the visible column,
+           * and the row slides sideways when the pointer moves to a sibling
+           * trigger.
+           */}
+          <AnimatePresence>
+            {isOpen ? (
+              <motion.div
+                animate={{ opacity: 1, y: 0 }}
+                className="absolute inset-x-4 top-full hidden sm:inset-x-5 lg:block"
+                exit={{ opacity: 0, y: -6 }}
+                initial={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.18, ease: easeStandard }}
+              >
+                <div className="overflow-hidden rounded-[var(--ui-radius-frame)] border border-[var(--ui-border)] bg-[var(--ui-bg-elevated)] shadow-[var(--ui-shadow-popup)]">
+                  <motion.div
+                    animate={{ x: `${String(openIndex * -100)}%` }}
+                    className="flex"
+                    transition={{ duration: 0.24, ease: easeStandard }}
+                  >
+                    {menus.map((menu) => (
+                      <div
+                        className={cn(
+                          'grid w-full shrink-0 gap-1 p-2',
+                          menu.entries.length > 2 ? 'sm:grid-cols-3' : 'sm:grid-cols-2',
+                        )}
+                        key={menu.key}
+                      >
+                        {menu.entries.map((entry) => (
+                          <Link
+                            className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3 rounded-[var(--ui-radius-surface)] px-3 py-3 transition-colors duration-[var(--ui-transition-fast)] hover:bg-[var(--ui-bg-subtle)]"
+                            key={entry.to}
+                            onClick={() => {
+                              setOpenMenuKey(null);
+                            }}
+                            {...resolvedRouteHref(entry.to)}
+                          >
+                            <span className="mt-0.5 grid size-8 place-items-center rounded-[var(--ui-radius-control)] border border-[var(--ui-border-subtle)] bg-[var(--ui-bg-surface)] text-[var(--ui-text-muted)]">
+                              {entry.icon}
+                            </span>
+                            <span className="grid gap-1">
+                              <span className="text-[13.5px] font-medium text-[var(--ui-text)]">{entry.label}</span>
+                              {entry.body === undefined ? null : (
+                                <span className="text-[12.5px] leading-5 text-[var(--ui-text-muted)]">
+                                  {entry.body}
+                                </span>
+                              )}
+                            </span>
+                          </Link>
+                        ))}
+                      </div>
+                    ))}
+                  </motion.div>
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
         </div>
       </header>
 
-      <Dialog open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+      <Dialog open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
         <DialogContent className="gap-0 p-0" closeLabel={t('public.closeMenu')} placement="left">
           <DialogHeader className="border-b border-[var(--ui-border-subtle)] px-4 py-3 pr-12">
             <DialogTitle className="flex items-center gap-2 text-sm">
@@ -198,25 +306,23 @@ export function PublicTopBar() {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="grid min-h-0 content-start gap-5 overflow-y-auto p-3">
-            <nav className="grid gap-0.5" aria-label={t('public.menuBrowse')}>
-              <h2 className="px-2 pb-1 text-[11px] font-medium text-[var(--ui-text-subtle)]">
-                {t('public.menuBrowse')}
-              </h2>
-              {menuItems.map((item) => (
-                <Link
-                  activeOptions={{ exact: item.exact }}
-                  className="inline-flex h-9 min-w-0 items-center rounded-[var(--ui-radius-control)] px-2 text-[13.5px] font-medium text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-bg-subtle)] hover:text-[var(--ui-text)] data-[status=active]:bg-[var(--ui-bg-muted)] data-[status=active]:text-[var(--ui-text)]"
-                  key={item.to}
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                  }}
-                  {...resolvedRouteHref(item.to)}
-                >
-                  <span className="min-w-0 truncate">{item.label}</span>
-                </Link>
-              ))}
-            </nav>
+          <div className="grid min-h-0 content-start gap-0.5 overflow-y-auto p-3">
+            {[
+              { label: t('nav.home'), to: routes.home },
+              ...menus.flatMap((menu) => menu.entries.map((entry) => ({ label: entry.label, to: entry.to }))),
+              { label: t('nav.docs'), to: routes.docsIntroduction },
+            ].map((item) => (
+              <Link
+                className="inline-flex h-9 min-w-0 items-center rounded-[var(--ui-radius-control)] px-2 text-[13.5px] font-medium text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-bg-subtle)] hover:text-[var(--ui-text)] data-[status=active]:bg-[var(--ui-bg-muted)] data-[status=active]:text-[var(--ui-text)]"
+                key={item.to}
+                onClick={() => {
+                  setIsDrawerOpen(false);
+                }}
+                {...resolvedRouteHref(item.to)}
+              >
+                <span className="min-w-0 truncate">{item.label}</span>
+              </Link>
+            ))}
           </div>
 
           <div className="grid gap-2 border-t border-[var(--ui-border-subtle)] p-3">
@@ -224,7 +330,7 @@ export function PublicTopBar() {
               <Link
                 to={routes.register}
                 onClick={() => {
-                  setIsMenuOpen(false);
+                  setIsDrawerOpen(false);
                 }}
               >
                 {t('auth.register')}
@@ -234,7 +340,7 @@ export function PublicTopBar() {
               <Link
                 to={routes.login}
                 onClick={() => {
-                  setIsMenuOpen(false);
+                  setIsDrawerOpen(false);
                 }}
               >
                 {t('auth.login')}
