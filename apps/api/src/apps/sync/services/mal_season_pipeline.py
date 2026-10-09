@@ -1,0 +1,127 @@
+"""End-to-end current-season MAL pipeline for listing and identity refresh."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from django.conf import settings
+from django.db import transaction
+
+from apps.index.models import Entity, ProviderRecord, ProviderRepresentation
+from apps.index.services import (
+    airing_board_projection_service,
+    mal_identity_service,
+    provider_candidate_service,
+)
+from apps.sync.providers.mal import MAL_ANIME_NAMESPACE, MAL_SCHEDULE_ITEM_NAMESPACE
+from apps.sync.services.mal_schedule import mal_schedule_service
+
+
+class MALSeasonPipelineService:
+    """Fetch the season listing, promote records, and reconcile identities."""
+
+    def run(
+        self,
+        *,
+        fetch_season: bool = True,
+        evaluate: bool = False,
+        max_items: int | None = None,
+        reconcile_identities: bool = False,
+    ) -> dict[str, Any]:
+        season_summary = mal_schedule_service.sync() if fetch_season else None
+        saved_ids = self._saved_anime_ids(max_items=max_items)
+        imported = [
+            str(entity.id)
+            for external_id in saved_ids
+            if (entity := self._import_one(external_id)) is not None
+        ]
+        # The AniList-id reconciliation walks every MAL record, so it runs as its
+        # own bounded daily job rather than inside the season refresh, where it
+        # held the whole task open for the better part of an hour.
+        identity_summary = (
+            mal_identity_service.reconcile_official_links()
+            if reconcile_identities
+            else None
+        )
+        candidate_summary = provider_candidate_service.generate_mal_bangumi_candidates(
+            limit=settings.MATCH_CANDIDATE_BATCH_SIZE,
+            skip_processed=True,
+        )
+        created_ids = list(candidate_summary["created_ids"])
+        board_summary = airing_board_projection_service.rebuild()
+        if evaluate and created_ids:
+            self._dispatch_ai_evaluations(created_ids)
+        return {
+            "season": season_summary,
+            "saved_anime_ids": len(saved_ids),
+            "imported_entities": len(imported),
+            "identity": identity_summary,
+            "mal_candidates": candidate_summary,
+            "board_projection": board_summary,
+            "ai_evaluations_dispatched": len(created_ids) if evaluate else 0,
+        }
+
+    @staticmethod
+    def _saved_anime_ids(*, max_items: int | None) -> list[str]:
+        """Season records that no anime work represents yet."""
+        promoted = ProviderRepresentation.objects.filter(
+            is_active=True,
+            provider_record__namespace__provider__slug=(
+                MAL_SCHEDULE_ITEM_NAMESPACE.source.slug
+            ),
+            provider_record__namespace__slug=MAL_ANIME_NAMESPACE.slug,
+        ).values_list("provider_record__external_id", flat=True)
+        records = (
+            ProviderRecord.objects.filter(
+                namespace__provider__slug=MAL_SCHEDULE_ITEM_NAMESPACE.source.slug,
+                namespace__slug=MAL_SCHEDULE_ITEM_NAMESPACE.slug,
+                status=ProviderRecord.Status.ACTIVE,
+                latest_revision__isnull=False,
+            )
+            .exclude(external_id__in=promoted)
+            .order_by("external_id")
+            .values_list("external_id", flat=True)
+            .distinct()
+        )
+        if max_items:
+            return list(records[: max(1, int(max_items))])
+        return list(records)
+
+    @staticmethod
+    @transaction.atomic
+    def _import_one(external_id: str) -> Entity | None:
+        from apps.sync.services.mal import mal_import_service
+
+        representation = (
+            ProviderRepresentation.objects.filter(
+                provider_record__namespace__provider__slug=(
+                    MAL_SCHEDULE_ITEM_NAMESPACE.source.slug
+                ),
+                provider_record__namespace__slug=MAL_SCHEDULE_ITEM_NAMESPACE.slug,
+                provider_record__external_id=external_id,
+                provider_record__status=ProviderRecord.Status.ACTIVE,
+                is_active=True,
+            )
+            .select_related("entity")
+            .first()
+        )
+        if representation is not None:
+            return representation.entity
+        try:
+            return mal_import_service.import_saved_anime(int(external_id))
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _dispatch_ai_evaluations(candidate_ids: list[str]) -> None:
+        from config.celery import app as celery_app
+
+        for candidate_id in candidate_ids:
+            celery_app.send_task(
+                "apps.ai.tasks.evaluate_match_candidate_task",
+                args=[candidate_id],
+                queue="ai",
+            )
+
+
+mal_season_pipeline_service = MALSeasonPipelineService()
