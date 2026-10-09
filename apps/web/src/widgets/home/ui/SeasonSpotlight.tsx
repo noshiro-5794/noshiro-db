@@ -6,7 +6,6 @@ import { BroadcastBoard } from '@/features/airing-calendar';
 import { useI18n } from '@/shared/i18n';
 import { routeBackState } from '@/shared/routing/route-state';
 import { routes } from '@/shared/routing/paths';
-import '@/shared/ui/motion.css';
 import { LandingSection } from './LandingSection';
 
 /**

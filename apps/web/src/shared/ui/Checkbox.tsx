@@ -13,7 +13,11 @@ function Checkbox({ className, ...props }: ComponentProps<typeof BaseCheckbox.Ro
       data-slot="checkbox"
       {...props}
     >
-      <BaseCheckbox.Indicator data-slot="checkbox-indicator">
+      {/*
+       * The tick arrives rather than appearing: a short scale from the centre,
+       * on the same curve the rest of the interface animates with.
+       */}
+      <BaseCheckbox.Indicator className="motion-pop" data-slot="checkbox-indicator">
         {props.indeterminate ? (
           <Minus className="size-3" strokeWidth={2.5} />
         ) : (
