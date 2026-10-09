@@ -37,7 +37,8 @@ function DropdownMenuContent({
       >
         <Menu.Popup
           className={cn(
-            'min-w-44 origin-[var(--transform-origin)] overflow-hidden rounded-[var(--ui-radius-surface)] border border-border bg-elevated p-1 text-foreground shadow-[var(--ui-shadow-popup)] outline-none transition-[opacity,transform] duration-[var(--ui-transition-fast)] data-[ending-style]:scale-[0.96] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.96] data-[starting-style]:opacity-0',
+            // plane's overlay panel: a raised surface that arrives by growing from its anchor.
+            'min-w-44 origin-[var(--transform-origin)] overflow-hidden rounded-[var(--ui-radius-surface)] border border-[var(--ui-border-subtle)] bg-elevated p-1 text-foreground shadow-[var(--ui-shadow-popup)] outline-none transition-[opacity,transform] duration-150 ease-out data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0',
             className,
           )}
           data-slot="dropdown-menu-content"
@@ -56,7 +57,7 @@ function DropdownMenuItem({ className, inset, ...props }: DropdownMenuItemProps)
   return (
     <Menu.Item
       className={cn(
-        'relative flex min-h-8 cursor-default select-none items-center rounded-[var(--ui-radius-control)] px-2.5 py-1.5 text-[13px] outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-45 data-[highlighted]:bg-muted data-[highlighted]:text-foreground',
+        'relative flex min-h-8 cursor-default select-none items-center gap-1.5 rounded-[var(--ui-radius-control)] px-2 py-1.5 text-[13px] outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-45 data-[highlighted]:bg-[var(--ui-layer-hover)] data-[highlighted]:text-foreground',
         inset && 'pl-8',
         className,
       )}
@@ -69,7 +70,7 @@ function DropdownMenuItem({ className, inset, ...props }: DropdownMenuItemProps)
 function DropdownMenuLabel({ className, ...props }: ComponentProps<typeof Menu.GroupLabel>) {
   return (
     <Menu.GroupLabel
-      className={cn('px-2.5 py-1.5 text-[11px] font-medium text-subtle-foreground', className)}
+      className={cn('px-2 py-1 text-[11px] font-medium text-subtle-foreground', className)}
       data-slot="dropdown-menu-label"
       {...props}
     />
@@ -94,7 +95,7 @@ function DropdownMenuRadioItem({ children, className, ...props }: ComponentProps
   return (
     <Menu.RadioItem
       className={cn(
-        'relative flex min-h-8 cursor-default select-none items-center justify-between gap-3 rounded-[var(--ui-radius-control)] px-2.5 py-1.5 text-[13px] outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-45 data-[highlighted]:bg-muted data-[highlighted]:text-foreground',
+        'relative flex min-h-8 cursor-default select-none items-center justify-between gap-3 rounded-[var(--ui-radius-control)] px-2 py-1.5 text-[13px] outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-45 data-[highlighted]:bg-[var(--ui-layer-hover)] data-[highlighted]:text-foreground',
         className,
       )}
       data-slot="dropdown-menu-radio-item"

@@ -9,7 +9,7 @@ import type { Transition, Variants } from 'motion/react';
  * not invent its own curve.
  */
 /** Transform and slide motion; mirrors `--ui-ease-standard`. */
-export const easeStandard = [0.22, 1, 0.36, 1] as const;
+const easeStandard = [0.22, 1, 0.36, 1] as const;
 
 const slowSeconds = 0.26;
 const fastSeconds = 0.16;

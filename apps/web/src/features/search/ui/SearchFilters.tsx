@@ -148,7 +148,7 @@ export function SearchFilters({
                 <InputGroupAddon className="pr-0">{filterLabels.sourceId}</InputGroupAddon>
                 <InputGroupInput
                   aria-label={filterLabels.sourceId}
-                  className="px-[var(--ui-control-gap)] font-medium"
+                  className="font-medium"
                   inputMode="numeric"
                   maxLength={64}
                   pattern="[0-9]*"

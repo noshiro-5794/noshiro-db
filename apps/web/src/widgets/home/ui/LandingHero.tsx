@@ -8,48 +8,47 @@ import { Button } from '@/shared/ui/Button';
 /**
  * The first thing a visitor reads.
  *
- * dub's hero composition: a centred stack on the page background — pill,
- * display heading, one paragraph, two actions — with the page's own surfaces
- * rather than a decorated panel. The stack rises in sequence on mount.
+ * plane's marketing hero: a letterspaced eyebrow, a display heading set in one
+ * measure and one weight, a single wide paragraph, then the two actions. The
+ * stack rises in sequence on mount.
  */
 export function LandingHero() {
   const { t } = useI18n();
 
   return (
-    <section className="mx-auto w-full max-w-[1160px] px-4 pb-6 pt-20 text-center sm:pb-10 sm:pt-28">
+    <section className="mx-auto w-full max-w-[1160px] px-4 pb-10 pt-16 text-center sm:pb-14 sm:pt-24">
       <motion.div
         animate="visible"
-        className="mx-auto flex max-w-[720px] flex-col items-center"
+        className="mx-auto flex max-w-[980px] flex-col items-center"
         initial="hidden"
         variants={heroStackVariants}
       >
         <motion.p
-          className="inline-flex items-center gap-2 rounded-[var(--ui-radius-pill)] border border-[var(--ui-border)] bg-[var(--ui-bg-elevated)] px-3 py-1 text-[12px] font-medium text-[var(--ui-text-muted)]"
+          className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--ui-accent-text)]"
           variants={enterVariants}
         >
-          <span aria-hidden className="size-1.5 rounded-full bg-[var(--ui-accent)]" />
           {t('public.heroChip')}
         </motion.p>
 
         <motion.h1
-          className="mt-7 text-balance text-[34px] font-semibold leading-[1.1] tracking-[-0.025em] text-[var(--ui-text)] sm:text-[54px]"
+          className="mt-6 text-balance text-[38px] font-medium leading-[1.06] tracking-[-0.03em] text-[var(--ui-text)] sm:text-[56px] lg:text-[64px]"
           variants={enterVariants}
         >
           {t('public.heroTitle')}
         </motion.h1>
 
         <motion.p
-          className="mt-6 max-w-[604px] text-pretty text-[15px] leading-7 text-[var(--ui-text-muted)]"
+          className="mt-7 max-w-[620px] text-pretty text-[17px] leading-8 text-[var(--ui-text-muted)] sm:text-[20px]"
           variants={enterVariants}
         >
           {t('public.heroBody')}
         </motion.p>
 
-        <motion.div className="mt-9 flex flex-wrap items-center justify-center gap-3" variants={enterVariants}>
-          <Button asChild size="lg">
+        <motion.div className="mt-10 flex flex-wrap items-center justify-center gap-3" variants={enterVariants}>
+          <Button asChild size="xl">
             <Link to={routes.search}>{t('public.startSearch')}</Link>
           </Button>
-          <Button asChild size="lg" variant="secondary">
+          <Button asChild size="xl" variant="secondary">
             <Link to={routes.airing}>{t('public.viewSchedule')}</Link>
           </Button>
         </motion.div>

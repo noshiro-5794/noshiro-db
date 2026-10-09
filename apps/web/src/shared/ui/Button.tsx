@@ -4,7 +4,7 @@ import { cn } from '@/shared/lib/cn';
 import { Tooltip } from '@/shared/ui/Tooltip';
 
 type ButtonVariant = 'default' | 'secondary' | 'ghost' | 'accent' | 'destructive' | 'unstyled';
-type ButtonSize = 'default' | 'xs' | 'sm' | 'lg' | 'icon' | 'icon-sm' | 'icon-lg';
+type ButtonSize = 'default' | 'xs' | 'sm' | 'lg' | 'xl' | 'icon' | 'icon-sm' | 'icon-lg';
 
 const variantClasses: Record<ButtonVariant, string> = {
   default:
@@ -20,10 +20,13 @@ const variantClasses: Record<ButtonVariant, string> = {
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
-  default: 'h-[var(--ui-control-height)] px-[var(--ui-control-padding-x)]',
-  xs: 'h-[var(--ui-control-height-2xs)] gap-1 px-[var(--ui-control-padding-x-xs)] text-xs [&_svg]:size-[var(--ui-control-glyph-sm)]',
-  sm: 'h-[var(--ui-control-height-xs)] px-[var(--ui-control-padding-x-xs)] text-xs [&_svg]:size-[var(--ui-control-glyph-sm)]',
-  lg: 'h-[var(--ui-control-height-lg)] px-[var(--ui-control-padding-x-lg)]',
+  // One rung, one recipe: plane pairs the height with its own side padding,
+  // glyph and type size rather than reusing a single default.
+  default: 'h-[var(--ui-control-height)] px-[var(--ui-control-padding-x)] text-sm',
+  xs: 'h-[var(--ui-control-height-2xs)] gap-[var(--ui-control-gap-2xs)] px-[var(--ui-control-padding-x-2xs)] text-[13px] [&_svg]:size-[var(--ui-control-glyph-2xs)]',
+  sm: 'h-[var(--ui-control-height-xs)] px-[var(--ui-control-padding-x-xs)] text-[13px]',
+  lg: 'h-[var(--ui-control-height-lg)] rounded-[var(--ui-radius-control-lg)] px-[var(--ui-control-padding-x-lg)] text-sm',
+  xl: 'h-[var(--ui-control-height-xl)] gap-[var(--ui-control-gap-xl)] rounded-[var(--ui-radius-control-lg)] px-[var(--ui-control-padding-x-xl)] text-base [&_svg]:size-[var(--ui-control-glyph-xl)]',
   icon: 'size-[var(--ui-control-height)] px-0',
   'icon-sm': 'size-[var(--ui-control-height-xs)] px-0 [&_svg]:size-3.5',
   'icon-lg': 'size-[var(--ui-control-height-lg)] px-0',
@@ -57,7 +60,7 @@ function Button({
       ? 'outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus-halo)] focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-45 aria-disabled:pointer-events-none aria-disabled:opacity-45'
       : cn(
           'inline-flex shrink-0 select-none items-center justify-center gap-[var(--ui-control-gap)] whitespace-nowrap',
-          'rounded-[var(--ui-radius-control)] border text-[13px] font-medium outline-none',
+          'rounded-[var(--ui-radius-control)] border font-medium outline-none',
           'transition-[color,background-color,border-color,box-shadow,transform] duration-[var(--ui-transition-fast)] ease-[var(--ui-ease-gentle)]',
           // The press is a half pixel, the way a control feels rather than moves.
           'active:translate-y-[0.5px]',

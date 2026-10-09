@@ -102,13 +102,13 @@ export function FilterCombobox<TValue extends string>({
         <InputGroupAddon className={cn('shrink-0', filterTriggerFieldClass)}>{label}</InputGroupAddon>
         <ComboboxInput
           aria-label={label}
-          className={cn('px-[var(--ui-control-gap)]', filterTriggerValueClass)}
+          className={cn('px-0', filterTriggerValueClass)}
           placeholder={placeholder}
           onFocus={(event) => {
             event.currentTarget.select();
           }}
         />
-        <InputGroupAddon className="pl-0 pr-0.5">
+        <InputGroupAddon>
           <ComboboxTrigger aria-label={label} />
         </InputGroupAddon>
       </InputGroup>
