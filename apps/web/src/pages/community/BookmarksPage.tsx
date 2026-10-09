@@ -307,6 +307,7 @@ export function BookmarksPage() {
               <SearchField
                 aria-label={t('community.bookmarksSearchPlaceholder')}
                 maxLength={200}
+                size="lg"
                 value={draftKeyword}
                 placeholder={t('community.bookmarksSearchPlaceholder')}
                 onChange={(event) => {
