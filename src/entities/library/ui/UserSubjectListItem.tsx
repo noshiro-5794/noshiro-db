@@ -1,4 +1,3 @@
-import { placeholderImagePaths } from '@/shared/assets/public-assets';
 import { Link } from '@tanstack/react-router';
 import { Star } from 'lucide-react';
 import type { UserSubject } from '@/shared/api';
@@ -8,8 +7,7 @@ import { formatDate } from '@/shared/lib/date';
 import { routes } from '@/shared/routing/paths';
 import type { RouteBackState } from '@/shared/routing/route-state';
 import { Badge } from '@/shared/ui/Badge';
-
-const coverPlaceholder = placeholderImagePaths.subjectCover;
+import { CoverImage } from '@/shared/ui/CoverImage';
 
 function titleOf(item: UserSubject, fallback: string) {
   return item.subject.display_title || item.subject.title || item.subject.title_cn || fallback;
@@ -83,13 +81,12 @@ export function UserSubjectListItem({
       to={routes.entity(item.subject.id)}
       {...(detailLinkState === undefined ? {} : { state: detailLinkState })}
     >
-      <img
+      <CoverImage
         alt=""
         className="h-[78px] w-14 rounded-[var(--ui-radius-control)] bg-[var(--ui-bg-subtle)] object-cover ring-1 ring-[var(--ui-border)] max-sm:h-[68px] max-sm:w-12"
-        decoding="async"
-        loading="lazy"
-        referrerPolicy="no-referrer"
-        src={item.subject.image_thumbnail || item.subject.image || coverPlaceholder}
+        label={titleOf(item, t('common.untitledSubject'))}
+        seed={item.subject.id}
+        src={item.subject.image_thumbnail || item.subject.image}
       />
       <span className="grid min-w-0 content-center gap-1.5">
         <span className="grid min-w-0 gap-1">

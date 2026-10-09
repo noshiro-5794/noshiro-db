@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { Avatar } from '@/shared/ui/Avatar';
 import { Badge } from '@/shared/ui/Badge';
+import { CoverImage } from '@/shared/ui/CoverImage';
 import { useI18n } from '@/shared/i18n';
 import { SpoilerText } from '@/shared/ui/SpoilerText';
 import './community-content-card.css';
@@ -55,7 +56,13 @@ export function CommunityContentCard({
     <article className={`community-content-card ${presentation === 'flat' ? 'is-flat' : ''}`}>
       <Link aria-label={subject?.title || title} className="community-content-media" to={subject?.href || href}>
         {cover ? (
-          <img alt="" decoding="async" loading="lazy" referrerPolicy="no-referrer" src={cover} />
+          <CoverImage
+            alt=""
+            className="size-full object-cover"
+            label={subject?.title ?? title}
+            seed={subject?.href ?? href}
+            src={cover}
+          />
         ) : (
           <span>{icon}</span>
         )}
@@ -83,7 +90,7 @@ export function CommunityContentCard({
           <div className="community-content-author">
             {author ? (
               <Link to={author.href}>
-                <Avatar className="size-6" src={author.avatar} />
+                <Avatar className="size-6" name={author.name} src={author.avatar} />
                 <span>{author.name}</span>
               </Link>
             ) : null}

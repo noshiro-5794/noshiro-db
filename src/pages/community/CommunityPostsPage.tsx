@@ -1,4 +1,3 @@
-import { placeholderImagePaths } from '@/shared/assets/public-assets';
 import { formatDate } from '@/shared/lib/date';
 import { useMemo, useState, type ReactNode } from 'react';
 import { getRouteApi, Link } from '@tanstack/react-router';
@@ -13,6 +12,7 @@ import { useI18n } from '@/shared/i18n';
 import type { CommunityPostsSearch } from '@/shared/routing/route-search';
 import { routes } from '@/shared/routing/paths';
 import { Button } from '@/shared/ui/Button';
+import { Avatar } from '@/shared/ui/Avatar';
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/FeedbackState';
 import { FilterMenu, type FilterMenuOption } from '@/shared/ui/FilterMenu';
 import { Page } from '@/shared/ui/Page';
@@ -180,13 +180,7 @@ export function CommunityPostsPage() {
                   to="/users/$userId"
                 >
                   <span className="community-user-main">
-                    <img
-                      alt=""
-                      decoding="async"
-                      loading="lazy"
-                      referrerPolicy="no-referrer"
-                      src={relation.user.avatar || placeholderImagePaths.avatar}
-                    />
+                    <Avatar alt="" name={relation.user.nickname} src={relation.user.avatar} />
                     <span>
                       <strong>{relation.user.nickname || t('common.anonymous')}</strong>
                       <small>{formatDate(relation.followed_at)}</small>

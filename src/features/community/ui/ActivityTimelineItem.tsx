@@ -53,7 +53,12 @@ export function ActivityTimelineItem({
         <header className="activity-timeline-header">
           {author?.id ? (
             <Link className="activity-avatar-link" to={routes.userProfile(author.id)}>
-              <Avatar alt={author.nickname || t('common.anonymous')} className="activity-avatar" src={author.avatar} />
+              <Avatar
+                alt={author.nickname || t('common.anonymous')}
+                className="activity-avatar"
+                name={author.nickname}
+                src={author.avatar}
+              />
             </Link>
           ) : (
             <Avatar className="activity-avatar" />

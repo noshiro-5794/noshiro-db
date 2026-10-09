@@ -182,7 +182,11 @@ export function ReviewViewerPage() {
             <>
               {review.user.id ? (
                 <Link to={routes.userProfile(review.user.id)}>
-                  <Avatar alt={review.user.nickname || t('common.anonymous')} src={review.user.avatar} />
+                  <Avatar
+                    alt={review.user.nickname || t('common.anonymous')}
+                    name={review.user.nickname}
+                    src={review.user.avatar}
+                  />
                 </Link>
               ) : (
                 <Avatar />

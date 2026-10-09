@@ -1,4 +1,3 @@
-import { placeholderImagePaths } from '@/shared/assets/public-assets';
 import { Link } from '@tanstack/react-router';
 import { activityTitle, activityTypeLabel } from '@/entities/community';
 import type { Activity } from '@/shared/api';
@@ -6,10 +5,9 @@ import { useI18n } from '@/shared/i18n';
 import { formatDate } from '@/shared/lib/date';
 import { routes } from '@/shared/routing/paths';
 import { Button } from '@/shared/ui/Button';
+import { CoverImage } from '@/shared/ui/CoverImage';
 import { ListSurface } from '@/shared/ui/DataView';
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/FeedbackState';
-
-const coverPlaceholder = placeholderImagePaths.subjectCover;
 
 export function ProfileActivityTimeline({
   activities,
@@ -62,13 +60,12 @@ export function ProfileActivityTimeline({
                     data-slot="profile-activity-subject"
                     to={routes.entity(activity.subject.id)}
                   >
-                    <img
+                    <CoverImage
                       alt=""
                       className="h-12 w-9 rounded-sm bg-muted object-cover"
-                      decoding="async"
-                      loading="lazy"
-                      referrerPolicy="no-referrer"
-                      src={activity.subject.image_thumbnail || activity.subject.image || coverPlaceholder}
+                      label={activity.subject.display_title || activity.subject.title}
+                      seed={activity.subject.id}
+                      src={activity.subject.image_thumbnail || activity.subject.image}
                     />
                     <span className="grid min-w-0 content-center gap-1">
                       <span className="line-clamp-1 text-sm font-semibold text-foreground">

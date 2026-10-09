@@ -8,7 +8,8 @@ import { DetailSection } from '@/shared/ui/Detail';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/ui/Dialog';
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/FeedbackState';
 import { Pagination } from '@/shared/ui/Pagination';
-import { coverPlaceholder, detailRows, getInfoboxRows } from '../model/subject-detail';
+import { CoverImage } from '@/shared/ui/CoverImage';
+import { detailRows, getInfoboxRows } from '../model/subject-detail';
 import { DetailShell, StaffDetail, type StaffDetailLabels } from './SubjectDetailPrimitives';
 
 const pageSize = 8;
@@ -64,13 +65,11 @@ export function CharactersSection({ className, subjectId }: { className?: string
                     setCharacter(item);
                   }}
                 >
-                  <img
+                  <CoverImage
                     alt=""
                     className="h-20 w-14 rounded-sm bg-muted object-cover object-top ring-1 ring-inset ring-border-subtle"
-                    decoding="async"
-                    loading="lazy"
-                    referrerPolicy="no-referrer"
-                    src={item.image_thumbnail || coverPlaceholder}
+                    label={item.name}
+                    src={item.image_thumbnail}
                   />
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-semibold text-foreground group-hover:text-[var(--ui-accent-text)]">
@@ -82,13 +81,11 @@ export function CharactersSection({ className, subjectId }: { className?: string
                     <span className="mt-3 grid gap-1">
                       {(item.actors ?? []).slice(0, 2).map((actor) => (
                         <span className="grid grid-cols-[24px_minmax(0,1fr)] items-center gap-2" key={actor.id}>
-                          <img
+                          <CoverImage
                             alt=""
                             className="size-6 rounded-full bg-muted object-cover object-top ring-1 ring-inset ring-border-subtle"
-                            decoding="async"
-                            loading="lazy"
-                            referrerPolicy="no-referrer"
-                            src={actor.image_thumbnail || coverPlaceholder}
+                            label={actor.name}
+                            src={actor.image_thumbnail}
                           />
                           <span className="truncate text-xs text-muted-foreground">{actor.name}</span>
                         </span>
@@ -158,13 +155,11 @@ export function CharactersSection({ className, subjectId }: { className?: string
                             setStaff(actor);
                           }}
                         >
-                          <img
+                          <CoverImage
                             alt=""
                             className="size-10 rounded-sm bg-muted object-cover object-top ring-1 ring-inset ring-border-subtle"
-                            decoding="async"
-                            loading="lazy"
-                            referrerPolicy="no-referrer"
-                            src={actor.image_thumbnail || coverPlaceholder}
+                            label={actor.name}
+                            src={actor.image_thumbnail}
                           />
                           <span className="min-w-0">
                             <span className="block truncate text-sm font-semibold text-foreground">{actor.name}</span>

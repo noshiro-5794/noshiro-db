@@ -1,4 +1,3 @@
-import { placeholderImagePaths } from '@/shared/assets/public-assets';
 import { formatDate } from '@/shared/lib/date';
 import { type SyntheticEvent, useEffect, useState } from 'react';
 import { getRouteApi, Link, useLocation } from '@tanstack/react-router';
@@ -16,6 +15,7 @@ import { validateBookmarksSearch } from '@/shared/routing/route-search';
 import type { RouteBackState } from '@/shared/routing/route-state';
 import { routeBackState } from '@/shared/routing/route-state';
 import { Badge } from '@/shared/ui/Badge';
+import { Avatar } from '@/shared/ui/Avatar';
 import { Button } from '@/shared/ui/Button';
 import {
   ContentRow,
@@ -209,13 +209,7 @@ function BookmarkCard({
           <ContentRowFooter>
             <ContentRowAuthor>
               <Link params={{ userId: String(author.id) }} to="/users/$userId">
-                <img
-                  alt=""
-                  decoding="async"
-                  loading="lazy"
-                  referrerPolicy="no-referrer"
-                  src={author.avatar || placeholderImagePaths.avatar}
-                />
+                <Avatar alt="" name={author.nickname} src={author.avatar} />
                 <span>{author.nickname || t('common.anonymous')}</span>
               </Link>
             </ContentRowAuthor>
