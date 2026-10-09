@@ -17,6 +17,7 @@ const pageSize = 8;
 export function CharactersSection({ className, subjectId }: { className?: string; subjectId: UUID }) {
   const { t } = useI18n();
   const emptyText = t('common.none');
+  const sectionEmptyText = t('common.notRecorded');
   const sectionTitleId = useId();
   const [page, setPage] = useState(1);
   const [character, setCharacter] = useState<SubjectCharacter | null>(null);
@@ -101,7 +102,7 @@ export function CharactersSection({ className, subjectId }: { className?: string
           </ul>
         ) : null}
         {!query.isFetching && !query.isError && characterRows.length === 0 ? (
-          <EmptyState title={emptyText} variant="inline" />
+          <EmptyState title={sectionEmptyText} variant="inline" />
         ) : null}
         {characterRows.length > 0 ? (
           <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />

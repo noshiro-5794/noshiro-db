@@ -108,7 +108,9 @@ export function SubjectReviewSection({
           ))}
         </ul>
       ) : null}
-      {!isLoading && !isError && reviews.length === 0 ? <EmptyState title={t('common.none')} variant="inline" /> : null}
+      {!isLoading && !isError && reviews.length === 0 ? (
+        <EmptyState title={t('common.notRecorded')} variant="inline" />
+      ) : null}
     </DetailSection>
   );
 }
