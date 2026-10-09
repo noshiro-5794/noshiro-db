@@ -16,7 +16,6 @@ import {
   attributeLabelKeys,
   attributeValueKey,
   bangumiSubjectIdOf,
-  coverPlaceholder,
   groupStaffByRole,
   posterOf,
   subjectAttributes,
@@ -69,6 +68,8 @@ export function SubjectSidebar({ subject }: { subject: SubjectDetail }) {
       <CoverImage
         alt={titleOf(subject, t('common.untitledSubject'))}
         className="mx-auto aspect-[2/3] w-full max-w-[190px] rounded-[var(--ui-radius-surface)] bg-[var(--ui-bg-subtle)] object-cover ring-1 ring-[var(--ui-border)] lg:mx-0 lg:max-w-none"
+        label={titleOf(subject, t('common.untitledSubject'))}
+        seed={subject.id}
         src={posterOf(subject)}
       />
 
@@ -202,13 +203,11 @@ export function SubjectSidebar({ subject }: { subject: SubjectDetail }) {
                           />
                         }
                       >
-                        <img
+                        <CoverImage
                           alt=""
                           className="size-9 rounded-md bg-[var(--ui-bg-subtle)] object-cover"
-                          decoding="async"
-                          loading="lazy"
-                          referrerPolicy="no-referrer"
-                          src={member.image_thumbnail || coverPlaceholder}
+                          label={member.name}
+                          src={member.image_thumbnail}
                         />
                         <span className="min-w-0">
                           <span className="block truncate text-sm font-semibold text-[var(--ui-text)]">

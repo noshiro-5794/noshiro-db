@@ -1,10 +1,10 @@
-import { placeholderImagePaths } from '@/shared/assets/public-assets';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { libraryMutations, libraryQueries } from '@/entities/library';
 import { useI18n } from '@/shared/i18n';
 import { Button } from '@/shared/ui/Button';
+import { CoverImage } from '@/shared/ui/CoverImage';
 import { SearchField } from '@/shared/ui/DataView';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/shared/ui/Dialog';
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/FeedbackState';
@@ -75,13 +75,12 @@ export function AddCollectionItemDialog({
                 return (
                   <li className="min-w-0" key={item.id}>
                     <article className="grid min-w-0 grid-cols-[48px_minmax(0,1fr)] items-center gap-x-3 gap-y-2 rounded-sm border border-border bg-surface p-2 sm:grid-cols-[48px_minmax(0,1fr)_auto]">
-                      <img
+                      <CoverImage
                         alt=""
                         className="row-span-2 h-16 w-12 rounded-sm bg-muted object-cover ring-1 ring-inset ring-border-subtle sm:row-span-1"
-                        decoding="async"
-                        loading="lazy"
-                        referrerPolicy="no-referrer"
-                        src={userSubjectImage(item) || placeholderImagePaths.subjectCover}
+                        label={title}
+                        seed={item.subject.id}
+                        src={userSubjectImage(item)}
                       />
                       <div className="col-start-2 row-start-1 min-w-0">
                         <h3 className="m-0 line-clamp-1 text-sm font-semibold text-foreground">{title}</h3>

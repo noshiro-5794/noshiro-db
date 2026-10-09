@@ -97,5 +97,6 @@ weekdays use `Intl` through shared formatting helpers instead of duplicated labe
 
 ## Static Assets
 
-Production static files live under `public/`, including the brand icon, PWA metadata, social image, and placeholder
-images. Build output remains in `dist/` and is not source code.
+Production static files live under `public/`: the generated app icons, PWA metadata, and the social card. Missing
+artwork is drawn at runtime instead of shipped as an image — see `src/shared/lib/identity.ts` for the initials and
+tone used by avatars and covers. Build output remains in `dist/` and is not source code.

@@ -1,4 +1,3 @@
-import { placeholderImagePaths } from '@/shared/assets/public-assets';
 import { type ChangeEvent, useEffect, useRef, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { KeyRound, LogOut, Upload } from 'lucide-react';
@@ -8,6 +7,7 @@ import { type MessageKey, useI18n } from '@/shared/i18n';
 import { getErrorMessage } from '@/shared/lib/error';
 import { routes } from '@/shared/routing/paths';
 import { Button } from '@/shared/ui/Button';
+import { Avatar } from '@/shared/ui/Avatar';
 import { type AvatarDraft, loadAvatarImage } from '../model/avatar-crop';
 import {
   AvatarImageError,
@@ -16,8 +16,6 @@ import {
   type AvatarImageErrorCode,
 } from '../model/avatar-image';
 import { AvatarCropDialog } from './AvatarCropDialog';
-
-const avatarPlaceholder = placeholderImagePaths.avatar;
 
 const avatarErrorMessageKeys: Record<AvatarImageErrorCode, Parameters<ReturnType<typeof useI18n>['t']>[0]> = {
   'invalid-content': 'settings.avatarInvalidContent',
@@ -116,12 +114,11 @@ export function ProfileAvatarPanel({
     <aside className="grid content-start gap-6">
       <section className="lg:sticky lg:top-6">
         <div className="flex items-center gap-4 lg:block">
-          <img
+          <Avatar
             alt=""
-            className="size-24 rounded-full bg-[var(--ui-bg-subtle)] object-cover ring-1 ring-[var(--ui-border)] lg:size-28"
-            decoding="async"
-            referrerPolicy="no-referrer"
-            src={profile.avatar || avatarPlaceholder}
+            className="size-24 ring-1 ring-[var(--ui-border)] lg:size-28"
+            name={profile.nickname}
+            src={profile.avatar}
           />
           <div className="min-w-0 lg:mt-4">
             <h2 className="truncate text-xl font-semibold tracking-normal text-[var(--ui-text)]">{profile.nickname}</h2>

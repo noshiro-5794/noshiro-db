@@ -1,4 +1,3 @@
-import { placeholderImagePaths } from '@/shared/assets/public-assets';
 import { formatDate } from '@/shared/lib/date';
 import { Link } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
@@ -10,11 +9,11 @@ import type { CurrentUserProfile, UserSubject } from '@/shared/api';
 import { routes } from '@/shared/routing/paths';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
+import { Avatar } from '@/shared/ui/Avatar';
+import { CoverImage } from '@/shared/ui/CoverImage';
 import { ErrorState } from '@/shared/ui/FeedbackState';
 import { UserActivityFeed } from './UserActivityFeed';
 import './home.css';
-
-const avatarPlaceholder = placeholderImagePaths.avatar;
 
 function subjectTitle(item: UserSubject, fallback: string) {
   return item.subject.display_title || item.subject.title || item.subject.title_cn || fallback;
@@ -58,13 +57,7 @@ export function UserHome({ isAdmin, profile }: { isAdmin: boolean; profile: Curr
       <section className="home-overview" data-slot="dashboard-overview">
         <div className="home-overview-main">
           <div className="flex min-w-0 items-center gap-3.5">
-            <img
-              alt=""
-              className="home-avatar"
-              decoding="async"
-              referrerPolicy="no-referrer"
-              src={profile?.avatar || avatarPlaceholder}
-            />
+            <Avatar alt="" className="home-avatar" name={profile?.nickname} src={profile?.avatar} />
             <div className="min-w-0">
               <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <p className="home-kicker">{t('home.welcomeBack')}</p>
@@ -123,12 +116,11 @@ export function UserHome({ isAdmin, profile }: { isAdmin: boolean; profile: Curr
                 {recentSubjectsQuery.isLoading ? <ListSkeleton rows={4} /> : null}
                 {recentSubjects.map((item) => (
                   <Link className="home-list-item is-mark" key={item.id} to={routes.entity(item.subject.id)}>
-                    <img
+                    <CoverImage
                       alt=""
-                      decoding="async"
-                      loading="lazy"
-                      referrerPolicy="no-referrer"
-                      src={item.subject.image_thumbnail || item.subject.image || placeholderImagePaths.subjectCover}
+                      label={subjectTitle(item, t('common.untitledSubject'))}
+                      seed={item.subject.id}
+                      src={item.subject.image_thumbnail || item.subject.image}
                     />
                     <span className="min-w-0">
                       <span className="home-list-title">{subjectTitle(item, t('common.untitledSubject'))}</span>
@@ -184,12 +176,11 @@ export function UserHome({ isAdmin, profile }: { isAdmin: boolean; profile: Curr
               {watchingSubjectsQuery.isLoading ? <ListSkeleton rows={3} /> : null}
               {watchingSubjects.map((item) => (
                 <Link className="home-list-item" key={item.id} to={routes.entity(item.subject.id)}>
-                  <img
+                  <CoverImage
                     alt=""
-                    decoding="async"
-                    loading="lazy"
-                    referrerPolicy="no-referrer"
-                    src={item.subject.image_thumbnail || item.subject.image || placeholderImagePaths.subjectCover}
+                    label={subjectTitle(item, t('common.untitledSubject'))}
+                    seed={item.subject.id}
+                    src={item.subject.image_thumbnail || item.subject.image}
                   />
                   <span className="grid min-w-0 content-center">
                     <span className="home-list-title">{subjectTitle(item, t('common.untitledSubject'))}</span>

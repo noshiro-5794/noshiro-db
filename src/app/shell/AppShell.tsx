@@ -1,12 +1,11 @@
-import { placeholderImagePaths } from '@/shared/assets/public-assets';
 import { lazy, Suspense, useState, type ReactNode } from 'react';
+import { publicAssetPaths } from '@/shared/assets/public-assets';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import {
   Bell,
   Bookmark,
   BookOpen,
   CalendarDays,
-  ChevronDown,
   ChevronsUpDown,
   FileText,
   Home,
@@ -15,12 +14,9 @@ import {
   LogOut,
   Menu,
   MessageSquare,
-  Monitor,
-  Moon,
   Search,
   Settings,
   ShieldCheck,
-  Sun,
   UserRound,
 } from 'lucide-react';
 import { useAuth } from '@/entities/session';
@@ -30,6 +26,7 @@ import { routes } from '@/shared/routing/paths';
 import { resolvedRouteHref } from '@/shared/routing/resolved-href';
 import { useTheme } from '@/shared/theme/use-theme';
 import { Button } from '@/shared/ui/Button';
+import { Avatar } from '@/shared/ui/Avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/ui/Dialog';
 import {
   DropdownMenu,
@@ -37,14 +34,14 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/ui/DropdownMenu';
 import { PageLoader } from '@/shared/ui/PageLoader';
 import { toast } from '@/shared/ui/toast';
 import { PublicFooter } from '@/widgets/public-footer';
+import { AppearanceRadioGroup } from './AppearanceRadioGroup';
+import { PublicTopBar } from './PublicTopBar';
 
 type AppShellProps = {
   children: ReactNode;
@@ -61,19 +58,6 @@ type NavGroup = {
   title: string;
   items: NavItem[];
 };
-
-function MenuEntry({ body, label, to }: { body: string; label: string; to: string }) {
-  return (
-    <Link className="grid gap-1 rounded-[8px] px-2.5 py-2 transition-colors hover:bg-[var(--ui-bg-subtle)]" to={to}>
-      <span className="text-[13.5px] font-medium text-foreground">{label}</span>
-      <span className="text-[12.5px] leading-5 text-muted-foreground">{body}</span>
-    </Link>
-  );
-}
-
-function isThemePreference(value: unknown): value is 'auto' | 'dark' | 'light' {
-  return value === 'auto' || value === 'dark' || value === 'light';
-}
 
 const NotificationBell = lazy(() =>
   import('@/widgets/notifications').then((module) => ({ default: module.NotificationBell })),
@@ -121,12 +105,11 @@ function WorkspaceAccountMenu() {
           />
         }
       >
-        <img
+        <Avatar
           alt=""
-          className="size-6 shrink-0 rounded-sm object-cover ring-1 ring-border"
-          decoding="async"
-          referrerPolicy="no-referrer"
-          src={profile?.avatar || placeholderImagePaths.avatar}
+          className="size-6 rounded-sm ring-1 ring-border"
+          name={profile?.nickname}
+          src={profile?.avatar}
         />
         <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">
           {profile?.nickname || t(`auth.${role}`)}
@@ -149,32 +132,7 @@ function WorkspaceAccountMenu() {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuRadioGroup
-          value={preference}
-          onValueChange={(nextPreference) => {
-            if (isThemePreference(nextPreference)) setMode(nextPreference);
-          }}
-        >
-          <DropdownMenuLabel>{t('settings.appearance')}</DropdownMenuLabel>
-          <DropdownMenuRadioItem closeOnClick value="auto">
-            <span className="inline-flex items-center gap-2">
-              <Monitor className="size-4 text-subtle-foreground" />
-              {t('settings.auto')}
-            </span>
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem closeOnClick value="light">
-            <span className="inline-flex items-center gap-2">
-              <Sun className="size-4 text-subtle-foreground" />
-              {t('settings.light')}
-            </span>
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem closeOnClick value="dark">
-            <span className="inline-flex items-center gap-2">
-              <Moon className="size-4 text-subtle-foreground" />
-              {t('settings.dark')}
-            </span>
-          </DropdownMenuRadioItem>
-        </DropdownMenuRadioGroup>
+        <AppearanceRadioGroup value={preference} onValueChange={setMode} />
         <DropdownMenuSeparator />
         <DropdownMenuItem className="text-[var(--ui-danger-text)]" onClick={() => void handleSignOut()}>
           <LogOut className="mr-2 size-4" />
@@ -225,11 +183,6 @@ export function AppShell({ children }: AppShellProps) {
   const location = useLocation();
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
 
-  // Visitor-facing nouns: what the site offers, not how a page is laid out.
-  const publicNavItems = [
-    { to: routes.home, label: t('nav.home') },
-    { to: routes.search, label: t('nav.catalog') },
-  ];
   const appNavGroups: NavGroup[] = [
     {
       title: t('nav.groupOverview'),
@@ -280,97 +233,7 @@ export function AppShell({ children }: AppShellProps) {
   if (role === 'guest') {
     return (
       <div className="min-h-screen bg-[var(--ui-bg-canvas)]" data-app-shell="public">
-        <header className="sticky top-0 z-[var(--ui-layer-shell-header)] h-[var(--ui-shell-header-height)] border-b border-border-subtle bg-[color-mix(in_srgb,var(--ui-bg-canvas)_88%,transparent)] backdrop-blur-xl">
-          <div className="mx-auto flex h-full max-w-[1160px] items-center gap-3 px-4 sm:px-5">
-            <Link className="flex min-w-0 items-center gap-2" to={routes.home} aria-label="Noshiro DB">
-              <img className="size-6 rounded-[6px]" src="/favicon.svg" alt="" aria-hidden="true" />
-              <span className="truncate text-[15px] font-semibold">Noshiro DB</span>
-            </Link>
-
-            {/*
-             * Linear's bar: the wordmark sits left, navigation is centred in the
-             * bar, and only the account actions sit right.
-             */}
-            <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 lg:flex">
-              {publicNavItems.map((item) => (
-                <Link
-                  activeOptions={{ exact: item.to === routes.home }}
-                  className="rounded-[6px] px-2.5 py-1.5 text-[13.5px] font-medium text-muted-foreground transition-colors hover:bg-[var(--ui-bg-subtle)] hover:text-foreground data-[status=active]:bg-[var(--ui-bg-subtle)] data-[status=active]:text-foreground"
-                  key={item.to}
-                  {...resolvedRouteHref(item.to)}
-                >
-                  {item.label}
-                </Link>
-              ))}
-
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <button
-                      className="inline-flex items-center gap-1 rounded-[6px] px-2.5 py-1.5 text-[13.5px] font-medium text-muted-foreground transition-colors hover:bg-[var(--ui-bg-subtle)] hover:text-foreground"
-                      type="button"
-                    />
-                  }
-                >
-                  {t('nav.airing')}
-                  <ChevronDown className="size-3.5" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="center" className="w-[460px] p-2">
-                  {/* Described destinations, the way Linear groups a sub-menu. */}
-                  <div className="grid grid-cols-2 gap-1">
-                    <MenuEntry
-                      body={t('nav.airingCalendarBody')}
-                      label={t('nav.airingCalendar')}
-                      to={routes.calendar}
-                    />
-                    <MenuEntry body={t('nav.broadcastBoardBody')} label={t('nav.broadcastBoard')} to={routes.airing} />
-                  </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <Link
-                className="rounded-[6px] px-2.5 py-1.5 text-[13.5px] font-medium text-muted-foreground transition-colors hover:bg-[var(--ui-bg-subtle)] hover:text-foreground data-[status=active]:bg-[var(--ui-bg-subtle)] data-[status=active]:text-foreground"
-                {...resolvedRouteHref(routes.docsIntroduction)}
-              >
-                {t('nav.docs')}
-              </Link>
-            </nav>
-
-            <div className="ml-auto flex items-center gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <Button
-                      aria-label={t('nav.openNavigation')}
-                      className="lg:hidden"
-                      size="icon"
-                      tooltip={t('nav.openNavigation')}
-                      variant="ghost"
-                    />
-                  }
-                >
-                  <Menu className="size-4" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="min-w-40 lg:hidden">
-                  {publicNavItems.map((item) => (
-                    <DropdownMenuItem key={item.to} render={<Link {...resolvedRouteHref(item.to)} />}>
-                      {item.label}
-                    </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem render={<Link to={routes.login} />}>{t('auth.login')}</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <span className="mx-1 hidden h-5 w-px bg-[var(--ui-border)] sm:block" />
-              <Button asChild className="hidden sm:inline-flex" size="sm" variant="ghost">
-                <Link to={routes.login}>{t('auth.login')}</Link>
-              </Button>
-              <Button asChild size="sm">
-                <Link to={routes.register}>{t('auth.register')}</Link>
-              </Button>
-            </div>
-          </div>
-        </header>
+        <PublicTopBar />
         <main>{children}</main>
         <PublicFooter />
       </div>
@@ -384,7 +247,12 @@ export function AppShell({ children }: AppShellProps) {
     >
       <header className="sticky top-0 z-[var(--ui-layer-shell-header)] flex h-[var(--ui-shell-header-height)] items-center justify-between gap-3 border-b border-[var(--ui-border)] bg-[color-mix(in_srgb,var(--ui-bg-canvas)_92%,transparent)] px-3 backdrop-blur-xl lg:hidden">
         <Link className="flex min-w-0 items-center gap-2" to={routes.home} aria-label="Noshiro DB">
-          <img className="size-7 rounded-[var(--ui-radius-control)]" src="/favicon.svg" alt="" aria-hidden="true" />
+          <img
+            className="size-7 rounded-[var(--ui-radius-control)]"
+            src={publicAssetPaths.appIcon}
+            alt=""
+            aria-hidden="true"
+          />
           <span className="truncate text-sm font-semibold">Noshiro DB</span>
         </Link>
         <div className="flex items-center gap-0.5">
@@ -408,7 +276,12 @@ export function AppShell({ children }: AppShellProps) {
         <DialogContent className="gap-0 p-0" closeLabel={t('nav.closeNavigation')} placement="left">
           <DialogHeader className="border-b border-[var(--ui-border)] px-4 py-3 pr-12">
             <DialogTitle className="flex items-center gap-2 text-sm">
-              <img className="size-7 rounded-[var(--ui-radius-control)]" src="/favicon.svg" alt="" aria-hidden="true" />
+              <img
+                className="size-7 rounded-[var(--ui-radius-control)]"
+                src={publicAssetPaths.appIcon}
+                alt=""
+                aria-hidden="true"
+              />
               Noshiro DB
             </DialogTitle>
           </DialogHeader>
@@ -427,13 +300,7 @@ export function AppShell({ children }: AppShellProps) {
                 setMobileNavigationOpen(false);
               }}
             >
-              <img
-                className="size-5 rounded-sm object-cover"
-                decoding="async"
-                referrerPolicy="no-referrer"
-                src={profile?.avatar || placeholderImagePaths.avatar}
-                alt=""
-              />
+              <Avatar alt="" className="size-5 rounded-sm" name={profile?.nickname} src={profile?.avatar} />
               <span className="min-w-0 truncate">{profile?.nickname || t(`auth.${role}`)}</span>
             </Link>
             <Link
@@ -456,7 +323,12 @@ export function AppShell({ children }: AppShellProps) {
           to={routes.home}
           aria-label="Noshiro DB"
         >
-          <img className="size-7 rounded-[var(--ui-radius-control)]" src="/favicon.svg" alt="" aria-hidden="true" />
+          <img
+            className="size-7 rounded-[var(--ui-radius-control)]"
+            src={publicAssetPaths.appIcon}
+            alt=""
+            aria-hidden="true"
+          />
           <span className="grid min-w-0">
             <span className="truncate text-sm font-semibold">Noshiro DB</span>
           </span>

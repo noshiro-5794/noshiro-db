@@ -1,8 +1,8 @@
-import { placeholderImagePaths } from '@/shared/assets/public-assets';
 import { type SyntheticEvent, useMemo, useState } from 'react';
 import { Link, useLocation } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { useI18n } from '@/shared/i18n';
+import { subjectKindLabel } from '@/shared/i18n/subject-labels';
 import { calendarImageOf, filterCalendarItems, flattenCalendarGroups, sortCalendarItems } from '@/features/search';
 import { safetyOptions, subjectTypeOptions, type SafetyFilter, type SubjectTypeFilter } from '@/features/search';
 import { subjectQueries } from '@/entities/subject';
@@ -11,13 +11,12 @@ import { routes } from '@/shared/routing/paths';
 import type { RouteBackState } from '@/shared/routing/route-state';
 import { routeBackState } from '@/shared/routing/route-state';
 import { resolvedRouteHref } from '@/shared/routing/resolved-href';
-import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
+import { CoverImage } from '@/shared/ui/CoverImage';
 import { DataToolbar, DataToolbarPrimary, DataToolbarRow, SearchField } from '@/shared/ui/DataView';
 import { ErrorState } from '@/shared/ui/FeedbackState';
 import { FilterMenu } from '@/shared/ui/FilterMenu';
-
-const coverPlaceholder = placeholderImagePaths.subjectCover;
+import { LandingSection } from './LandingSection';
 
 function titleOf(item: CalendarSubjectItem, fallback: string) {
   return item.display_title || item.title || item.title_cn || fallback;
@@ -28,9 +27,7 @@ function subjectTitleOf(subject: SubjectSummary, fallback: string) {
 }
 
 function subjectPosterOf(subject: SubjectSummary) {
-  return (
-    subject.images?.poster || subject.images?.thumbnail || subject.image_thumbnail || subject.image || coverPlaceholder
-  );
+  return subject.images?.poster || subject.images?.thumbnail || subject.image_thumbnail || subject.image || null;
 }
 
 function buildSearchPath({
@@ -60,15 +57,15 @@ function buildSearchPath({
 }
 
 type ShowcasePosterProps = {
-  badge?: string;
-  poster: string;
+  poster: string | null;
+  seed?: string;
   state?: RouteBackState;
   subtitle?: string;
   title: string;
   to: string;
 };
 
-function SearchPoster({ badge, poster, state, subtitle, title, to }: ShowcasePosterProps) {
+function SearchPoster({ poster, seed, state, subtitle, title, to }: ShowcasePosterProps) {
   return (
     <Link
       className="group grid min-w-0 gap-2"
@@ -77,28 +74,18 @@ function SearchPoster({ badge, poster, state, subtitle, title, to }: ShowcasePos
       {...resolvedRouteHref(to)}
     >
       <div className="aspect-[2/3] overflow-hidden rounded-[var(--ui-radius-surface)] bg-[var(--ui-bg-subtle)] ring-1 ring-[var(--ui-border)] transition-colors group-hover:ring-[var(--ui-border-strong)]">
-        <img
-          className="size-full object-cover"
-          src={poster}
-          alt={title}
-          decoding="async"
-          loading="lazy"
-          referrerPolicy="no-referrer"
-        />
+        <CoverImage alt={title} className="size-full object-cover" label={title} seed={seed} src={poster} />
       </div>
       <span className="min-w-0">
         <span className="line-clamp-2 text-sm font-semibold leading-5 text-[var(--ui-text)]">{title}</span>
-        <span className="mt-1 flex min-w-0 items-center gap-2 text-xs text-[var(--ui-text-muted)]">
-          <span className="min-w-0 flex-1 truncate">{subtitle}</span>
-          {badge ? <Badge className="tabular-nums">{badge}</Badge> : null}
-        </span>
+        <span className="mt-1 block min-w-0 truncate text-xs text-[var(--ui-text-muted)]">{subtitle}</span>
       </span>
     </Link>
   );
 }
 
 export function SearchShowcase() {
-  const { locale, t } = useI18n();
+  const { t } = useI18n();
   const location = useLocation();
   const [keyword, setKeyword] = useState('');
   const [submittedKeyword, setSubmittedKeyword] = useState('');
@@ -145,17 +132,12 @@ export function SearchShowcase() {
   }
 
   return (
-    <section className="mx-auto max-w-6xl px-4" data-slot="search-showcase">
-      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-[var(--ui-text)]">{t('search.title')}</h2>
-          <p className="mt-1 max-w-2xl text-[13px] leading-6 text-[var(--ui-text-muted)]">{t('public.searchBody')}</p>
-        </div>
-        <Link className="text-[13px] font-medium text-[var(--ui-accent-text)]" to={morePath}>
-          {t('public.more')}
-        </Link>
-      </div>
-
+    <LandingSection
+      action={{ label: t('public.more'), to: morePath }}
+      className="scroll-mt-20 pt-16 sm:pt-20"
+      note={t('public.searchBody')}
+      title={t('public.startSearch')}
+    >
       <DataToolbar onSubmit={handleSearchSubmit}>
         <DataToolbarRow className="lg:grid-cols-[minmax(0,1.4fr)_150px_150px_auto]">
           <DataToolbarPrimary>
@@ -195,21 +177,20 @@ export function SearchShowcase() {
               <SearchPoster
                 key={subject.id}
                 poster={subjectPosterOf(subject)}
+                seed={subject.id}
                 state={subjectLinkState}
-                subtitle={subject.display_subtitle || subject.subject_type}
+                subtitle={subjectKindLabel(subject.display_subtitle || subject.subject_type, t)}
                 title={subjectTitleOf(subject, t('common.untitledSubject'))}
                 to={routes.entity(subject.id)}
               />
             ))
           : calendarItems.map((item) => (
               <SearchPoster
-                badge={new Intl.NumberFormat(locale, { notation: item.doing >= 10000 ? 'compact' : 'standard' }).format(
-                  item.doing,
-                )}
                 key={item.subject_id}
-                poster={calendarImageOf(item) || coverPlaceholder}
+                poster={calendarImageOf(item)}
+                seed={item.subject_id}
                 state={subjectLinkState}
-                subtitle={item.display_subtitle || item.subject_type}
+                subtitle={subjectKindLabel(item.display_subtitle || item.subject_type, t)}
                 title={titleOf(item, t('common.untitledSubject'))}
                 to={routes.entity(item.subject_id)}
               />
@@ -226,6 +207,6 @@ export function SearchShowcase() {
           {t('public.searchEmpty')}
         </div>
       ) : null}
-    </section>
+    </LandingSection>
   );
 }

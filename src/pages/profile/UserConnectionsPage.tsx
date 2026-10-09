@@ -41,6 +41,7 @@ function ConnectionItem({ relation }: { relation: FollowRelation }) {
           <Avatar
             alt={user.nickname || t('common.anonymous')}
             className="size-10 rounded-full bg-muted object-cover transition hover:ring-2 hover:ring-[var(--ui-accent-border)] sm:size-11"
+            name={user.nickname}
             src={user.avatar}
           />
         </Link>
