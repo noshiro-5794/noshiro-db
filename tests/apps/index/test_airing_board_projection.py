@@ -139,7 +139,7 @@ def test_board_window_covers_the_neighbouring_months() -> None:
     """The window is the previous, current and next month of today."""
     first_of_month = timezone.localdate().replace(day=1)
 
-    start_date, end_date = airing_board_projection_service.window_dates("2026Q3")
+    start_date, end_date = airing_board_projection_service.window_dates()
 
     assert start_date == _add_months(first_of_month, -1)
     assert end_date == _add_months(first_of_month, 2) - timedelta(days=1)

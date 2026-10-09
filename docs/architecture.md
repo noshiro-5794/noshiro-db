@@ -39,6 +39,25 @@ Apps use the same layer meanings: `api` owns HTTP contracts, `selectors` own rea
 External SDKs and protocols belong in `integrations`; domain apps depend on adapters,
 not vendor clients.
 
+## Conventions
+
+Modules are named after the concern they own, not the layer they sit in: the folder
+already says `services/`, so the module is `services/ingestion.py` rather than
+`services/ingestion_service.py`. An app whose models outgrow one file exposes a
+`models/` package that re-exports every model, keeping `apps.<app>.models` importable.
+
+Formatting and linting are enforced by `ruff` (see `pyproject.toml`): the selected
+rules cover import order, modern syntax, naming, simplification, pytest style, and
+commented-out code. The narrow per-file ignores there exist for framework callbacks
+whose signatures are fixed by Django, DRF, or Celery. `mypy` is wired up but not yet
+part of `make check`; the codebase still carries a backlog of findings.
+
+Comments explain why something is the way it is, in English; if a comment restates
+what the line below does, it is noise and belongs in a commit message instead.
+Docstrings are for readers of the module's public surface — one line is usually
+enough. Operational shell entry points live in `scripts/`; anything bound to Django
+models or settings is a management command.
+
 ## Knowledge Model
 
 ```text

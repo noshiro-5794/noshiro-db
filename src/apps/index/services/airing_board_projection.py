@@ -113,9 +113,9 @@ class AiringBoardProjectionService:
         }
 
     @staticmethod
-    def window_dates(season_key: str) -> tuple[date, date]:
+    def window_dates() -> tuple[date, date]:
         """Inclusive first and last day the board covers, in the airing zone."""
-        start, end = _board_window(season_key)
+        start, end = _board_window()
         zone = ZoneInfo("Asia/Tokyo")
         return (
             start.astimezone(zone).date(),
@@ -159,7 +159,7 @@ class AiringBoardProjectionService:
         # that finished as soon as the board was rebuilt, so the season's own
         # history vanished exactly when a season ends; and a bare season window
         # would hide the neighbouring months a calendar visitor expects to see.
-        start, end = _board_window(season_key)
+        start, end = _board_window()
         formats = self._format_index()
         candidates: list[CandidateBar] = []
         candidates.extend(self._bangumi_weekday_candidates(formats=formats))
@@ -607,7 +607,7 @@ def _add_months(value: date, months: int) -> date:
     return date(value.year + index // 12, index % 12 + 1, 1)
 
 
-def _board_window(season_key: str) -> tuple[datetime, datetime]:
+def _board_window() -> tuple[datetime, datetime]:
     """Rolling window: the previous, current and next month.
 
     Broadcast data is only trustworthy near the present — an AniList schedule

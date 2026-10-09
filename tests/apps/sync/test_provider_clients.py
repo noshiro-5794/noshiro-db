@@ -289,10 +289,10 @@ def test_anilist_maintenance_403_is_unavailable_not_permanent() -> None:
     with (
         patch("apps.sync.providers.anilist.Provider.objects.filter") as provider_filter,
         patch("apps.sync.providers.anilist.time.sleep") as sleep,
-        pytest.raises(AniListAPIError) as exc_info,
     ):
         provider_filter.return_value.first.return_value = None
-        AniListClient(http_client).discover_anime_page(cursor="1", page_size=25)
+        with pytest.raises(AniListAPIError) as exc_info:
+            AniListClient(http_client).discover_anime_page(cursor="1", page_size=25)
 
     error = exc_info.value
     assert isinstance(error, AniListAPIError)
@@ -377,7 +377,7 @@ def test_vndb_release_resolution_is_always_json() -> None:
         *, entity, observation, slug, name, value, value_type, **kwargs
     ):
         captured.append((slug, value_type, value))
-        return None
+        return
 
     with patch(
         "apps.sync.services.vndb.knowledge_ingestion_service.record_fact",

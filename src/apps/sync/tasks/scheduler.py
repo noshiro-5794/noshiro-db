@@ -44,8 +44,7 @@ class SyncScheduler:
                 ):
                     logger.info("Full sync phase skipped", extra={"task_name": name})
                     continue
-                else:
-                    started = True
+                started = True
             self._run_phase(name, task_cls)
         logger.info("Full sync completed")
 
