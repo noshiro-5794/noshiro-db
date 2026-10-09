@@ -24,6 +24,8 @@ type ResultsStateProps = {
   children: ReactNode;
   emptyAction?: ReactNode;
   emptyDescription?: string;
+  /** `inline` for a section that sits inside a page with other content. */
+  emptyVariant?: 'card' | 'inline';
   emptyTitle: string;
   errorDescription?: string;
   errorTitle: string;
@@ -146,6 +148,7 @@ function ResultsState({
   children,
   emptyAction,
   emptyDescription,
+  emptyVariant = 'card',
   emptyTitle,
   errorDescription,
   errorTitle,
@@ -162,6 +165,7 @@ function ResultsState({
     return (
       <EmptyState
         title={emptyTitle}
+        variant={emptyVariant}
         {...(emptyAction === undefined ? {} : { action: emptyAction })}
         {...(emptyDescription === undefined ? {} : { description: emptyDescription })}
       />
