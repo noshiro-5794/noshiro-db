@@ -7,7 +7,7 @@ function Checkbox({ className, ...props }: ComponentProps<typeof BaseCheckbox.Ro
   return (
     <BaseCheckbox.Root
       className={cn(
-        'grid size-4 shrink-0 cursor-default place-items-center rounded-[4px] border border-control-border bg-elevated text-white outline-none transition-[background-color,border-color,box-shadow] duration-[var(--ui-transition-fast)] data-[checked]:border-brand data-[checked]:bg-brand data-[disabled]:cursor-not-allowed data-[disabled]:opacity-45 data-[indeterminate]:border-brand data-[indeterminate]:bg-brand focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
+        'grid size-4 shrink-0 cursor-default place-items-center rounded-[4px] border border-control-border bg-elevated text-white outline-none transition-[background-color,border-color,box-shadow] duration-[var(--ui-transition-fast)] data-[checked]:border-brand data-[checked]:bg-brand data-[disabled]:cursor-not-allowed data-[disabled]:opacity-45 data-[indeterminate]:border-brand data-[indeterminate]:bg-brand focus-visible:ring-2 focus-visible:ring-[var(--ui-focus-halo)] focus-visible:ring-offset-1 focus-visible:ring-offset-surface',
         className,
       )}
       data-slot="checkbox"

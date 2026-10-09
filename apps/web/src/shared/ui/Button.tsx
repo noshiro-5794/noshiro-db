@@ -54,7 +54,7 @@ function Button({
   const ariaLabel = props['aria-label'] ?? (isIconOnly && typeof tooltip === 'string' ? tooltip : undefined);
   const buttonClassName = cn(
     isUnstyled
-      ? 'outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-45 aria-disabled:pointer-events-none aria-disabled:opacity-45'
+      ? 'outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus-halo)] focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-45 aria-disabled:pointer-events-none aria-disabled:opacity-45'
       : cn(
           'inline-flex shrink-0 select-none items-center justify-center gap-[var(--ui-control-gap)] whitespace-nowrap',
           'rounded-[var(--ui-radius-control)] border text-[13px] font-medium outline-none',

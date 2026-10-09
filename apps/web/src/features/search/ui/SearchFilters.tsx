@@ -116,7 +116,7 @@ export function SearchFilters({
             }}
           />
         </DataToolbarPrimary>
-        <Button size="lg" type="submit" variant="secondary">
+        <Button type="submit" variant="secondary">
           {t('search.title')}
         </Button>
       </DataToolbarRow>
