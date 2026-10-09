@@ -8,7 +8,7 @@ import {
   groupOccurrences,
   layoutOccurrences,
   occurrenceFor,
-} from './calendar-model';
+} from './calendar';
 
 function entry(overrides: Partial<CalendarBoardEntry>): CalendarBoardEntry {
   return {
@@ -39,7 +39,7 @@ function entry(overrides: Partial<CalendarBoardEntry>): CalendarBoardEntry {
   };
 }
 
-describe('calendar-model', () => {
+describe('calendar', () => {
   it('expands weekly entries into dated occurrences', () => {
     const precise = entry({
       id: 'precise',

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { CurrentUserProfile } from './session';
-import { patchSessionProfile } from './session-profile';
+import { patchSessionProfile } from './profile';
 
 const profile: CurrentUserProfile = {
   user_id: 1,
