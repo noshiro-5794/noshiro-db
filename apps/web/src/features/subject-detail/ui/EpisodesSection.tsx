@@ -34,6 +34,7 @@ export function EpisodesSection({
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const emptyText = t('common.none');
+  const sectionEmptyText = t('common.notRecorded');
   const sectionTitleId = useId();
   const otherChaptersTitleId = useId();
   const [episodePage, setEpisodePage] = useState(1);
@@ -195,7 +196,7 @@ export function EpisodesSection({
           </div>
         ) : null}
         {!episodesQuery.isFetching && !episodesQuery.isError && episodeRows.length === 0 ? (
-          <EmptyState title={emptyText} variant="inline" />
+          <EmptyState title={sectionEmptyText} variant="inline" />
         ) : null}
         {episodeRows.length > 0 ? (
           <Pagination currentPage={episodePage} totalPages={episodeTotalPages} onPageChange={setEpisodePage} />
@@ -294,7 +295,7 @@ export function EpisodesSection({
               />
             </>
           ) : (
-            <EmptyState title={emptyText} variant="inline" />
+            <EmptyState title={sectionEmptyText} variant="inline" />
           )}
         </DialogContent>
       </Dialog>

@@ -33,6 +33,7 @@ export function RelationsSection({
   const { t } = useI18n();
   const location = useLocation();
   const emptyText = t('common.none');
+  const sectionEmptyText = t('common.notRecorded');
   const sectionTitleId = useId();
   const [page, setPage] = useState(1);
   const [relation, setRelation] = useState<SubjectRelation | null>(null);
@@ -72,7 +73,7 @@ export function RelationsSection({
           />
         ) : null}
         {!query.isFetching && !query.isError && rows.length === 0 ? (
-          <EmptyState title={emptyText} variant="inline" />
+          <EmptyState title={sectionEmptyText} variant="inline" />
         ) : null}
         {rows.length > 0 ? (
           <div className="grid gap-5">
