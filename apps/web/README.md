@@ -143,4 +143,4 @@ pnpm check
 
 ## Related Repository
 
-Backend API: [noshiro-db-backend](https://github.com/noshiro-5794/noshiro-db-backend)
+Backend API: [apps/api](https://github.com/noshiro-5794/noshiro-db/tree/main/apps/api) in the same repository

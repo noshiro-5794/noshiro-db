@@ -1,0 +1,22 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+trim_trailing_whitespace = true
+
+[*.md]
+trim_trailing_whitespace = false
+
+[Makefile]
+indent_style = tab
+
+# Python
+[*.{py,pyi}]
+indent_size = 4
+
+# Web client
+[{*.{ts,tsx,js,jsx,json,jsonc,css,scss,html,yml,yaml},apps/web/**}]
+indent_size = 2
