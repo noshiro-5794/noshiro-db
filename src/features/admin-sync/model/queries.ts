@@ -1,5 +1,5 @@
 import { mutationOptions, queryOptions } from '@tanstack/react-query';
-import { operationsApi } from '../api/sync-api';
+import { operationsApi } from '../api/client';
 import type { ImportJobCreate, SyncCampaignAction } from '@/shared/api';
 
 export const syncQueryKeys = {

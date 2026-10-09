@@ -12,7 +12,7 @@ import {
   titleOf,
   type CalendarDay,
   type CalendarOccurrence,
-} from '../model/calendar-model';
+} from '../model/calendar';
 
 const HOUR_HEIGHT = 56;
 const MIN_VISIBLE_HOUR = 18;

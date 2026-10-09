@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { authApi } from '../api/session-api';
+import { authApi } from '../api/client';
 import { refreshAccessToken } from './session';
 
 afterEach(() => {

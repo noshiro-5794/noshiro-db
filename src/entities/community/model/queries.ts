@@ -16,7 +16,7 @@ import {
   type CommunityPostBody,
   type CommunityPostListQuery,
   type CommunityReportListQuery,
-} from '../api/community-api';
+} from '../api/client';
 import type {
   CommunityReactionType,
   CommunityReportReason,

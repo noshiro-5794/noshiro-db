@@ -5,7 +5,7 @@ import { useI18n } from '@/shared/i18n';
 import { routes } from '@/shared/routing/paths';
 import type { RouteBackState } from '@/shared/routing/route-state';
 import { CoverImage } from '@/shared/ui/CoverImage';
-import { formatDayTitle, formatTime, titleOf, weekdayName, type CalendarOccurrence } from '../model/calendar-model';
+import { formatDayTitle, formatTime, titleOf, weekdayName, type CalendarOccurrence } from '../model/calendar';
 import { IconButton } from './primitives';
 
 /**

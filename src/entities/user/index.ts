@@ -1,1 +1,1 @@
-export { publicUserQueries, publicUserQueryKeys } from './model/public-user-queries';
+export { publicUserQueries, publicUserQueryKeys } from './model/queries';

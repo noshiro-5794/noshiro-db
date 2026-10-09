@@ -1,6 +1,6 @@
 import { createContext } from 'react';
 import type { CodeLoginInput, CurrentUserProfile, PasswordLoginInput, RegisterInput } from './session';
-import type { SessionProfilePatch } from './session-profile';
+import type { SessionProfilePatch } from './profile';
 
 export type AuthStatus = 'checking' | 'authenticated' | 'anonymous';
 type UserRole = 'guest' | 'user' | 'admin';
