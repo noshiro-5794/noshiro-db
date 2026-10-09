@@ -183,7 +183,7 @@ def _work_entity(*, provider_slug: str, external_id: str):
     return entity
 
 
-def _AIRun():
+def _ai_run():
     from apps.ai.models import AIRun
 
     return AIRun.objects.create(
@@ -284,7 +284,7 @@ def test_pair_already_bound_by_another_rule_leaves_the_queue() -> None:
         runner_up_margin=Decimal("1.0000"),
         policy_version="title-similarity-v1",
     )
-    run = _AIRun()
+    run = _ai_run()
     proposal = AIProposal.objects.create(
         run=run,
         match_candidate=candidate,
@@ -318,7 +318,7 @@ def test_user_library_conflict_is_recorded_not_retried() -> None:
         runner_up_margin=Decimal("1.0000"),
         policy_version="title-similarity-v1",
     )
-    run = _AIRun()
+    run = _ai_run()
     proposal = AIProposal.objects.create(
         run=run,
         match_candidate=candidate,
@@ -336,7 +336,7 @@ def test_user_library_conflict_is_recorded_not_retried() -> None:
         # Only the bind is refused; the follow-up abstain has to go through.
         if outcome == MatchDecision.Outcome.BIND:
             raise UserLibraryConflict()
-        return None
+        return
 
     with patch(
         "apps.sync.services.match_apply.entity_resolution_service.decide_candidate",

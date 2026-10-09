@@ -59,7 +59,7 @@ class AiringBoardService:
             active.effective_until = now
             active.save(update_fields=["status", "effective_until", "updated_at"])
 
-        board = AiringBoard.objects.create(
+        return AiringBoard.objects.create(
             observation=observation,
             season_key=season,
             status=AiringBoard.Status.ACTIVE,
@@ -67,7 +67,6 @@ class AiringBoardService:
             metadata=metadata or {},
             effective_from=now,
         )
-        return board
 
     def snapshot(self) -> dict[str, Any] | None:
         board = self.active()
