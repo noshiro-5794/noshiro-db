@@ -2,7 +2,7 @@ import json
 
 from django.core.management.base import BaseCommand
 
-from apps.sync.services.anilist_season_service import (
+from apps.sync.services.anilist_season import (
     anilist_season_service,
     current_anilist_season,
 )

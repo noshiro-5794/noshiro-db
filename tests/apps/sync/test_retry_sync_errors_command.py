@@ -33,8 +33,7 @@ class TestRetrySyncErrors:
         unretryable = _error("calendar", 3, days_ago=1)
 
         with patch(
-            "apps.sync.services.incremental_sync_service."
-            "IncrementalSyncService._sync_one",
+            "apps.sync.services.incremental_sync.IncrementalSyncService._sync_one",
             return_value="synced",
         ) as sync_one:
             call_command(
@@ -53,8 +52,7 @@ class TestRetrySyncErrors:
         entry = _error("incremental_subject", 4, days_ago=1)
 
         with patch(
-            "apps.sync.services.incremental_sync_service."
-            "IncrementalSyncService._sync_one",
+            "apps.sync.services.incremental_sync.IncrementalSyncService._sync_one",
             return_value="failed",
         ):
             call_command("retry_sync_errors", stdout=StringIO())
@@ -66,8 +64,7 @@ class TestRetrySyncErrors:
         entry = _error("incremental_subject", 5, days_ago=1)
 
         with patch(
-            "apps.sync.services.incremental_sync_service."
-            "IncrementalSyncService._sync_one",
+            "apps.sync.services.incremental_sync.IncrementalSyncService._sync_one",
         ) as sync_one:
             call_command(
                 "retry_sync_errors",
@@ -87,7 +84,7 @@ def test_refresh_task_failures_are_retryable() -> None:
     The rotating Bangumi refresh records failures; without a config entry the
     retry command could only prune them.
     """
-    from apps.sync.services.incremental_sync_service import IncrementalSyncService
+    from apps.sync.services.incremental_sync import IncrementalSyncService
 
     config = IncrementalSyncService.TASKS.get("bangumi_subject_refresh")
 

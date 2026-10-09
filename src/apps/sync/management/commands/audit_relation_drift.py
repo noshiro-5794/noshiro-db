@@ -6,7 +6,7 @@ from django.core.management.base import BaseCommand
 
 from apps.index.models import ProviderRecord
 from apps.sync.providers.bangumi import BANGUMI_SUBJECT_RELATIONS_NAMESPACE
-from apps.sync.services.relation_drift_service import relation_drift_service
+from apps.sync.services.relation_drift import relation_drift_service
 
 
 class Command(BaseCommand):

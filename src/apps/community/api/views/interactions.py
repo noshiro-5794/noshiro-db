@@ -11,9 +11,9 @@ from apps.community.api.serializers.interactions import (
     CommunityReactionResponseSerializer,
 )
 from apps.community.models import CommunityBookmark, CommunityReaction
-from apps.community.selectors.interaction_selector import CommunityBookmarkSelector
-from apps.community.selectors.target_selector import CommunityTargetSelector
-from apps.community.services.interaction_service import CommunityInteractionService
+from apps.community.selectors.interaction import CommunityBookmarkSelector
+from apps.community.selectors.target import CommunityTargetSelector
+from apps.community.services.interaction import CommunityInteractionService
 from shared.api.contracts import (
     PaginationQuerySerializer,
     api_responses,

@@ -4,7 +4,7 @@ from rest_framework import serializers
 
 from apps.community.api.serializers.contracts import BookmarkTargetSerializer
 from apps.community.models import CommunityBookmark, CommunityReaction
-from apps.community.selectors.target_selector import CommunityTargetSelector
+from apps.community.selectors.target import CommunityTargetSelector
 from apps.index.selectors.projections import entity_summary
 
 

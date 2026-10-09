@@ -6,7 +6,7 @@ from apps.community.api.serializers.follows import (
     FollowerRelationResponseSerializer,
     FollowingRelationResponseSerializer,
 )
-from apps.community.selectors.follow_selector import UserFollowSelector
+from apps.community.selectors.follow import UserFollowSelector
 from shared.api.contracts import (
     PaginationQuerySerializer,
     api_responses,

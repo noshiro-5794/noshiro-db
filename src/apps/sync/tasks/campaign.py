@@ -2,7 +2,7 @@ from celery import shared_task
 from django.utils import timezone
 
 from apps.sync.models import SyncCampaign
-from apps.sync.services.campaign_service import sync_campaign_service
+from apps.sync.services.campaign import sync_campaign_service
 
 
 @shared_task(soft_time_limit=300, time_limit=360)

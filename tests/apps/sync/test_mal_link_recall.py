@@ -16,7 +16,7 @@ from apps.index.models import (
     ProviderRepresentation,
     Work,
 )
-from apps.sync.services.mal_link_recall_service import (
+from apps.sync.services.mal_link_recall import (
     RecallMalOutput,
     mal_link_recall_service,
 )
@@ -98,7 +98,7 @@ def test_ensure_candidate_links_existing_mal_entity_with_evidence() -> None:
         title="万古至尊 李云霄传",
     )
     with patch(
-        "apps.sync.services.mal_link_recall_service.mal_import_service.import_anime"
+        "apps.sync.services.mal_link_recall.mal_import_service.import_anime"
     ) as import_anime:
         candidate_id, linked_root_id = mal_link_recall_service._ensure_candidate(
             root=bangumi,
@@ -200,7 +200,7 @@ def test_failed_attempt_frees_idempotency_key_for_retry() -> None:
 
     fake = type("FakeDriver", (), {"run": staticmethod(fake_driver_run)})()
     with patch(
-        "apps.sync.services.mal_link_recall_service.AgentLoopDriver",
+        "apps.sync.services.mal_link_recall.AgentLoopDriver",
         return_value=fake,
     ):
         result = mal_link_recall_service.recall_one(

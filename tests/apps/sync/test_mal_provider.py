@@ -57,7 +57,7 @@ def test_mal_full_discovery_sweeps_the_id_space() -> None:
 
 
 def test_mal_is_a_registered_campaign_provider() -> None:
-    from apps.sync.services.campaign_service import PROVIDERS
+    from apps.sync.services.campaign import PROVIDERS
 
     provider = PROVIDERS["mal"]
 

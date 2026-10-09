@@ -2,9 +2,9 @@ from celery import shared_task
 from django.conf import settings
 
 from apps.index.services import mal_identity_service
-from apps.sync.services.match_apply_service import match_apply_service
-from apps.sync.services.season_pipeline_service import season_pipeline_service
-from apps.sync.services.season_rollover_service import season_rollover_service
+from apps.sync.services.match_apply import match_apply_service
+from apps.sync.services.season_pipeline import season_pipeline_service
+from apps.sync.services.season_rollover import season_rollover_service
 
 
 @shared_task(soft_time_limit=5400, time_limit=6000)

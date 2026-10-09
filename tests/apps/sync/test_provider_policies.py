@@ -16,7 +16,7 @@ from apps.sync.providers.exceptions import (
     VNDBAPIError,
 )
 from apps.sync.providers.vndb import VNDB_SOURCE, VNDB_VN_NAMESPACE, VNDBClient
-from apps.sync.services.campaign_service import (
+from apps.sync.services.campaign import (
     PROVIDERS,
     SyncCampaignService,
 )

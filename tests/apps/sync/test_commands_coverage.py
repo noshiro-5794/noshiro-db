@@ -16,7 +16,7 @@ def _run(*args) -> str:
 
 def test_sync_mal_schedule_command_reports_summary() -> None:
     with patch(
-        "apps.sync.services.mal_schedule_service.mal_schedule_service.sync",
+        "apps.sync.services.mal_schedule.mal_schedule_service.sync",
         return_value={"season": {"season_key": "2026Q3", "items_seen": 0}},
     ) as sync:
         output = _run("sync_mal_schedule")

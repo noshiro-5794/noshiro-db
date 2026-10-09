@@ -12,7 +12,7 @@ from apps.index.models import (
     ProviderRecord,
     ProviderRevision,
 )
-from apps.sync.services.provider_snapshot_retention_service import (
+from apps.sync.services.provider_snapshot_retention import (
     provider_snapshot_retention_service,
 )
 

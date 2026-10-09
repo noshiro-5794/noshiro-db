@@ -3,7 +3,7 @@ import json
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.sync.exceptions import SyncOperationError
-from apps.sync.services.incremental_sync_service import incremental_sync_service
+from apps.sync.services.incremental_sync import incremental_sync_service
 
 
 class Command(BaseCommand):

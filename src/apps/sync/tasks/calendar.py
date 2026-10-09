@@ -1,7 +1,7 @@
 from celery import current_task, shared_task
 
-from apps.sync.services.calendar_service import calendar_sync_service
-from apps.sync.services.sync_job_service import sync_job_service
+from apps.sync.services.calendar import calendar_sync_service
+from apps.sync.services.sync_job import sync_job_service
 
 
 @shared_task(

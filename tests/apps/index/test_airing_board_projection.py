@@ -37,7 +37,7 @@ from apps.sync.providers.contracts import (
     FetchedSourceRecord,
     SourceNamespaceSpec,
 )
-from apps.sync.services.provider_record_service import provider_record_service
+from apps.sync.services.provider_record import provider_record_service
 
 pytestmark = pytest.mark.django_db(transaction=True)
 

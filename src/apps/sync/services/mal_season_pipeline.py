@@ -14,7 +14,7 @@ from apps.index.services import (
     provider_candidate_service,
 )
 from apps.sync.providers.mal import MAL_ANIME_NAMESPACE, MAL_SCHEDULE_ITEM_NAMESPACE
-from apps.sync.services.mal_schedule_service import mal_schedule_service
+from apps.sync.services.mal_schedule import mal_schedule_service
 
 
 class MALSeasonPipelineService:
@@ -90,7 +90,7 @@ class MALSeasonPipelineService:
     @staticmethod
     @transaction.atomic
     def _import_one(external_id: str) -> Entity | None:
-        from apps.sync.services.mal_service import mal_import_service
+        from apps.sync.services.mal import mal_import_service
 
         representation = (
             ProviderRepresentation.objects.filter(

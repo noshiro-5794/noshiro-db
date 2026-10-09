@@ -5,9 +5,9 @@ from django.test import override_settings
 from apps.sync.api.serializers.import_jobs import ImportJobQuerySerializer
 from apps.sync.models import SyncError, SyncState
 from apps.sync.providers.bangumi import BangumiAPIError
-from apps.sync.services.calendar_image_service import CalendarImageService
+from apps.sync.services.calendar_image import CalendarImageService
 from apps.sync.services.data_mapping import clean_string
-from apps.sync.services.incremental_sync_service import (
+from apps.sync.services.incremental_sync import (
     IncrementalSyncService,
     IncrementalTaskConfig,
 )
@@ -41,7 +41,7 @@ def test_calendar_images_only_allow_configured_http_hosts() -> None:
     BANGUMI_USER_AGENT="test-agent",
 )
 def test_calendar_image_client_follows_http_redirects() -> None:
-    with patch("apps.sync.services.calendar_image_service.httpx.Client") as factory:
+    with patch("apps.sync.services.calendar_image.httpx.Client") as factory:
         client = CalendarImageService().client
 
     factory.assert_called_once()

@@ -2,7 +2,7 @@ import json
 
 from django.core.management.base import BaseCommand
 
-from apps.sync.services.calendar_service import calendar_sync_service
+from apps.sync.services.calendar import calendar_sync_service
 
 
 class Command(BaseCommand):
