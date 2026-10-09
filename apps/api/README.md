@@ -80,4 +80,4 @@ section of the deployment guide before changing production schema or data.
 
 ## License
 
-This project is licensed under the [MIT License](../../LICENSE).
+This project is licensed under the [GNU Affero General Public License v3.0](../../LICENSE).
