@@ -85,7 +85,7 @@ export function PublicTopBar() {
               <img
                 alt=""
                 aria-hidden="true"
-                className="size-7 shrink-0 rounded-[var(--ui-radius-control)] bg-[var(--ui-bg-subtle)] object-cover"
+                className="size-7 shrink-0 rounded-[var(--ui-radius-control)] object-cover"
                 src={publicAssetPaths.appIcon}
               />
               <span className="wordmark truncate text-[23px] text-[var(--ui-text)]">Noshiro DB</span>

@@ -33,7 +33,7 @@ export function AuthPageLayout({ children, title }: AuthPageLayoutProps) {
             <img
               alt=""
               aria-hidden="true"
-              className="size-6 rounded-[6px] bg-[var(--ui-bg-subtle)] object-cover"
+              className="size-6 rounded-[6px] object-cover"
               src={publicAssetPaths.appIcon}
             />
             <span className="wordmark text-[15px]">Noshiro DB</span>
