@@ -19,6 +19,7 @@ LABEL org.opencontainers.image.title="noshiro-db-api" \
       org.opencontainers.image.source="https://github.com/noshiro-5794/noshiro-db"
 
 RUN apt-get update \
+    && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends tzdata \
     && python -m pip install --no-cache-dir "uv==${UV_VERSION}" \
     && rm -rf /var/lib/apt/lists/*
