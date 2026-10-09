@@ -211,6 +211,7 @@ export function PublicUserContentBrowser(props: PublicUserContentBrowserProps) {
                 <SearchField
                   aria-label={t('profile.contentSearchPlaceholder')}
                   maxLength={200}
+                  size="lg"
                   placeholder={t('profile.contentSearchPlaceholder')}
                   value={draftKeyword}
                   onChange={(event) => {

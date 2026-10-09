@@ -114,6 +114,7 @@ export function CommunityPostsPage() {
               </ToggleGroup>
               <div className="activity-feed-filter">
                 <FilterMenu
+                  emptyValue="all"
                   label={t('community.activityType')}
                   options={activityOptions}
                   value={activityFilter}

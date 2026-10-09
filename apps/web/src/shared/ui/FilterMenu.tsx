@@ -7,6 +7,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/shared/ui/DropdownMenu';
+import { FilterTriggerLabel } from '@/shared/ui/FilterTrigger';
 
 export type FilterMenuOption<TValue extends string> = {
   label: string;
@@ -14,6 +15,8 @@ export type FilterMenuOption<TValue extends string> = {
 };
 
 type FilterMenuProps<TValue extends string> = {
+  /** Option value that means the filter is not narrowing anything. Defaults to the empty string. */
+  emptyValue?: string;
   label: string;
   options: ReadonlyArray<FilterMenuOption<TValue>>;
   size?: 'default' | 'lg';
@@ -29,15 +32,16 @@ function isOptionValue<TValue extends string>(
 }
 
 export function FilterMenu<TValue extends string>({
+  emptyValue = '',
   label,
   options,
   size = 'default',
   value,
   onChange,
 }: FilterMenuProps<TValue>) {
-  const selectedOption = options.find((option) => option.value === value) ?? options[0];
-  const showSelectedLabel = selectedOption?.label && selectedOption.label !== label;
-  const accessibleLabel = showSelectedLabel ? `${label}: ${selectedOption.label}` : label;
+  const selectedOption = options.find((option) => option.value === value);
+  const narrowed = value !== emptyValue;
+  const accessibleLabel = narrowed && selectedOption ? `${label}: ${selectedOption.label}` : label;
 
   return (
     <DropdownMenu>
@@ -52,17 +56,7 @@ export function FilterMenu<TValue extends string>({
           />
         }
       >
-        <span className="flex min-w-0 items-center gap-1.5">
-          {/* The value leads; the field name only shows while nothing is chosen. */}
-          {showSelectedLabel ? (
-            <>
-              <span className="truncate text-[var(--ui-text)]">{selectedOption.label}</span>
-              <span className="truncate text-[var(--ui-text-subtle)]">{label}</span>
-            </>
-          ) : (
-            <span className="truncate text-[var(--ui-text-subtle)]">{label}</span>
-          )}
-        </span>
+        <FilterTriggerLabel label={label} value={narrowed ? (selectedOption?.label ?? null) : null} />
         <ChevronDown className="size-[var(--ui-control-glyph-sm)] flex-shrink-0 text-[var(--ui-text-subtle)] transition-transform duration-[var(--ui-transition-standard)] ease-[var(--ui-ease-standard)] group-data-[popup-open]:rotate-180" />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="min-w-[var(--anchor-width)]">

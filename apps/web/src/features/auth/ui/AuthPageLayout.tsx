@@ -56,7 +56,7 @@ export function AuthField({ icon, label, className, ...props }: AuthFieldProps) 
   return (
     <Field invalid={props['aria-invalid'] === true || props['aria-invalid'] === 'true'}>
       <FieldLabel htmlFor={inputId}>{label}</FieldLabel>
-      <InputGroup>
+      <InputGroup size="lg">
         <InputGroupAddon aria-hidden="true">{icon}</InputGroupAddon>
         <InputGroupInput className={className} id={inputId} {...props} />
       </InputGroup>
