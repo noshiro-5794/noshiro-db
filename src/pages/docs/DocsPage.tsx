@@ -1,6 +1,7 @@
 import { getRouteApi, Link, Navigate } from '@tanstack/react-router';
 import { ArrowLeft, BookOpen, Sparkles } from 'lucide-react';
 import { useAuth } from '@/entities/session';
+import { publicAssetPaths } from '@/shared/assets/public-assets';
 import { useI18n } from '@/shared/i18n';
 import { defaultDocsSlug, docsContent, personalDocsSlug } from './content/docs';
 import { routes } from '@/shared/routing/paths';
@@ -9,7 +10,7 @@ import { Button } from '@/shared/ui/Button';
 import { PublicFooter } from '@/widgets/public-footer';
 import './docs.css';
 
-const ownerAvatarSrc = '/favicon.svg';
+const ownerAvatarSrc = publicAssetPaths.owner;
 const docsRoute = getRouteApi('/docs/$slug');
 
 function OwnerAvatar({ size = 'sm' }: { size?: 'sm' | 'md' }) {
