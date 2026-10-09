@@ -43,7 +43,12 @@ export function PublicFooter({ variant = 'public' }: PublicFooterProps) {
             to={routes.home}
             aria-label="Noshiro DB"
           >
-            <img className="size-6 rounded-md" src={publicAssetPaths.appIcon} alt="" aria-hidden="true" />
+            <img
+              alt=""
+              aria-hidden="true"
+              className="size-6 rounded-md bg-[var(--ui-bg-subtle)] object-cover"
+              src={publicAssetPaths.appIcon}
+            />
           </Link>
           <span>© 2026 Noshiro DB</span>
         </div>

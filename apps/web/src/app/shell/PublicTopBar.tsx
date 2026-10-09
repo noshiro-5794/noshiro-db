@@ -19,10 +19,10 @@ type MenuSection = { entries: MenuEntry[]; key: string; label: string };
  */
 const navItemClassName = cn(
   'inline-flex shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap text-[15px] font-normal',
-  'text-[#292929] outline-none transition-colors duration-150 ease-out',
-  'hover:text-[#707070] focus-visible:ring-2 focus-visible:ring-[var(--ui-focus-halo)]',
-  'data-[popup-open]:text-[#707070]',
-  'data-[status=active]:text-[#292929]',
+  'text-[var(--ui-text)] outline-none transition-colors duration-150 ease-out',
+  'hover:text-[var(--ui-text-muted)] focus-visible:ring-2 focus-visible:ring-[var(--ui-focus-halo)]',
+  'data-[popup-open]:text-[var(--ui-text-muted)]',
+  'data-[status=active]:text-[var(--ui-text)]',
 );
 
 /**
@@ -74,7 +74,7 @@ export function PublicTopBar() {
 
   return (
     <>
-      <header className="sticky top-0 z-[var(--ui-layer-shell-header)] h-[var(--ui-public-header-height)] border-b border-[#ebebeb] bg-white text-[#202020]">
+      <header className="sticky top-0 z-[var(--ui-layer-shell-header)] h-[var(--ui-public-header-height)] border-b border-[var(--ui-border-subtle)] bg-[var(--ui-bg-public)] text-[var(--ui-text)]">
         <div className="mx-auto flex h-full w-full max-w-[1280px] items-center justify-between gap-6 px-6 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:px-10">
           <div className="flex min-w-0 shrink-0 items-center">
             <Link
@@ -85,10 +85,10 @@ export function PublicTopBar() {
               <img
                 alt=""
                 aria-hidden="true"
-                className="size-7 shrink-0 rounded-[var(--ui-radius-control)] object-cover"
+                className="size-7 shrink-0 rounded-[var(--ui-radius-control)] bg-[var(--ui-bg-subtle)] object-cover"
                 src={publicAssetPaths.appIcon}
               />
-              <span className="truncate text-[23px] font-semibold tracking-[-0.045em] text-[#202020]">Noshiro DB</span>
+              <span className="wordmark truncate text-[23px] text-[var(--ui-text)]">Noshiro DB</span>
             </Link>
           </div>
 
@@ -131,7 +131,7 @@ export function PublicTopBar() {
             </Button>
             <Button
               aria-label={t('public.openMenu')}
-              className="text-[#292929] lg:hidden"
+              className="text-[var(--ui-text)] lg:hidden"
               size="icon-sm"
               tooltip={t('public.openMenu')}
               type="button"
@@ -156,7 +156,7 @@ export function PublicTopBar() {
                 className="size-7 rounded-[var(--ui-radius-control)]"
                 src={publicAssetPaths.appIcon}
               />
-              Noshiro DB
+              <span className="wordmark text-[15px]">Noshiro DB</span>
             </DialogTitle>
           </DialogHeader>
 

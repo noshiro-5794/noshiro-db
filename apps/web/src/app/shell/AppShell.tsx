@@ -248,12 +248,12 @@ export function AppShell({ children }: AppShellProps) {
       <header className="sticky top-0 z-[var(--ui-layer-shell-header)] flex h-[var(--ui-shell-header-height)] items-center justify-between gap-3 border-b border-[var(--ui-border)] bg-[color-mix(in_srgb,var(--ui-bg-canvas)_92%,transparent)] px-3 backdrop-blur-xl lg:hidden">
         <Link className="flex min-w-0 items-center gap-2" to={routes.home} aria-label="Noshiro DB">
           <img
-            className="size-7 rounded-[var(--ui-radius-control)]"
+            className="size-7 rounded-[var(--ui-radius-control)] bg-[var(--ui-bg-subtle)] object-cover"
             src={publicAssetPaths.appIcon}
             alt=""
             aria-hidden="true"
           />
-          <span className="truncate text-sm font-semibold">Noshiro DB</span>
+          <span className="wordmark truncate text-sm">Noshiro DB</span>
         </Link>
         <div className="flex items-center gap-0.5">
           <NotificationControl label={t('nav.notifications')} />
@@ -277,12 +277,12 @@ export function AppShell({ children }: AppShellProps) {
           <DialogHeader className="border-b border-[var(--ui-border)] px-4 py-3 pr-12">
             <DialogTitle className="flex items-center gap-2 text-sm">
               <img
-                className="size-7 rounded-[var(--ui-radius-control)]"
+                className="size-7 rounded-[var(--ui-radius-control)] bg-[var(--ui-bg-subtle)] object-cover"
                 src={publicAssetPaths.appIcon}
                 alt=""
                 aria-hidden="true"
               />
-              Noshiro DB
+              <span className="wordmark text-[15px]">Noshiro DB</span>
             </DialogTitle>
           </DialogHeader>
           <WorkspaceNavigation
@@ -324,13 +324,13 @@ export function AppShell({ children }: AppShellProps) {
           aria-label="Noshiro DB"
         >
           <img
-            className="size-7 rounded-[var(--ui-radius-control)]"
+            className="size-7 rounded-[var(--ui-radius-control)] bg-[var(--ui-bg-subtle)] object-cover"
             src={publicAssetPaths.appIcon}
             alt=""
             aria-hidden="true"
           />
           <span className="grid min-w-0">
-            <span className="truncate text-sm font-semibold">Noshiro DB</span>
+            <span className="wordmark truncate text-sm">Noshiro DB</span>
           </span>
         </Link>
 

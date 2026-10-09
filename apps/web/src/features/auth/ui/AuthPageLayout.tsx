@@ -20,9 +20,8 @@ type AuthFieldProps = ComponentProps<'input'> & {
 
 export function AuthPageLayout({ children, title }: AuthPageLayoutProps) {
   const { t } = useI18n();
-  // Signed-out screens belong to the public surface and keep the light palette in every theme.
   return (
-    <main className="flex min-h-screen flex-col bg-[var(--ui-bg-canvas)] text-[var(--ui-text)]" data-app-shell="public">
+    <main className="flex min-h-screen flex-col bg-[var(--ui-bg-canvas)] text-[var(--ui-text)]">
       <Seo noindex title={title} />
       {/*
        * These pages render outside the public shell, so they carry their own
@@ -31,8 +30,13 @@ export function AuthPageLayout({ children, title }: AuthPageLayoutProps) {
       <header className="border-b border-[var(--ui-border-subtle)]">
         <div className="mx-auto flex h-14 w-full max-w-[1160px] items-center justify-between gap-4 px-4 sm:px-5">
           <Link className="flex items-center gap-2" aria-label="Noshiro DB" to={routes.home}>
-            <img alt="" aria-hidden="true" className="size-6 rounded-[6px]" src={publicAssetPaths.appIcon} />
-            <span className="text-[15px] font-semibold">Noshiro DB</span>
+            <img
+              alt=""
+              aria-hidden="true"
+              className="size-6 rounded-[6px] bg-[var(--ui-bg-subtle)] object-cover"
+              src={publicAssetPaths.appIcon}
+            />
+            <span className="wordmark text-[15px]">Noshiro DB</span>
           </Link>
           <Link
             className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[var(--ui-text-muted)] transition-colors hover:text-[var(--ui-text)]"
