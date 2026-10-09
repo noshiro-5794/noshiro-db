@@ -186,6 +186,7 @@ export function PublicUserPage() {
           >
             <ResultsState
               emptyDescription={t('profile.noReviewsBody')}
+              emptyVariant="inline"
               emptyTitle={t('profile.noReviewsTitle')}
               errorDescription={t('profile.contentErrorBody')}
               errorTitle={t('profile.contentErrorTitle')}
@@ -216,6 +217,7 @@ export function PublicUserPage() {
           >
             <ResultsState
               emptyDescription={t('profile.noSubjectsBody')}
+              emptyVariant="inline"
               emptyTitle={t('profile.noSubjectsTitle')}
               errorDescription={t('profile.contentErrorBody')}
               errorTitle={t('profile.contentErrorTitle')}
@@ -246,6 +248,7 @@ export function PublicUserPage() {
           >
             <ResultsState
               emptyDescription={t('profile.noCollectionsBody')}
+              emptyVariant="inline"
               emptyTitle={t('profile.noCollectionsTitle')}
               errorDescription={t('profile.contentErrorBody')}
               errorTitle={t('profile.contentErrorTitle')}
@@ -267,6 +270,7 @@ export function PublicUserPage() {
           >
             <ResultsState
               emptyDescription={t('profile.noActivityBody')}
+              emptyVariant="inline"
               emptyTitle={t('profile.noActivityTitle')}
               errorDescription={t('profile.contentErrorBody')}
               errorTitle={t('profile.contentErrorTitle')}

@@ -31,10 +31,14 @@ function FeedbackStateView({
 }: FeedbackStateViewProps) {
   if (variant === 'inline') {
     return (
-      <p className="m-0 flex items-center gap-2 px-1 py-2 text-[13px] text-[var(--ui-text-subtle)]">
+      <div className="flex min-w-0 items-center gap-2 px-1 py-2 text-[13px] leading-5 text-[var(--ui-text-subtle)]">
         <Icon aria-hidden="true" className={cn('size-3.5 shrink-0', loading && 'animate-spin')} />
-        <span className="min-w-0">{title}</span>
-      </p>
+        <p className="m-0 min-w-0">
+          <span>{title}</span>
+          {description ? <span className="text-[var(--ui-text-placeholder)]"> {description}</span> : null}
+        </p>
+        {action ? <div className="shrink-0">{action}</div> : null}
+      </div>
     );
   }
   return (
