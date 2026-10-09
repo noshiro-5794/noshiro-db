@@ -83,6 +83,15 @@
   --ui-control-height-xs: 28px;
   --ui-control-height: 32px;
   --ui-control-height-lg: 36px;
+  /* Control rungs, after plane's control system: the padding, gap and glyph
+     size travel with the height, so a small control is not a big control with
+     smaller text. */
+  --ui-control-padding-x-xs: 8px;
+  --ui-control-padding-x: 10px;
+  --ui-control-padding-x-lg: 12px;
+  --ui-control-gap: 6px;
+  --ui-control-glyph: 16px;
+  --ui-control-glyph-sm: 14px;
   --ui-content-width: 1400px;
   --ui-transition-fast: 120ms;
   --ui-transition-standard: 160ms;

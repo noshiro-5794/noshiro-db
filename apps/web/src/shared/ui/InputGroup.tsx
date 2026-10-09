@@ -6,7 +6,11 @@ function InputGroup({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div
       className={cn(
-        'group/input-group relative flex h-[var(--ui-control-height-lg)] w-full min-w-0 items-center rounded-sm border border-control-border bg-elevated shadow-[var(--ui-shadow-control)] outline-none transition-[border-color,box-shadow,background-color] duration-[var(--ui-transition-fast)] hover:border-[var(--ui-border-strong)] focus-within:border-ring focus-within:ring-2 focus-within:ring-[var(--ui-focus-halo)] has-[input[aria-invalid=true]]:border-destructive has-[input[aria-invalid=true]]:ring-2 has-[input[aria-invalid=true]]:ring-[var(--ui-danger-soft)]',
+        'group/input-group relative flex h-[var(--ui-control-height-lg)] w-full min-w-0 items-center rounded-[var(--ui-radius-control)] border border-control-border bg-elevated',
+        'shadow-[var(--ui-shadow-control)] outline-none',
+        'transition-[border-color,box-shadow,background-color] duration-[var(--ui-transition-fast)] ease-[var(--ui-ease-gentle)]',
+        'hover:border-[var(--ui-border-strong)] focus-within:border-ring focus-within:ring-2 focus-within:ring-[var(--ui-focus-halo)]',
+        'has-[input[aria-invalid=true]]:border-destructive has-[input[aria-invalid=true]]:ring-2 has-[input[aria-invalid=true]]:ring-[var(--ui-danger-soft)]',
         className,
       )}
       data-slot="input-group"

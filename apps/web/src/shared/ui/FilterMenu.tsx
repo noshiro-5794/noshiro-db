@@ -45,7 +45,7 @@ export function FilterMenu<TValue extends string>({
         render={
           <Button
             aria-label={accessibleLabel}
-            className="w-full justify-between px-3"
+            className="group w-full justify-between border-[var(--ui-control-border)] data-[popup-open]:border-[var(--ui-accent-border)] data-[popup-open]:bg-[var(--ui-bg-muted)]"
             size={size}
             type="button"
             variant="secondary"
@@ -53,10 +53,17 @@ export function FilterMenu<TValue extends string>({
         }
       >
         <span className="flex min-w-0 items-center gap-1.5">
-          <span className="text-[var(--ui-text-subtle)]">{label}</span>
-          {showSelectedLabel ? <span className="truncate">{selectedOption.label}</span> : null}
+          {/* The value leads; the field name only shows while nothing is chosen. */}
+          {showSelectedLabel ? (
+            <>
+              <span className="truncate text-[var(--ui-text)]">{selectedOption.label}</span>
+              <span className="truncate text-[var(--ui-text-subtle)]">{label}</span>
+            </>
+          ) : (
+            <span className="truncate text-[var(--ui-text-subtle)]">{label}</span>
+          )}
         </span>
-        <ChevronDown className="size-4 flex-shrink-0 text-[var(--ui-text-subtle)]" />
+        <ChevronDown className="size-[var(--ui-control-glyph-sm)] flex-shrink-0 text-[var(--ui-text-subtle)] transition-transform duration-[var(--ui-transition-standard)] ease-[var(--ui-ease-standard)] group-data-[popup-open]:rotate-180" />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="min-w-[var(--anchor-width)]">
         <DropdownMenuRadioGroup
