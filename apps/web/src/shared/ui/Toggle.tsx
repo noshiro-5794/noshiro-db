@@ -20,7 +20,7 @@ function Toggle({ className, variant = 'default', ...props }: ToggleProps) {
           'gap-2 border border-transparent hover:bg-muted data-[pressed]:border-control-border data-[pressed]:bg-elevated data-[pressed]:text-foreground data-[pressed]:shadow-[var(--ui-shadow-control)]',
         variant === 'bare' && 'hover:bg-muted data-[pressed]:bg-muted data-[pressed]:text-foreground',
         variant === 'tab' &&
-          'h-9 rounded-none border-b-2 border-transparent px-3 hover:bg-muted data-[pressed]:border-[var(--ui-accent)] data-[pressed]:text-foreground',
+          'h-[var(--ui-control-height-lg)] rounded-none border-b-2 border-transparent px-3 hover:bg-muted data-[pressed]:border-[var(--ui-accent)] data-[pressed]:text-foreground',
         className,
       )}
       data-slot="toggle"
