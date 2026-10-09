@@ -94,7 +94,6 @@ export function TimeGrid({
             {(daysMap.get(dateKey(day))?.tentative ?? []).slice(0, 3).map((occurrence) => (
               <button
                 className="calendar-bar w-full truncate rounded-[6px] py-[2px] pl-1.5 pr-2 text-left text-[11px] font-medium"
-                data-cal-source={occurrence.entry.sources[0]?.provider ?? 'unknown'}
                 key={occurrence.key}
                 onClick={() => {
                   onOpenOccurrence(occurrence);
@@ -153,7 +152,6 @@ export function TimeGrid({
                 return (
                   <button
                     className="calendar-bar absolute z-10 overflow-hidden rounded-[6px] py-1 pl-1.5 pr-2 text-left text-[11px] leading-tight transition-[filter] hover:brightness-[1.04]"
-                    data-cal-source={occurrence.entry.sources[0]?.provider ?? 'unknown'}
                     key={occurrence.key}
                     onClick={() => {
                       onOpenOccurrence(occurrence);
