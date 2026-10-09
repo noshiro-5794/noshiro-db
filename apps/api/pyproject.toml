@@ -3,7 +3,7 @@ name = "noshiro-db-api"
 version = "0.1.0"
 description = "Django REST backend for the Noshiro DB catalog and community."
 readme = "README.md"
-license = "MIT"
+license = "AGPL-3.0-only"
 authors = [
     { name = "Noshiro_5794", email = "hangyuan2005@gmail.com" },
 ]
