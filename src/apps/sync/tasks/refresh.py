@@ -1,7 +1,7 @@
 from celery import shared_task
 from django.conf import settings
 
-from apps.sync.services.subject_refresh_service import subject_refresh_service
+from apps.sync.services.subject_refresh import subject_refresh_service
 
 
 @shared_task(soft_time_limit=5400, time_limit=5700)

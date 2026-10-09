@@ -23,7 +23,7 @@ from apps.users.api.views.profile import (
 from apps.users.api.views.reviews import review_data, review_queryset
 from apps.users.models import Collection, Review, UserSubject
 from apps.users.models.account import User
-from apps.users.selectors.public.public_profile_selector import PublicProfileSelector
+from apps.users.selectors.public.public_profile import PublicProfileSelector
 from shared.api.contracts import (
     PaginationQuerySerializer,
     api_responses,

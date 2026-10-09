@@ -10,8 +10,8 @@ from apps.community.api.serializers.reports import (
     CommunityReportResolveRequestSerializer,
     CommunityReportResponseSerializer,
 )
-from apps.community.selectors.report_selector import CommunityReportSelector
-from apps.community.services.report_service import CommunityReportService
+from apps.community.selectors.report import CommunityReportSelector
+from apps.community.services.report import CommunityReportService
 from shared.api.contracts import (
     PaginationQuerySerializer,
     api_responses,

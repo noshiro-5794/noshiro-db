@@ -45,8 +45,8 @@ from apps.sync.providers.contracts import (
     SourceNamespaceSpec,
 )
 from apps.sync.providers.vndb import VNDBAPIError, VNDBImportBatch
-from apps.sync.services.provider_record_service import provider_record_service
-from apps.sync.services.vndb_service import vndb_import_service
+from apps.sync.services.provider_record import provider_record_service
+from apps.sync.services.vndb import vndb_import_service
 
 pytestmark = pytest.mark.django_db
 
@@ -235,7 +235,7 @@ def test_vndb_fetch_completes_before_persistence_transaction_starts() -> None:
     with (
         patch.object(vndb_import_service, "_persist_batch") as persist,
         patch(
-            "apps.sync.services.vndb_service.vndb_client.fetch_import_batch",
+            "apps.sync.services.vndb.vndb_client.fetch_import_batch",
             side_effect=fetch,
         ),
     ):
@@ -247,7 +247,7 @@ def test_vndb_fetch_completes_before_persistence_transaction_starts() -> None:
 def test_vndb_fetch_failure_writes_nothing() -> None:
     with (
         patch(
-            "apps.sync.services.vndb_service.vndb_client.fetch_import_batch",
+            "apps.sync.services.vndb.vndb_client.fetch_import_batch",
             side_effect=VNDBAPIError("provider unavailable"),
         ),
         pytest.raises(VNDBAPIError, match="provider unavailable"),
@@ -262,7 +262,7 @@ def test_vndb_fetch_failure_writes_nothing() -> None:
 def test_vndb_persistence_failure_rolls_back_complete_batch() -> None:
     with (
         patch(
-            "apps.sync.services.vndb_service.vndb_client.fetch_import_batch",
+            "apps.sync.services.vndb.vndb_client.fetch_import_batch",
             return_value=_batch(),
         ),
         patch.object(
@@ -282,7 +282,7 @@ def test_vndb_persistence_failure_rolls_back_complete_batch() -> None:
 
 def test_vndb_complete_batch_is_idempotent() -> None:
     with patch(
-        "apps.sync.services.vndb_service.vndb_client.fetch_import_batch",
+        "apps.sync.services.vndb.vndb_client.fetch_import_batch",
         return_value=_batch(),
     ):
         first = vndb_import_service.import_work(vndb_id="v1")
@@ -337,7 +337,7 @@ def test_new_revision_replaces_current_projection_without_deleting_history() -> 
     )
 
     with patch(
-        "apps.sync.services.vndb_service.vndb_client.fetch_import_batch",
+        "apps.sync.services.vndb.vndb_client.fetch_import_batch",
         side_effect=(first_batch, second_batch),
     ):
         entity = vndb_import_service.import_work(vndb_id="v1")
@@ -359,7 +359,7 @@ def test_relation_survives_when_another_current_provider_observation_supports_it
 ):
     batch = _batch()
     with patch(
-        "apps.sync.services.vndb_service.vndb_client.fetch_import_batch",
+        "apps.sync.services.vndb.vndb_client.fetch_import_batch",
         return_value=batch,
     ):
         entity = vndb_import_service.import_work(vndb_id="v1")
@@ -400,7 +400,7 @@ def test_relation_survives_when_another_current_provider_observation_supports_it
     revised_work["title"] = "Revised Example"
     revised_work["relations"] = []
     with patch(
-        "apps.sync.services.vndb_service.vndb_client.fetch_import_batch",
+        "apps.sync.services.vndb.vndb_client.fetch_import_batch",
         return_value=VNDBImportBatch(work=revised_work),
     ):
         vndb_import_service.import_work(vndb_id="v1", include_related=False)
@@ -411,7 +411,7 @@ def test_relation_survives_when_another_current_provider_observation_supports_it
 def test_without_related_keeps_last_complete_related_projection() -> None:
     batch = _batch()
     with patch(
-        "apps.sync.services.vndb_service.vndb_client.fetch_import_batch",
+        "apps.sync.services.vndb.vndb_client.fetch_import_batch",
         return_value=batch,
     ):
         entity = vndb_import_service.import_work(vndb_id="v1")
@@ -419,7 +419,7 @@ def test_without_related_keeps_last_complete_related_projection() -> None:
     revised_work = deepcopy(batch.work)
     revised_work["title"] = "Revised without related data"
     with patch(
-        "apps.sync.services.vndb_service.vndb_client.fetch_import_batch",
+        "apps.sync.services.vndb.vndb_client.fetch_import_batch",
         return_value=VNDBImportBatch(work=revised_work, related_fetched=False),
     ):
         vndb_import_service.import_work(vndb_id="v1", include_related=False)

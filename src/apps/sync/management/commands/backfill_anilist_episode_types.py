@@ -2,7 +2,7 @@
 
 from django.core.management.base import BaseCommand
 
-from apps.sync.services.episode_type_backfill_service import (
+from apps.sync.services.episode_type_backfill import (
     backfill_anilist_episode_types,
 )
 

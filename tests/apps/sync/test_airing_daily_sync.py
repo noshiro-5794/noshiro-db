@@ -15,7 +15,7 @@ from apps.index.models import (
 )
 from apps.index.services.airing_board import airing_board_service
 from apps.sync.models import SyncState
-from apps.sync.services.airing_daily_sync_service import airing_daily_sync_service
+from apps.sync.services.airing_daily_sync import airing_daily_sync_service
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -88,11 +88,11 @@ def test_daily_refresh_processes_board_in_bounded_batches() -> None:
 
     with (
         patch(
-            "apps.sync.services.airing_daily_sync_service.subject_service.upsert_subject",
+            "apps.sync.services.airing_daily_sync.subject_service.upsert_subject",
             side_effect=_upsert,
         ),
         patch(
-            "apps.sync.services.airing_daily_sync_service.episode_service.sync_subject_episodes"
+            "apps.sync.services.airing_daily_sync.episode_service.sync_subject_episodes"
         ) as episodes,
     ):
         first = airing_daily_sync_service.sync_day(batch_size=1)
@@ -208,7 +208,7 @@ def test_empty_board_is_projected_before_targets_are_collected() -> None:
     airing_board_service.refresh(observation=None, season_key="2026Q4", item_count=0)
 
     with patch(
-        "apps.sync.services.airing_daily_sync_service.airing_board_projection_service.rebuild",
+        "apps.sync.services.airing_daily_sync.airing_board_projection_service.rebuild",
         return_value={"entries": 3},
     ) as rebuild:
         airing_daily_sync_service._ensure_board_is_projected()
@@ -223,7 +223,7 @@ def test_projected_board_is_not_rebuilt_again() -> None:
     )
 
     with patch(
-        "apps.sync.services.airing_daily_sync_service.airing_board_projection_service.rebuild"
+        "apps.sync.services.airing_daily_sync.airing_board_projection_service.rebuild"
     ) as rebuild:
         airing_daily_sync_service._ensure_board_is_projected()
 

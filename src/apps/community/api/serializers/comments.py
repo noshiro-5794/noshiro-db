@@ -9,7 +9,7 @@ from apps.community.api.serializers.contracts import (
     TargetReferenceSerializer,
 )
 from apps.community.models import CommunityComment, Visibility
-from apps.community.selectors.target_selector import CommunityTargetSelector
+from apps.community.selectors.target import CommunityTargetSelector
 
 
 class CommunityCommentCreateRequestSerializer(serializers.Serializer):

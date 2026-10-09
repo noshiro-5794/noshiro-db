@@ -1,3 +1,3 @@
-from .profile_selector import ProfileSelector
+from .profile import ProfileSelector
 
 __all__ = ("ProfileSelector",)

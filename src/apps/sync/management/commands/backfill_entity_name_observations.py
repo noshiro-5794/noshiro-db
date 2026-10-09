@@ -2,7 +2,7 @@
 
 from django.core.management.base import BaseCommand
 
-from apps.sync.services.entity_name_backfill_service import (
+from apps.sync.services.entity_name_backfill import (
     backfill_orphan_entity_name_observations,
 )
 

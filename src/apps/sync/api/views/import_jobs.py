@@ -16,7 +16,7 @@ from apps.sync.services.import_providers import (
     import_provider_for,
     import_provider_for_job_type,
 )
-from apps.sync.services.sync_job_service import sync_job_service
+from apps.sync.services.sync_job import sync_job_service
 from shared.api.contracts import (
     CursorPaginationQuerySerializer,
     api_responses,

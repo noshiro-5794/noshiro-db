@@ -2,7 +2,7 @@ import json
 
 from django.core.management.base import BaseCommand
 
-from apps.sync.services.season_pipeline_service import season_pipeline_service
+from apps.sync.services.season_pipeline import season_pipeline_service
 
 
 class Command(BaseCommand):

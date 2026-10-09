@@ -16,11 +16,11 @@ from apps.users.api.serializers.social import (
     SocialProviderSerializer,
 )
 from apps.users.exceptions import InvalidSocialState
-from apps.users.services.auth.social_service import (
+from apps.users.services.auth.social import (
     GitHubOAuthClient,
     social_login_service,
 )
-from apps.users.services.auth.token_service import TokenService
+from apps.users.services.auth.token import TokenService
 from shared.api.contracts import api_responses
 from shared.exceptions import ApplicationError
 

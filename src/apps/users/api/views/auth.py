@@ -15,12 +15,12 @@ from apps.users.api.serializers.contracts import (
     AcceptedSerializer,
     AccessTokenSerializer,
 )
-from apps.users.services.auth.captcha_service import CaptchaService
-from apps.users.services.auth.login_service import LoginService
-from apps.users.services.auth.password_service import PasswordService
-from apps.users.services.auth.register_service import RegisterService
-from apps.users.services.auth.token_service import TokenService
-from apps.users.services.auth.verification_service import VerificationService
+from apps.users.services.auth.captcha import CaptchaService
+from apps.users.services.auth.login import LoginService
+from apps.users.services.auth.password import PasswordService
+from apps.users.services.auth.register import RegisterService
+from apps.users.services.auth.token import TokenService
+from apps.users.services.auth.verification import VerificationService
 from shared.api.contracts import api_responses
 from shared.http import get_client_ip
 

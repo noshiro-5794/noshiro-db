@@ -18,8 +18,8 @@ from apps.users.api.serializers.contracts import (
     UserCollectionSerializer,
 )
 from apps.users.models import CollectionItem
-from apps.users.selectors.library.collection_selector import CollectionSelector
-from apps.users.services.library.collection_service import CollectionService
+from apps.users.selectors.library.collection import CollectionSelector
+from apps.users.services.library.collection import CollectionService
 from shared.api.contracts import (
     PaginationQuerySerializer,
     api_responses,

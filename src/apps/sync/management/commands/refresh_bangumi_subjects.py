@@ -3,7 +3,7 @@ import json
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
-from apps.sync.services.subject_refresh_service import subject_refresh_service
+from apps.sync.services.subject_refresh import subject_refresh_service
 
 
 class Command(BaseCommand):

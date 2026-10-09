@@ -3,7 +3,7 @@ import time
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.sync.models import SyncCampaign
-from apps.sync.services.campaign_service import (
+from apps.sync.services.campaign import (
     PROVIDERS,
     campaign_idempotency_key,
     sync_campaign_service,

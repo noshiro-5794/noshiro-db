@@ -2,7 +2,7 @@ import json
 
 from django.core.management.base import BaseCommand
 
-from apps.sync.services.provider_stub_backfill_service import (
+from apps.sync.services.provider_stub_backfill import (
     provider_stub_backfill_service,
 )
 

@@ -9,8 +9,8 @@ from apps.community.api.serializers.notifications import (
     NotificationResponseSerializer,
     NotificationUnreadCountResponseSerializer,
 )
-from apps.community.selectors.notification_selector import NotificationSelector
-from apps.community.services.notification_service import NotificationService
+from apps.community.selectors.notification import NotificationSelector
+from apps.community.services.notification import NotificationService
 from shared.api.contracts import (
     CursorPaginationQuerySerializer,
     api_responses,
