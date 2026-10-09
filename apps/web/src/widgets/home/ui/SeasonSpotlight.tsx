@@ -30,12 +30,7 @@ export function SeasonSpotlight() {
           {boardQuery.isLoading ? (
             <BoardSkeleton />
           ) : (
-            <BroadcastBoard
-              emptyLabel={t('calendar.empty')}
-              entries={entries}
-              showProvenance={false}
-              state={subjectLinkState}
-            />
+            <BroadcastBoard emptyLabel={t('calendar.empty')} entries={entries} state={subjectLinkState} />
           )}
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[var(--ui-bg-surface)] to-transparent" />
         </div>
