@@ -1,35 +1,6 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/shared/lib/cn';
 
-export function IconButton({
-  children,
-  className,
-  label,
-  onClick,
-}: {
-  children: ReactNode;
-  className?: string | undefined;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      aria-label={label}
-      className={cn(
-        'grid size-8 shrink-0 place-items-center rounded-full text-[var(--ui-text-muted)] transition-colors',
-        'hover:bg-[var(--ui-bg-subtle)] hover:text-[var(--ui-text)]',
-        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--ui-focus)]',
-        className,
-      )}
-      onClick={onClick}
-      title={label}
-      type="button"
-    >
-      {children}
-    </button>
-  );
-}
-
 type SegmentedOption<Value extends string> = {
   value: Value;
   label: string;
