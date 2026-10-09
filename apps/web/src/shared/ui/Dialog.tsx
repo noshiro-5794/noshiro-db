@@ -38,8 +38,8 @@ function DialogContent({ children, className, closeLabel, placement = 'center', 
           className={cn(
             'relative grid w-full border border-control-border bg-elevated text-foreground shadow-[var(--ui-shadow-dialog)] outline-none transition-[opacity,transform] duration-[var(--ui-transition-standard)] data-[ending-style]:opacity-0 data-[starting-style]:opacity-0',
             placement === 'left'
-              ? 'h-full max-w-[304px] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-lg data-[ending-style]:-translate-x-2 data-[starting-style]:-translate-x-2'
-              : 'max-h-[calc(100dvh-2rem)] max-w-lg gap-4 overflow-y-auto overscroll-contain rounded-md p-4 data-[ending-style]:scale-[0.985] data-[starting-style]:scale-[0.985] sm:p-5',
+              ? 'h-full max-w-[304px] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-[var(--ui-radius-frame)] data-[ending-style]:-translate-x-2 data-[starting-style]:-translate-x-2'
+              : 'max-h-[calc(100dvh-2rem)] max-w-lg gap-4 overflow-y-auto overscroll-contain rounded-[var(--ui-radius-surface)] p-4 data-[ending-style]:scale-[0.985] data-[starting-style]:scale-[0.985] sm:p-5',
             className,
           )}
           data-slot="dialog-content"
@@ -48,7 +48,7 @@ function DialogContent({ children, className, closeLabel, placement = 'center', 
           {children}
           <BaseDialog.Close
             aria-label={closeLabel ?? t('common.close')}
-            className="absolute right-3 top-3 grid size-7 place-items-center rounded-sm text-subtle-foreground outline-none transition-colors duration-[var(--ui-transition-fast)] hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-elevated"
+            className="absolute right-3 top-3 grid size-7 place-items-center rounded-[var(--ui-radius-control)] text-subtle-foreground outline-none transition-colors duration-[var(--ui-transition-fast)] hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-[var(--ui-focus-halo)] focus-visible:ring-offset-1 focus-visible:ring-offset-elevated"
             data-slot="dialog-close"
           >
             <X className="size-4" />

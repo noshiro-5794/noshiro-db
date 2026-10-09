@@ -53,7 +53,7 @@ function SensitiveContent({
         {revealed ? children : null}
       </div>
       {!revealed ? (
-        <div className="grid min-h-28 place-items-center rounded-sm border border-border-subtle bg-muted p-4">
+        <div className="grid min-h-28 place-items-center rounded-[var(--ui-radius-control)] border border-border-subtle bg-muted p-4">
           <Button
             aria-controls={contentId}
             aria-expanded="false"
