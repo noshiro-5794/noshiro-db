@@ -6,7 +6,7 @@ import { routes } from '@/shared/routing/paths';
 import type { RouteBackState } from '@/shared/routing/route-state';
 import { CoverImage } from '@/shared/ui/CoverImage';
 import { formatDayTitle, formatTime, titleOf, weekdayName, type CalendarOccurrence } from '../model/calendar';
-import { IconButton } from './primitives';
+import { Button } from '@/shared/ui/Button';
 
 /**
  * Google Calendar style detail card: accent anchor, the work title, and the
@@ -60,9 +60,15 @@ export function EventDetails({
         role="dialog"
       >
         <div className="flex items-start justify-end">
-          <IconButton label={t('calendar.detailClose')} onClick={onClose}>
+          <Button
+            aria-label={t('calendar.detailClose')}
+            onClick={onClose}
+            size="icon"
+            tooltip={t('calendar.detailClose')}
+            variant="ghost"
+          >
             <X className="size-4" />
-          </IconButton>
+          </Button>
         </div>
 
         <div className="mt-1 flex items-start gap-3">

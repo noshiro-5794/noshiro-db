@@ -28,5 +28,5 @@ export {
 export { BroadcastBoard } from './ui/BroadcastBoard';
 export { EventDetails } from './ui/EventDetails';
 export { MonthGrid } from './ui/MonthGrid';
-export { IconButton, SegmentedControl } from './ui/primitives';
+export { SegmentedControl } from './ui/primitives';
 export { TimeGrid } from './ui/TimeGrid';
