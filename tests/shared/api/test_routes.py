@@ -8,13 +8,13 @@ from rest_framework.test import APIRequestFactory, force_authenticate
 
 @pytest.mark.parametrize(
     "path",
-    (
+    [
         "/api/index/",
         "/api/users/",
         "/api/community/",
         "/api/sync/",
         "/api/v2/",
-    ),
+    ],
 )
 def test_removed_api_roots_do_not_resolve(path: str) -> None:
     with pytest.raises(Resolver404):
@@ -37,7 +37,7 @@ def test_supported_api_resources_use_the_only_versioned_root() -> None:
         assert resolve(path).func is not None
 
 
-@pytest.mark.parametrize("method", ("patch", "post"))
+@pytest.mark.parametrize("method", ["patch", "post"])
 def test_notification_read_state_rejects_removed_compatibility_methods(
     method: str,
 ) -> None:

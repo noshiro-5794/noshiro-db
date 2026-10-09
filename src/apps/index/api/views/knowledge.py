@@ -861,9 +861,7 @@ class AiringBoardEntryListView(APIView):
         )
         if board is None:
             return Response([])
-        window_start, window_end = airing_board_projection_service.window_dates(
-            board.season_key
-        )
+        window_start, window_end = airing_board_projection_service.window_dates()
         adult_allowed = request_allows_adult_content(request)
         include_work = request.query_params.get("include_work", "").lower() in {
             "1",

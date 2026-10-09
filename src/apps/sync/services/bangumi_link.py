@@ -215,10 +215,7 @@ class BangumiLinkService:
             )
 
         queries = self._search_queries(names=names)
-        candidates, artifacts, search_available = self._search_bangumi(
-            queries=queries,
-            agent_run=run,
-        )
+        candidates, artifacts, search_available = self._search_bangumi(queries=queries)
         if search_available is False:
             return self._mark_failed(
                 run=run,
@@ -431,7 +428,6 @@ class BangumiLinkService:
         self,
         *,
         queries: list[str],
-        agent_run: AgentRun,
     ) -> tuple[list[dict[str, Any]], list[SourceArtifact], bool]:
         """Search Bangumi and keep a compact deduplicated candidate list."""
         from apps.ai.tools.bangumi import (

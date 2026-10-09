@@ -69,7 +69,7 @@ class StepExecutor:
         started = time.monotonic()
         try:
             if step.kind == AgentStep.Kind.MODEL:
-                result = self._execute_model(run, step, budget)
+                result = self._execute_model(step, budget)
             elif step.kind == AgentStep.Kind.TOOL:
                 result = self._execute_tool(run, step)
             elif step.kind == AgentStep.Kind.PLAN:
@@ -86,9 +86,7 @@ class StepExecutor:
         self._finish_step(step, state, result)
         return result
 
-    def _execute_model(
-        self, run: AgentRun, step: AgentStep, budget: Budget
-    ) -> StepResult:
+    def _execute_model(self, step: AgentStep, budget: Budget) -> StepResult:
         if budget.is_exhausted:
             return StepResult(
                 step=step,
