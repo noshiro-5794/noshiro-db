@@ -8,7 +8,8 @@ import type { Transition, Variants } from 'motion/react';
  * together: the stylesheet cannot read a TS constant, and a component should
  * not invent its own curve.
  */
-const easeStandard = [0.22, 1, 0.36, 1] as const;
+/** Transform and slide motion; mirrors `--ui-ease-standard`. */
+export const easeStandard = [0.22, 1, 0.36, 1] as const;
 
 const slowSeconds = 0.26;
 const fastSeconds = 0.16;
