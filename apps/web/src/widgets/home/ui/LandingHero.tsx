@@ -1,56 +1,39 @@
 import { Link } from '@tanstack/react-router';
+import { ArrowRight } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useI18n } from '@/shared/i18n';
 import { enterVariants, heroStackVariants } from '@/shared/lib/motion';
 import { routes } from '@/shared/routing/paths';
 import { Button } from '@/shared/ui/Button';
 
-/**
- * The first thing a visitor reads.
- *
- * dub's hero composition: a centred stack on the page background — pill,
- * display heading, one paragraph, two actions — with the page's own surfaces
- * rather than a decorated panel. The stack rises in sequence on mount.
- */
+/** A quiet, centred introduction to the public catalogue. */
 export function LandingHero() {
   const { t } = useI18n();
 
   return (
-    <section className="mx-auto w-full max-w-[1160px] px-4 pb-6 pt-20 text-center sm:pb-10 sm:pt-28">
-      <motion.div
-        animate="visible"
-        className="mx-auto flex max-w-[720px] flex-col items-center"
-        initial="hidden"
-        variants={heroStackVariants}
-      >
-        <motion.p
-          className="inline-flex items-center gap-2 rounded-[var(--ui-radius-pill)] border border-[var(--ui-border)] bg-[var(--ui-bg-elevated)] px-3 py-1 text-[12px] font-medium text-[var(--ui-text-muted)]"
-          variants={enterVariants}
-        >
-          <span aria-hidden className="size-1.5 rounded-full bg-[var(--ui-accent)]" />
+    <section className="landing-hero">
+      <motion.div animate="visible" className="landing-hero-stack" initial="hidden" variants={heroStackVariants}>
+        <motion.p className="landing-hero-eyebrow" variants={enterVariants}>
           {t('public.heroChip')}
         </motion.p>
 
-        <motion.h1
-          className="mt-7 text-balance text-[34px] font-semibold leading-[1.1] tracking-[-0.025em] text-[var(--ui-text)] sm:text-[54px]"
-          variants={enterVariants}
-        >
+        <motion.h1 className="landing-hero-title" variants={enterVariants}>
           {t('public.heroTitle')}
         </motion.h1>
 
-        <motion.p
-          className="mt-6 max-w-[604px] text-pretty text-[15px] leading-7 text-[var(--ui-text-muted)]"
-          variants={enterVariants}
-        >
+        <motion.p className="landing-hero-description" variants={enterVariants}>
           {t('public.heroBody')}
         </motion.p>
 
-        <motion.div className="mt-9 flex flex-wrap items-center justify-center gap-3" variants={enterVariants}>
-          <Button asChild size="lg">
+        <motion.div className="landing-hero-actions" variants={enterVariants}>
+          <Button asChild className="public-button public-button-primary" variant="unstyled">
             <Link to={routes.search}>{t('public.startSearch')}</Link>
           </Button>
-          <Button asChild size="lg" variant="secondary">
-            <Link to={routes.airing}>{t('public.viewSchedule')}</Link>
+          <Button asChild className="public-button public-button-secondary" variant="unstyled">
+            <Link to={routes.airing}>
+              {t('public.viewSchedule')}
+              <ArrowRight aria-hidden="true" className="size-4" />
+            </Link>
           </Button>
         </motion.div>
       </motion.div>
