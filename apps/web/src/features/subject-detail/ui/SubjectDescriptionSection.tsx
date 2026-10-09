@@ -18,7 +18,10 @@ export function SubjectDescriptionSection({ className, subject }: { className?: 
 
   return (
     <DetailSection className={className} id="description" title={t('subject.description')} titleId={titleId}>
-      <p className="m-0 whitespace-pre-line text-sm leading-7 text-muted-foreground">{text || t('common.none')}</p>
+      {/* Prose keeps the same measure the review bodies use, so the synopsis does not run the width of the page. */}
+      <p className="m-0 max-w-3xl whitespace-pre-line text-sm leading-7 text-muted-foreground">
+        {text || t('common.notRecorded')}
+      </p>
       {subject.tags?.length ? (
         <div className="flex flex-wrap gap-1.5">
           {subject.tags.slice(0, 12).map((tag) => (
