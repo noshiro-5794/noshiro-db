@@ -1,6 +1,6 @@
 import { Pause, Play, RefreshCw, X } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { syncMutations, syncQueries, syncQueryKeys } from '../model/sync-queries';
+import { syncMutations, syncQueries, syncQueryKeys } from '../model/queries';
 import type { SyncCampaign, SyncCampaignStatus } from '@/shared/api';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';

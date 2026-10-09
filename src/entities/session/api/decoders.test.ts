@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  decodeAccessTokenPayload,
-  decodeAvatarUpload,
-  decodeCurrentUserProfile,
-  decodeProfileStats,
-} from './session-decoders';
+import { decodeAccessTokenPayload, decodeAvatarUpload, decodeCurrentUserProfile, decodeProfileStats } from './decoders';
 
 describe('session response decoders', () => {
   it('accepts a valid access token and rejects empty or malformed tokens', () => {

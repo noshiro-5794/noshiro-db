@@ -14,7 +14,7 @@ import {
   sourceLabel,
   titleOfEntry,
   weekdayName,
-} from '../model/calendar-model';
+} from '../model/calendar';
 import { SourceDot } from './primitives';
 
 /**
