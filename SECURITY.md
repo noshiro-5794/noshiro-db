@@ -7,7 +7,7 @@ vulnerability reporting on the repository Security tab instead.
 
 Include:
 
-- affected component and version
+- affected component (API or web client) and version
 - steps to reproduce
 - impact
 - any proposed mitigation
@@ -27,3 +27,5 @@ are introduced.
 - Admin and interactive API docs must be disabled unless explicitly enabled.
 - Celery messages must not contain email addresses, passwords, tokens, or
   verification codes; tasks receive durable record IDs.
+- The web client must only talk to the API over HTTPS, and its static host must
+  keep the headers in `apps/web/docs/deployment.md`.

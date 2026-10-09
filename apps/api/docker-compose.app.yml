@@ -6,7 +6,7 @@ name: noshiro-db
 # "${OUTBOUND_PROXY_URL:-}" reads the compose project environment, not the env
 # file, so an operator running plain "docker compose up -d" silently replaced a
 # configured proxy with an empty string and broke every Bangumi request.
-x-app-image: &app-image "${APP_IMAGE:-noshiro-db/backend}:${APP_IMAGE_TAG:-local}"
+x-app-image: &app-image "${APP_IMAGE:-noshiro-db/api}:${APP_IMAGE_TAG:-local}"
 
 services:
   web:
