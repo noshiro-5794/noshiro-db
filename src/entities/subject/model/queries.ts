@@ -1,5 +1,5 @@
 import { queryOptions } from '@tanstack/react-query';
-import { indexApi, type SubjectEpisodeQuery, type SubjectListQuery, type SubjectStaffQuery } from '../api/subject-api';
+import { indexApi, type SubjectEpisodeQuery, type SubjectListQuery, type SubjectStaffQuery } from '../api/client';
 import { collectApiPages, type UUID, type WeekdayEn } from '@/shared/api';
 
 const defaultPageSize = 64;

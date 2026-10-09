@@ -24,7 +24,7 @@ export {
   startOfWeek,
   weekRange,
   type CalendarOccurrence,
-} from './model/calendar-model';
+} from './model/calendar';
 export { BroadcastBoard } from './ui/BroadcastBoard';
 export { EventDetails } from './ui/EventDetails';
 export { MonthGrid } from './ui/MonthGrid';

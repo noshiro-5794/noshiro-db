@@ -1,6 +1,6 @@
-import { authApi, profileApi } from '../api/session-api';
+import { authApi, profileApi } from '../api/client';
 import type { ApiRequestContext, CurrentUserProfile } from '@/shared/api';
-import { withSessionCookieLock } from './session-cookie-lock';
+import { withSessionCookieLock } from './cookie-lock';
 
 export type { CurrentUserProfile };
 export type PasswordLoginInput = { email: string; password: string };
