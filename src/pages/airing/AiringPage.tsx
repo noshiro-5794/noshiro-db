@@ -32,7 +32,7 @@ export function AiringPage() {
           : 'ready';
 
   return (
-    <Page hideHeader seo={false} title={t('nav.broadcastBoard')} width="wide">
+    <Page hideHeader ownHeading seo={false} title={t('nav.broadcastBoard')} width="wide">
       <Seo description={t('nav.broadcastBoardBody')} path={routes.airing} title={t('nav.broadcastBoard')} />
       <div className="grid gap-4 pb-10">
         <PageHeading

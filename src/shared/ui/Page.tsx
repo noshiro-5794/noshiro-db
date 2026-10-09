@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { Seo } from '@/shared/seo/Seo';
 import { cn } from '@/shared/lib/cn';
 
@@ -15,6 +15,8 @@ type PageProps = {
   headerMode?: PageHeaderMode;
   hideHeader?: boolean;
   leading?: ReactNode;
+  /** Pages that render their own `<PageHeading>` keep the document at one h1. */
+  ownHeading?: boolean;
   padding?: PagePadding;
   seo?: boolean;
   seoDescription?: string | undefined;
@@ -109,6 +111,7 @@ export function Page({
   headerMode = 'title',
   hideHeader = false,
   leading,
+  ownHeading = false,
   padding = 'default',
   seo = true,
   seoDescription,
@@ -117,11 +120,18 @@ export function Page({
   const resolvedSeoDescription = seoDescription ?? description;
 
   return (
-    <section className="flex min-h-full flex-col" data-slot="page">
+    <section
+      className="flex min-h-full flex-col"
+      data-slot="page"
+      // Without the context bar there is nothing to clear, so sticky content in
+      // the page (section navs, toolbars) pins to the shell header instead of
+      // leaving the bar's height as a gap.
+      style={hideHeader ? ({ '--ui-sticky-content-top': 'var(--ui-sticky-page-top)' } as CSSProperties) : undefined}
+    >
       {seo ? (
         <Seo title={title} {...(resolvedSeoDescription === undefined ? {} : { description: resolvedSeoDescription })} />
       ) : null}
-      {hideHeader && headerMode === 'title' ? <h1 className="sr-only">{title}</h1> : null}
+      {hideHeader && headerMode === 'title' && !ownHeading ? <h1 className="sr-only">{title}</h1> : null}
       {hideHeader ? null : <PageTopbar {...{ actions, description, eyebrow, headerMode, leading, title, width }} />}
       <div
         className={cn(
