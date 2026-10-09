@@ -6,7 +6,7 @@ function Input({ className, type, ...props }: ComponentProps<typeof BaseInput>) 
   return (
     <BaseInput
       className={cn(
-        'h-[var(--ui-control-height)] w-full rounded-[var(--ui-radius-control)] border border-control-border bg-elevated px-[var(--ui-control-padding-x)] text-[13px] text-foreground',
+        'h-[var(--ui-control-height)] w-full rounded-[var(--ui-radius-control)] border border-control-border bg-elevated px-[var(--ui-field-inset)] text-sm text-foreground',
         'shadow-[var(--ui-shadow-control)] outline-none',
         'transition-[border-color,box-shadow,background-color] duration-[var(--ui-transition-fast)] ease-[var(--ui-ease-gentle)]',
         'placeholder:text-placeholder hover:border-[var(--ui-border-strong)]',
