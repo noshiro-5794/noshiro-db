@@ -62,7 +62,7 @@ export function SearchPage() {
   }
 
   return (
-    <Page hideHeader title={t('search.title')} seo={false}>
+    <Page hideHeader ownHeading title={t('search.title')} seo={false}>
       <Seo
         title={t('nav.catalog')}
         description="Search anime and galgame entries by title, year, season, platform, episode count, content type, and source ID."
