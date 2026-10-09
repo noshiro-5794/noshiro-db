@@ -1,0 +1,160 @@
+name: noshiro-db
+
+# Outbound proxying is configured by OUTBOUND_PROXY_URL and
+# OUTBOUND_NO_PROXY_HOSTS in the env file and applied by shared.outbound, so the
+# containers must not re-declare those keys here. Interpolation like
+# "${OUTBOUND_PROXY_URL:-}" reads the compose project environment, not the env
+# file, so an operator running plain "docker compose up -d" silently replaced a
+# configured proxy with an empty string and broke every Bangumi request.
+x-app-image: &app-image "${APP_IMAGE:-noshiro-db/backend}:${APP_IMAGE_TAG:-local}"
+
+services:
+  web:
+    image: *app-image
+    build: .
+    restart: unless-stopped
+    init: true
+    entrypoint: []
+    env_file:
+      - ${ENV_FILE:-.env.production}
+    environment:
+      COLLECT_STATIC: "true"
+    ports:
+      - "${WEB_BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-8008}:8008"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:8008/health/ready/', timeout=3)
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    command: >
+      sh -c "python /app/src/manage.py collectstatic --noinput &&
+      gunicorn --chdir /app/src config.wsgi:application
+      --bind 0.0.0.0:8008
+      --workers ${GUNICORN_WORKERS:-3}
+      --timeout ${GUNICORN_TIMEOUT:-120}"
+    networks:
+      - noshiro_net
+
+  worker-realtime:
+    image: *app-image
+    build: .
+    restart: unless-stopped
+    init: true
+    entrypoint: []
+    env_file:
+      - ${ENV_FILE:-.env.production}
+    healthcheck:
+      test: ["CMD", "/app/docker/celery_healthcheck.sh"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    command: >
+      celery --workdir /app/src -A config.celery:app worker -l info
+      -Q realtime
+      --concurrency ${CELERY_REALTIME_CONCURRENCY:-2}
+    networks:
+      - noshiro_net
+
+  worker-ai:
+    image: *app-image
+    build: .
+    restart: unless-stopped
+    init: true
+    entrypoint: []
+    env_file:
+      - ${ENV_FILE:-.env.production}
+    healthcheck:
+      test: ["CMD", "/app/docker/celery_healthcheck.sh"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    command: >
+      celery --workdir /app/src -A config.celery:app worker -l info
+      -Q ai
+      --concurrency ${CELERY_AI_CONCURRENCY:-1}
+    networks:
+      - noshiro_net
+
+  worker-sync:
+    image: *app-image
+    build: .
+    restart: unless-stopped
+    init: true
+    entrypoint: []
+    env_file:
+      - ${ENV_FILE:-.env.production}
+    healthcheck:
+      test: ["CMD", "/app/docker/celery_healthcheck.sh"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    command: >
+      celery --workdir /app/src -A config.celery:app worker -l info
+      -Q sync
+      --concurrency ${CELERY_SYNC_CONCURRENCY:-1}
+    networks:
+      - noshiro_net
+
+  beat:
+    image: *app-image
+    build: .
+    restart: unless-stopped
+    init: true
+    entrypoint: []
+    env_file:
+      - ${ENV_FILE:-.env.production}
+    healthcheck:
+      test: ["CMD", "/app/docker/beat_healthcheck.sh"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    command: celery --workdir /app/src -A config.celery:app beat -l info
+    networks:
+      - noshiro_net
+
+  mcp:
+    image: *app-image
+    profiles: ["mcp"]
+    build: .
+    restart: unless-stopped
+    init: true
+    entrypoint: []
+    env_file:
+      - ${ENV_FILE:-.env.production}
+    environment:
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: 8010
+    ports:
+      - "${MCP_BIND_ADDRESS:-127.0.0.1}:${MCP_PORT:-8010}:8010"
+    working_dir: /app/src
+    command: python -m config.mcp_public
+    networks:
+      - noshiro_net
+
+  migrate:
+    image: *app-image
+    profiles: ["migrate"]
+    build: .
+    restart: "no"
+    init: true
+    entrypoint: []
+    env_file:
+      - ${ENV_FILE:-.env.production}
+    command: python /app/src/manage.py migrate --noinput
+    networks:
+      - noshiro_net
+
+networks:
+  noshiro_net:
+    name: noshiro_net
