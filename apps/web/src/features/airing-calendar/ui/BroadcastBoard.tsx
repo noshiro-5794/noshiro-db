@@ -115,7 +115,7 @@ function BroadcastCard({
       >
         <CoverImage
           alt=""
-          className="h-[58px] w-[42px] rounded-[5px] bg-[var(--ui-bg-subtle)] object-cover"
+          className="h-[58px] w-[42px] rounded-sm bg-[var(--ui-bg-subtle)] object-cover"
           label={title}
           seed={entry.workId}
           src={work?.cover}
