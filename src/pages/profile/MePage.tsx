@@ -125,8 +125,8 @@ export function MePage() {
               <Avatar
                 alt={profile?.nickname ?? t('me.dashboard.profile')}
                 className="size-20 xl:size-24"
-                fallback={profile?.nickname.slice(0, 1)}
                 loading="eager"
+                name={profile?.nickname}
                 src={profile?.avatar}
               />
               <div className="min-w-0 xl:mt-1">

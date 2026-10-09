@@ -1,4 +1,3 @@
-import { placeholderImagePaths } from '@/shared/assets/public-assets';
 import { Link } from '@tanstack/react-router';
 import type { SubjectSummary } from '@/shared/api';
 import { useI18n } from '@/shared/i18n';
@@ -6,16 +5,12 @@ import { subjectKindLabel } from '@/shared/i18n/subject-labels';
 import type { RouteBackState } from '@/shared/routing/route-state';
 import { CoverImage } from '@/shared/ui/CoverImage';
 
-const coverPlaceholder = placeholderImagePaths.subjectCover;
-
 function titleOf(item: Pick<SubjectSummary, 'display_title' | 'title' | 'title_cn'>, fallback: string) {
   return item.display_title || item.title || item.title_cn || fallback;
 }
 
 function subjectPosterOf(subject: SubjectSummary) {
-  return (
-    subject.images?.poster || subject.images?.thumbnail || subject.image_thumbnail || subject.image || coverPlaceholder
-  );
+  return subject.images?.poster || subject.images?.thumbnail || subject.image_thumbnail || subject.image || null;
 }
 
 function SearchPoster({
@@ -27,7 +22,7 @@ function SearchPoster({
   title,
 }: {
   badge?: string;
-  poster: string;
+  poster: string | null;
   state: RouteBackState;
   subjectId: string;
   subtitle: string;
@@ -39,6 +34,8 @@ function SearchPoster({
         <CoverImage
           alt={title}
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+          label={title}
+          seed={subjectId}
           src={poster}
         />
         {badge ? (

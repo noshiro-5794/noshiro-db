@@ -8,6 +8,7 @@ import { graphMessages } from './catalogs/graph';
 import { homeMessages } from './catalogs/home';
 import { libraryMessages } from './catalogs/library';
 import { profileMessages } from './catalogs/profile';
+import { publicMessages } from './catalogs/public';
 import { reviewsMessages } from './catalogs/reviews';
 import { searchMessages } from './catalogs/search';
 import { subjectMessages } from './catalogs/subject';
@@ -26,6 +27,7 @@ export const messages = {
     ...homeMessages['zh-CN'],
     ...libraryMessages['zh-CN'],
     ...profileMessages['zh-CN'],
+    ...publicMessages['zh-CN'],
     ...reviewsMessages['zh-CN'],
     ...searchMessages['zh-CN'],
     ...subjectMessages['zh-CN'],
@@ -41,6 +43,7 @@ export const messages = {
     ...homeMessages['en-US'],
     ...libraryMessages['en-US'],
     ...profileMessages['en-US'],
+    ...publicMessages['en-US'],
     ...reviewsMessages['en-US'],
     ...searchMessages['en-US'],
     ...subjectMessages['en-US'],
@@ -56,6 +59,7 @@ export const messages = {
     ...homeMessages['ja-JP'],
     ...libraryMessages['ja-JP'],
     ...profileMessages['ja-JP'],
+    ...publicMessages['ja-JP'],
     ...reviewsMessages['ja-JP'],
     ...searchMessages['ja-JP'],
     ...subjectMessages['ja-JP'],
