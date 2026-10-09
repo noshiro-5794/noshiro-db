@@ -113,7 +113,7 @@ export function CalendarPage() {
   }, [cursor, locale, view]);
 
   return (
-    <Page hideHeader seo={false} title={t('calendar.title')} width="wide">
+    <Page hideHeader ownHeading seo={false} title={t('calendar.title')} width="wide">
       <Seo
         description="Browse the anime airing calendar by month, week, or day."
         path={routes.calendar}
