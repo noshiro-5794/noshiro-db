@@ -1,0 +1,153 @@
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from apps.sync.providers.exceptions import AniListAPIError
+from apps.sync.services.season_pipeline import season_pipeline_service
+
+pytestmark = pytest.mark.django_db(transaction=True)
+
+
+def test_run_chains_anilist_promotion_candidates_and_mal_pipeline() -> None:
+    with (
+        patch.object(
+            season_pipeline_service,
+            "_generate_anilist_candidates",
+            return_value={"created_ids": ["c1"]},
+        ),
+        patch.object(
+            season_pipeline_service,
+            "_dispatch_ai_evaluations",
+        ) as dispatch,
+        patch(
+            "apps.sync.services.season_pipeline.anilist_season_service.sync_current_airing",
+            return_value={"season_key": "fall:2026"},
+        ),
+        patch(
+            "apps.sync.services.season_pipeline.anilist_import_service.import_saved_media",
+            return_value=type("Entity", (), {"id": "anilist-1"})(),
+        ),
+        patch(
+            "apps.sync.services.season_pipeline.ProviderRecord.objects.filter",
+        ) as records,
+        patch(
+            "apps.sync.services.season_pipeline.mal_season_pipeline_service.run",
+            return_value={"identity": {"bound": 0}},
+        ) as mal_run,
+    ):
+        # ``_promote_anilist_records`` asks twice: once for the records already
+        # represented by a work, once for the season snapshot records.
+        already_promoted = MagicMock()
+        already_promoted.values_list.return_value = []
+        snapshot_records = MagicMock()
+        snapshot_records.exclude.return_value.order_by.return_value.values_list.return_value.distinct.return_value = [
+            "189046"
+        ]
+        records.side_effect = [already_promoted, snapshot_records]
+        result = season_pipeline_service.run(
+            max_items_per_source=2,
+            evaluate=True,
+        )
+
+    assert result["anilist_imported"] == 1
+    assert result["ai_evaluations_dispatched"] == 1
+    mal_run.assert_called_once_with(
+        fetch_season=True,
+        evaluate=False,
+        max_items=2,
+    )
+    dispatch.assert_called_once_with(["c1"])
+
+
+def test_anilist_maintenance_does_not_block_mal_leg() -> None:
+    maintenance_error = AniListAPIError(
+        "AniList returned HTTP 403: The AniList API has been temporarily "
+        "disabled due to severe stability issues.",
+        status_code=403,
+        retry_after=900,
+        unavailable_reason="provider_maintenance",
+    )
+    with (
+        patch.object(
+            season_pipeline_service,
+            "_promote_anilist_records",
+        ) as promote,
+        patch.object(
+            season_pipeline_service,
+            "_generate_anilist_candidates",
+        ) as generate_candidates,
+        patch(
+            "apps.sync.services.season_pipeline.anilist_season_service.sync_current_airing",
+            side_effect=maintenance_error,
+        ) as sync_season,
+        patch(
+            "apps.sync.services.season_pipeline.mal_season_pipeline_service.run",
+            return_value={
+                "mal_candidates": {"created_ids": ["m1"]},
+                "identity": {"bound": 0},
+            },
+        ) as mal_run,
+        patch.object(
+            season_pipeline_service,
+            "_dispatch_ai_evaluations",
+        ) as dispatch,
+    ):
+        result = season_pipeline_service.run(evaluate=True)
+
+    sources = result["sources"]
+    assert sources["anilist"]["status"] == "unavailable"
+    assert sources["anilist"]["unavailable_reason"] == "provider_maintenance"
+    assert sources["anilist"]["retryable"] is True
+    assert sources["mal"]["status"] == "succeeded"
+    assert result["overall"] == "partial"
+    assert result["anilist_imported"] is None
+    sync_season.assert_called_once_with()
+    promote.assert_not_called()
+    generate_candidates.assert_not_called()
+    mal_run.assert_called_once_with(
+        fetch_season=True,
+        evaluate=False,
+        max_items=None,
+    )
+    dispatch.assert_called_once_with(["m1"])
+
+
+def test_run_projects_the_board_from_the_refreshed_sources() -> None:
+    """The season legs refresh snapshots; the board still has to be projected.
+
+    Nothing else in the daily automation did it, so a new quarter opened with an
+    empty calendar and the airing refresh had no targets to work from.
+    """
+    with (
+        patch.object(season_pipeline_service, "_run_anilist_leg", return_value={}),
+        patch.object(season_pipeline_service, "_run_mal_leg", return_value={}),
+        patch(
+            "apps.sync.services.season_pipeline.airing_board_projection_service.rebuild",
+            return_value={"entries": 334, "candidates": 24589},
+        ) as rebuild,
+    ):
+        result = season_pipeline_service.run()
+
+    assert rebuild.call_count == 1
+    assert result["board"]["status"] == "succeeded"
+    assert result["board"]["detail"]["entries"] == 334
+
+
+def test_board_projection_failure_does_not_hide_the_source_results() -> None:
+    with (
+        patch.object(
+            season_pipeline_service,
+            "_run_anilist_leg",
+            return_value={"imported": 3},
+        ),
+        patch.object(season_pipeline_service, "_run_mal_leg", return_value={}),
+        patch(
+            "apps.sync.services.season_pipeline.airing_board_projection_service.rebuild",
+            side_effect=RuntimeError("projection blew up"),
+        ),
+    ):
+        result = season_pipeline_service.run()
+
+    assert result["overall"] == "succeeded"
+    assert result["board"]["status"] == "failed"
+    assert "projection blew up" in result["board"]["error"]

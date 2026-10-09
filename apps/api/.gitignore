@@ -1,0 +1,55 @@
+# Python bytecode and native extensions
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments and package artifacts
+.venv/
+venv/
+build/
+dist/
+*.egg-info/
+
+# Environment files and local secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+.envrc
+secrets/
+
+# Django runtime data
+*.log
+media/
+staticfiles/
+
+# Celery runtime data
+celerybeat-schedule*
+celerybeat.pid
+
+# Test, coverage, and analysis caches
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.hypothesis/
+.tox/
+.nox/
+
+# Editor and operating-system metadata
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Project-local artifacts
+tmp/
+.docker-data/
+backups/
+cookies.txt
+*_cookies.txt

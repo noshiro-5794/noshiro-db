@@ -1,0 +1,994 @@
+from datetime import timedelta
+from typing import Any
+
+from django.db.models import Prefetch
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema
+from rest_framework.exceptions import NotFound
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from apps.index.api.serializers.knowledge import (
+    AiringBoardEntrySerializer,
+    CalendarEventSerializer,
+    CalendarQuerySerializer,
+    EntityCharacterSerializer,
+    EntityCreditSerializer,
+    EntityDetailSerializer,
+    EntityEpisodeSerializer,
+    EntityEvidenceSerializer,
+    EntityMetricSerializer,
+    EntityQuerySerializer,
+    EntityRelationSerializer,
+    EntityReleaseSerializer,
+    EntitySummarySerializer,
+    IndexCollectionSerializer,
+)
+from apps.index.models import (
+    AiringBoard,
+    AiringBoardEntry,
+    AiringEvent,
+    AnimeProfile,
+    Entity,
+    IndexCollection,
+    MetricSnapshot,
+)
+from apps.index.selectors.current import (
+    active_airing_board_events,
+    current_airing_events,
+    current_appearances,
+    current_credits,
+    current_entity_relation_evidence,
+    current_entity_relations,
+    current_facts,
+    current_release_work_evidence,
+    current_release_work_links,
+    supplementary_current_airing_events,
+)
+from apps.index.selectors.projections import (
+    entity_detail,
+    entity_queryset,
+    entity_summaries,
+    entity_summary,
+    field_provenance,
+    preferred_name,
+    request_allows_adult_content,
+)
+from apps.index.services import entity_resolution_service
+from apps.index.services.airing_board_projection import (
+    airing_board_projection_service,
+)
+from shared.api.contracts import (
+    PaginationQuerySerializer,
+    api_responses,
+    paginated_response,
+)
+from shared.api.pagination import DefaultPageNumberPagination
+
+
+class CollectionListView(APIView):
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        responses=api_responses({200: IndexCollectionSerializer(many=True)}, errors=()),
+    )
+    def get(self, request):
+        return Response(
+            IndexCollectionSerializer(
+                [
+                    {"slug": collection.slug, "name": collection.name}
+                    for collection in IndexCollection.objects.filter(is_enabled=True)
+                ],
+                many=True,
+            ).data
+        )
+
+
+class CollectionEntityListView(APIView):
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        parameters=[EntityQuerySerializer, PaginationQuerySerializer],
+        responses=api_responses(
+            {
+                200: paginated_response(
+                    "PaginatedEntitySummary", EntitySummarySerializer
+                )
+            },
+            errors=(400, 404),
+        ),
+    )
+    def get(self, request, slug):
+        if not IndexCollection.objects.filter(slug=slug, is_enabled=True).exists():
+            raise NotFound("Index collection not found.")
+        query = request.query_params.copy()
+        query["collection"] = slug
+        serializer = EntityQuerySerializer(data=query)
+        serializer.is_valid(raise_exception=True)
+        qs = entity_queryset(
+            keyword=serializer.validated_data.get("query", "").strip(),
+            collection=slug,
+            scope="index",
+            subject_type=serializer.validated_data.get("subject_type", ""),
+            safe_only=serializer.validated_data.get("nsfw", False) is False,
+            ordering=serializer.validated_data.get("ordering", ""),
+        )
+        paginator = DefaultPageNumberPagination()
+        page = paginator.paginate_queryset(qs, request, view=self)
+        language = request.headers.get("Accept-Language", "").split(",", 1)[0]
+        adult_allowed = request_allows_adult_content(request)
+        data = [
+            entity_summary(
+                item,
+                language=language,
+                safe=True,
+                adult_allowed=adult_allowed,
+            )
+            for item in page
+        ]
+        return paginator.get_paginated_response(data)
+
+
+class EntityListView(APIView):
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        parameters=[EntityQuerySerializer, PaginationQuerySerializer],
+        responses=api_responses(
+            {
+                200: paginated_response(
+                    "PaginatedEntitySummary", EntitySummarySerializer
+                )
+            },
+            errors=(400,),
+        ),
+    )
+    def get(self, request):
+        serializer = EntityQuerySerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        values = serializer.validated_data
+        qs = entity_queryset(
+            keyword=values.get("query", "").strip(),
+            collection=values.get("collection", ""),
+            scope=values.get("scope", "index"),
+            subject_type=values.get("subject_type", ""),
+            safe_only=values.get("nsfw", False) is False,
+            ordering=values.get("ordering", ""),
+        )
+        paginator = DefaultPageNumberPagination()
+        page = paginator.paginate_queryset(qs, request, view=self)
+        language = request.headers.get("Accept-Language", "").split(",", 1)[0]
+        adult_allowed = request_allows_adult_content(request)
+        summaries = entity_summaries(
+            list(page),
+            language=language,
+            safe=True,
+            adult_allowed=adult_allowed,
+        )
+        return paginator.get_paginated_response([summaries[item.pk] for item in page])
+
+
+class EntityDetailView(APIView):
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        responses=api_responses({200: EntityDetailSerializer}, errors=(404,)),
+    )
+    def get(self, request, entity_id):
+        entity = ensure_public_entity(entity_id)
+        language = request.headers.get("Accept-Language", "").split(",", 1)[0]
+        data = entity_detail(
+            entity,
+            language=language,
+            safe=True,
+            adult_allowed=request_allows_adult_content(request),
+        )
+        return Response(EntityDetailSerializer(data).data)
+
+
+class EntityRelationListView(APIView):
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        responses=api_responses(
+            {200: EntityRelationSerializer(many=True)},
+            errors=(404,),
+        ),
+    )
+    def get(self, request, entity_id):
+        entity = ensure_public_entity(entity_id)
+        language = request.headers.get("Accept-Language", "").split(",", 1)[0]
+        adult_allowed = request_allows_adult_content(request)
+        cluster_ids = entity_resolution_service.cluster_ids(entity)
+        relations = (
+            current_entity_relations()
+            .filter(
+                from_entity_id__in=cluster_ids,
+            )
+            .select_related("to_entity")
+            .prefetch_related(
+                Prefetch(
+                    "evidence",
+                    queryset=current_entity_relation_evidence().select_related(
+                        "observation__provider_record__namespace__provider",
+                        "observation__mapping_run",
+                    ),
+                    to_attr="current_evidence",
+                )
+            )
+        )
+        data = []
+        seen = set()
+        for relation in relations:
+            target = entity_resolution_service.resolve(relation.to_entity)
+            if (
+                target.lifecycle != Entity.Lifecycle.ACTIVE
+                or not entity_resolution_service.is_public(target)
+            ):
+                continue
+            key = (relation.relation_type, target.pk)
+            if key in seen:
+                continue
+            seen.add(key)
+            data.append(
+                {
+                    "relation_type": relation.relation_type,
+                    "target": entity_summary(
+                        target,
+                        language=language,
+                        safe=True,
+                        adult_allowed=adult_allowed,
+                    ),
+                    "qualifiers": relation.qualifiers,
+                    "evidence": [
+                        {
+                            **field_provenance(
+                                provider_record=evidence.observation.provider_record,
+                                observation=evidence.observation,
+                            ),
+                            "json_pointer": evidence.json_pointer,
+                        }
+                        for evidence in relation.current_evidence
+                    ],
+                }
+            )
+        return Response(EntityRelationSerializer(data, many=True).data)
+
+
+class EntityCreditListView(APIView):
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        responses=api_responses(
+            {200: EntityCreditSerializer(many=True)}, errors=(404,)
+        ),
+    )
+    def get(self, request, entity_id):
+        entity = ensure_public_entity(entity_id)
+        language = request.headers.get("Accept-Language", "").split(",", 1)[0]
+        adult_allowed = request_allows_adult_content(request)
+        credits = (
+            current_credits()
+            .filter(work_id__in=entity_resolution_service.cluster_ids(entity))
+            .select_related(
+                "contributor__entity",
+                "observation__provider_record__namespace__provider",
+                "observation__mapping_run",
+            )
+        )
+        data = []
+        for credit in credits:
+            contributor = entity_resolution_service.resolve(credit.contributor.entity)
+            if not entity_resolution_service.is_public(contributor):
+                continue
+            data.append(
+                {
+                    "role": credit.role,
+                    "credited_as": credit.credited_as,
+                    "contributor": entity_summary(
+                        contributor,
+                        language=language,
+                        safe=True,
+                        adult_allowed=adult_allowed,
+                    ),
+                    "provenance": field_provenance(
+                        provider_record=(
+                            credit.observation.provider_record
+                            if credit.observation_id is not None
+                            else None
+                        ),
+                        observation=credit.observation,
+                    ),
+                }
+            )
+        return Response(EntityCreditSerializer(data, many=True).data)
+
+
+class EntityEpisodeListView(APIView):
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        parameters=[PaginationQuerySerializer],
+        responses=api_responses(
+            {
+                200: paginated_response(
+                    "PaginatedEntityEpisode", EntityEpisodeSerializer
+                )
+            },
+            errors=(404,),
+        ),
+    )
+    def get(self, request, entity_id):
+        entity = ensure_public_entity(entity_id)
+        language = request.headers.get("Accept-Language", "").split(",", 1)[0]
+        adult_allowed = request_allows_adult_content(request)
+        parent = entity_summary(entity, safe=True, adult_allowed=adult_allowed)
+        parent_content_allowed = (
+            adult_allowed or parent["audience"] != Entity.Audience.ADULT
+        )
+        episode_entity_ids = (
+            current_entity_relations()
+            .filter(
+                from_entity_id__in=entity_resolution_service.cluster_ids(entity),
+                relation_type="has-episode",
+                to_entity__kind=Entity.Kind.EPISODE,
+                to_entity__lifecycle=Entity.Lifecycle.ACTIVE,
+            )
+            .values("to_entity_id")
+        )
+        episode_entities = (
+            Entity.objects.filter(
+                id__in=episode_entity_ids,
+                kind=Entity.Kind.EPISODE,
+                lifecycle=Entity.Lifecycle.ACTIVE,
+                visibility=Entity.Visibility.PUBLIC,
+            )
+            .distinct()
+            .order_by("id")
+        )
+        # Episodes carry their position as a fact, not a column, and entities are
+        # keyed by random UUID — ordering by id listed them as 10, 11, 7, 2, 1.
+        # Read the couple of facts needed to order them once, then sort in memory.
+        episode_list = list(episode_entities)
+        ordering_facts = {
+            (fact.entity_id, fact.predicate.slug): fact.value
+            for fact in current_facts()
+            .filter(
+                entity_id__in=[episode.id for episode in episode_list],
+                predicate__slug__in=("disc", "episode-number", "sort"),
+            )
+            .select_related("predicate")
+        }
+
+        def episode_order(episode: Entity) -> tuple:
+            def number(slug: str) -> float:
+                raw = ordering_facts.get((episode.id, slug))
+                try:
+                    return float(raw)  # type: ignore[arg-type]
+                except (TypeError, ValueError):
+                    return float("inf")
+
+            return (
+                number("disc"),
+                number("sort"),
+                number("episode-number"),
+                str(episode.id),
+            )
+
+        episode_list.sort(key=episode_order)
+        paginator = DefaultPageNumberPagination()
+        paginator.page_size = 64
+        page = paginator.paginate_queryset(episode_list, request, view=self)
+        data = []
+        for episode_entity in page:
+            if not entity_resolution_service.is_public(episode_entity):
+                continue
+            detail = entity_detail(
+                episode_entity,
+                language=language,
+                safe=True,
+                adult_allowed=adult_allowed and parent_content_allowed,
+            )
+            descriptions = detail["descriptions"] if parent_content_allowed else []
+            facts = detail["facts"]
+
+            def fact_value(slug, *, facts=facts):
+                for fact in facts:
+                    if fact["predicate"] == slug:
+                        return fact["value"]
+                return None
+
+            duration_seconds = fact_value("duration-seconds")
+            duration = None
+            if isinstance(duration_seconds, (int, float)):
+                duration = str(timedelta(seconds=duration_seconds))
+            representation = (
+                episode_entity.provider_representations.filter(is_active=True)
+                .select_related(
+                    "provider_record__namespace__provider",
+                    "provider_record__latest_revision",
+                )
+                .order_by(
+                    "provider_record__namespace__provider__slug",
+                    "provider_record__external_id",
+                )
+                .first()
+            )
+            observation = None
+            if representation is not None:
+                observation = (
+                    representation.provider_record.current_observations.filter(
+                        schema_name="index.episode"
+                    )
+                    .select_related("observation__mapping_run")
+                    .first()
+                )
+                observation = (
+                    observation.observation if observation is not None else None
+                )
+            data.append(
+                {
+                    "id": str(episode_entity.id),
+                    "title": preferred_name(episode_entity, language=language),
+                    "title_cn": preferred_name(episode_entity, language="zh-Hans"),
+                    "type": fact_value("episode-type") or "",
+                    "number": fact_value("episode-number"),
+                    "sort": fact_value("sort"),
+                    "disc": fact_value("disc"),
+                    "duration": duration,
+                    "raw_duration": fact_value("raw-duration") or "",
+                    "air_date": fact_value("air-date"),
+                    "comment_count": fact_value("comment-count"),
+                    "description": descriptions[0]["text"] if descriptions else "",
+                    "provenance": field_provenance(
+                        provider_record=(
+                            representation.provider_record
+                            if representation is not None
+                            else None
+                        ),
+                        observation=observation,
+                    ),
+                }
+            )
+        return paginator.get_paginated_response(data)
+
+
+class EntityCharacterListView(APIView):
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        parameters=[PaginationQuerySerializer],
+        responses=api_responses(
+            {
+                200: paginated_response(
+                    "PaginatedEntityCharacter", EntityCharacterSerializer
+                )
+            },
+            errors=(404,),
+        ),
+    )
+    def get(self, request, entity_id):
+        entity = ensure_public_entity(entity_id)
+        language = request.headers.get("Accept-Language", "").split(",", 1)[0]
+        adult_allowed = request_allows_adult_content(request)
+        appearances = (
+            current_appearances()
+            .filter(
+                work_id__in=entity_resolution_service.cluster_ids(entity),
+                spoiler_level=0,
+                character_entity__visibility=Entity.Visibility.PUBLIC,
+            )
+            .select_related(
+                "character_entity",
+                "observation__provider_record__namespace__provider",
+                "observation__mapping_run",
+            )
+            .order_by("role", "character_entity_id", "id")
+        )
+        paginator = DefaultPageNumberPagination()
+        page = paginator.paginate_queryset(appearances, request, view=self)
+        data = []
+        for appearance in page:
+            character = entity_resolution_service.resolve(appearance.character_entity)
+            if not entity_resolution_service.is_public(character):
+                continue
+            data.append(
+                {
+                    "role": appearance.role,
+                    "spoiler_level": appearance.spoiler_level,
+                    "character": entity_summary(
+                        character,
+                        language=language,
+                        safe=True,
+                        adult_allowed=adult_allowed,
+                    ),
+                    "provenance": field_provenance(
+                        provider_record=(
+                            appearance.observation.provider_record
+                            if appearance.observation_id is not None
+                            else None
+                        ),
+                        observation=appearance.observation,
+                    ),
+                }
+            )
+        return paginator.get_paginated_response(data)
+
+
+class EntityReleaseListView(APIView):
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        responses=api_responses(
+            {200: EntityReleaseSerializer(many=True)}, errors=(404,)
+        ),
+    )
+    def get(self, request, entity_id):
+        entity = ensure_public_entity(entity_id)
+        language = request.headers.get("Accept-Language", "").split(",", 1)[0]
+        adult_allowed = request_allows_adult_content(request)
+        links = (
+            current_release_work_links()
+            .filter(work_id__in=entity_resolution_service.cluster_ids(entity))
+            .select_related("release__entity")
+            .prefetch_related(
+                Prefetch(
+                    "evidence",
+                    queryset=current_release_work_evidence().select_related(
+                        "observation__provider_record__namespace__provider",
+                        "observation__mapping_run",
+                    ),
+                    to_attr="current_evidence",
+                )
+            )
+        )
+        data = []
+        for link in links:
+            release_entity = entity_resolution_service.resolve(link.release.entity)
+            if not entity_resolution_service.is_public(release_entity):
+                continue
+            data.append(
+                {
+                    "role": link.role,
+                    "release": entity_summary(
+                        release_entity,
+                        language=language,
+                        safe=True,
+                        adult_allowed=adult_allowed,
+                    ),
+                    "date_start": link.release.date_start,
+                    "date_end": link.release.date_end,
+                    "date_precision": link.release.date_precision,
+                    "date_raw": link.release.date_raw,
+                    "platform": link.release.platform,
+                    "region": link.release.region,
+                    "evidence": [
+                        {
+                            **field_provenance(
+                                provider_record=evidence.observation.provider_record,
+                                observation=evidence.observation,
+                            ),
+                            "json_pointer": evidence.json_pointer,
+                        }
+                        for evidence in link.current_evidence
+                    ],
+                }
+            )
+        return Response(data)
+
+
+class EntityMetricListView(APIView):
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        responses=api_responses(
+            {200: EntityMetricSerializer(many=True)}, errors=(404,)
+        ),
+    )
+    def get(self, request, entity_id):
+        entity = ensure_public_entity(entity_id)
+        snapshots = (
+            MetricSnapshot.objects.filter(
+                entity_id__in=entity_resolution_service.cluster_ids(entity)
+            )
+            .exclude(
+                provider_record__namespace__provider__redistribution_policy="forbidden"
+            )
+            .select_related("provider_record__namespace__provider")
+            .order_by("metric", "-observed_at")
+        )
+        return Response(
+            [
+                {
+                    "metric": snapshot.metric,
+                    "value": snapshot.value,
+                    "sample_size": snapshot.sample_size,
+                    "observed_at": snapshot.observed_at,
+                    "provider": snapshot.provider_record.namespace.provider.slug,
+                }
+                for snapshot in snapshots
+            ]
+        )
+
+
+class EntityEvidenceListView(APIView):
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        responses=api_responses(
+            {200: EntityEvidenceSerializer(many=True)},
+            errors=(404,),
+        ),
+    )
+    def get(self, request, entity_id):
+        entity = entity_resolution_service.resolve(ensure_public_entity(entity_id))
+        return Response(
+            [
+                {
+                    "provider": item.provider_record.namespace.provider.slug,
+                    "namespace": item.provider_record.namespace.slug,
+                    "external_id": item.provider_record.external_id,
+                    "revision_id": (
+                        str(item.provider_record.latest_revision_id)
+                        if item.provider_record.latest_revision_id
+                        else None
+                    ),
+                    "observed_at": item.created_at,
+                }
+                for item in entity.provider_representations.model.objects.filter(
+                    entity_id__in=entity_resolution_service.cluster_ids(entity),
+                    is_active=True,
+                )
+                .exclude(
+                    provider_record__namespace__provider__redistribution_policy=(
+                        "forbidden"
+                    )
+                )
+                .select_related("provider_record__namespace__provider")
+            ]
+        )
+
+
+class CalendarEventListView(APIView):
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("from", OpenApiTypes.DATETIME),
+            OpenApiParameter("to", OpenApiTypes.DATETIME),
+            OpenApiParameter("timezone", OpenApiTypes.STR),
+            OpenApiParameter("include_work", OpenApiTypes.BOOL),
+        ],
+        responses=api_responses(
+            {200: CalendarEventSerializer(many=True)}, errors=(400,)
+        ),
+    )
+    def get(self, request):
+        query = {
+            "from_": request.query_params.get("from"),
+            "to": request.query_params.get("to"),
+            "timezone": request.query_params.get("timezone"),
+        }
+        query = {key: value for key, value in query.items() if value not in (None, "")}
+        serializer = CalendarQuerySerializer(data=query)
+        serializer.is_valid(raise_exception=True)
+        values = serializer.validated_data
+        include_work = request.query_params.get("include_work", "").lower() in {
+            "1",
+            "true",
+            "yes",
+        }
+        has_range = bool(values.get("from") or values.get("to"))
+        if has_range:
+            qs = (
+                current_airing_events()
+                .filter(
+                    starts_at__isnull=False,
+                    precision__in=(
+                        AiringEvent.Precision.MINUTE,
+                        AiringEvent.Precision.DAY,
+                    ),
+                )
+                .filter(
+                    work__entity__lifecycle=Entity.Lifecycle.ACTIVE,
+                    work__entity__visibility=Entity.Visibility.PUBLIC,
+                )
+            )
+            if from_value := values.get("from"):
+                qs = qs.filter(starts_at__gte=from_value)
+            if to_value := values.get("to"):
+                qs = qs.filter(starts_at__lte=to_value)
+            if timezone := values.get("timezone"):
+                qs = qs.filter(timezone=timezone)
+            ordered = qs.order_by("starts_at", "id")
+        else:
+            # Without an explicit range the endpoint is the current-season
+            # weekday board. The Bangumi board is supplemented by current
+            # AniList schedules so continuing works without a Bangumi subject
+            # still surface once instead of vanishing entirely.
+            ordered = list(
+                active_airing_board_events()
+                .filter(
+                    work__entity__lifecycle=Entity.Lifecycle.ACTIVE,
+                    work__entity__visibility=Entity.Visibility.PUBLIC,
+                )
+                .order_by("weekday", "-collection_doing", "id")
+            )
+            ordered.extend(
+                supplementary_current_airing_events().filter(
+                    work__entity__lifecycle=Entity.Lifecycle.ACTIVE,
+                    work__entity__visibility=Entity.Visibility.PUBLIC,
+                )
+            )
+            ordered.sort(
+                key=lambda event: (
+                    event.weekday if event.weekday is not None else 7,
+                    -event.collection_doing,
+                    event.work_id,
+                )
+            )
+            ordered = self._collapse_weekday_sources(ordered)
+        adult_allowed = request_allows_adult_content(request)
+        # Same batching as the board endpoint: resolve identity, public
+        # visibility and summaries for the whole page instead of per event.
+        redirects = entity_resolution_service.redirect_map()
+        clusters = entity_resolution_service.cluster_map()
+
+        def root_id_of(entity_id):
+            return entity_resolution_service.resolve_with(redirects, entity_id)
+
+        def members_of(root_id):
+            return clusters.get(root_id, {root_id})
+
+        work_roots = {root_id_of(event.work.entity_id) for event in ordered}
+        episode_roots = {
+            root_id_of(event.episode_entity_id)
+            for event in ordered
+            if event.episode_entity_id is not None
+        }
+        cluster_ids = {
+            member
+            for root_id in work_roots | episode_roots
+            for member in members_of(root_id)
+        }
+        entities_by_id = {
+            item.pk: item for item in Entity.objects.filter(pk__in=cluster_ids)
+        }
+
+        def publicly_visible(root_id) -> bool:
+            members = members_of(root_id)
+            return bool(members) and all(
+                entities_by_id[member].visibility == Entity.Visibility.PUBLIC
+                for member in members
+                if member in entities_by_id
+            )
+
+        summaries = entity_summaries(
+            [
+                entities_by_id[root_id]
+                for root_id in work_roots
+                if root_id in entities_by_id
+            ],
+            safe=True,
+            adult_allowed=adult_allowed,
+        )
+        data = []
+        seen = set()
+        for event in ordered:
+            work_entity = entities_by_id.get(root_id_of(event.work.entity_id))
+            if work_entity is None or not publicly_visible(work_entity.pk):
+                continue
+            summary = summaries.get(work_entity.pk)
+            if summary is None:
+                continue
+            if summary["audience"] == Entity.Audience.ADULT and not adult_allowed:
+                continue
+            episode_id = None
+            if event.episode_entity_id is not None:
+                episode = entities_by_id.get(root_id_of(event.episode_entity_id))
+                if episode is None or not publicly_visible(episode.pk):
+                    continue
+                episode_id = episode.id
+            key = (
+                work_entity.id,
+                event.weekday,
+                event.region,
+                episode_id if has_range else None,
+                event.starts_at if has_range else None,
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            data.append(
+                {
+                    "id": event.id,
+                    "work_id": work_entity.id,
+                    "episode_id": episode_id,
+                    "starts_at": event.starts_at,
+                    "timezone": event.timezone,
+                    "region": event.region,
+                    "weekday": event.weekday,
+                    "precision": event.precision,
+                    "raw_value": event.raw_value,
+                    "collection_doing": event.collection_doing,
+                    **({"work": summary} if include_work else {}),
+                    "provenance": field_provenance(
+                        provider_record=(
+                            event.observation.provider_record
+                            if event.observation_id is not None
+                            else None
+                        ),
+                        observation=event.observation,
+                    ),
+                }
+            )
+        return Response(CalendarEventSerializer(data, many=True).data)
+
+    @staticmethod
+    def _collapse_weekday_sources(ordered: list[AiringEvent]) -> list[AiringEvent]:
+        """Keep one precise slot per canonical work on the range-less board."""
+        collapsed: dict[Any, AiringEvent] = {}
+        for event in ordered:
+            root = entity_resolution_service.resolve(event.work.entity)
+            current = collapsed.get(root.id)
+            if current is None or (
+                event.precision == AiringEvent.Precision.MINUTE
+                and current.precision != AiringEvent.Precision.MINUTE
+            ):
+                collapsed[root.id] = event
+        return list(collapsed.values())
+
+
+class AiringBoardEntryListView(APIView):
+    """Current Gantt board projection (one bar per canonical work/weekday)."""
+
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("include_work", OpenApiTypes.BOOL),
+        ],
+        responses=api_responses(
+            {200: AiringBoardEntrySerializer(many=True)}, errors=()
+        ),
+    )
+    def get(self, request):
+        board = (
+            AiringBoard.objects.filter(status=AiringBoard.Status.ACTIVE)
+            .select_related("observation")
+            .first()
+        )
+        if board is None:
+            return Response([])
+        window_start, window_end = airing_board_projection_service.window_dates()
+        adult_allowed = request_allows_adult_content(request)
+        include_work = request.query_params.get("include_work", "").lower() in {
+            "1",
+            "true",
+            "yes",
+        }
+        entries = list(
+            AiringBoardEntry.objects.filter(board=board)
+            .select_related("work__entity", "episode_entity")
+            .order_by("weekday", "starts_at", "work_id")
+        )
+        # Resolve and gate every bar first, then summarise the survivors in one
+        # batched pass. Calling the single-entity summary per bar issued
+        # thousands of queries and made every page that reads this endpoint —
+        # home, search and calendar included — take seconds to answer.
+        visible: list[tuple[AiringBoardEntry, Entity]] = []
+        # Resolve and public-check in memory. Both helpers are written per
+        # entity and cost a query per hop, which dominated the request.
+        redirects = entity_resolution_service.redirect_map()
+        clusters = entity_resolution_service.cluster_map()
+        root_ids = {
+            entity_resolution_service.resolve_with(redirects, entry.work.entity_id)
+            for entry in entries
+        }
+        cluster_ids = {
+            entity_id
+            for root_id in root_ids
+            for entity_id in clusters.get(root_id, {root_id})
+        }
+        entities_by_id = {
+            item.pk: item for item in Entity.objects.filter(pk__in=cluster_ids)
+        }
+
+        def is_public(root_id: Any) -> bool:
+            members = clusters.get(root_id, {root_id})
+            return all(
+                entities_by_id[member_id].visibility == Entity.Visibility.PUBLIC
+                for member_id in members
+                if member_id in entities_by_id
+            ) and bool(members)
+
+        for entry in entries:
+            root_id = entity_resolution_service.resolve_with(
+                redirects, entry.work.entity_id
+            )
+            work_entity = entities_by_id.get(root_id)
+            if (
+                work_entity is None
+                or work_entity.lifecycle != Entity.Lifecycle.ACTIVE
+                or not is_public(root_id)
+            ):
+                continue
+            visible.append((entry, work_entity))
+        summaries = entity_summaries(
+            [work_entity for _, work_entity in visible],
+            safe=True,
+            adult_allowed=adult_allowed,
+        )
+        visible = [
+            (entry, work_entity)
+            for entry, work_entity in visible
+            if summaries[work_entity.pk]["audience"] != Entity.Audience.ADULT
+            or adult_allowed
+        ]
+        profiles = {
+            entity_id: (format_value, premiered_on, ended_on, episode_count)
+            for entity_id, format_value, premiered_on, ended_on, episode_count in (
+                AnimeProfile.objects.filter(
+                    work__entity_id__in=[entity.id for _, entity in visible]
+                ).values_list(
+                    "work__entity_id",
+                    "format",
+                    "premiered_on",
+                    "ended_on",
+                    "episode_count",
+                )
+            )
+        }
+        data = []
+        for entry, work_entity in visible:
+            summary = summaries[work_entity.pk]
+            if summary["audience"] == Entity.Audience.ADULT and not adult_allowed:
+                continue
+            profile = profiles.get(work_entity.id) or ("", None, None, None)
+            starts_at = entry.starts_at
+            ends_at = None
+            if starts_at is not None and entry.duration_minutes:
+                ends_at = starts_at + timedelta(minutes=entry.duration_minutes)
+            data.append(
+                {
+                    "id": entry.id,
+                    "season_key": board.season_key,
+                    "window_start": window_start,
+                    "window_end": window_end,
+                    "work_id": entry.work_id,
+                    "episode_entity_id": entry.episode_entity_id,
+                    "episode_number": entry.episode_number,
+                    "starts_at": starts_at,
+                    "ends_at": ends_at,
+                    "timezone": entry.timezone,
+                    "region": entry.region,
+                    "weekday": entry.weekday,
+                    "duration_minutes": entry.duration_minutes,
+                    "precision": entry.precision,
+                    "format": str(profile[0] or ""),
+                    "premiered_on": profile[1],
+                    "ended_on": profile[2],
+                    "episode_count": profile[3],
+                    "status": entry.status,
+                    "decision": entry.decision,
+                    "confidence": float(entry.confidence),
+                    "source_refs": entry.source_refs,
+                    **({"work": summary} if include_work else {}),
+                }
+            )
+        return Response(AiringBoardEntrySerializer(data, many=True).data)
+
+
+def ensure_public_entity(entity_id) -> Entity:
+    try:
+        entity = Entity.objects.get(pk=entity_id)
+    except Entity.DoesNotExist as exc:
+        raise NotFound("Entity not found.") from exc
+    entity = entity_resolution_service.resolve(entity)
+    if (
+        entity.lifecycle != Entity.Lifecycle.ACTIVE
+        or not entity_resolution_service.is_public(entity)
+    ):
+        raise NotFound("Entity not found.")
+    return entity
