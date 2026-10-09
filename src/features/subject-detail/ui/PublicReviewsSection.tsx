@@ -106,6 +106,7 @@ function PublicReviewItem({
               <Avatar
                 alt={review.user.nickname || t('common.anonymous')}
                 className="size-9 transition-shadow group-hover:ring-2 group-hover:ring-[var(--ui-accent-border)]"
+                name={review.user.nickname}
                 src={review.user.avatar}
               />
             </Link>

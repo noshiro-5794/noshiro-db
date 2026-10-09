@@ -1,4 +1,3 @@
-import { placeholderImagePaths } from '@/shared/assets/public-assets';
 import { formatDateTime as formatDate } from '@/shared/lib/date';
 import { ShieldAlert } from 'lucide-react';
 import { Link } from '@tanstack/react-router';
@@ -7,6 +6,7 @@ import type { CommunityPostSummary } from '@/shared/api';
 import { routes } from '@/shared/routing/paths';
 import { Avatar } from '@/shared/ui/Avatar';
 import { Badge } from '@/shared/ui/Badge';
+import { CoverImage } from '@/shared/ui/CoverImage';
 import { DetailBody, DetailHeader } from '@/shared/ui/Detail';
 import { SensitiveContent } from '@/shared/ui/SensitiveContent';
 
@@ -23,13 +23,12 @@ function PostSubjectCard({ post }: { post: CommunityPostSummary }) {
       className="mt-5 grid grid-cols-[56px_minmax(0,1fr)] gap-3 rounded-sm border border-border bg-muted p-3 transition-colors hover:border-[var(--ui-accent-border)]"
       to={routes.entity(post.subject.id)}
     >
-      <img
+      <CoverImage
         className="h-20 w-14 rounded-sm bg-muted object-cover"
-        src={post.subject.image_thumbnail || placeholderImagePaths.subjectCover}
         alt=""
-        decoding="async"
-        loading="lazy"
-        referrerPolicy="no-referrer"
+        label={subjectTitle(post, t('common.untitledSubject'))}
+        seed={post.subject.id}
+        src={post.subject.image_thumbnail}
       />
       <span className="min-w-0 self-center">
         <span className="block truncate text-sm font-semibold text-foreground">

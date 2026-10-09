@@ -1,4 +1,3 @@
-import { placeholderImagePaths } from '@/shared/assets/public-assets';
 import { formatDate } from '@/shared/lib/date';
 import { Link } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
@@ -12,8 +11,8 @@ import { publicUserQueries } from '@/entities/user';
 import type { Collection, CollectionItem, Review } from '@/shared/api';
 import { routes } from '@/shared/routing/paths';
 import { Badge } from '@/shared/ui/Badge';
+import { CoverImage } from '@/shared/ui/CoverImage';
 
-const coverPlaceholder = placeholderImagePaths.subjectCover;
 function reviewSubjectTitle(review: Review, fallback: string) {
   return review.subject?.display_title || review.subject?.title || review.subject?.title_cn || fallback;
 }
@@ -76,7 +75,7 @@ export function PublicReviewItem({ review }: { review: Review }) {
         </>
       }
       body={review.content || t('common.noContent')}
-      cover={review.subject?.image_thumbnail || review.subject?.image || coverPlaceholder}
+      cover={review.subject?.image_thumbnail || review.subject?.image || null}
       date={formatDate(review.updated_at || review.created_at, t('common.noDate'))}
       href={routes.review(review.id)}
       isSpoiler={review.is_spoiler}
@@ -155,7 +154,7 @@ export function PublicCollectionPackCard({ collection, userId }: { collection: C
 
 export function PublicCollectionItemCard({ item }: { item: CollectionItem }) {
   const { t } = useI18n();
-  const image = subjectImage(item) || coverPlaceholder;
+  const title = collectionSubjectTitle(item, t('common.untitledSubject'));
 
   return (
     <article className="grid min-w-0 content-start gap-3" data-slot="public-collection-item">
@@ -164,13 +163,12 @@ export function PublicCollectionItemCard({ item }: { item: CollectionItem }) {
         className="block aspect-[2/3] overflow-hidden rounded-sm border border-border bg-muted transition-[border-color,box-shadow] hover:border-[var(--ui-accent-border)] hover:shadow-[var(--ui-shadow-surface)]"
         to={routes.entity(item.subject.id)}
       >
-        <img
+        <CoverImage
           alt=""
           className="size-full object-cover"
-          decoding="async"
-          loading="lazy"
-          referrerPolicy="no-referrer"
-          src={image}
+          label={title}
+          seed={item.subject.id}
+          src={subjectImage(item)}
         />
       </Link>
       <div className="grid min-w-0 gap-2">

@@ -1,10 +1,10 @@
 import { Link } from '@tanstack/react-router';
 import { useI18n } from '@/shared/i18n';
-import { placeholderImagePaths } from '@/shared/assets/public-assets';
 import { cn } from '@/shared/lib/cn';
 import { routes } from '@/shared/routing/paths';
 import type { RouteBackState } from '@/shared/routing/route-state';
 import type { CalendarBoardEntry } from '@/shared/api';
+import { CoverImage } from '@/shared/ui/CoverImage';
 import {
   formatAiringDate,
   formatMinutesOfDay,
@@ -17,8 +17,6 @@ import {
 } from '../model/calendar-model';
 import { SourceDot } from './primitives';
 
-const coverPlaceholder = placeholderImagePaths.subjectCover;
-
 /**
  * AniChart-style broadcast board: one column per weekday, each holding dense
  * cards with artwork, airtime and provenance, plus a hover panel that exposes
@@ -28,12 +26,15 @@ export function BroadcastBoard({
   emptyLabel,
   entries,
   onOpen,
+  showProvenance = true,
   state,
 }: {
   emptyLabel: string;
   entries: CalendarBoardEntry[];
   /** Omit on read-only surfaces, where the hover panel stays informational. */
   onOpen?: ((entry: CalendarBoardEntry) => void) | undefined;
+  /** Landing surfaces drop the source chip: visitors read the show, not the feed. */
+  showProvenance?: boolean;
   state: RouteBackState;
 }) {
   const { locale, t } = useI18n();
@@ -62,7 +63,13 @@ export function BroadcastBoard({
                 <span className="text-[11px] tabular-nums text-[var(--ui-text-subtle)]">{bucket.entries.length}</span>
               </header>
               {bucket.entries.map((entry) => (
-                <BroadcastCard entry={entry} key={entry.id} onOpen={onOpen} state={state} />
+                <BroadcastCard
+                  entry={entry}
+                  key={entry.id}
+                  onOpen={onOpen}
+                  showProvenance={showProvenance}
+                  state={state}
+                />
               ))}
             </section>
           ))}
@@ -77,7 +84,13 @@ export function BroadcastBoard({
           </header>
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
             {extras.map((entry) => (
-              <BroadcastCard entry={entry} key={entry.id} onOpen={onOpen} state={state} />
+              <BroadcastCard
+                entry={entry}
+                key={entry.id}
+                onOpen={onOpen}
+                showProvenance={showProvenance}
+                state={state}
+              />
             ))}
           </div>
         </section>
@@ -89,10 +102,12 @@ export function BroadcastBoard({
 function BroadcastCard({
   entry,
   onOpen,
+  showProvenance,
   state,
 }: {
   entry: CalendarBoardEntry;
   onOpen?: ((entry: CalendarBoardEntry) => void) | undefined;
+  showProvenance: boolean;
   state: RouteBackState;
 }) {
   const { locale, t } = useI18n();
@@ -119,13 +134,12 @@ function BroadcastCard({
         state={state}
         to={routes.entity(entry.workId)}
       >
-        <img
+        <CoverImage
           alt=""
           className="h-[58px] w-[42px] rounded-[5px] bg-[var(--ui-bg-subtle)] object-cover"
-          decoding="async"
-          loading="lazy"
-          referrerPolicy="no-referrer"
-          src={work?.cover || coverPlaceholder}
+          label={title}
+          seed={entry.workId}
+          src={work?.cover}
         />
         <span className="grid min-w-0 content-center gap-1">
           <span className="line-clamp-2 text-[12px] font-semibold leading-[15px] text-[var(--ui-text)]">{title}</span>
@@ -139,10 +153,12 @@ function BroadcastCard({
             {entry.episodeNumber === null ? null : (
               <span className="shrink-0 tabular-nums">EP{entry.episodeNumber}</span>
             )}
-            <span className="flex min-w-0 items-center gap-1 truncate">
-              <SourceDot className="size-1.5" provider={provider} />
-              <span className="truncate">{sourceLabel(provider)}</span>
-            </span>
+            {showProvenance ? (
+              <span className="flex min-w-0 items-center gap-1 truncate">
+                <SourceDot className="size-1.5" provider={provider} />
+                <span className="truncate">{sourceLabel(provider)}</span>
+              </span>
+            ) : null}
           </span>
         </span>
       </Link>

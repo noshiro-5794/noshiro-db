@@ -56,6 +56,7 @@ function CommentItem({
           <Avatar
             alt={comment.author.nickname || t('common.anonymous')}
             className="timeline-comment-avatar"
+            name={comment.author.nickname}
             src={comment.author.avatar}
           />
         </Link>
