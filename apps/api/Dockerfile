@@ -14,9 +14,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-LABEL org.opencontainers.image.title="noshiro-db-backend" \
+LABEL org.opencontainers.image.title="noshiro-db-api" \
       org.opencontainers.image.description="Noshiro DB API runtime" \
-      org.opencontainers.image.source="https://github.com/noshiro-5794/noshiro-db-backend"
+      org.opencontainers.image.source="https://github.com/noshiro-5794/noshiro-db"
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends tzdata \

@@ -1,8 +1,12 @@
-# Noshiro DB Backend
+# Noshiro DB API
 
-Noshiro DB Backend is the Django REST backend for a source-neutral anime and galgame
+Noshiro DB API is the Django REST backend for a source-neutral anime and galgame
 knowledge base, personal library, and community. Bangumi and VNDB are peer providers;
 canonical knowledge uses stable Entity UUIDs and retains provider evidence.
+
+It lives in the [noshiro-db](https://github.com/noshiro-5794/noshiro-db) monorepo at
+`apps/api`; the web client is `apps/web`, and the repository root documents how to run
+both.
 
 ## Stack
 
@@ -76,4 +80,4 @@ section of the deployment guide before changing production schema or data.
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the [MIT License](../../LICENSE).

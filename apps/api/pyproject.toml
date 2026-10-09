@@ -1,5 +1,5 @@
 [project]
-name = "noshiro-db-backend"
+name = "noshiro-db-api"
 version = "0.1.0"
 description = "Django REST backend for the Noshiro DB catalog and community."
 readme = "README.md"
@@ -7,6 +7,7 @@ license = "MIT"
 authors = [
     { name = "Noshiro_5794", email = "hangyuan2005@gmail.com" },
 ]
+
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "cachetools>=7,<8",
@@ -44,6 +45,10 @@ dev = [
     "pytest-django>=4.10,<5",
     "ruff>=0.12,<1",
 ]
+
+[project.urls]
+Repository = "https://github.com/noshiro-5794/noshiro-db"
+Issues = "https://github.com/noshiro-5794/noshiro-db/issues"
 
 [tool.uv]
 package = false
