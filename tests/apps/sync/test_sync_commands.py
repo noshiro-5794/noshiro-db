@@ -290,7 +290,7 @@ def test_sync_campaign_command_reports_status() -> None:
 
 def test_sync_campaign_accepts_every_registered_provider() -> None:
     """The CLI choices come from the registry, so MAL cannot be left out."""
-    from apps.sync.services.campaign_service import PROVIDERS
+    from apps.sync.services.campaign import PROVIDERS
 
     command = SyncCampaignCommand()
     parser = command.create_parser("manage.py", "sync_campaign")

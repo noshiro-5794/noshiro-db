@@ -2,7 +2,7 @@ import json
 
 from django.core.management.base import BaseCommand
 
-from apps.sync.services.provider_raw_state_service import (
+from apps.sync.services.provider_raw_state import (
     provider_raw_state_service,
 )
 

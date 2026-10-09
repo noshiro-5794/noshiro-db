@@ -1,7 +1,7 @@
 from celery import current_task, shared_task
 
-from apps.sync.services.sync_job_service import sync_job_service
-from apps.sync.services.vndb_service import vndb_import_service
+from apps.sync.services.sync_job import sync_job_service
+from apps.sync.services.vndb import vndb_import_service
 
 
 @shared_task(soft_time_limit=900, time_limit=960)

@@ -14,7 +14,7 @@ from apps.users.api.views.collections import (
     collection_item_data,
 )
 from apps.users.api.views.profiles import get_public_user
-from apps.users.selectors.public.public_profile_selector import PublicProfileSelector
+from apps.users.selectors.public.public_profile import PublicProfileSelector
 from shared.api.contracts import (
     PaginationQuerySerializer,
     api_responses,

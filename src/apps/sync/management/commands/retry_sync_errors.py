@@ -15,7 +15,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 from apps.sync.models import SyncError
-from apps.sync.services.incremental_sync_service import IncrementalSyncService
+from apps.sync.services.incremental_sync import IncrementalSyncService
 
 
 class Command(BaseCommand):

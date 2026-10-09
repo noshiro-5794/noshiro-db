@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand, CommandError
 
-from apps.sync.services.anilist_service import anilist_import_service
+from apps.sync.services.anilist import anilist_import_service
 
 
 class Command(BaseCommand):

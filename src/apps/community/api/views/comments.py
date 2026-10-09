@@ -11,9 +11,9 @@ from apps.community.api.serializers.comments import (
     CommunityTargetCommentCreateRequestSerializer,
     CommunityTargetCommentListRequestSerializer,
 )
-from apps.community.selectors.comment_selector import CommunityCommentSelector
-from apps.community.services.comment_service import CommunityCommentService
-from apps.community.services.moderation_service import CommunityModerationService
+from apps.community.selectors.comment import CommunityCommentSelector
+from apps.community.services.comment import CommunityCommentService
+from apps.community.services.moderation import CommunityModerationService
 from shared.api.contracts import (
     PaginationQuerySerializer,
     api_responses,
