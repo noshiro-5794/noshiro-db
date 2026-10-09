@@ -1,3 +1,4 @@
+import { plainText } from '@/shared/lib/text';
 import type {
   CalendarBoardEntry,
   CalendarBoardWork,
@@ -148,14 +149,15 @@ function preferredName(names: Array<{ text: string; language: string; kind: stri
 
 function buildSubjectDetail(value: EntityDetail): SubjectDetail {
   const summary = buildSubjectSummary(value);
-  const firstDescription = value.descriptions.find((description) => description.is_official) ?? value.descriptions[0];
+  const descriptions = value.descriptions.map((description) => ({ ...description, text: plainText(description.text) }));
+  const firstDescription = descriptions.find((description) => description.is_official) ?? descriptions[0];
   const descriptionText = firstDescription?.text;
   const titleCn = preferredName(value.names);
 
   return {
     ...summary,
     names: value.names,
-    descriptions: value.descriptions,
+    descriptions,
     facts: value.facts,
     external_links: value.external_links,
     content_ratings: value.content_ratings,
