@@ -12,12 +12,15 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/shared
 
 const barLinkClassName = cn(
   'relative inline-flex h-8 items-center gap-1 rounded-[var(--ui-radius-control)] px-2.5 text-[13px] font-medium',
-  'text-[var(--ui-text-muted)] outline-none transition-colors hover:text-[var(--ui-text)]',
+  'text-[var(--ui-text-muted)] outline-none',
+  'transition-colors duration-[var(--ui-transition-standard)] ease-[var(--ui-ease-gentle)] hover:text-[var(--ui-text)]',
   'focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ui-bg-canvas)]',
   'data-[status=active]:text-[var(--ui-text)]',
   // A short underline marks the current section, the way Linear's site does.
   'after:pointer-events-none after:absolute after:inset-x-2.5 after:-bottom-1 after:h-[2px] after:rounded-full',
-  'after:bg-[var(--ui-accent)] after:opacity-0 after:transition-opacity data-[status=active]:after:opacity-100',
+  'after:bg-[var(--ui-accent)] after:opacity-0',
+  'after:transition-opacity after:duration-[var(--ui-transition-standard)] after:ease-[var(--ui-ease-gentle)]',
+  'data-[status=active]:after:opacity-100',
 );
 
 function useHeaderElevation() {
@@ -46,7 +49,7 @@ function Wordmark() {
       to={routes.home}
     >
       <img alt="" aria-hidden="true" className="size-6 rounded-[6px]" src={publicAssetPaths.appIcon} />
-      <span className="truncate text-[15px] font-semibold">Noshiro DB</span>
+      <span className="truncate text-[15px] font-semibold tracking-[-0.01em]">Noshiro DB</span>
     </Link>
   );
 }
@@ -85,10 +88,10 @@ export function PublicTopBar() {
       <header
         className={cn(
           'sticky top-0 z-[var(--ui-layer-shell-header)] h-[var(--ui-shell-header-height)] border-b',
-          'bg-[color-mix(in_srgb,var(--ui-bg-canvas)_82%,transparent)] backdrop-blur-xl',
-          'transition-[border-color,box-shadow] duration-[var(--ui-transition-standard)]',
+          'bg-[color-mix(in_srgb,var(--ui-bg-canvas)_85%,transparent)] backdrop-blur-xl',
+          'transition-[border-color,box-shadow] duration-[var(--ui-transition-standard)] ease-[var(--ui-ease-gentle)]',
           isElevated
-            ? 'border-[var(--ui-border)] shadow-[0_1px_2px_rgb(20_20_26/4%)]'
+            ? 'border-[var(--ui-border)] shadow-[var(--ui-shadow-header)]'
             : 'border-[var(--ui-border-subtle)]',
         )}
       >

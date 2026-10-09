@@ -1,43 +1,67 @@
 import { Link } from '@tanstack/react-router';
+import { motion } from 'motion/react';
 import { useI18n } from '@/shared/i18n';
+import { enterVariants, heroStackVariants } from '@/shared/lib/motion';
 import { routes } from '@/shared/routing/paths';
 import { Button } from '@/shared/ui/Button';
-import '@/shared/ui/motion.css';
+import './landing.css';
 
 /**
  * The first thing a visitor reads.
  *
- * A centred display headline over a faint accent glow, with the two things a
- * newcomer can do next: search the catalogue, or see what airs this week.
+ * dub's hero composition: one rounded panel holding a masked hairline grid and
+ * a soft accent glow, with the copy centred inside it. The stack rises in
+ * sequence on mount rather than all at once.
  */
 export function LandingHero() {
   const { t } = useI18n();
 
   return (
-    <section className="relative overflow-hidden">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-[-280px] h-[560px] bg-[radial-gradient(50%_50%_at_50%_50%,var(--ui-accent-soft),transparent_70%)]"
-      />
-      <div className="relative mx-auto max-w-[1160px] px-4 pb-14 pt-16 text-center sm:pt-24">
-        <p className="motion-rise inline-flex items-center gap-2 rounded-[var(--ui-radius-pill)] border border-[var(--ui-border)] bg-[var(--ui-bg-surface)] px-3 py-1 text-[12px] font-medium text-[var(--ui-text-muted)]">
-          <span aria-hidden className="size-1.5 rounded-full bg-[var(--ui-accent)]" />
-          {t('public.heroChip')}
-        </p>
-        <h1 className="motion-rise motion-delay-1 mx-auto mt-6 max-w-[720px] text-balance text-[32px] font-semibold leading-[1.16] tracking-[-0.02em] text-[var(--ui-text)] sm:text-[46px]">
-          {t('public.heroTitle')}
-        </h1>
-        <p className="motion-rise motion-delay-2 mx-auto mt-5 max-w-[600px] text-[15px] leading-7 text-[var(--ui-text-muted)]">
-          {t('public.heroBody')}
-        </p>
-        <div className="motion-rise motion-delay-3 mt-8 flex flex-wrap items-center justify-center gap-3">
-          <Button asChild size="lg">
-            <Link to={routes.search}>{t('public.startSearch')}</Link>
-          </Button>
-          <Button asChild size="lg" variant="secondary">
-            <Link to={routes.airing}>{t('public.viewSchedule')}</Link>
-          </Button>
-        </div>
+    <section className="mx-auto w-full max-w-[1160px] px-4 pt-6 sm:pt-10">
+      <div className="landing-panel relative isolate overflow-hidden rounded-[20px] border border-[var(--ui-border-subtle)] px-6 py-14 text-center sm:px-12 sm:py-20">
+        <div aria-hidden="true" className="landing-grid pointer-events-none absolute inset-0" />
+        <div
+          aria-hidden="true"
+          className="landing-glow pointer-events-none absolute -bottom-32 left-1/2 h-[360px] w-[130%] -translate-x-1/2 opacity-70 blur-[90px]"
+        />
+
+        <motion.div
+          animate="visible"
+          className="relative mx-auto flex max-w-[720px] flex-col items-center"
+          initial="hidden"
+          variants={heroStackVariants}
+        >
+          <motion.p
+            className="inline-flex items-center gap-2 rounded-[var(--ui-radius-pill)] border border-[var(--ui-border)] bg-[var(--ui-bg-elevated)] px-3 py-1 text-[12px] font-medium text-[var(--ui-text-muted)]"
+            variants={enterVariants}
+          >
+            <span aria-hidden className="size-1.5 rounded-full bg-[var(--ui-accent)]" />
+            {t('public.heroChip')}
+          </motion.p>
+
+          <motion.h1
+            className="mt-7 text-balance text-[34px] font-semibold leading-[1.1] tracking-[-0.025em] text-[var(--ui-text)] sm:text-[54px]"
+            variants={enterVariants}
+          >
+            {t('public.heroTitle')}
+          </motion.h1>
+
+          <motion.p
+            className="mt-6 max-w-[604px] text-pretty text-[15px] leading-7 text-[var(--ui-text-muted)]"
+            variants={enterVariants}
+          >
+            {t('public.heroBody')}
+          </motion.p>
+
+          <motion.div className="mt-9 flex flex-wrap items-center justify-center gap-3" variants={enterVariants}>
+            <Button asChild size="lg">
+              <Link to={routes.search}>{t('public.startSearch')}</Link>
+            </Button>
+            <Button asChild size="lg" variant="secondary">
+              <Link to={routes.airing}>{t('public.viewSchedule')}</Link>
+            </Button>
+          </motion.div>
+        </motion.div>
       </div>
     </section>
   );

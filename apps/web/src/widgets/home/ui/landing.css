@@ -1,0 +1,32 @@
+@reference '../../../app/styles/global.css';
+
+/*
+ * Two decorative surfaces the landing page borrows from dub's site: a masked
+ * hairline grid, and a soft accent glow behind it. Both are drawn from the
+ * theme tokens, so they follow light and dark mode without a second palette.
+ */
+@layer components {
+  .landing-panel {
+    background: linear-gradient(
+      180deg,
+      var(--ui-bg-surface),
+      color-mix(in srgb, var(--ui-bg-surface) 90%, var(--ui-bg-subtle))
+    );
+  }
+
+  .landing-grid {
+    background-image:
+      linear-gradient(to right, var(--ui-border-subtle) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--ui-border-subtle) 1px, transparent 1px);
+    background-size: 72px 72px;
+    mask-image: radial-gradient(120% 75% at 50% 0%, black 25%, transparent 72%);
+  }
+
+  .landing-glow {
+    background-image: radial-gradient(
+      50% 50% at 50% 50%,
+      color-mix(in srgb, var(--ui-accent) 32%, transparent),
+      transparent 70%
+    );
+  }
+}
