@@ -1,5 +1,5 @@
+import pytest
 from django.conf import settings
-from django.test import override_settings
 
 from config.settings.base import _normalize_minio_endpoint, _outbound_user_agent
 
@@ -85,15 +85,7 @@ def test_scheduled_task_names_point_at_their_defining_module() -> None:
     assert "apps.index.tasks.popularity.refresh_popularity_task" in scheduled
 
 
-@override_settings(
-    CACHES={
-        "default": {
-            "BACKEND": "django.core.cache.backends.redis.RedisCache",
-            "LOCATION": "redis://cache:6379/1",
-        }
-    }
-)
-def test_redis_cache_gets_a_socket_timeout() -> None:
+def test_redis_cache_gets_a_socket_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
     """A stalled Redis socket must raise, not park the worker forever.
 
     redis-py defaults to no timeout, so one half-open connection hangs a task
@@ -103,10 +95,16 @@ def test_redis_cache_gets_a_socket_timeout() -> None:
 
     import config.settings.base as base
 
-    with override_settings(CACHE_URL="redis://cache:6379/1"):
+    # The cache options are built while the settings module is imported, so the
+    # URL has to reach the process environment - override_settings is read too
+    # late and the module would keep the locmem cache.
+    monkeypatch.setenv("CACHE_URL", "redis://cache:6379/1")
+    try:
         reloaded = importlib.reload(base)
         options = reloaded.CACHES["default"].get("OPTIONS", {})
+    finally:
+        monkeypatch.delenv("CACHE_URL", raising=False)
+        importlib.reload(base)
 
     assert options.get("socket_timeout", 0) > 0
     assert options.get("socket_connect_timeout", 0) > 0
-    importlib.reload(base)
