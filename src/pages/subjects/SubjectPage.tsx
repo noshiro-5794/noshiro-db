@@ -91,7 +91,7 @@ export function SubjectPage() {
   const loginState = { returnTo: currentRoutePath(location) };
 
   return (
-    <Page hideHeader seo={false} title={titleOf(subject, t('common.untitledSubject'))}>
+    <Page hideHeader ownHeading seo={false} title={titleOf(subject, t('common.untitledSubject'))}>
       <Seo
         title={titleOf(subject, t('common.untitledSubject'))}
         description={seoDescriptionOf(subject)}
