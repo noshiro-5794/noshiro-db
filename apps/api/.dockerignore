@@ -1,0 +1,42 @@
+# Source control and local tooling
+.git/
+.github/
+.agents/
+.codex/
+.idea/
+.vscode/
+
+# Python environments and caches
+.venv/
+venv/
+**/__pycache__/
+**/*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage*
+coverage.xml
+htmlcov/
+
+# Secrets and local runtime state
+.env
+.env.*
+.envrc
+*.log
+celerybeat-schedule*
+celerybeat.pid
+media/
+staticfiles/
+tmp/
+
+# Files not needed by the runtime image
+docs/
+README.md
+LICENSE
+Makefile
+cookies.txt
+*_cookies.txt
+avatar.jpg
+avatar.jpeg
+avatar.png
+avatar.webp
