@@ -39,13 +39,13 @@ openapi:
 	$(MAKE) -C apps/api openapi
 
 web-install:
-	pnpm --dir apps/web install --frozen-lockfile
+	cd apps/web && pnpm install --frozen-lockfile
 
 web-dev:
-	pnpm --dir apps/web dev
+	cd apps/web && pnpm dev
 
 web-check:
-	pnpm --dir apps/web check
+	cd apps/web && pnpm check
 
 web-icons:
-	pnpm --dir apps/web icons
+	cd apps/web && pnpm icons
