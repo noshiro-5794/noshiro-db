@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from '@tanstack/react-router';
-import { ChevronDown, Menu } from 'lucide-react';
+import { CalendarDays, ChevronDown, LayoutGrid, Menu } from 'lucide-react';
 import { publicAssetPaths } from '@/shared/assets/public-assets';
 import { useI18n } from '@/shared/i18n';
 import { cn } from '@/shared/lib/cn';
@@ -72,8 +72,18 @@ export function PublicTopBar() {
     { exact: false, label: t('nav.catalog'), to: routes.search },
   ];
   const airingItems = [
-    { body: t('nav.airingCalendarBody'), label: t('nav.airingCalendar'), to: routes.calendar },
-    { body: t('nav.broadcastBoardBody'), label: t('nav.broadcastBoard'), to: routes.airing },
+    {
+      body: t('nav.airingCalendarBody'),
+      icon: <CalendarDays className="size-4" />,
+      label: t('nav.airingCalendar'),
+      to: routes.calendar,
+    },
+    {
+      body: t('nav.broadcastBoardBody'),
+      icon: <LayoutGrid className="size-4" />,
+      label: t('nav.broadcastBoard'),
+      to: routes.airing,
+    },
   ];
   const menuItems = [
     ...navItems,
@@ -114,7 +124,13 @@ export function PublicTopBar() {
               <DropdownMenuTrigger
                 render={
                   <button
-                    className={cn('group', barLinkClassName, isAiringActive && 'text-[var(--ui-text)]')}
+                    className={cn(
+                      'group',
+                      barLinkClassName,
+                      isAiringActive && 'text-[var(--ui-text)]',
+                      // dub marks an open trigger with a soft surface rather than a colour.
+                      'data-[popup-open]:bg-[var(--ui-bg-subtle)] data-[popup-open]:text-[var(--ui-text)]',
+                    )}
                     type="button"
                   >
                     {t('nav.airing')}
@@ -122,16 +138,21 @@ export function PublicTopBar() {
                   </button>
                 }
               />
-              <DropdownMenuContent align="center" className="w-[460px] p-2">
-                <div className="grid grid-cols-2 gap-1">
+              <DropdownMenuContent align="center" className="w-[420px] p-1.5" sideOffset={10}>
+                <div className="grid">
                   {airingItems.map((item) => (
                     <Link
-                      className="grid gap-1 rounded-[8px] px-2.5 py-2 transition-colors hover:bg-[var(--ui-bg-subtle)]"
+                      className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3 rounded-[var(--ui-radius-surface)] px-3 py-2.5 transition-colors duration-[var(--ui-transition-fast)] hover:bg-[var(--ui-bg-subtle)]"
                       key={item.to}
                       to={item.to}
                     >
-                      <span className="text-[13.5px] font-medium text-foreground">{item.label}</span>
-                      <span className="text-[12.5px] leading-5 text-muted-foreground">{item.body}</span>
+                      <span className="mt-0.5 grid size-7 place-items-center rounded-[var(--ui-radius-control)] border border-[var(--ui-border-subtle)] bg-[var(--ui-bg-surface)] text-[var(--ui-text-muted)]">
+                        {item.icon}
+                      </span>
+                      <span className="grid gap-0.5">
+                        <span className="text-[13.5px] font-medium text-[var(--ui-text)]">{item.label}</span>
+                        <span className="text-[12.5px] leading-5 text-[var(--ui-text-muted)]">{item.body}</span>
+                      </span>
                     </Link>
                   ))}
                 </div>
@@ -144,10 +165,11 @@ export function PublicTopBar() {
           </nav>
 
           <div className="ml-auto flex items-center gap-1.5">
-            <Button asChild className="hidden sm:inline-flex" size="sm" variant="ghost">
+            {/* dub's pair: an outlined log-in beside a solid sign-up. */}
+            <Button asChild className="hidden sm:inline-flex" size="default" variant="secondary">
               <Link to={routes.login}>{t('auth.login')}</Link>
             </Button>
-            <Button asChild size="sm">
+            <Button asChild size="default">
               <Link to={routes.register}>{t('auth.register')}</Link>
             </Button>
             <Button

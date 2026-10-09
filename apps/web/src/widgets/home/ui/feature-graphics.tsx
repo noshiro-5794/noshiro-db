@@ -85,11 +85,9 @@ export function CollectionGraphic() {
       <div className="flex -space-x-6">
         {[0, 1, 2].map((index) => (
           <span
-            className="h-16 w-11 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)]"
+            className="h-16 w-11 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-bg-subtle)]"
             key={index}
-            style={{
-              background: `linear-gradient(150deg, color-mix(in srgb, var(--ui-accent) ${String(26 - index * 8)}%, var(--ui-bg-subtle)), var(--ui-bg-subtle))`,
-            }}
+            style={{ opacity: 1 - index * 0.18 }}
           />
         ))}
       </div>
