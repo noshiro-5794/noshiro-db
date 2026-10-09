@@ -23,7 +23,7 @@ function ToastList({ closeLabel }: { closeLabel: string }) {
 
   return toasts.map((item) => (
     <Toast.Root
-      className="relative flex min-h-14 w-full items-start gap-3 rounded-sm border border-border bg-elevated p-3 pr-10 text-foreground shadow-[var(--ui-shadow-popup)] outline-none transition-[opacity,transform] duration-[var(--ui-transition-standard)] data-[ending-style]:-translate-y-2 data-[ending-style]:opacity-0 data-[starting-style]:-translate-y-2 data-[starting-style]:opacity-0 data-[type=error]:border-[color-mix(in_srgb,var(--ui-danger)_42%,var(--ui-border))] data-[type=success]:border-[color-mix(in_srgb,var(--ui-success)_34%,var(--ui-border))]"
+      className="relative flex min-h-14 w-full items-start gap-3 rounded-[var(--ui-radius-surface)] border border-border bg-elevated p-3 pr-10 text-foreground shadow-[var(--ui-shadow-popup)] outline-none transition-[opacity,transform] duration-[var(--ui-transition-standard)] data-[ending-style]:-translate-y-2 data-[ending-style]:opacity-0 data-[starting-style]:-translate-y-2 data-[starting-style]:opacity-0 data-[type=error]:border-[color-mix(in_srgb,var(--ui-danger)_42%,var(--ui-border))] data-[type=success]:border-[color-mix(in_srgb,var(--ui-success)_34%,var(--ui-border))]"
       data-slot="toast"
       key={item.id}
       swipeDirection={['up', 'right']}
@@ -50,7 +50,7 @@ function ToastList({ closeLabel }: { closeLabel: string }) {
       </Toast.Content>
       <Toast.Close
         aria-label={closeLabel}
-        className="absolute right-2.5 top-2.5 grid size-7 place-items-center rounded-sm text-subtle-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+        className="absolute right-2.5 top-2.5 grid size-7 place-items-center rounded-[var(--ui-radius-control)] text-subtle-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-[var(--ui-focus-halo)]"
       >
         <X className="size-3.5" />
       </Toast.Close>

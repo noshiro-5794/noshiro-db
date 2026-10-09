@@ -6,7 +6,7 @@ function Switch({ className, ...props }: ComponentProps<typeof BaseSwitch.Root>)
   return (
     <BaseSwitch.Root
       className={cn(
-        'relative inline-flex h-5 w-9 shrink-0 cursor-default rounded-full border border-control-border bg-muted p-0.5 outline-none transition-[background-color,border-color,box-shadow] duration-[var(--ui-transition-fast)] data-[checked]:border-brand data-[checked]:bg-brand focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface data-[disabled]:cursor-not-allowed data-[disabled]:opacity-45',
+        'relative inline-flex h-5 w-9 shrink-0 cursor-default rounded-full border border-control-border bg-muted p-0.5 outline-none transition-[background-color,border-color,box-shadow] duration-[var(--ui-transition-fast)] data-[checked]:border-brand data-[checked]:bg-brand focus-visible:ring-2 focus-visible:ring-[var(--ui-focus-halo)] focus-visible:ring-offset-1 focus-visible:ring-offset-surface data-[disabled]:cursor-not-allowed data-[disabled]:opacity-45',
         className,
       )}
       data-slot="switch"

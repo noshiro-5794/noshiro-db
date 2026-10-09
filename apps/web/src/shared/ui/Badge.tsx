@@ -20,7 +20,9 @@ function Badge({ className, variant = 'secondary', ...props }: ComponentProps<'s
   return (
     <span
       className={cn(
-        'inline-flex min-h-5 w-fit shrink-0 items-center gap-1 rounded-sm border px-1.5 py-0.5 text-[11px] font-medium leading-none [&_svg]:size-3 [&_svg]:shrink-0',
+        // A badge is not a control: it takes the smallest rung, the same 4px
+        // plane gives its chips.
+        'inline-flex min-h-5 w-fit shrink-0 items-center gap-1 rounded-[4px] border px-1.5 py-0.5 text-[11px] font-medium leading-none [&_svg]:size-3 [&_svg]:shrink-0',
         variantClasses[variant],
         className,
       )}

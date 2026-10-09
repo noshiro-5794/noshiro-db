@@ -28,7 +28,7 @@ function FilterPanelChoice({ className, ...props }: FilterPanelChoiceProps) {
   return (
     <Toggle
       className={cn(
-        'flex items-center justify-between rounded-sm px-2.5 py-1.5 text-left text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground data-[pressed]:bg-[color-mix(in_srgb,var(--ui-accent-soft)_70%,var(--ui-bg-muted))] data-[pressed]:text-[var(--ui-accent-text)]',
+        'flex items-center justify-between rounded-[var(--ui-radius-control)] px-2.5 py-1.5 text-left text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground data-[pressed]:bg-[color-mix(in_srgb,var(--ui-accent-soft)_70%,var(--ui-bg-muted))] data-[pressed]:text-[var(--ui-accent-text)]',
         className,
       )}
       data-slot="filter-panel-choice"
@@ -46,7 +46,7 @@ function FilterTag({ active = false, className, ...props }: FilterTagProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center overflow-hidden rounded-sm border border-border bg-[color-mix(in_srgb,var(--ui-bg-surface)_84%,var(--ui-bg-subtle))] text-xs font-medium text-muted-foreground data-[active]:border-[var(--ui-accent-border)] data-[active]:bg-[color-mix(in_srgb,var(--ui-accent-soft)_70%,var(--ui-bg-surface))] data-[active]:text-[var(--ui-accent-text)]',
+        'inline-flex items-center overflow-hidden rounded-[var(--ui-radius-control)] border border-border bg-[color-mix(in_srgb,var(--ui-bg-surface)_84%,var(--ui-bg-subtle))] text-xs font-medium text-muted-foreground data-[active]:border-[var(--ui-accent-border)] data-[active]:bg-[color-mix(in_srgb,var(--ui-accent-soft)_70%,var(--ui-bg-surface))] data-[active]:text-[var(--ui-accent-text)]',
         className,
       )}
       data-active={active || undefined}

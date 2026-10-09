@@ -9,6 +9,7 @@ import { routes } from '@/shared/routing/paths';
 import { Seo } from '@/shared/seo/Seo';
 import { Page } from '@/shared/ui/Page';
 import { PageHeading } from '@/shared/ui/PageHeading';
+import { Button } from '@/shared/ui/Button';
 import { ResultsState, type ResultsStatus } from '@/shared/ui/DataView';
 import {
   AIRING_TIME_ZONE,
@@ -25,7 +26,7 @@ import {
   weekRange,
   type CalendarOccurrence,
 } from '@/features/airing-calendar';
-import { EventDetails, IconButton, MonthGrid, SegmentedControl, TimeGrid } from '@/features/airing-calendar';
+import { EventDetails, MonthGrid, SegmentedControl, TimeGrid } from '@/features/airing-calendar';
 
 type CalendarView = 'month' | 'week' | 'day';
 
@@ -123,32 +124,34 @@ export function CalendarPage() {
         <PageHeading
           actions={
             <>
-              <button
-                className="h-8 shrink-0 rounded-[8px] border border-[var(--ui-border)] px-3.5 text-xs font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-bg-subtle)]"
-                onClick={goToday}
-                type="button"
-              >
+              <Button onClick={goToday} type="button" variant="secondary">
                 {t('calendar.today')}
-              </button>
+              </Button>
               <span className="flex items-center">
-                <IconButton
-                  className={canStep(-1) ? undefined : 'opacity-30'}
-                  label={t('calendar.previous')}
+                <Button
+                  aria-label={t('calendar.previous')}
+                  disabled={!canStep(-1)}
                   onClick={() => {
                     move(-1);
                   }}
+                  size="icon"
+                  tooltip={t('calendar.previous')}
+                  variant="ghost"
                 >
                   <ChevronLeft className="size-4" />
-                </IconButton>
-                <IconButton
-                  className={canStep(1) ? undefined : 'opacity-30'}
-                  label={t('calendar.next')}
+                </Button>
+                <Button
+                  aria-label={t('calendar.next')}
+                  disabled={!canStep(1)}
                   onClick={() => {
                     move(1);
                   }}
+                  size="icon"
+                  tooltip={t('calendar.next')}
+                  variant="ghost"
                 >
                   <ChevronRight className="size-4" />
-                </IconButton>
+                </Button>
               </span>
               <SegmentedControl
                 ariaLabel={t('calendar.viewAria')}

@@ -63,6 +63,10 @@ content presentation, and public footer.
 `src/shared/api/contracts/`; its `index.ts` is the only public import path. Domain-owned API calls and TanStack Query
 definitions remain in their entity or feature slice.
 
+Decoders are the text boundary as well as the type boundary. Providers publish synopses as small HTML fragments, so
+`buildSubjectDetail` runs them through `plainText()` in `src/shared/lib/text.ts` before anything renders them. A
+surface that receives a description can draw it as text and assume it is text.
+
 The backend resource split is mirrored by the frontend:
 
 - `/api/v1/users/` owns auth, profile, library entries, progress, tags, reviews, and collections.
@@ -116,3 +120,32 @@ contract, not a restatement of the props.
 Enforcement: `tsc` runs with `strict`, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`,
 `verbatimModuleSyntax`, and `erasableSyntaxOnly`; ESLint extends `strictTypeChecked` and rejects imports that bypass
 a slice's public `index.ts`. Prettier owns formatting at 120 columns. `pnpm check` runs the whole chain.
+
+### Interface scale
+
+The primitives follow plane's design system (`@makeplane/propel`), whose rules are mirrored into `tokens.css` rather
+than imported: a repository that runs two stacks should own its tokens, and propel is a Tailwind v4 CSS layer built
+for plane's own component set.
+
+- **Controls** pick a rung and take everything from it: `--ui-control-height-xs` (28px), `--ui-control-height`
+  (32px) or `--ui-control-height-lg` (36px), with `--ui-control-padding-x*`, `--ui-control-gap` and
+  `--ui-control-glyph*` travelling alongside. One row uses one rung; a small control is not a large control with
+  smaller text. `Button`, `Input` and `InputGroup` all default to the same rung, and a component that leaves it
+  implicit is the bug: the catalogue toolbar mixed 32px and 36px controls in one row until every list toolbar
+  agreed on `lg`.
+- **Filter triggers** share one anatomy, in `FilterTrigger.tsx`: the field name in the muted slot and the value in
+  the strong one, with no value at all while the filter narrows nothing. Leading with the value turns the unset
+  state — the word "All" — into a phrase that reads as a category rather than as an empty filter. `emptyValue`
+  names the option that means "not narrowing" when that option is a word instead of the empty string.
+- **Radius** has three levels: `--ui-radius-control` (6px) for anything you click, `--ui-radius-surface` (8px) for
+  the surface that holds them (menus, popovers, cards, dialogs) and `--ui-radius-frame` (10px) for a full-height
+  panel such as the navigation drawer.
+- **Focus** is always the soft halo (`--ui-focus-halo` at 2px with a 1px offset), never a hard ring.
+- **Motion** is named, not inline: `--ui-transition-fast/standard/slow` with `--ui-ease-standard` for transforms and
+  `--ui-ease-gentle` for colour. `src/shared/lib/motion.ts` mirrors the two curves for the `motion` half of the app;
+  `global.css` reduces both halves for visitors who ask for less motion.
+- **Prose** keeps the measure the review bodies set, `max-w-3xl`. A synopsis capped at nothing runs the width of a
+  1400px page, which is a hundred and fifty characters a line.
+- **Empty states** are a section's quiet line (`EmptyState variant="inline"`) when the section sits inside a page
+  that has other content, and a bordered card when the empty state is the page. `ResultsState` takes that choice as
+  `emptyVariant`.

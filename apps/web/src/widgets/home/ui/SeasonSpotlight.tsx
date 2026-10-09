@@ -6,7 +6,6 @@ import { BroadcastBoard } from '@/features/airing-calendar';
 import { useI18n } from '@/shared/i18n';
 import { routeBackState } from '@/shared/routing/route-state';
 import { routes } from '@/shared/routing/paths';
-import '@/shared/ui/motion.css';
 import { LandingSection } from './LandingSection';
 
 /**
@@ -23,8 +22,7 @@ export function SeasonSpotlight() {
   return (
     <LandingSection
       action={{ label: t('public.more'), to: routes.airing }}
-      className="motion-rise motion-delay-4"
-      note={t('public.seasonNote')}
+      className="pt-16 sm:pt-20"
       title={t('public.seasonHeading')}
     >
       <div className="overflow-hidden rounded-[var(--ui-radius-frame)] border border-[var(--ui-border)] bg-[var(--ui-bg-surface)] shadow-[var(--ui-shadow-surface)]">
@@ -32,12 +30,7 @@ export function SeasonSpotlight() {
           {boardQuery.isLoading ? (
             <BoardSkeleton />
           ) : (
-            <BroadcastBoard
-              emptyLabel={t('calendar.empty')}
-              entries={entries}
-              showProvenance={false}
-              state={subjectLinkState}
-            />
+            <BroadcastBoard emptyLabel={t('calendar.empty')} entries={entries} state={subjectLinkState} />
           )}
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[var(--ui-bg-surface)] to-transparent" />
         </div>

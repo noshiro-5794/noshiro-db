@@ -251,6 +251,7 @@ export function ReviewsPage() {
               <SearchField
                 aria-label={t('reviews.searchPlaceholder')}
                 maxLength={200}
+                size="lg"
                 value={draftKeyword}
                 placeholder={t('reviews.searchPlaceholder')}
                 onChange={(event) => {

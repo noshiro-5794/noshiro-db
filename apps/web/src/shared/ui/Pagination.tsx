@@ -79,7 +79,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
         <PopoverTrigger
           render={
             <Button
-              className="h-8 min-w-0 gap-1 px-2 text-xs tabular-nums"
+              className="min-w-0 gap-1 px-2 text-xs tabular-nums"
               size="sm"
               type="button"
               variant="ghost"
@@ -112,7 +112,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
                 }}
               />
             </Field>
-            <Button className="h-9" size="sm" type="submit">
+            <Button size="sm" type="submit">
               {t('common.apply')}
             </Button>
           </form>

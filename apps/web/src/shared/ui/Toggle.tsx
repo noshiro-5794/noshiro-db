@@ -15,12 +15,12 @@ function Toggle({ className, variant = 'default', ...props }: ToggleProps) {
   return (
     <BaseToggle
       className={cn(
-        'inline-flex h-[var(--ui-control-height)] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-sm px-2.5 text-[13px] font-medium text-muted-foreground outline-none transition-[color,background-color,border-color,box-shadow] duration-[var(--ui-transition-fast)] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:pointer-events-none disabled:opacity-45',
+        'inline-flex h-[var(--ui-control-height)] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-[var(--ui-radius-control)] px-2.5 text-[13px] font-medium text-muted-foreground outline-none transition-[color,background-color,border-color,box-shadow] duration-[var(--ui-transition-fast)] hover:text-foreground focus-visible:ring-2 focus-visible:ring-[var(--ui-focus-halo)] focus-visible:ring-offset-1 focus-visible:ring-offset-surface disabled:pointer-events-none disabled:opacity-45',
         variant === 'default' &&
           'gap-2 border border-transparent hover:bg-muted data-[pressed]:border-control-border data-[pressed]:bg-elevated data-[pressed]:text-foreground data-[pressed]:shadow-[var(--ui-shadow-control)]',
         variant === 'bare' && 'hover:bg-muted data-[pressed]:bg-muted data-[pressed]:text-foreground',
         variant === 'tab' &&
-          'h-9 rounded-none border-b-2 border-transparent px-3 hover:bg-muted data-[pressed]:border-[var(--ui-accent)] data-[pressed]:text-foreground',
+          'h-[var(--ui-control-height-lg)] rounded-none border-b-2 border-transparent px-3 hover:bg-muted data-[pressed]:border-[var(--ui-accent)] data-[pressed]:text-foreground',
         className,
       )}
       data-slot="toggle"
@@ -39,7 +39,7 @@ function ToggleGroup<TValue extends string>({ className, variant = 'default', ..
     <BaseToggleGroup
       className={cn(
         'inline-flex items-center',
-        variant === 'default' && 'gap-0.5 rounded-sm border border-border bg-muted p-0.5',
+        variant === 'default' && 'gap-0.5 rounded-[var(--ui-radius-control)] border border-border bg-muted p-0.5',
         variant === 'tab' && 'gap-1 border-b border-border-subtle',
         className,
       )}

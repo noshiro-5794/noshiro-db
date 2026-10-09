@@ -1,7 +1,41 @@
 @import 'tailwindcss';
 @import './tokens.css';
+/* Motion utilities are used by shared primitives, so they load with the app
+   rather than with whichever page happens to import them. */
+@import '../../shared/ui/motion.css';
 
 @custom-variant dark (&:where([data-theme-mode='dark'], [data-theme-mode='dark'] *));
+
+/*
+ * The lockup's face. Space Grotesk carries the name's letterforms — the flat
+ * sided N, the tailed s, the squared D — where the interface's system stack
+ * only reports it. The file is subsetted to the letters the name uses and is
+ * served from our own origin, so the range below is exact and no other text can
+ * reach for it. Space Grotesk is OFL-1.1; see public/fonts.
+ */
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/space-grotesk-600.woff2') format('woff2');
+  unicode-range: U+20, U+42, U+44, U+4E, U+68, U+69, U+6F, U+72, U+73;
+}
+
+@layer components {
+  .wordmark {
+    font-family:
+      'Space Grotesk',
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      'Segoe UI',
+      sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.045em;
+  }
+}
 
 @theme inline {
   --color-background: var(--ui-bg-canvas);
@@ -100,5 +134,117 @@
 
   .motion-rise {
     animation: none;
+  }
+}
+
+/* The marketing surface reads as one sheet: the canvas is the same white (or, in
+   dark, the same near-black) as the bar sitting on it, rather than our inset grey. */
+.public-shell {
+  background: var(--ui-bg-public);
+  color: var(--ui-text);
+}
+
+.public-button {
+  display: inline-flex;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 20px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+.public-button-primary {
+  border-color: var(--ui-action-primary);
+  background: var(--ui-action-primary);
+  color: var(--ui-action-primary-text);
+}
+.public-button-primary:hover {
+  border-color: var(--ui-action-primary-hover);
+  background: var(--ui-action-primary-hover);
+}
+.public-button-secondary {
+  border-color: var(--ui-control-border);
+  background: var(--ui-bg-elevated);
+  color: var(--ui-text-muted);
+}
+.public-button-secondary:hover {
+  border-color: var(--ui-border-strong);
+  background: var(--ui-bg-subtle);
+}
+.public-shell header .public-button {
+  height: 38px;
+  padding: 0 16px;
+  font-size: 14px;
+}
+.landing-hero {
+  margin: 0 auto;
+  padding: 100px 24px 64px;
+  text-align: center;
+}
+.landing-hero-stack {
+  display: flex;
+  max-width: 1040px;
+  margin: 0 auto;
+  flex-direction: column;
+  align-items: center;
+}
+.landing-hero-eyebrow {
+  color: var(--ui-accent-text);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.landing-hero-title {
+  max-width: 880px;
+  margin-top: 28px;
+  color: var(--ui-text);
+  font-size: clamp(36px, 4.1vw, 58px);
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: -0.04em;
+  text-wrap: balance;
+}
+.landing-hero-description {
+  max-width: 740px;
+  margin-top: 28px;
+  color: var(--ui-text-muted);
+  font-size: 18px;
+  line-height: 1.65;
+  text-wrap: pretty;
+}
+.landing-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 36px;
+}
+@media (max-width: 639px) {
+  .landing-hero {
+    padding: 64px 24px 40px;
+  }
+  .landing-hero-title {
+    margin-top: 22px;
+    font-size: 36px;
+    line-height: 1.2;
+  }
+  .landing-hero-description {
+    margin-top: 24px;
+    font-size: 16px;
+  }
+  .landing-hero-actions {
+    gap: 12px;
+    margin-top: 28px;
   }
 }

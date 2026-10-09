@@ -1,5 +1,10 @@
-@reference '../../app/styles/global.css';
-
+/*
+ * Entrance animation for content that is on screen at mount.
+ *
+ * JS-driven motion (scroll reveals, hover lifts) goes through `motion` and
+ * reads `src/shared/lib/motion.ts`; this stylesheet covers the plain CSS case.
+ * `global.css` owns the reduced-motion override for both.
+ */
 @keyframes motion-rise {
   from {
     opacity: 0;
@@ -12,9 +17,29 @@
   }
 }
 
+/*
+ * For something that appears (a tick, a chip): it has no previous state to
+ * transition from, so it animates on mount instead.
+ */
+@keyframes motion-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 @layer utilities {
   .motion-rise {
-    animation: motion-rise 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: motion-rise var(--ui-transition-slow) var(--ui-ease-standard) both;
+  }
+
+  .motion-pop {
+    animation: motion-pop var(--ui-transition-fast) var(--ui-ease-standard) both;
   }
 
   .motion-delay-1 {

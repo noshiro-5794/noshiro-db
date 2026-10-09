@@ -77,7 +77,7 @@ export function PublicReviewsSection({
         </ul>
       ) : null}
       {!query.isLoading && !query.isError && reviews.length === 0 ? (
-        <EmptyState title={t('common.none')} variant="inline" />
+        <EmptyState title={t('common.notRecorded')} variant="inline" />
       ) : null}
       {!query.isLoading && !query.isError && reviews.length > 0 ? (
         <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />

@@ -16,13 +16,13 @@ function ComboboxTrigger({ className, ...props }: ComponentProps<typeof BaseComb
   return (
     <BaseCombobox.Trigger
       className={cn(
-        'group/combobox-trigger grid size-7 shrink-0 place-items-center rounded-sm text-subtle-foreground outline-none transition-colors duration-[var(--ui-transition-fast)] hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring',
+        'group/combobox-trigger grid size-[var(--ui-control-height-xs)] shrink-0 place-items-center rounded-[var(--ui-radius-control)] text-subtle-foreground outline-none transition-colors duration-[var(--ui-transition-fast)] hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-[var(--ui-focus-halo)]',
         className,
       )}
       data-slot="combobox-trigger"
       {...props}
     >
-      <ChevronDown className="size-4 transition-transform duration-[var(--ui-transition-fast)] group-data-[popup-open]/combobox-trigger:rotate-180" />
+      <ChevronDown className="size-[var(--ui-control-glyph-sm)] transition-transform duration-[var(--ui-transition-fast)] group-data-[popup-open]/combobox-trigger:rotate-180" />
     </BaseCombobox.Trigger>
   );
 }
@@ -49,7 +49,7 @@ function ComboboxContent({
       >
         <BaseCombobox.Popup
           className={cn(
-            'relative max-h-[var(--available-height)] w-[var(--anchor-width)] min-w-44 origin-[var(--transform-origin)] overflow-hidden rounded-sm border border-border bg-elevated text-foreground shadow-[var(--ui-shadow-popup)] outline-none transition-[opacity,transform] duration-[var(--ui-transition-fast)] data-[ending-style]:scale-[0.985] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.985] data-[starting-style]:opacity-0',
+            'relative max-h-[var(--available-height)] w-[var(--anchor-width)] min-w-44 origin-[var(--transform-origin)] overflow-hidden rounded-[var(--ui-radius-surface)] border border-border bg-elevated text-foreground shadow-[var(--ui-shadow-popup)] outline-none transition-[opacity,transform] duration-[var(--ui-transition-fast)] data-[ending-style]:scale-[0.96] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.96] data-[starting-style]:opacity-0',
             className,
           )}
           data-slot="combobox-content"
@@ -74,7 +74,7 @@ function ComboboxItem({ children, className, ...props }: ComponentProps<typeof B
   return (
     <BaseCombobox.Item
       className={cn(
-        'relative flex min-h-8 w-full cursor-default select-none items-center justify-between gap-3 rounded-sm px-2.5 py-1.5 text-[13px] outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-45 data-[highlighted]:bg-muted data-[highlighted]:text-foreground',
+        'relative flex min-h-8 w-full cursor-default select-none items-center justify-between gap-3 rounded-[var(--ui-radius-control)] px-2.5 py-1.5 text-[13px] outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-45 data-[highlighted]:bg-muted data-[highlighted]:text-foreground',
         className,
       )}
       data-slot="combobox-item"

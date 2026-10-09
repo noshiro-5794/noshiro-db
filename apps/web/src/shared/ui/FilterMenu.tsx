@@ -7,6 +7,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/shared/ui/DropdownMenu';
+import { FilterTriggerLabel } from '@/shared/ui/FilterTrigger';
 
 export type FilterMenuOption<TValue extends string> = {
   label: string;
@@ -14,6 +15,8 @@ export type FilterMenuOption<TValue extends string> = {
 };
 
 type FilterMenuProps<TValue extends string> = {
+  /** Option value that means the filter is not narrowing anything. Defaults to the empty string. */
+  emptyValue?: string;
   label: string;
   options: ReadonlyArray<FilterMenuOption<TValue>>;
   size?: 'default' | 'lg';
@@ -29,15 +32,16 @@ function isOptionValue<TValue extends string>(
 }
 
 export function FilterMenu<TValue extends string>({
+  emptyValue = '',
   label,
   options,
   size = 'default',
   value,
   onChange,
 }: FilterMenuProps<TValue>) {
-  const selectedOption = options.find((option) => option.value === value) ?? options[0];
-  const showSelectedLabel = selectedOption?.label && selectedOption.label !== label;
-  const accessibleLabel = showSelectedLabel ? `${label}: ${selectedOption.label}` : label;
+  const selectedOption = options.find((option) => option.value === value);
+  const narrowed = value !== emptyValue;
+  const accessibleLabel = narrowed && selectedOption ? `${label}: ${selectedOption.label}` : label;
 
   return (
     <DropdownMenu>
@@ -45,18 +49,15 @@ export function FilterMenu<TValue extends string>({
         render={
           <Button
             aria-label={accessibleLabel}
-            className="w-full justify-between px-3"
+            className="group w-full justify-between border-[var(--ui-control-border)] data-[popup-open]:border-[var(--ui-accent-border)] data-[popup-open]:bg-[var(--ui-bg-muted)]"
             size={size}
             type="button"
             variant="secondary"
           />
         }
       >
-        <span className="flex min-w-0 items-center gap-1.5">
-          <span className="text-[var(--ui-text-subtle)]">{label}</span>
-          {showSelectedLabel ? <span className="truncate">{selectedOption.label}</span> : null}
-        </span>
-        <ChevronDown className="size-4 flex-shrink-0 text-[var(--ui-text-subtle)]" />
+        <FilterTriggerLabel label={label} value={narrowed ? (selectedOption?.label ?? null) : null} />
+        <ChevronDown className="size-[var(--ui-control-glyph-sm)] flex-shrink-0 text-[var(--ui-text-subtle)] transition-transform duration-[var(--ui-transition-standard)] ease-[var(--ui-ease-standard)] group-data-[popup-open]:rotate-180" />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="min-w-[var(--anchor-width)]">
         <DropdownMenuRadioGroup

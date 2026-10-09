@@ -103,7 +103,7 @@ export function SearchShowcase() {
   return (
     <LandingSection
       action={{ label: t('public.more'), to: morePath }}
-      className="scroll-mt-20 pt-16 sm:pt-20"
+      className="scroll-mt-24 pt-20 sm:pt-28"
       note={t('public.searchBody')}
       title={t('public.startSearch')}
     >
@@ -114,6 +114,7 @@ export function SearchShowcase() {
               aria-label={t('search.keyword')}
               maxLength={200}
               placeholder={t('public.searchPlaceholder')}
+              size="lg"
               value={keyword}
               onChange={(event) => {
                 handleKeywordChange(event.target.value);

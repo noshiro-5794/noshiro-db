@@ -139,6 +139,7 @@ export function LibraryPage() {
                 <SearchField
                   aria-label={t('library.searchPlaceholder')}
                   maxLength={200}
+                  size="lg"
                   value={draftKeyword}
                   placeholder={t('library.searchPlaceholder')}
                   onChange={(event) => {

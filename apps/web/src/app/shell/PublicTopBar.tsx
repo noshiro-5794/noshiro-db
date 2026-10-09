@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { Link, useLocation } from '@tanstack/react-router';
-import { ChevronDown, Menu } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { Link } from '@tanstack/react-router';
+import { CalendarDays, Clapperboard, LayoutGrid, Menu, Search, Sparkles } from 'lucide-react';
 import { publicAssetPaths } from '@/shared/assets/public-assets';
 import { useI18n } from '@/shared/i18n';
 import { cn } from '@/shared/lib/cn';
@@ -8,154 +8,136 @@ import { routes } from '@/shared/routing/paths';
 import { resolvedRouteHref } from '@/shared/routing/resolved-href';
 import { Button } from '@/shared/ui/Button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/ui/Dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/shared/ui/DropdownMenu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/ui/DropdownMenu';
 
-const barLinkClassName = cn(
-  'relative inline-flex h-8 items-center gap-1 rounded-[var(--ui-radius-control)] px-2.5 text-[13px] font-medium',
-  'text-[var(--ui-text-muted)] outline-none transition-colors hover:text-[var(--ui-text)]',
-  'focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ui-bg-canvas)]',
-  'data-[status=active]:text-[var(--ui-text)]',
-  // A short underline marks the current section, the way Linear's site does.
-  'after:pointer-events-none after:absolute after:inset-x-2.5 after:-bottom-1 after:h-[2px] after:rounded-full',
-  'after:bg-[var(--ui-accent)] after:opacity-0 after:transition-opacity data-[status=active]:after:opacity-100',
-);
-
-function useHeaderElevation() {
-  const [isElevated, setIsElevated] = useState(false);
-
-  useEffect(() => {
-    function handleScroll() {
-      setIsElevated(window.scrollY > 4);
-    }
-
-    handleScroll();
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, []);
-
-  return isElevated;
-}
-
-function Wordmark() {
-  return (
-    <Link
-      aria-label="Noshiro DB"
-      className="flex min-w-0 items-center gap-2 rounded-[var(--ui-radius-control)]"
-      to={routes.home}
-    >
-      <img alt="" aria-hidden="true" className="size-6 rounded-[6px]" src={publicAssetPaths.appIcon} />
-      <span className="truncate text-[15px] font-semibold">Noshiro DB</span>
-    </Link>
-  );
-}
+type MenuEntry = { icon: ReactNode; label: string; to: string };
+type MenuSection = { entries: MenuEntry[]; key: string; label: string };
 
 /**
- * The bar a visitor sees.
+ * plane's marketing nav: plain links on the bar itself, at the bar's own text
+ * size, with no pill to separate them from the page they sit on.
+ */
+const navItemClassName = cn(
+  'inline-flex shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap text-[15px] font-normal',
+  'text-[var(--ui-text)] outline-none transition-colors duration-150 ease-out',
+  'hover:text-[var(--ui-text-muted)] focus-visible:ring-2 focus-visible:ring-[var(--ui-focus-halo)]',
+  'data-[popup-open]:text-[var(--ui-text-muted)]',
+  'data-[status=active]:text-[var(--ui-text)]',
+);
+
+/**
+ * The bar a visitor sees, built on plane's.
  *
- * Linear's composition: the wordmark holds the left edge, the sections sit
- * centred in the bar, and only the account actions live on the right. It
- * carries no search field — search belongs to the page, not to the chrome.
+ * plane's marketing header is one row on `surface-1`: the lockup holds the left
+ * edge, the sections sit centred at the bar's own text size, and the account
+ * links close the right edge beside the one filled action. Sections with more
+ * than one destination open an anchored menu under their link rather than a
+ * panel spanning the bar.
  */
 export function PublicTopBar() {
   const { t } = useI18n();
-  const location = useLocation();
-  const isElevated = useHeaderElevation();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  const navItems = [
-    { exact: true, label: t('nav.home'), to: routes.home },
-    { exact: false, label: t('nav.catalog'), to: routes.search },
+  const menus: MenuSection[] = [
+    {
+      entries: [
+        { icon: <Search className="size-4" />, label: t('nav.catalog'), to: routes.search },
+        {
+          icon: <Clapperboard className="size-4" />,
+          label: t('search.anime'),
+          to: `${routes.search}?subject_type=anime`,
+        },
+        {
+          icon: <Sparkles className="size-4" />,
+          label: t('search.galgame'),
+          to: `${routes.search}?subject_type=galgame`,
+        },
+      ],
+      key: 'catalogue',
+      label: t('nav.catalog'),
+    },
+    {
+      entries: [
+        { icon: <CalendarDays className="size-4" />, label: t('nav.airingCalendar'), to: routes.calendar },
+        { icon: <LayoutGrid className="size-4" />, label: t('nav.broadcastBoard'), to: routes.airing },
+      ],
+      key: 'airing',
+      label: t('nav.airing'),
+    },
   ];
-  const airingItems = [
-    { body: t('nav.airingCalendarBody'), label: t('nav.airingCalendar'), to: routes.calendar },
-    { body: t('nav.broadcastBoardBody'), label: t('nav.broadcastBoard'), to: routes.airing },
+
+  const drawerLinks = [
+    { label: t('nav.home'), to: routes.home },
+    ...menus.flatMap((menu) => menu.entries.map((entry) => ({ label: entry.label, to: entry.to }))),
+    { label: t('nav.docs'), to: routes.docsIntroduction },
   ];
-  const menuItems = [
-    ...navItems,
-    { exact: false, label: t('nav.airingCalendar'), to: routes.calendar },
-    { exact: false, label: t('nav.broadcastBoard'), to: routes.airing },
-    { exact: false, label: t('nav.docs'), to: routes.docsIntroduction },
-  ];
-  const isAiringActive = [routes.calendar, routes.airing].some((path) => location.pathname.startsWith(path));
 
   return (
     <>
-      <header
-        className={cn(
-          'sticky top-0 z-[var(--ui-layer-shell-header)] h-[var(--ui-shell-header-height)] border-b',
-          'bg-[color-mix(in_srgb,var(--ui-bg-canvas)_82%,transparent)] backdrop-blur-xl',
-          'transition-[border-color,box-shadow] duration-[var(--ui-transition-standard)]',
-          isElevated
-            ? 'border-[var(--ui-border)] shadow-[0_1px_2px_rgb(20_20_26/4%)]'
-            : 'border-[var(--ui-border-subtle)]',
-        )}
-      >
-        <div className="mx-auto flex h-full max-w-[1160px] items-center gap-3 px-4 sm:px-5">
-          <Wordmark />
+      <header className="sticky top-0 z-[var(--ui-layer-shell-header)] h-[var(--ui-public-header-height)] border-b border-[var(--ui-border-subtle)] bg-[var(--ui-bg-public)] text-[var(--ui-text)]">
+        <div className="mx-auto flex h-full w-full max-w-[1280px] items-center justify-between gap-6 px-6 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:px-10">
+          <div className="flex min-w-0 shrink-0 items-center">
+            <Link
+              aria-label="Noshiro DB"
+              className="flex min-w-0 shrink-0 items-center gap-2.5 outline-none"
+              to={routes.home}
+            >
+              <img
+                alt=""
+                aria-hidden="true"
+                className="size-7 shrink-0 rounded-[var(--ui-radius-control)] object-cover"
+                src={publicAssetPaths.appIcon}
+              />
+              <span className="wordmark truncate text-[23px] text-[var(--ui-text)]">Noshiro DB</span>
+            </Link>
+          </div>
 
-          <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 lg:flex">
-            {navItems.map((item) => (
-              <Link
-                activeOptions={{ exact: item.exact }}
-                className={barLinkClassName}
-                key={item.to}
-                {...resolvedRouteHref(item.to)}
-              >
-                {item.label}
-              </Link>
+          <nav className="hidden min-w-0 items-center justify-center gap-8 lg:flex xl:gap-9">
+            <Link {...resolvedRouteHref(routes.home)} activeOptions={{ exact: true }} className={navItemClassName}>
+              {t('nav.home')}
+            </Link>
+
+            {menus.map((menu) => (
+              <DropdownMenu key={menu.key}>
+                <DropdownMenuTrigger
+                  render={
+                    <button aria-label={menu.label} className={cn(navItemClassName, 'group/nav-item')} type="button" />
+                  }
+                >
+                  {menu.label}
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" sideOffset={10}>
+                  {menu.entries.map((entry) => (
+                    <DropdownMenuItem key={entry.to} render={<Link {...resolvedRouteHref(entry.to)} />}>
+                      <span className="shrink-0 text-[var(--ui-text-subtle)]">{entry.icon}</span>
+                      <span className="min-w-0 truncate">{entry.label}</span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             ))}
 
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <button
-                    className={cn('group', barLinkClassName, isAiringActive && 'text-[var(--ui-text)]')}
-                    type="button"
-                  >
-                    {t('nav.airing')}
-                    <ChevronDown className="size-3.5 transition-transform group-data-[popup-open]:rotate-180" />
-                  </button>
-                }
-              />
-              <DropdownMenuContent align="center" className="w-[460px] p-2">
-                <div className="grid grid-cols-2 gap-1">
-                  {airingItems.map((item) => (
-                    <Link
-                      className="grid gap-1 rounded-[8px] px-2.5 py-2 transition-colors hover:bg-[var(--ui-bg-subtle)]"
-                      key={item.to}
-                      to={item.to}
-                    >
-                      <span className="text-[13.5px] font-medium text-foreground">{item.label}</span>
-                      <span className="text-[12.5px] leading-5 text-muted-foreground">{item.body}</span>
-                    </Link>
-                  ))}
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <Link className={barLinkClassName} {...resolvedRouteHref(routes.docsIntroduction)}>
+            <Link {...resolvedRouteHref(routes.docsIntroduction)} className={navItemClassName}>
               {t('nav.docs')}
             </Link>
           </nav>
 
-          <div className="ml-auto flex items-center gap-1.5">
-            <Button asChild className="hidden sm:inline-flex" size="sm" variant="ghost">
-              <Link to={routes.login}>{t('auth.login')}</Link>
-            </Button>
-            <Button asChild size="sm">
+          <div className="flex shrink-0 items-center justify-end gap-5">
+            <Link className={cn(navItemClassName, 'hidden sm:inline-flex')} to={routes.login}>
+              {t('auth.login')}
+            </Link>
+            <Button asChild className="public-button public-button-primary hidden sm:inline-flex" variant="unstyled">
               <Link to={routes.register}>{t('auth.register')}</Link>
             </Button>
             <Button
               aria-label={t('public.openMenu')}
-              className="lg:hidden"
-              size="icon"
+              className="text-[var(--ui-text)] lg:hidden"
+              size="icon-sm"
               tooltip={t('public.openMenu')}
               type="button"
               variant="ghost"
               onClick={() => {
-                setIsMenuOpen(true);
+                setIsDrawerOpen(true);
               }}
             >
               <Menu className="size-4" />
@@ -164,52 +146,51 @@ export function PublicTopBar() {
         </div>
       </header>
 
-      <Dialog open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+      <Dialog open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
         <DialogContent className="gap-0 p-0" closeLabel={t('public.closeMenu')} placement="left">
           <DialogHeader className="border-b border-[var(--ui-border-subtle)] px-4 py-3 pr-12">
             <DialogTitle className="flex items-center gap-2 text-sm">
-              <img alt="" aria-hidden="true" className="size-6 rounded-[6px]" src={publicAssetPaths.appIcon} />
-              Noshiro DB
+              <img
+                alt=""
+                aria-hidden="true"
+                className="size-7 rounded-[var(--ui-radius-control)]"
+                src={publicAssetPaths.appIcon}
+              />
+              <span className="wordmark text-[15px]">Noshiro DB</span>
             </DialogTitle>
           </DialogHeader>
 
-          <div className="grid min-h-0 content-start gap-5 overflow-y-auto p-3">
-            <nav className="grid gap-0.5" aria-label={t('public.menuBrowse')}>
-              <h2 className="px-2 pb-1 text-[11px] font-medium text-[var(--ui-text-subtle)]">
-                {t('public.menuBrowse')}
-              </h2>
-              {menuItems.map((item) => (
-                <Link
-                  activeOptions={{ exact: item.exact }}
-                  className="inline-flex h-9 min-w-0 items-center rounded-[var(--ui-radius-control)] px-2 text-[13.5px] font-medium text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-bg-subtle)] hover:text-[var(--ui-text)] data-[status=active]:bg-[var(--ui-bg-muted)] data-[status=active]:text-[var(--ui-text)]"
-                  key={item.to}
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                  }}
-                  {...resolvedRouteHref(item.to)}
-                >
-                  <span className="min-w-0 truncate">{item.label}</span>
-                </Link>
-              ))}
-            </nav>
+          <div className="grid min-h-0 content-start gap-0.5 overflow-y-auto p-2">
+            {drawerLinks.map((item) => (
+              <Link
+                className={cn(navItemClassName, 'h-8 w-full justify-start')}
+                key={item.to}
+                onClick={() => {
+                  setIsDrawerOpen(false);
+                }}
+                {...resolvedRouteHref(item.to)}
+              >
+                <span className="min-w-0 truncate">{item.label}</span>
+              </Link>
+            ))}
           </div>
 
           <div className="grid gap-2 border-t border-[var(--ui-border-subtle)] p-3">
-            <Button asChild>
+            <Button asChild size="sm">
               <Link
                 to={routes.register}
                 onClick={() => {
-                  setIsMenuOpen(false);
+                  setIsDrawerOpen(false);
                 }}
               >
                 {t('auth.register')}
               </Link>
             </Button>
-            <Button asChild variant="secondary">
+            <Button asChild size="sm" variant="secondary">
               <Link
                 to={routes.login}
                 onClick={() => {
-                  setIsMenuOpen(false);
+                  setIsDrawerOpen(false);
                 }}
               >
                 {t('auth.login')}

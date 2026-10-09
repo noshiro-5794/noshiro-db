@@ -6,11 +6,11 @@ import { routes } from '@/shared/routing/paths';
 import type { RouteBackState } from '@/shared/routing/route-state';
 import { CoverImage } from '@/shared/ui/CoverImage';
 import { formatDayTitle, formatTime, titleOf, weekdayName, type CalendarOccurrence } from '../model/calendar';
-import { IconButton } from './primitives';
+import { Button } from '@/shared/ui/Button';
 
 /**
- * Google Calendar style detail card: provider-tinted anchor, the work title,
- * and the supporting facts as icon rows.
+ * Google Calendar style detail card: accent anchor, the work title, and the
+ * supporting facts as icon rows.
  */
 export function EventDetails({
   occurrence,
@@ -24,7 +24,6 @@ export function EventDetails({
   const { locale, t } = useI18n();
   const entry = occurrence.entry;
   const work = entry.work;
-  const primary = entry.sources[0]?.provider ?? 'unknown';
   const time = formatTime(occurrence.startMinutes, locale);
   const end =
     occurrence.startMinutes === null ? '' : formatTime(occurrence.startMinutes + occurrence.durationMinutes, locale);
@@ -61,13 +60,19 @@ export function EventDetails({
         role="dialog"
       >
         <div className="flex items-start justify-end">
-          <IconButton label={t('calendar.detailClose')} onClick={onClose}>
+          <Button
+            aria-label={t('calendar.detailClose')}
+            onClick={onClose}
+            size="icon"
+            tooltip={t('calendar.detailClose')}
+            variant="ghost"
+          >
             <X className="size-4" />
-          </IconButton>
+          </Button>
         </div>
 
         <div className="mt-1 flex items-start gap-3">
-          <span className="calendar-dot mt-2 size-3.5 shrink-0 rounded-[4px]" data-cal-source={primary} />
+          <span className="calendar-dot mt-2 size-3.5 shrink-0 rounded-[4px]" />
           <span className="min-w-0">
             <span className="line-clamp-2 block text-[20px] font-semibold leading-snug text-[var(--ui-text)]">
               {titleOf(occurrence)}
@@ -87,7 +92,7 @@ export function EventDetails({
           <div className="mt-4 flex items-center gap-3 border-t border-[var(--ui-border-subtle)] pt-4">
             <CoverImage
               alt=""
-              className="h-14 w-11 shrink-0 rounded-[6px] bg-[var(--ui-bg-subtle)] object-cover"
+              className="h-14 w-11 shrink-0 rounded-sm bg-[var(--ui-bg-subtle)] object-cover"
               label={work.displayName}
               seed={work.id}
               src={work.cover}

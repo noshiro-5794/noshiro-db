@@ -36,7 +36,7 @@ function PopoverContent({
       >
         <BasePopover.Popup
           className={cn(
-            'w-72 origin-[var(--transform-origin)] overflow-hidden rounded-sm border border-border bg-elevated p-4 text-foreground shadow-[var(--ui-shadow-popup)] outline-none transition-[opacity,transform] duration-[var(--ui-transition-fast)] data-[ending-style]:scale-[0.985] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.985] data-[starting-style]:opacity-0',
+            'w-72 origin-[var(--transform-origin)] overflow-hidden rounded-[var(--ui-radius-surface)] border border-border bg-elevated p-4 text-foreground shadow-[var(--ui-shadow-popup)] outline-none transition-[opacity,transform] duration-[var(--ui-transition-fast)] data-[ending-style]:scale-[0.96] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.96] data-[starting-style]:opacity-0',
             className,
           )}
           data-slot="popover-content"

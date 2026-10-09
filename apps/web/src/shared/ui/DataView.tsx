@@ -1,11 +1,13 @@
 import type { ComponentProps, ReactNode } from 'react';
-import { LoaderCircle, Search } from 'lucide-react';
+import { LoaderCircle, Search, type LucideIcon } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/FeedbackState';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/shared/ui/InputGroup';
 
-type SearchFieldProps = Omit<ComponentProps<typeof InputGroupInput>, 'type'> & {
+// `size` on an input is the native character-width attribute, so the control rung replaces it.
+type SearchFieldProps = Omit<ComponentProps<typeof InputGroupInput>, 'size' | 'type'> & {
   'aria-label': string;
+  size?: 'default' | 'lg';
 };
 
 type ResultsMetaProps = ComponentProps<'div'> & {
@@ -22,6 +24,9 @@ type ResultsStateProps = {
   children: ReactNode;
   emptyAction?: ReactNode;
   emptyDescription?: string;
+  emptyIcon?: LucideIcon;
+  /** `inline` for a section that sits inside a page with other content. */
+  emptyVariant?: 'card' | 'inline';
   emptyTitle: string;
   errorDescription?: string;
   errorTitle: string;
@@ -62,9 +67,9 @@ function DataToolbarFilters({ className, ...props }: ComponentProps<'div'>) {
   );
 }
 
-function SearchField({ className, ...props }: SearchFieldProps) {
+function SearchField({ className, size = 'default', ...props }: SearchFieldProps) {
   return (
-    <InputGroup data-slot="search-field">
+    <InputGroup data-slot="search-field" size={size}>
       <InputGroupAddon aria-hidden="true">
         <Search />
       </InputGroupAddon>
@@ -95,7 +100,10 @@ function ResultsMeta({
       <div className="flex min-w-0 flex-wrap items-center gap-2" data-slot="results-meta-count">
         <strong className="font-semibold tabular-nums text-foreground">
           {count === undefined ? (
-            <span aria-hidden="true" className="block h-3 w-5 animate-pulse rounded-sm bg-[var(--ui-bg-muted)]" />
+            <span
+              aria-hidden="true"
+              className="block h-3 w-5 animate-pulse rounded-[var(--ui-radius-control)] bg-[var(--ui-bg-muted)]"
+            />
           ) : (
             count
           )}
@@ -127,7 +135,7 @@ function ListSurface({ className, variant = 'bordered', ...props }: ListSurfaceP
     <div
       className={cn(
         'grid min-w-0',
-        variant === 'bordered' && 'overflow-hidden rounded-sm border border-border bg-surface',
+        variant === 'bordered' && 'overflow-hidden rounded-[var(--ui-radius-control)] border border-border bg-surface',
         className,
       )}
       data-slot="list-surface"
@@ -141,6 +149,8 @@ function ResultsState({
   children,
   emptyAction,
   emptyDescription,
+  emptyIcon,
+  emptyVariant = 'card',
   emptyTitle,
   errorDescription,
   errorTitle,
@@ -156,9 +166,11 @@ function ResultsState({
   if (status === 'empty') {
     return (
       <EmptyState
-        title={emptyTitle}
         {...(emptyAction === undefined ? {} : { action: emptyAction })}
         {...(emptyDescription === undefined ? {} : { description: emptyDescription })}
+        {...(emptyIcon === undefined ? {} : { icon: emptyIcon })}
+        title={emptyTitle}
+        variant={emptyVariant}
       />
     );
   }

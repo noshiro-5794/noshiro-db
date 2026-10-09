@@ -1,5 +1,3 @@
-import { LandingCapabilities } from './LandingCapabilities';
-import { LandingClosingCta } from './LandingClosingCta';
 import { LandingHero } from './LandingHero';
 import { SearchShowcase } from './SearchShowcase';
 import { SeasonSpotlight } from './SeasonSpotlight';
@@ -7,9 +5,8 @@ import { SeasonSpotlight } from './SeasonSpotlight';
 /**
  * Public landing page.
  *
- * Everything here is the product itself rather than a picture of it: the season
- * board, the search results, the works behind them. A visitor should be able to
- * tell what they get — and try it — without an account.
+ * Every band is the product rather than a picture of it: the season board, then
+ * the search over real works.
  */
 export function GuestHome() {
   return (
@@ -17,12 +14,11 @@ export function GuestHome() {
       <LandingHero />
       <SeasonSpotlight />
       <SearchShowcase />
-      <LandingCapabilities />
-      <LandingClosingCta />
     </>
   );
 }
 
+/** Shown while the session is being resolved, so the page does not jump. */
 export function SessionCheckingHome() {
   return (
     <div className="grid gap-3 sm:grid-cols-3">

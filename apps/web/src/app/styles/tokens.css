@@ -9,6 +9,8 @@
   --ui-bg-subtle: #eeeef1;
   --ui-bg-muted: #e7e7eb;
   --ui-bg-sidebar: #f3f3f5;
+  /* The marketing surface reads as one sheet: its canvas is the white the bar sits on. */
+  --ui-bg-public: #ffffff;
   --ui-border: #dedee3;
   --ui-border-subtle: #e8e8eb;
   --ui-border-strong: #c7c7cf;
@@ -50,18 +52,28 @@
   --ui-overlay: rgb(18 18 22 / 52%);
   --ui-focus: #5f4d86;
   --ui-focus-halo: color-mix(in srgb, var(--ui-focus) 24%, transparent);
-  --ui-action-primary: #29292e;
+  /* plane's inverse: the filled action is the same near-black as strong text. */
+  --ui-action-primary: #202024;
   --ui-action-primary-hover: #3a3a41;
   --ui-action-primary-text: #ffffff;
-  --ui-shadow-control: 0 1px 2px rgb(20 20 26 / 5%);
+  /* plane's raised-100: the lift a bordered control carries at rest. */
+  --ui-shadow-control: 0 1px 6px -1px rgb(41 47 61 / 3%), 0 1px 4px 0 rgb(41 47 61 / 4%);
   --ui-shadow-surface: 0 1px 2px rgb(20 20 26 / 4%), 0 4px 12px rgb(20 20 26 / 3%);
-  --ui-shadow-popup: 0 12px 32px rgb(20 20 26 / 12%), 0 2px 8px rgb(20 20 26 / 8%);
+  /* plane's overlay-100: a soft halo rather than a drop shadow under a menu. */
+  --ui-shadow-popup: 0 10px 10px -5px rgb(41 47 61 / 4%), 0 10px 40px -5px rgb(41 47 61 / 4%);
   --ui-shadow-dialog: 0 28px 72px rgb(20 20 26 / 20%), 0 4px 16px rgb(20 20 26 / 10%);
+  /* A sticky bar takes this once the page scrolls under it. */
+  --ui-shadow-header: 0 1px 3px rgb(20 20 26 / 6%);
+  /* A card or link lifting under the pointer: tight, negative spread. */
+  --ui-shadow-hover-lift: 0 12px 32px -16px rgb(20 20 26 / 18%);
 
   /* Stable geometry for the workspace and its controls. */
   --ui-sidebar-width: 248px;
-  --ui-public-header-height: 56px;
-  --ui-mobile-header-height: 48px;
+  /* One bar height for the header, at every width. */
+  --ui-public-header-height: 64px;
+  --ui-mobile-header-height: 56px;
+  /* plane's --padding-page-x: the inset the header and page rows share. */
+  --ui-page-padding-x: 1.35rem;
   --ui-page-topbar-height: 48px;
   --ui-shell-header-height: 0px;
   --ui-sticky-page-top: var(--ui-shell-header-height);
@@ -73,15 +85,50 @@
   --ui-layer-shell-header: 30;
   --ui-shell-gap: 10px;
   --ui-radius-control: 6px;
+  /* plane's ladder steps the radius up once the control passes 32px. */
+  --ui-radius-control-lg: 8px;
   --ui-radius-surface: 8px;
   --ui-radius-frame: 10px;
   --ui-radius-pill: 999px;
   --ui-control-height-xs: 28px;
   --ui-control-height: 32px;
   --ui-control-height-lg: 36px;
+  --ui-control-height-xl: 40px;
+  /* The dense rung: a 24px control, for a toolbar that cannot spare more. */
+  --ui-control-height-2xs: 24px;
+  /* Control rungs, after plane's ladder: the padding, gap and glyph size travel
+     with the height, so a small control is not a big control with smaller text.
+     plane pairs 24px with 8px of side padding and a 14px glyph, 28px with 10 and
+     16, 32px with 12 and 16, 36px with 14 and 16. */
+  --ui-control-padding-x-2xs: 8px;
+  --ui-control-padding-x-xs: 10px;
+  --ui-control-padding-x: 12px;
+  --ui-control-padding-x-lg: 14px;
+  --ui-control-padding-x-xl: 16px;
+  --ui-control-gap-2xs: 4px;
+  --ui-control-gap: 6px;
+  --ui-control-gap-xl: 8px;
+  --ui-control-glyph-2xs: 14px;
+  --ui-control-glyph: 16px;
+  --ui-control-glyph-xl: 20px;
+  --ui-control-glyph-sm: 14px;
+  /* A bordered field is inset less than a button of the same height. */
+  --ui-field-inset: 10px;
+  --ui-field-inset-lg: 12px;
+  /* Layered interaction washes, after plane's layer-transparent states: a nav
+     item's hover is a wash over whatever it sits on, not a colour swap. */
+  --ui-layer-hover: rgb(20 20 26 / 4%);
+  --ui-layer-active: rgb(20 20 26 / 6%);
+  --ui-layer-selected: rgb(20 20 26 / 8%);
   --ui-content-width: 1400px;
   --ui-transition-fast: 120ms;
   --ui-transition-standard: 160ms;
+  /* Entrance and hover lifts. Colour and opacity shifts use the fast steps. */
+  --ui-transition-slow: 260ms;
+  /* Transform and slide motion. */
+  --ui-ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Colour and opacity shifts. */
+  --ui-ease-gentle: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 :root[data-theme-mode='dark'] {
@@ -94,6 +141,7 @@
   --ui-bg-subtle: #1d1d21;
   --ui-bg-muted: #25252b;
   --ui-bg-sidebar: #141416;
+  --ui-bg-public: #111113;
   --ui-border: #2b2b31;
   --ui-border-subtle: #222228;
   --ui-border-strong: #414149;
@@ -129,6 +177,9 @@
   --ui-info-soft: color-mix(in srgb, var(--ui-info) 15%, transparent);
 
   --ui-overlay: rgb(0 0 0 / 64%);
+  --ui-layer-hover: rgb(255 255 255 / 5%);
+  --ui-layer-active: rgb(255 255 255 / 7%);
+  --ui-layer-selected: rgb(255 255 255 / 10%);
   --ui-focus: #b7a8d9;
   --ui-focus-halo: color-mix(in srgb, var(--ui-focus) 30%, transparent);
   --ui-action-primary: #f1f1f3;
@@ -138,6 +189,8 @@
   --ui-shadow-surface: 0 1px 2px rgb(0 0 0 / 20%), 0 6px 16px rgb(0 0 0 / 14%);
   --ui-shadow-popup: 0 16px 40px rgb(0 0 0 / 44%), 0 2px 8px rgb(0 0 0 / 30%);
   --ui-shadow-dialog: 0 32px 84px rgb(0 0 0 / 58%), 0 4px 18px rgb(0 0 0 / 38%);
+  --ui-shadow-header: 0 1px 3px rgb(0 0 0 / 40%);
+  --ui-shadow-hover-lift: 0 12px 32px -16px rgb(0 0 0 / 60%);
 }
 
 [data-app-shell='public'] {

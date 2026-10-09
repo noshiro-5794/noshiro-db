@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useI18n } from '@/shared/i18n';
+import { cn } from '@/shared/lib/cn';
 import {
   Combobox,
   ComboboxContent,
@@ -9,6 +10,7 @@ import {
   ComboboxList,
   ComboboxTrigger,
 } from '@/shared/ui/Combobox';
+import { filterTriggerFieldClass, filterTriggerValueClass } from '@/shared/ui/FilterTrigger';
 import { InputGroup, InputGroupAddon } from '@/shared/ui/InputGroup';
 
 type FilterComboboxOption<TValue extends string> = {
@@ -18,27 +20,34 @@ type FilterComboboxOption<TValue extends string> = {
 
 type FilterComboboxProps<TValue extends string> = {
   createValue?: (query: string) => TValue | null;
+  /** Option value that means the filter is not narrowing anything. Defaults to the empty string. */
+  emptyValue?: string;
   label: string;
   options: Array<FilterComboboxOption<TValue>>;
   placeholder?: string;
+  size?: 'default' | 'lg';
   value: TValue;
   onChange: (value: TValue) => void;
 };
 
 export function FilterCombobox<TValue extends string>({
   createValue,
+  emptyValue = '',
   label,
   options,
   placeholder,
+  size = 'default',
   value,
   onChange,
 }: FilterComboboxProps<TValue>) {
   const { t } = useI18n();
+  const narrowed = value !== emptyValue;
   const selectedOption = useMemo(
-    () => options.find((option) => option.value === value) ?? (value ? { label: value, value } : null),
-    [options, value],
+    () => (narrowed ? (options.find((option) => option.value === value) ?? { label: value, value }) : null),
+    [narrowed, options, value],
   );
-  const selectedLabel = selectedOption?.label ?? value;
+  // An unset filter leaves the value slot empty, so the field name is the only label the trigger shows.
+  const selectedLabel = selectedOption?.label ?? '';
   const [inputValue, setInputValue] = useState(selectedLabel);
   const [isOpen, setIsOpen] = useState(false);
   const trimmedQuery = inputValue.trim();
@@ -89,17 +98,17 @@ export function FilterCombobox<TValue extends string>({
         setInputValue(option.label);
       }}
     >
-      <InputGroup className="h-[var(--ui-control-height)]">
-        <InputGroupAddon className="shrink-0 pr-0 text-xs">{label}</InputGroupAddon>
+      <InputGroup size={size}>
+        <InputGroupAddon className={cn('shrink-0', filterTriggerFieldClass)}>{label}</InputGroupAddon>
         <ComboboxInput
           aria-label={label}
-          className="font-medium"
+          className={cn('px-0', filterTriggerValueClass)}
           placeholder={placeholder}
           onFocus={(event) => {
             event.currentTarget.select();
           }}
         />
-        <InputGroupAddon className="pl-0 pr-0.5">
+        <InputGroupAddon>
           <ComboboxTrigger aria-label={label} />
         </InputGroupAddon>
       </InputGroup>

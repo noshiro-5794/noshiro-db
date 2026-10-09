@@ -18,7 +18,7 @@ function ContentRowMedia({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div
       className={cn(
-        'hidden h-[88px] w-16 overflow-hidden rounded-sm border border-border bg-muted sm:block [&>a]:grid [&>a]:size-full [&_img]:size-full [&_img]:object-cover [&_span]:grid [&_span]:size-full [&_span]:place-items-center [&_span]:bg-[var(--ui-accent-soft)] [&_span]:text-[var(--ui-accent-text)]',
+        'hidden h-[88px] w-16 overflow-hidden rounded-[var(--ui-radius-control)] border border-border bg-muted sm:block [&>a]:grid [&>a]:size-full [&_img]:size-full [&_img]:object-cover [&_span]:grid [&_span]:size-full [&_span]:place-items-center [&_span]:bg-[var(--ui-accent-soft)] [&_span]:text-[var(--ui-accent-text)]',
         className,
       )}
       data-slot="content-row-media"

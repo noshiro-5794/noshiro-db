@@ -9,32 +9,26 @@ import {
   formatAiringDate,
   formatMinutesOfDay,
   groupEntriesByWeekday,
-  providerOf,
   startMinutesOf,
-  sourceLabel,
   titleOfEntry,
   weekdayName,
 } from '../model/calendar';
-import { SourceDot } from './primitives';
 
 /**
  * AniChart-style broadcast board: one column per weekday, each holding dense
- * cards with artwork, airtime and provenance, plus a hover panel that exposes
- * the curation facts the bar itself has no room for.
+ * cards with artwork and airtime, plus a hover panel that exposes the curation
+ * facts the bar itself has no room for.
  */
 export function BroadcastBoard({
   emptyLabel,
   entries,
   onOpen,
-  showProvenance = true,
   state,
 }: {
   emptyLabel: string;
   entries: CalendarBoardEntry[];
   /** Omit on read-only surfaces, where the hover panel stays informational. */
   onOpen?: ((entry: CalendarBoardEntry) => void) | undefined;
-  /** Landing surfaces drop the source chip: visitors read the show, not the feed. */
-  showProvenance?: boolean;
   state: RouteBackState;
 }) {
   const { locale, t } = useI18n();
@@ -63,13 +57,7 @@ export function BroadcastBoard({
                 <span className="text-[11px] tabular-nums text-[var(--ui-text-subtle)]">{bucket.entries.length}</span>
               </header>
               {bucket.entries.map((entry) => (
-                <BroadcastCard
-                  entry={entry}
-                  key={entry.id}
-                  onOpen={onOpen}
-                  showProvenance={showProvenance}
-                  state={state}
-                />
+                <BroadcastCard entry={entry} key={entry.id} onOpen={onOpen} state={state} />
               ))}
             </section>
           ))}
@@ -84,13 +72,7 @@ export function BroadcastBoard({
           </header>
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
             {extras.map((entry) => (
-              <BroadcastCard
-                entry={entry}
-                key={entry.id}
-                onOpen={onOpen}
-                showProvenance={showProvenance}
-                state={state}
-              />
+              <BroadcastCard entry={entry} key={entry.id} onOpen={onOpen} state={state} />
             ))}
           </div>
         </section>
@@ -102,18 +84,15 @@ export function BroadcastBoard({
 function BroadcastCard({
   entry,
   onOpen,
-  showProvenance,
   state,
 }: {
   entry: CalendarBoardEntry;
   onOpen?: ((entry: CalendarBoardEntry) => void) | undefined;
-  showProvenance: boolean;
   state: RouteBackState;
 }) {
   const { locale, t } = useI18n();
   const work = entry.work;
   const title = titleOfEntry(entry);
-  const provider = providerOf(entry);
   const minutes = startMinutesOf(entry);
   const isDateOnly = entry.precision === 'day';
   const dateLabel = formatAiringDate(entry.startsAt, locale);
@@ -125,7 +104,7 @@ function BroadcastCard({
   const weekday = entry.weekday === null ? '' : weekdayName(locale, entry.weekday);
 
   return (
-    <div className="group/card relative" data-cal-source={provider}>
+    <div className="group/card relative">
       <Link
         className={cn(
           'grid grid-cols-[42px_minmax(0,1fr)] gap-2 rounded-[var(--ui-radius-surface)] border border-[var(--ui-border)] bg-[var(--ui-bg-surface)] p-1.5 transition-colors',
@@ -136,7 +115,7 @@ function BroadcastCard({
       >
         <CoverImage
           alt=""
-          className="h-[58px] w-[42px] rounded-[5px] bg-[var(--ui-bg-subtle)] object-cover"
+          className="h-[58px] w-[42px] rounded-sm bg-[var(--ui-bg-subtle)] object-cover"
           label={title}
           seed={entry.workId}
           src={work?.cover}
@@ -153,12 +132,6 @@ function BroadcastCard({
             {entry.episodeNumber === null ? null : (
               <span className="shrink-0 tabular-nums">EP{entry.episodeNumber}</span>
             )}
-            {showProvenance ? (
-              <span className="flex min-w-0 items-center gap-1 truncate">
-                <SourceDot className="size-1.5" provider={provider} />
-                <span className="truncate">{sourceLabel(provider)}</span>
-              </span>
-            ) : null}
           </span>
         </span>
       </Link>
