@@ -23,7 +23,7 @@ export function SpoilerText({ children, className, isSpoiler, revealLabel, ...pr
 
   return (
     <div
-      className="relative min-h-12 overflow-hidden rounded-sm border border-border-subtle bg-muted"
+      className="relative min-h-12 overflow-hidden rounded-[var(--ui-radius-control)] border border-border-subtle bg-muted"
       data-slot="spoiler-text"
     >
       <p aria-hidden="true" className={cn(className, 'invisible')} {...props} id={contentId}>

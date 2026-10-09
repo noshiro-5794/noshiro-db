@@ -18,7 +18,7 @@ function Tooltip({ children, className, content }: TooltipProps) {
         <BaseTooltip.Positioner className="z-50" sideOffset={6}>
           <BaseTooltip.Popup
             className={cn(
-              'origin-[var(--transform-origin)] rounded-sm border border-border bg-elevated px-2 py-1 text-xs font-medium text-foreground shadow-[var(--ui-shadow-popup)] transition-[opacity,transform] duration-[var(--ui-transition-fast)] data-[ending-style]:scale-[0.985] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.985] data-[starting-style]:opacity-0',
+              'origin-[var(--transform-origin)] rounded-[var(--ui-radius-control)] border border-border bg-elevated px-2 py-1 text-xs font-medium text-foreground shadow-[var(--ui-shadow-popup)] transition-[opacity,transform] duration-[var(--ui-transition-fast)] data-[ending-style]:scale-[0.985] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.985] data-[starting-style]:opacity-0',
               className,
             )}
             data-slot="tooltip"

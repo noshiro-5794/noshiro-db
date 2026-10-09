@@ -8,7 +8,10 @@ type CardProps = ComponentProps<'div'> & {
 function Card({ className, size = 'default', ...props }: CardProps) {
   return (
     <div
-      className={cn('group/card flex flex-col rounded-md border border-border bg-surface text-foreground', className)}
+      className={cn(
+        'group/card flex flex-col rounded-[var(--ui-radius-surface)] border border-border bg-surface text-foreground',
+        className,
+      )}
       data-size={size}
       data-slot="card"
       {...props}
