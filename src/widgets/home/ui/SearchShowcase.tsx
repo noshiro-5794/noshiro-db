@@ -1,18 +1,15 @@
 import { type SyntheticEvent, useMemo, useState } from 'react';
-import { Link, useLocation } from '@tanstack/react-router';
+import { useLocation } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { useI18n } from '@/shared/i18n';
 import { subjectKindLabel } from '@/shared/i18n/subject-labels';
 import { calendarImageOf, filterCalendarItems, flattenCalendarGroups, sortCalendarItems } from '@/features/search';
 import { safetyOptions, subjectTypeOptions, type SafetyFilter, type SubjectTypeFilter } from '@/features/search';
-import { subjectQueries } from '@/entities/subject';
+import { subjectQueries, SubjectPosterCard } from '@/entities/subject';
 import type { CalendarSubjectItem, SubjectSummary } from '@/shared/api';
 import { routes } from '@/shared/routing/paths';
-import type { RouteBackState } from '@/shared/routing/route-state';
 import { routeBackState } from '@/shared/routing/route-state';
-import { resolvedRouteHref } from '@/shared/routing/resolved-href';
 import { Button } from '@/shared/ui/Button';
-import { CoverImage } from '@/shared/ui/CoverImage';
 import { DataToolbar, DataToolbarPrimary, DataToolbarRow, SearchField } from '@/shared/ui/DataView';
 import { ErrorState } from '@/shared/ui/FeedbackState';
 import { FilterMenu } from '@/shared/ui/FilterMenu';
@@ -54,34 +51,6 @@ function buildSearchPath({
 
   const query = params.toString();
   return query ? `${routes.search}?${query}` : routes.search;
-}
-
-type ShowcasePosterProps = {
-  poster: string | null;
-  seed?: string;
-  state?: RouteBackState;
-  subtitle?: string;
-  title: string;
-  to: string;
-};
-
-function SearchPoster({ poster, seed, state, subtitle, title, to }: ShowcasePosterProps) {
-  return (
-    <Link
-      className="group grid min-w-0 gap-2"
-      data-slot="search-poster"
-      {...(state === undefined ? {} : { state })}
-      {...resolvedRouteHref(to)}
-    >
-      <div className="aspect-[2/3] overflow-hidden rounded-[var(--ui-radius-surface)] bg-[var(--ui-bg-subtle)] ring-1 ring-[var(--ui-border)] transition-colors group-hover:ring-[var(--ui-border-strong)]">
-        <CoverImage alt={title} className="size-full object-cover" label={title} seed={seed} src={poster} />
-      </div>
-      <span className="min-w-0">
-        <span className="line-clamp-2 text-sm font-semibold leading-5 text-[var(--ui-text)]">{title}</span>
-        <span className="mt-1 block min-w-0 truncate text-xs text-[var(--ui-text-muted)]">{subtitle}</span>
-      </span>
-    </Link>
-  );
 }
 
 export function SearchShowcase() {
@@ -174,7 +143,7 @@ export function SearchShowcase() {
       <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
         {isSearchingDatabase
           ? (subjectQuery.data?.results ?? []).map((subject) => (
-              <SearchPoster
+              <SubjectPosterCard
                 key={subject.id}
                 poster={subjectPosterOf(subject)}
                 seed={subject.id}
@@ -185,7 +154,7 @@ export function SearchShowcase() {
               />
             ))
           : calendarItems.map((item) => (
-              <SearchPoster
+              <SubjectPosterCard
                 key={item.subject_id}
                 poster={calendarImageOf(item)}
                 seed={item.subject_id}
