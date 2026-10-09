@@ -133,8 +133,8 @@ function UserConnectionsPage({ currentPage, mode, onPageChange, userIdParam }: U
       }
     >
       <ResultsState
-        emptyAction={<Users className="size-4 text-subtle-foreground" />}
         emptyDescription={emptyBody}
+        emptyIcon={Users}
         emptyTitle={emptyTitle}
         errorDescription={t('profile.connectionsErrorBody')}
         errorTitle={t('profile.connectionsErrorTitle')}
