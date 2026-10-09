@@ -108,6 +108,7 @@ export function SearchFilters({
             aria-label={t('search.keyword')}
             maxLength={200}
             placeholder={t('public.searchPlaceholder')}
+            size="lg"
             value={draftKeyword}
             onChange={(event) => {
               const value = event.target.value;
@@ -116,7 +117,7 @@ export function SearchFilters({
             }}
           />
         </DataToolbarPrimary>
-        <Button type="submit" variant="secondary">
+        <Button size="lg" type="submit" variant="secondary">
           {t('search.title')}
         </Button>
       </DataToolbarRow>
@@ -127,7 +128,7 @@ export function SearchFilters({
             className={
               defaultSearchFilters.includes(filter)
                 ? 'w-[9.5rem] min-w-0 shrink-0 sm:w-44'
-                : 'grid w-[calc(11rem+2.25rem)] min-w-0 shrink-0 grid-cols-[minmax(0,1fr)_32px] gap-1'
+                : 'grid w-[calc(11rem+2.25rem)] min-w-0 shrink-0 grid-cols-[minmax(0,1fr)_var(--ui-control-height-lg)] gap-1'
             }
             key={filter}
           >
@@ -135,6 +136,7 @@ export function SearchFilters({
               <FilterMenu
                 label={filterLabels.type}
                 options={subjectTypeOptions.map((option) => ({ label: t(option.labelKey), value: option.value }))}
+                size="lg"
                 value={search.subject_type ?? ''}
                 onChange={(value) => {
                   onChange('subject_type', value);
@@ -142,11 +144,11 @@ export function SearchFilters({
               />
             ) : null}
             {filter === 'sourceId' ? (
-              <InputGroup className="h-[var(--ui-control-height)]">
-                <InputGroupAddon className="pr-0 text-xs">{filterLabels.sourceId}</InputGroupAddon>
+              <InputGroup size="lg">
+                <InputGroupAddon className="pr-0">{filterLabels.sourceId}</InputGroupAddon>
                 <InputGroupInput
                   aria-label={filterLabels.sourceId}
-                  className="font-medium"
+                  className="px-[var(--ui-control-gap)] font-medium"
                   inputMode="numeric"
                   maxLength={64}
                   pattern="[0-9]*"
@@ -165,7 +167,7 @@ export function SearchFilters({
                 }
                 label={filterLabels.year}
                 options={yearOptions}
-                placeholder={t('search.year')}
+                size="lg"
                 value={search.year ? String(search.year) : ''}
                 onChange={(value) => {
                   onChange('year', value);
@@ -176,6 +178,7 @@ export function SearchFilters({
               <FilterMenu
                 label={filterLabels.season}
                 options={seasonOptions.map((option) => ({ label: t(option.labelKey), value: option.value }))}
+                size="lg"
                 value={search.season ?? ''}
                 onChange={(value) => {
                   onChange('season', value);
@@ -186,6 +189,7 @@ export function SearchFilters({
               <FilterMenu
                 label={filterLabels.sort}
                 options={orderingOptions.map((option) => ({ label: t(option.labelKey), value: option.value }))}
+                size="lg"
                 value={search.ordering ?? 'popular'}
                 onChange={(value) => {
                   onChange('ordering', value === 'popular' ? '' : value);
@@ -199,6 +203,7 @@ export function SearchFilters({
                   label: option.value ? option.label : t('search.all'),
                   value: option.value,
                 }))}
+                size="lg"
                 value={search.platform ?? ''}
                 onChange={(value) => {
                   onChange('platform', value);
@@ -209,6 +214,7 @@ export function SearchFilters({
               <FilterMenu
                 label={filterLabels.episodes}
                 options={episodeRangeOptions.map((option) => ({ label: t(option.labelKey), value: option.value }))}
+                size="lg"
                 value={search.episodes ?? ''}
                 onChange={(value) => {
                   onChange('episodes', value);
@@ -217,8 +223,10 @@ export function SearchFilters({
             ) : null}
             {filter === 'safety' ? (
               <FilterMenu
+                emptyValue="all"
                 label={filterLabels.safety}
                 options={safetyOptions.map((option) => ({ label: t(option.labelKey), value: option.value }))}
+                size="lg"
                 value={search.nsfw === false ? 'safe' : 'all'}
                 onChange={(value) => {
                   onChange('nsfw', value === 'safe' ? 'false' : '');
@@ -228,8 +236,8 @@ export function SearchFilters({
             {!defaultSearchFilters.includes(filter) ? (
               <Button
                 aria-label={`${t('common.clear')} ${filterLabels[filter]}`}
-                className="self-end text-[var(--ui-text-subtle)] hover:text-[var(--ui-text)]"
-                size="icon"
+                className="text-[var(--ui-text-subtle)] hover:text-[var(--ui-text)]"
+                size="icon-lg"
                 tooltip={`${t('common.clear')} ${filterLabels[filter]}`}
                 type="button"
                 variant="ghost"
@@ -247,10 +255,8 @@ export function SearchFilters({
           <div className="w-full min-w-0 sm:w-44">
             <FilterMenu
               label={t('search.addFilter')}
-              options={[
-                { label: t('search.addFilter'), value: '' },
-                ...availableFilters.map((filter) => ({ label: filterLabels[filter], value: filter })),
-              ]}
+              options={availableFilters.map((filter) => ({ label: filterLabels[filter], value: filter }))}
+              size="lg"
               value=""
               onChange={(filter) => {
                 if (filter && !activeFilters.includes(filter)) {

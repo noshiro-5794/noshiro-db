@@ -4,8 +4,10 @@ import { cn } from '@/shared/lib/cn';
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/FeedbackState';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/shared/ui/InputGroup';
 
-type SearchFieldProps = Omit<ComponentProps<typeof InputGroupInput>, 'type'> & {
+// `size` on an input is the native character-width attribute, so the control rung replaces it.
+type SearchFieldProps = Omit<ComponentProps<typeof InputGroupInput>, 'size' | 'type'> & {
   'aria-label': string;
+  size?: 'default' | 'lg';
 };
 
 type ResultsMetaProps = ComponentProps<'div'> & {
@@ -62,9 +64,9 @@ function DataToolbarFilters({ className, ...props }: ComponentProps<'div'>) {
   );
 }
 
-function SearchField({ className, ...props }: SearchFieldProps) {
+function SearchField({ className, size = 'default', ...props }: SearchFieldProps) {
   return (
-    <InputGroup data-slot="search-field">
+    <InputGroup data-slot="search-field" size={size}>
       <InputGroupAddon aria-hidden="true">
         <Search />
       </InputGroupAddon>
