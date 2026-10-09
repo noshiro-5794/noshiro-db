@@ -92,7 +92,7 @@ export function EventDetails({
           <div className="mt-4 flex items-center gap-3 border-t border-[var(--ui-border-subtle)] pt-4">
             <CoverImage
               alt=""
-              className="h-14 w-11 shrink-0 rounded-[6px] bg-[var(--ui-bg-subtle)] object-cover"
+              className="h-14 w-11 shrink-0 rounded-sm bg-[var(--ui-bg-subtle)] object-cover"
               label={work.displayName}
               seed={work.id}
               src={work.cover}
