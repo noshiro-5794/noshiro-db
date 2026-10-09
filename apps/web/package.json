@@ -1,0 +1,85 @@
+{
+  "name": "noshiro-db-frontend",
+  "private": true,
+  "description": "React frontend for the Noshiro DB anime and galgame catalog",
+  "license": "MIT",
+  "homepage": "https://app.noshiro.moe",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/noshiro-5794/noshiro-db-frontend.git"
+  },
+  "bugs": {
+    "url": "https://github.com/noshiro-5794/noshiro-db-frontend/issues"
+  },
+  "type": "module",
+  "packageManager": "pnpm@11.17.0",
+  "engines": {
+    "node": ">=24 <25",
+    "pnpm": ">=11 <12"
+  },
+  "prettier": {
+    "printWidth": 120,
+    "singleQuote": true,
+    "trailingComma": "all"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "commit": "cz",
+    "check": "pnpm format:check && pnpm typecheck && pnpm lint && pnpm test && pnpm check:dead-code && pnpm test:e2e && pnpm build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "icons": "node tools/generate-icons.mjs",
+    "lint": "eslint . --max-warnings=0",
+    "test": "vitest run src",
+    "test:e2e": "playwright test",
+    "test:watch": "vitest src",
+    "typecheck": "tsc -b",
+    "check:dead-code": "knip",
+    "check:dependencies": "pnpm audit --prod --audit-level high"
+  },
+  "config": {
+    "commitizen": {
+      "path": "cz-conventional-changelog"
+    }
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.6.0",
+    "@tanstack/history": "^1.162.0",
+    "@tanstack/react-query": "^5.101.4",
+    "@tanstack/react-router": "^1.170.18",
+    "clsx": "^2.1.1",
+    "d3-force": "^3.0.0",
+    "lucide-react": "^1.27.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-markdown": "^10.1.0",
+    "rehype-sanitize": "^6.0.0",
+    "remark-gfm": "^4.0.1",
+    "tailwind-merge": "^3.6.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.62.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/d3-force": "^3.0.10",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.4",
+    "commitizen": "^4.3.2",
+    "cz-conventional-changelog": "^3.3.0",
+    "eslint": "^10.8.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "globals": "^17.7.0",
+    "knip": "^6.29.0",
+    "prettier": "^3.9.6",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.65.0",
+    "vite": "^8.1.5",
+    "vitest": "^4.1.10"
+  }
+}
