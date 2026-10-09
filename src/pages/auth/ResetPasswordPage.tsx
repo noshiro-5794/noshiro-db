@@ -1,6 +1,7 @@
 import { type SyntheticEvent, useCallback, useState } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { KeyRound, LockKeyhole, Mail } from 'lucide-react';
+import { publicAssetPaths } from '@/shared/assets/public-assets';
 import { env } from '@/shared/config/env';
 import { authApi } from '@/entities/session';
 import { AuthField, AuthPageLayout } from '@/features/auth';
@@ -93,7 +94,7 @@ export function ResetPasswordPage() {
     <AuthPageLayout title={t('auth.resetPassword')}>
       <form className="grid gap-5" onSubmit={(event) => void handleSubmit(event)}>
         <div className="motion-rise grid justify-items-center text-center">
-          <img className="size-12 rounded-lg" src="/favicon.svg" alt="" aria-hidden="true" />
+          <img className="size-12 rounded-lg" src={publicAssetPaths.appIcon} alt="" aria-hidden="true" />
           <h1 className="mt-5 text-2xl font-semibold tracking-normal text-[var(--ui-text)]">
             {t('auth.resetPassword')}
           </h1>
