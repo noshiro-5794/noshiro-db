@@ -1,5 +1,5 @@
 import type { ComponentProps, ReactNode } from 'react';
-import { LoaderCircle, Search } from 'lucide-react';
+import { LoaderCircle, Search, type LucideIcon } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/FeedbackState';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/shared/ui/InputGroup';
@@ -24,6 +24,7 @@ type ResultsStateProps = {
   children: ReactNode;
   emptyAction?: ReactNode;
   emptyDescription?: string;
+  emptyIcon?: LucideIcon;
   /** `inline` for a section that sits inside a page with other content. */
   emptyVariant?: 'card' | 'inline';
   emptyTitle: string;
@@ -148,6 +149,7 @@ function ResultsState({
   children,
   emptyAction,
   emptyDescription,
+  emptyIcon,
   emptyVariant = 'card',
   emptyTitle,
   errorDescription,
@@ -164,10 +166,11 @@ function ResultsState({
   if (status === 'empty') {
     return (
       <EmptyState
-        title={emptyTitle}
-        variant={emptyVariant}
         {...(emptyAction === undefined ? {} : { action: emptyAction })}
         {...(emptyDescription === undefined ? {} : { description: emptyDescription })}
+        {...(emptyIcon === undefined ? {} : { icon: emptyIcon })}
+        title={emptyTitle}
+        variant={emptyVariant}
       />
     );
   }
