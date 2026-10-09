@@ -116,3 +116,21 @@ contract, not a restatement of the props.
 Enforcement: `tsc` runs with `strict`, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`,
 `verbatimModuleSyntax`, and `erasableSyntaxOnly`; ESLint extends `strictTypeChecked` and rejects imports that bypass
 a slice's public `index.ts`. Prettier owns formatting at 120 columns. `pnpm check` runs the whole chain.
+
+### Interface scale
+
+The primitives follow plane's design system (`@makeplane/propel`), whose rules are mirrored into `tokens.css` rather
+than imported: a repository that runs two stacks should own its tokens, and propel is a Tailwind v4 CSS layer built
+for plane's own component set.
+
+- **Controls** pick a rung and take everything from it: `--ui-control-height-xs` (28px), `--ui-control-height`
+  (32px) or `--ui-control-height-lg` (36px), with `--ui-control-padding-x*`, `--ui-control-gap` and
+  `--ui-control-glyph*` travelling alongside. One row uses one rung; a small control is not a large control with
+  smaller text.
+- **Radius** has three levels: `--ui-radius-control` (6px) for anything you click, `--ui-radius-surface` (8px) for
+  the surface that holds them (menus, popovers, cards, dialogs) and `--ui-radius-frame` (10px) for a full-height
+  panel such as the navigation drawer.
+- **Focus** is always the soft halo (`--ui-focus-halo` at 2px with a 1px offset), never a hard ring.
+- **Motion** is named, not inline: `--ui-transition-fast/standard/slow` with `--ui-ease-standard` for transforms and
+  `--ui-ease-gentle` for colour. `src/shared/lib/motion.ts` mirrors the two curves for the `motion` half of the app;
+  `global.css` reduces both halves for visitors who ask for less motion.
