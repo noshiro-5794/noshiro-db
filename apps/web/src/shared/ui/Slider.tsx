@@ -37,7 +37,7 @@ function Slider({
         <BaseSlider.Track className="relative h-1.5 w-full rounded-full bg-muted" data-slot="slider-track">
           <BaseSlider.Indicator className="rounded-full bg-brand" data-slot="slider-indicator" />
           <BaseSlider.Thumb
-            className="size-4 rounded-full border border-brand bg-elevated shadow-[var(--ui-shadow-control)] outline-none transition-shadow duration-[var(--ui-transition-fast)] has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-ring has-[input:focus-visible]:ring-offset-2 has-[input:focus-visible]:ring-offset-elevated"
+            className="size-4 rounded-full border border-brand bg-elevated shadow-[var(--ui-shadow-control)] outline-none transition-shadow duration-[var(--ui-transition-fast)] has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-[var(--ui-focus-halo)] has-[input:focus-visible]:ring-offset-1 has-[input:focus-visible]:ring-offset-elevated"
             data-slot="slider-thumb"
             getAriaLabel={() => ariaLabel}
           />

@@ -95,7 +95,10 @@ function ResultsMeta({
       <div className="flex min-w-0 flex-wrap items-center gap-2" data-slot="results-meta-count">
         <strong className="font-semibold tabular-nums text-foreground">
           {count === undefined ? (
-            <span aria-hidden="true" className="block h-3 w-5 animate-pulse rounded-sm bg-[var(--ui-bg-muted)]" />
+            <span
+              aria-hidden="true"
+              className="block h-3 w-5 animate-pulse rounded-[var(--ui-radius-control)] bg-[var(--ui-bg-muted)]"
+            />
           ) : (
             count
           )}
@@ -127,7 +130,7 @@ function ListSurface({ className, variant = 'bordered', ...props }: ListSurfaceP
     <div
       className={cn(
         'grid min-w-0',
-        variant === 'bordered' && 'overflow-hidden rounded-sm border border-border bg-surface',
+        variant === 'bordered' && 'overflow-hidden rounded-[var(--ui-radius-control)] border border-border bg-surface',
         className,
       )}
       data-slot="list-surface"
