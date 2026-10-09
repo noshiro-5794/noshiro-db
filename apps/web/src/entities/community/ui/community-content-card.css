@@ -1,0 +1,104 @@
+@reference '../../../app/styles/global.css';
+
+@layer components {
+  .community-content-card {
+    @apply grid gap-4 rounded-lg border p-4 transition sm:grid-cols-[68px_minmax(0,1fr)];
+    border-color: color-mix(in srgb, var(--ui-border) 82%, transparent);
+    background: var(--ui-bg-surface);
+    box-shadow: 0 1px 2px rgb(17 17 24 / 4%);
+  }
+
+  .community-content-card:hover {
+    border-color: color-mix(in srgb, var(--ui-accent-border) 82%, var(--ui-border));
+    background: color-mix(in srgb, var(--ui-bg-surface) 88%, var(--ui-bg-subtle));
+    box-shadow: 0 10px 26px rgb(17 17 24 / 7%);
+  }
+
+  .community-content-card.is-flat {
+    @apply rounded-none border-x-0 border-t-0 px-0 py-4 shadow-none sm:grid-cols-[52px_minmax(0,1fr)];
+    border-bottom-color: var(--ui-border-subtle);
+    background: transparent;
+  }
+
+  .community-content-card.is-flat:hover {
+    border-bottom-color: var(--ui-border-subtle);
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .community-content-card.is-flat .community-content-media {
+    @apply rounded-[var(--ui-radius-control)];
+  }
+
+  .community-content-media {
+    @apply hidden overflow-hidden rounded-md transition sm:grid;
+    aspect-ratio: 3 / 4;
+    background: var(--ui-bg-subtle);
+  }
+
+  .community-content-media img {
+    @apply size-full object-cover transition duration-300;
+  }
+
+  .community-content-media span {
+    @apply grid size-full place-items-center text-[var(--ui-accent-text)];
+    background: var(--ui-accent-soft);
+  }
+
+  .community-content-card:hover .community-content-media img {
+    transform: scale(1.025);
+  }
+
+  .community-content-main {
+    @apply grid min-w-0 content-start gap-2;
+  }
+
+  .community-content-meta {
+    @apply flex flex-wrap items-center gap-x-3 gap-y-1 text-xs;
+    color: color-mix(in srgb, var(--ui-text-muted) 84%, transparent);
+  }
+
+  .community-content-meta a {
+    @apply line-clamp-1 font-medium transition;
+    color: var(--ui-text-muted);
+  }
+
+  .community-content-meta a:hover {
+    color: var(--ui-accent-text);
+  }
+
+  .community-content-title {
+    @apply m-0 line-clamp-2 text-base font-semibold tracking-normal transition;
+    color: var(--ui-text);
+  }
+
+  .community-content-title:hover {
+    color: var(--ui-accent-text);
+  }
+
+  .community-content-body {
+    @apply line-clamp-3 text-sm leading-6;
+    color: var(--ui-text-muted);
+  }
+
+  .community-content-footer {
+    @apply mt-1 flex flex-wrap items-center justify-between gap-3;
+  }
+
+  .community-content-author {
+    @apply min-h-8;
+  }
+
+  .community-content-author a {
+    @apply inline-flex items-center gap-2 text-xs font-semibold transition;
+    color: var(--ui-text-muted);
+  }
+
+  .community-content-author a:hover {
+    color: var(--ui-accent-text);
+  }
+
+  .community-content-actions {
+    @apply flex flex-wrap items-center gap-1;
+  }
+}
