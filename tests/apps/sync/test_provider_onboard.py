@@ -102,6 +102,7 @@ def test_dry_run_plans_diff_on_existing_provider_without_changes() -> None:
     )
 
     assert "exists" in output
-    assert "storage" in output and "allowed" in output
+    assert "storage" in output
+    assert "allowed" in output
     provider = Provider.objects.get(slug="bangumi")
     assert provider.storage_policy == Provider.UsagePolicy.UNKNOWN

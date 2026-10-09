@@ -120,7 +120,7 @@ class SubjectService:
         if isinstance(platform, str):
             if "小说" in platform:
                 return "novel"
-            elif "漫画" in platform:
+            if "漫画" in platform:
                 return "manga"
         return "book"
 

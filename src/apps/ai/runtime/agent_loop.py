@@ -111,7 +111,6 @@ class AgentLoopDriver:
                 )
                 completion = self._complete_turn(
                     run=run,
-                    step=step,
                     air_run=air_run,
                     tool_names=tool_names,
                     use_case=use_case,
@@ -240,7 +239,6 @@ class AgentLoopDriver:
         self,
         *,
         run: AgentRun,
-        step: AgentStep,
         air_run: AIRun,
         tool_names: set[str],
         use_case: str,
@@ -253,7 +251,6 @@ class AgentLoopDriver:
         ]
         last_error: Exception | None = None
         for attempt in range(self.max_attempts_per_turn):
-            started = timezone.now()
             try:
                 completion = self.gateway.complete_agent(
                     messages=transcript,
@@ -266,7 +263,6 @@ class AgentLoopDriver:
                     self._mark_airun_failed(
                         air_run=air_run,
                         error=exc,
-                        started=started,
                     )
                     raise
                 time.sleep(min(2**attempt, 5))
@@ -427,7 +423,6 @@ class AgentLoopDriver:
         *,
         air_run: AIRun,
         error: Exception,
-        started,
     ) -> None:
         air_run.status = AIRun.Status.FAILED
         air_run.error = f"{type(error).__name__}: {error}"[:4000]

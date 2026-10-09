@@ -62,13 +62,12 @@ class VerificationService:
         cls._lock_verification_scope(email=email, purpose=purpose)
         cls._check_send_interval(email=email, purpose=purpose)
         code = cls._generate_code()
-        verification = EmailVerification.objects.create(
+        return EmailVerification.objects.create(
             email=email,
             code=code,
             purpose=purpose,
             expire_at=timezone.now() + timedelta(seconds=cls.CODE_EXPIRE_SECONDS),
         )
-        return verification
 
     @classmethod
     def send_code(cls, *, email: str, purpose: str) -> EmailVerification:

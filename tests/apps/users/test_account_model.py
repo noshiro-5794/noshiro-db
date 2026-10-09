@@ -29,7 +29,7 @@ def test_create_user_uses_safe_privilege_defaults() -> None:
 def test_create_superuser_requires_privilege_flags(field: str) -> None:
     manager = UserManager()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=rf"{field}=True"):
         manager.create_superuser(
             email="admin@example.com",
             password="test-password",
