@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { SubjectStaff } from '@/shared/api';
-import { compactText, coverPlaceholder, detailRows, getInfoboxRows } from '../model/subject-detail';
+import { CoverImage } from '@/shared/ui/CoverImage';
+import { compactText, detailRows, getInfoboxRows } from '../model/subject-detail';
 
 function DetailList({ rows }: { rows: Array<readonly [string, string]> }) {
   if (rows.length === 0) return null;
@@ -37,13 +38,11 @@ export function DetailShell({
   return (
     <div className="grid gap-5">
       <div className="grid grid-cols-[84px_minmax(0,1fr)] gap-4">
-        <img
+        <CoverImage
           alt=""
           className="h-28 w-[84px] rounded-sm bg-muted object-cover ring-1 ring-border-subtle"
-          decoding="async"
-          loading="lazy"
-          referrerPolicy="no-referrer"
-          src={image || coverPlaceholder}
+          label={title}
+          src={image}
         />
         <div className="min-w-0 self-center">
           <h3 className="line-clamp-2 text-lg font-semibold tracking-normal text-foreground">{title}</h3>

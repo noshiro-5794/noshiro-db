@@ -2,13 +2,11 @@ import { useEffect, type ReactNode } from 'react';
 import { Link } from '@tanstack/react-router';
 import { Clock, Tag, X } from 'lucide-react';
 import { useI18n } from '@/shared/i18n';
-import { placeholderImagePaths } from '@/shared/assets/public-assets';
 import { routes } from '@/shared/routing/paths';
 import type { RouteBackState } from '@/shared/routing/route-state';
+import { CoverImage } from '@/shared/ui/CoverImage';
 import { formatDayTitle, formatTime, titleOf, weekdayName, type CalendarOccurrence } from '../model/calendar-model';
 import { IconButton } from './primitives';
-
-const coverPlaceholder = placeholderImagePaths.subjectCover;
 
 /**
  * Google Calendar style detail card: provider-tinted anchor, the work title,
@@ -87,13 +85,12 @@ export function EventDetails({
 
         {work ? (
           <div className="mt-4 flex items-center gap-3 border-t border-[var(--ui-border-subtle)] pt-4">
-            <img
+            <CoverImage
               alt=""
               className="h-14 w-11 shrink-0 rounded-[6px] bg-[var(--ui-bg-subtle)] object-cover"
-              decoding="async"
-              loading="lazy"
-              referrerPolicy="no-referrer"
-              src={work.cover || coverPlaceholder}
+              label={work.displayName}
+              seed={work.id}
+              src={work.cover}
             />
             <Link
               className="text-sm font-medium text-[var(--ui-accent-text)] hover:underline"

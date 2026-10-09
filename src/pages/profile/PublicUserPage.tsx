@@ -132,7 +132,7 @@ export function PublicUserPage() {
             className="xl:sticky xl:top-[calc(var(--ui-sticky-content-top)+1.5rem)]"
           >
             <div className="flex min-w-0 items-center gap-4 xl:grid">
-              <Avatar className="size-20 xl:size-24" loading="eager" src={profile.avatar} />
+              <Avatar className="size-20 xl:size-24" loading="eager" name={profile.nickname} src={profile.avatar} />
               <div className="min-w-0 xl:mt-1">
                 <h1 className="m-0 truncate text-xl font-semibold leading-tight text-foreground" id={profileTitleId}>
                   {profile.nickname}

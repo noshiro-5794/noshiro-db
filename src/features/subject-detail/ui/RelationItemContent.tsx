@@ -1,5 +1,6 @@
 import type { SubjectRelation } from '@/shared/api';
 import { Badge } from '@/shared/ui/Badge';
+import { CoverImage } from '@/shared/ui/CoverImage';
 import { isPrimaryRelation, relationMeta, relationTitle, subjectImage } from '../model/subject-detail';
 
 export function RelationItemContent({
@@ -13,12 +14,10 @@ export function RelationItemContent({
 }) {
   return (
     <>
-      <img
+      <CoverImage
         alt=""
         className="h-[72px] w-[52px] rounded-sm bg-muted object-cover ring-1 ring-inset ring-border-subtle"
-        decoding="async"
-        loading="lazy"
-        referrerPolicy="no-referrer"
+        label={relationTitle(relation, titleFallback)}
         src={subjectImage(relation.subject)}
       />
       <span className="grid min-w-0 gap-1.5">

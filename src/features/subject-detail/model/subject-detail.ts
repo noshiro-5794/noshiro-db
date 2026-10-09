@@ -1,8 +1,5 @@
-import { placeholderImagePaths } from '@/shared/assets/public-assets';
 import type { MessageKey } from '@/shared/i18n';
 import type { SubjectDetail, SubjectEpisode, SubjectRelation, SubjectStaff } from '@/shared/api';
-
-export const coverPlaceholder = placeholderImagePaths.subjectCover;
 
 const relationVisualPageBudget = 6.4;
 const relationChunkSize = 9;
@@ -438,7 +435,7 @@ export function posterOf(subject: SubjectDetail) {
     subject.images?.poster ||
     subject.image_thumbnail ||
     subject.image ||
-    coverPlaceholder
+    null
   );
 }
 
@@ -457,7 +454,7 @@ export function relationMeta(relation: SubjectRelation, fallback: string) {
 }
 
 export function subjectImage(subject: SubjectRelation['subject']) {
-  return subject.images?.poster || subject.image_thumbnail || subject.image || coverPlaceholder;
+  return subject.images?.poster || subject.image_thumbnail || subject.image || null;
 }
 
 export function episodeMeta(episode: SubjectEpisode, fallback: string) {

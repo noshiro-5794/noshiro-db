@@ -123,7 +123,11 @@ export function PublicCollectionPage() {
           description={collection.note || t('profile.publicCollections')}
           meta={
             <>
-              <Avatar alt={profileQuery.data?.nickname || t('common.anonymous')} src={profileQuery.data?.avatar} />
+              <Avatar
+                alt={profileQuery.data?.nickname || t('common.anonymous')}
+                name={profileQuery.data?.nickname}
+                src={profileQuery.data?.avatar}
+              />
               <div className="min-w-0">
                 {profileQuery.data ? (
                   <Link
