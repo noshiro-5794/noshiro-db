@@ -49,7 +49,7 @@ function ComboboxContent({
       >
         <BaseCombobox.Popup
           className={cn(
-            'relative max-h-[var(--available-height)] w-[var(--anchor-width)] min-w-44 origin-[var(--transform-origin)] overflow-hidden rounded-[var(--ui-radius-surface)] border border-border bg-elevated text-foreground shadow-[var(--ui-shadow-popup)] outline-none transition-[opacity,transform] duration-[var(--ui-transition-fast)] data-[ending-style]:scale-[0.985] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.985] data-[starting-style]:opacity-0',
+            'relative max-h-[var(--available-height)] w-[var(--anchor-width)] min-w-44 origin-[var(--transform-origin)] overflow-hidden rounded-[var(--ui-radius-surface)] border border-border bg-elevated text-foreground shadow-[var(--ui-shadow-popup)] outline-none transition-[opacity,transform] duration-[var(--ui-transition-fast)] data-[ending-style]:scale-[0.96] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.96] data-[starting-style]:opacity-0',
             className,
           )}
           data-slot="combobox-content"

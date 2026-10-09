@@ -27,7 +27,8 @@ export function SubjectPosterCard({ badge, poster, seed, state, subtitle, title,
       {...(state === undefined ? {} : { state })}
       {...resolvedRouteHref(to)}
     >
-      <div className="relative aspect-[2/3] overflow-hidden rounded-[var(--ui-radius-surface)] bg-[var(--ui-bg-subtle)] ring-1 ring-[var(--ui-border)] transition-colors group-hover:bg-[var(--ui-bg-muted)] group-hover:ring-[var(--ui-border-strong)]">
+      {/* dub lifts a card on hover with a tight, negative-spread shadow. */}
+      <div className="relative aspect-[2/3] overflow-hidden rounded-[var(--ui-radius-surface)] bg-[var(--ui-bg-subtle)] ring-1 ring-[var(--ui-border)] transition-[background-color,box-shadow,transform] duration-[var(--ui-transition-standard)] ease-[var(--ui-ease-standard)] group-hover:-translate-y-0.5 group-hover:bg-[var(--ui-bg-muted)] group-hover:shadow-[var(--ui-shadow-hover-lift)] group-hover:ring-[var(--ui-border-strong)]">
         <CoverImage alt={title} className="size-full object-cover" label={title} seed={seed} src={poster} />
         {badge ? (
           <span className="absolute left-2 top-2 rounded-full bg-black/55 px-2 py-1 text-[11px] font-semibold text-white backdrop-blur">
