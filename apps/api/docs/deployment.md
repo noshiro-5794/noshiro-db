@@ -52,9 +52,13 @@ production database is never the first environment to apply new migrations.
 
 ## Build And Start
 
+Deploy from `apps/api` inside the monorepo checkout; the compose files, the
+env file, and the Docker build context all live there.
+
 Start infrastructure first:
 
 ```bash
+cd apps/api
 ENV_FILE=.env.production docker compose \
   -f docker-compose.infra.yml \
   --env-file .env.production \

@@ -1,16 +1,26 @@
-name: CI
+name: Web
 
 on:
   pull_request:
+    paths:
+      - apps/web/**
+      - .github/workflows/web.yml
   push:
     branches: [main]
+    paths:
+      - apps/web/**
+      - .github/workflows/web.yml
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: web-${{ github.ref }}
   cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: apps/web
 
 jobs:
   quality:
@@ -28,8 +38,9 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version-file: .node-version
+          node-version-file: apps/web/.node-version
           cache: pnpm
+          cache-dependency-path: apps/web/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
