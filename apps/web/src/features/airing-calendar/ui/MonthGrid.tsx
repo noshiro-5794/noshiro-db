@@ -19,8 +19,8 @@ function dayEntries(day: CalendarDay | undefined): CalendarOccurrence[] {
 }
 
 /**
- * Google Calendar month grid: a hairline grid of day cells with solid,
- * provider-tinted event bars and a per-day overflow counter.
+ * Google Calendar month grid: a hairline grid of day cells with solid tinted
+ * event bars and a per-day overflow counter.
  */
 export function MonthGrid({
   days,
@@ -80,16 +80,12 @@ export function MonthGrid({
               </div>
               {/*
                * Seven text bars do not fit a phone. Below md a cell shows the
-               * provider colours as dots, which keeps the month readable at a
+               * day's events as dots, which keeps the month readable at a
                * glance; tapping the day opens the agenda.
                */}
               <div className={cn('flex flex-wrap gap-1 px-0.5 md:hidden', outside && 'opacity-45')}>
                 {entries.slice(0, 4).map((occurrence) => (
-                  <span
-                    className="calendar-dot size-1.5 rounded-full"
-                    data-cal-source={occurrence.entry.sources[0]?.provider ?? 'unknown'}
-                    key={occurrence.key}
-                  />
+                  <span className="calendar-dot size-1.5 rounded-full" key={occurrence.key} />
                 ))}
                 {entries.length > 4 ? (
                   <span className="text-[9px] leading-[6px] text-[var(--ui-text-subtle)]">{`+${entries.length - 4}`}</span>
@@ -128,14 +124,12 @@ function EventBar({
 }) {
   const { locale } = useI18n();
   const time = formatTime(occurrence.startMinutes, locale);
-  const provider = occurrence.entry.sources[0]?.provider ?? 'unknown';
   return (
     <button
       className={cn(
         'calendar-bar flex w-full min-w-0 items-center gap-1 overflow-hidden rounded-[6px] py-[3px] pl-1.5 pr-2 text-left text-[12px] font-medium',
         occurrence.tentative && 'opacity-75',
       )}
-      data-cal-source={provider}
       onClick={(event) => {
         event.stopPropagation();
         onOpen(occurrence);

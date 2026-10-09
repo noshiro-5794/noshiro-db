@@ -1,18 +1,15 @@
 /*
  * Airing calendar presentation.
  *
- * Every bar, dot, and badge is tinted by the provider that backs the entry, so
- * the palette lives on a single `data-cal-source` attribute instead of being
- * duplicated as Tailwind classes in each component.
+ * Notion Calendar's treatment: the grid is almost colourless and one accent
+ * carries every event. The accent used to follow the provider an entry arrived
+ * from, which asked a visitor to decode three hues nothing on the page
+ * explained - and gave the same show two colours whenever two providers
+ * reported it separately.
  */
 
 :root {
-  --cal-anilist: #4a5ec7;
-  --cal-mal: #1f7a5c;
-  --cal-bangumi: #b5731f;
-  --cal-unknown: var(--ui-accent);
-  --cal-accent: var(--cal-unknown);
-  --cal-on-accent: #ffffff;
+  --cal-accent: var(--ui-accent);
   /* Notion Calendar keeps the grid almost colourless and reserves one accent
      for "now": the current day badge and the live time line. */
   --cal-hairline: color-mix(in srgb, var(--ui-border) 60%, transparent);
@@ -21,23 +18,7 @@
   --cal-muted: var(--ui-text-subtle);
 }
 
-[data-cal-source='anilist'] {
-  --cal-accent: var(--cal-anilist);
-}
-
-[data-cal-source='mal'] {
-  --cal-accent: var(--cal-mal);
-}
-
-[data-cal-source='bangumi'] {
-  --cal-accent: var(--cal-bangumi);
-}
-
 :root[data-theme-mode='dark'] {
-  --cal-anilist: #5b6fd8;
-  --cal-mal: #2c8f6d;
-  --cal-bangumi: #bd7f2c;
-  --cal-on-accent: #f7f7fa;
   --cal-hairline: color-mix(in srgb, var(--ui-border) 70%, transparent);
   --cal-now: #e5484d;
   --cal-now-text: #ffffff;
@@ -45,8 +26,8 @@
 
 /*
  * Event bar: Google's full-cell bar geometry with Notion Calendar's quieter
- * treatment — a soft tint of the provider hue, an accent spine for identity and
- * text in the same hue instead of white on saturated colour.
+ * treatment — a soft tint, an accent spine for identity and text in the same
+ * hue instead of white on saturated colour.
  */
 .calendar-bar {
   background-color: color-mix(in srgb, var(--cal-accent) 14%, transparent);
