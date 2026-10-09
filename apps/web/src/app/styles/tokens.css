@@ -68,7 +68,7 @@
   /* Stable geometry for the workspace and its controls. */
   --ui-sidebar-width: 248px;
   /* One bar height for the header, at every width. */
-  --ui-public-header-height: 56px;
+  --ui-public-header-height: 64px;
   --ui-mobile-header-height: 56px;
   /* plane's --padding-page-x: the inset the header and page rows share. */
   --ui-page-padding-x: 1.35rem;
@@ -129,7 +129,16 @@
   --ui-ease-gentle: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-:root[data-theme-mode='dark'] {
+/*
+ * Dark mode belongs to the workspace. A public page keeps the light palette in
+ * every theme — plane's marketing pages are light, and half a themed page is
+ * what a visitor notices first. Scoping the dark palette at the root rather
+ * than re-declaring light values on the shell keeps every token derived from it
+ * light too: the calendar hairlines read `--ui-border` where it is declared,
+ * and menus, dialogs and toasts portal out to `document.body`, outside the
+ * shell entirely.
+ */
+:root[data-theme-mode='dark']:not(:has([data-app-shell='public'])) {
   color-scheme: dark;
 
   --ui-bg-canvas: #111113;

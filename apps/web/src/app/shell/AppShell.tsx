@@ -232,7 +232,7 @@ export function AppShell({ children }: AppShellProps) {
 
   if (role === 'guest') {
     return (
-      <div className="min-h-screen bg-[var(--ui-bg-canvas)]" data-app-shell="public">
+      <div className="public-shell min-h-screen" data-app-shell="public">
         <PublicTopBar />
         <main>{children}</main>
         <PublicFooter />

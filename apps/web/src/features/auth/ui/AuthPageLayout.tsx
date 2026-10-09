@@ -20,8 +20,9 @@ type AuthFieldProps = ComponentProps<'input'> & {
 
 export function AuthPageLayout({ children, title }: AuthPageLayoutProps) {
   const { t } = useI18n();
+  // Signed-out screens belong to the public surface and keep the light palette in every theme.
   return (
-    <main className="flex min-h-screen flex-col bg-[var(--ui-bg-canvas)] text-[var(--ui-text)]">
+    <main className="flex min-h-screen flex-col bg-[var(--ui-bg-canvas)] text-[var(--ui-text)]" data-app-shell="public">
       <Seo noindex title={title} />
       {/*
        * These pages render outside the public shell, so they carry their own

@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from '@tanstack/react-router';
-import { CalendarDays, ChevronDown, Clapperboard, LayoutGrid, Menu, Search, Sparkles } from 'lucide-react';
+import { CalendarDays, Clapperboard, LayoutGrid, Menu, Search, Sparkles } from 'lucide-react';
 import { publicAssetPaths } from '@/shared/assets/public-assets';
 import { useI18n } from '@/shared/i18n';
 import { cn } from '@/shared/lib/cn';
@@ -18,11 +18,11 @@ type MenuSection = { entries: MenuEntry[]; key: string; label: string };
  * size, with no pill to separate them from the page they sit on.
  */
 const navItemClassName = cn(
-  'inline-flex shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap text-[15px] font-medium',
-  'text-[var(--ui-text)] outline-none transition-colors duration-150 ease-out',
-  'hover:text-[var(--ui-text-muted)] focus-visible:ring-2 focus-visible:ring-[var(--ui-focus-halo)]',
-  'data-[popup-open]:text-[var(--ui-text-muted)]',
-  'data-[status=active]:text-[var(--ui-accent-text)]',
+  'inline-flex shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap text-[15px] font-normal',
+  'text-[#292929] outline-none transition-colors duration-150 ease-out',
+  'hover:text-[#707070] focus-visible:ring-2 focus-visible:ring-[var(--ui-focus-halo)]',
+  'data-[popup-open]:text-[#707070]',
+  'data-[status=active]:text-[#292929]',
 );
 
 /**
@@ -74,9 +74,9 @@ export function PublicTopBar() {
 
   return (
     <>
-      <header className="sticky top-0 z-[var(--ui-layer-shell-header)] h-[var(--ui-public-header-height)] border-b border-[var(--ui-border-subtle)] bg-elevated">
-        <div className="flex h-full w-full items-center gap-8 px-[var(--ui-page-padding-x)]">
-          <div className="flex min-w-0 shrink-0 items-center gap-8">
+      <header className="sticky top-0 z-[var(--ui-layer-shell-header)] h-[var(--ui-public-header-height)] border-b border-[#ebebeb] bg-white text-[#202020]">
+        <div className="mx-auto flex h-full w-full max-w-[1280px] items-center justify-between gap-6 px-6 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:px-10">
+          <div className="flex min-w-0 shrink-0 items-center">
             <Link
               aria-label="Noshiro DB"
               className="flex min-w-0 shrink-0 items-center gap-2.5 outline-none"
@@ -88,13 +88,11 @@ export function PublicTopBar() {
                 className="size-7 shrink-0 rounded-[var(--ui-radius-control)] object-cover"
                 src={publicAssetPaths.appIcon}
               />
-              <span className="truncate text-[20px] font-semibold tracking-[-0.02em] text-[var(--ui-text)]">
-                Noshiro DB
-              </span>
+              <span className="truncate text-[23px] font-semibold tracking-[-0.045em] text-[#202020]">Noshiro DB</span>
             </Link>
           </div>
 
-          <nav className="hidden min-w-0 flex-1 items-center justify-center gap-8 lg:flex">
+          <nav className="hidden min-w-0 items-center justify-center gap-8 lg:flex xl:gap-9">
             <Link {...resolvedRouteHref(routes.home)} activeOptions={{ exact: true }} className={navItemClassName}>
               {t('nav.home')}
             </Link>
@@ -107,7 +105,6 @@ export function PublicTopBar() {
                   }
                 >
                   {menu.label}
-                  <ChevronDown className="size-[var(--ui-control-glyph-sm)] transition-transform duration-150 ease-out group-data-[popup-open]/nav-item:rotate-180" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" sideOffset={10}>
                   {menu.entries.map((entry) => (
@@ -125,16 +122,16 @@ export function PublicTopBar() {
             </Link>
           </nav>
 
-          <div className="ml-auto flex shrink-0 items-center justify-end gap-7">
+          <div className="flex shrink-0 items-center justify-end gap-5">
             <Link className={cn(navItemClassName, 'hidden sm:inline-flex')} to={routes.login}>
               {t('auth.login')}
             </Link>
-            <Button asChild className="hidden sm:inline-flex" size="lg">
+            <Button asChild className="public-button public-button-primary hidden sm:inline-flex" variant="unstyled">
               <Link to={routes.register}>{t('auth.register')}</Link>
             </Button>
             <Button
               aria-label={t('public.openMenu')}
-              className="sm:hidden"
+              className="text-[#292929] lg:hidden"
               size="icon-sm"
               tooltip={t('public.openMenu')}
               type="button"
