@@ -1,5 +1,5 @@
-import { LandingCapabilities } from './LandingCapabilities';
 import { LandingClosingCta } from './LandingClosingCta';
+import { LandingFeatures } from './LandingFeatures';
 import { LandingHero } from './LandingHero';
 import { SearchShowcase } from './SearchShowcase';
 import { SeasonSpotlight } from './SeasonSpotlight';
@@ -7,9 +7,10 @@ import { SeasonSpotlight } from './SeasonSpotlight';
 /**
  * Public landing page.
  *
- * Everything here is the product itself rather than a picture of it: the season
- * board, the search results, the works behind them. A visitor should be able to
- * tell what they get — and try it — without an account.
+ * Every band is the product rather than a picture of it: the season board, the
+ * search over real works, and the four things a visitor can do with them. The
+ * composition — panel hero, product bands, hairline feature grid, closing panel
+ * — follows dub's site; the motion follows twenty's.
  */
 export function GuestHome() {
   return (
@@ -17,12 +18,13 @@ export function GuestHome() {
       <LandingHero />
       <SeasonSpotlight />
       <SearchShowcase />
-      <LandingCapabilities />
+      <LandingFeatures />
       <LandingClosingCta />
     </>
   );
 }
 
+/** Shown while the session is being resolved, so the page does not jump. */
 export function SessionCheckingHome() {
   return (
     <div className="grid gap-3 sm:grid-cols-3">

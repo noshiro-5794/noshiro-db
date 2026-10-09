@@ -23,8 +23,7 @@ export function SeasonSpotlight() {
   return (
     <LandingSection
       action={{ label: t('public.more'), to: routes.airing }}
-      className="motion-rise motion-delay-4"
-      note={t('public.seasonNote')}
+      className="pt-16 sm:pt-20"
       title={t('public.seasonHeading')}
     >
       <div className="overflow-hidden rounded-[var(--ui-radius-frame)] border border-[var(--ui-border)] bg-[var(--ui-bg-surface)] shadow-[var(--ui-shadow-surface)]">
