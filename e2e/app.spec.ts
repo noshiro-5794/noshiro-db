@@ -50,6 +50,42 @@ const calendarEvent = {
   provenance: null,
 };
 
+const calendarBoardEntry = {
+  id: '01980f00-0000-7000-8000-0000000000b1',
+  season_key: '2026Q3',
+  window_start: '2026-09-01',
+  window_end: '2026-11-30',
+  work_id: subjectId,
+  episode_entity_id: null,
+  episode_number: 3,
+  starts_at: '2026-09-03T15:00:00Z',
+  ends_at: null,
+  timezone: 'Asia/Tokyo',
+  region: 'JP',
+  weekday: 4,
+  duration_minutes: 24,
+  precision: 'minute',
+  format: 'TV',
+  premiered_on: '2026-09-03',
+  ended_on: null,
+  episode_count: 12,
+  status: 'scheduled',
+  decision: 'source_priority',
+  confidence: 0.95,
+  source_refs: [
+    {
+      role: 'precise',
+      provider: 'anilist',
+      namespace: 'calendar',
+      precision: 'minute',
+      starts_at: '2026-09-03T15:00:00+00:00',
+      external_id: '1',
+      observation_id: '01980f00-0000-7000-8000-0000000000c1',
+    },
+  ],
+  work: entitySummary,
+};
+
 const publicAuthor = {
   id: publicAuthorId,
   nickname: 'Public author',
@@ -196,6 +232,16 @@ async function mockGuestApi(page: Page) {
 
       if (path === '/api/v1/index/calendar/events/') {
         await fulfillApi(route, [calendarEvent]);
+        return;
+      }
+
+      if (path === '/api/v1/index/calendar/board/events/') {
+        await fulfillApi(route, [calendarBoardEntry]);
+        return;
+      }
+
+      if (path === '/api/v1/index/entities/') {
+        await fulfillApi(route, { ...emptyPage, count: 1, results: [entitySummary] });
         return;
       }
 
@@ -410,16 +456,19 @@ test.afterEach(async ({ page }) => {
 test('public home opens the catalog and renders API data', async ({ page }) => {
   await page.goto('/');
 
-  await expect(page.getByRole('heading', { name: 'Collect. Preserve. Relive.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'An open catalogue of anime and visual novels' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Airing this season' })).toBeVisible();
   await expect(page.getByText(subjectTitle).first()).toBeVisible();
+  await expect(page.getByText('Data from Bangumi, AniList and MyAnimeList')).toBeVisible();
 
-  await page.getByRole('link', { name: 'Explore catalog' }).click();
+  await page.getByRole('link', { name: 'Search the catalogue', exact: true }).first().click();
   await expect(page).toHaveURL(/\/search$/u);
   await expect(page.getByRole('searchbox', { name: 'Keyword' })).toBeVisible();
   await expect(page.getByText(subjectTitle).first()).toBeVisible();
 
   await page.goto('/calendar');
-  await expect(page.getByRole('heading', { name: 'Calendar' })).toBeVisible();
+  // The calendar heading is the month it currently shows.
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(/20\d\d/u);
 });
 
 test('protected routes preserve the destination while redirecting to login', async ({ page }) => {
@@ -527,10 +576,12 @@ test('authenticated workspace opens core views', async ({ page }) => {
   await page.goto(`/entities/${subjectId}`);
   await expect(page.locator('h1')).toHaveText(subjectTitle);
 
+  // The work page has no context bar, so its section nav pins to the top of the
+  // scrolling surface rather than leaving the bar's height as a gap.
   const subjectNavigationOffset = await page.locator('[data-slot="subject-section-nav"]').evaluate((navigation) => {
-    const pageTopbar = document.querySelector<HTMLElement>('[data-slot="page-topbar"]');
-    if (!pageTopbar) return Number.POSITIVE_INFINITY;
-    return navigation.getBoundingClientRect().top - pageTopbar.getBoundingClientRect().bottom;
+    const scrollport = navigation.closest<HTMLElement>('.overflow-y-auto');
+    if (scrollport === null) return Number.POSITIVE_INFINITY;
+    return navigation.getBoundingClientRect().top - scrollport.getBoundingClientRect().top;
   });
   expect(Math.abs(subjectNavigationOffset)).toBeLessThanOrEqual(1);
 
@@ -567,7 +618,7 @@ test('authenticated workspace opens core views', async ({ page }) => {
   await page.goto(`/entities/${subjectId}`);
   await expect(page.locator('h1')).toHaveText(subjectTitle);
   await expect(page.getByRole('link', { name: 'My mark', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Infobox/u })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Details/u })).toBeVisible();
   await expect(page.getByRole('button', { name: /Staff/u })).toBeVisible();
 
   await page.getByRole('button', { name: 'Open navigation' }).click();
