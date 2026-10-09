@@ -14,6 +14,11 @@ type FeedbackStateProps = {
   variant?: 'card' | 'inline';
 };
 
+type EmptyStateProps = FeedbackStateProps & {
+  /** The glyph in the tile. Defaults to Inbox; a page about people passes Users. */
+  icon?: LucideIcon;
+};
+
 type FeedbackStateViewProps = FeedbackStateProps & {
   icon: LucideIcon;
   loading?: boolean;
@@ -67,8 +72,8 @@ function FeedbackStateView({
   );
 }
 
-export function EmptyState(props: FeedbackStateProps) {
-  return <FeedbackStateView icon={Inbox} {...props} />;
+export function EmptyState({ icon = Inbox, ...props }: EmptyStateProps) {
+  return <FeedbackStateView {...props} icon={icon} />;
 }
 
 export function LoadingState(props: FeedbackStateProps) {
