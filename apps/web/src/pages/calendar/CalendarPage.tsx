@@ -1,0 +1,208 @@
+import { useMemo, useState } from 'react';
+import { getRouteApi, useLocation } from '@tanstack/react-router';
+import { useQuery } from '@tanstack/react-query';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useI18n } from '@/shared/i18n';
+import { subjectQueries } from '@/entities/subject';
+import { routeBackState } from '@/shared/routing/route-state';
+import { routes } from '@/shared/routing/paths';
+import { Seo } from '@/shared/seo/Seo';
+import { Page } from '@/shared/ui/Page';
+import { PageHeading } from '@/shared/ui/PageHeading';
+import { ResultsState, type ResultsStatus } from '@/shared/ui/DataView';
+import {
+  AIRING_TIME_ZONE,
+  AIRING_TIME_ZONE_LABEL,
+  addDays,
+  buildOccurrences,
+  groupOccurrences,
+  monthGridRange,
+  rangeDays,
+  isWithin,
+  boardWindow,
+  shiftMonth,
+  startOfWeek,
+  weekRange,
+  type CalendarOccurrence,
+} from '@/features/airing-calendar';
+import { EventDetails, IconButton, MonthGrid, SegmentedControl, TimeGrid } from '@/features/airing-calendar';
+
+type CalendarView = 'month' | 'week' | 'day';
+
+const calendarRoute = getRouteApi('/calendar');
+
+const viewOptions: { value: CalendarView; labelKey: 'calendar.month' | 'calendar.week' | 'calendar.day' }[] = [
+  { value: 'month', labelKey: 'calendar.month' },
+  { value: 'week', labelKey: 'calendar.week' },
+  { value: 'day', labelKey: 'calendar.day' },
+];
+
+export function CalendarPage() {
+  const { locale, t } = useI18n();
+  const location = useLocation();
+  const search = calendarRoute.useSearch();
+  const navigate = calendarRoute.useNavigate();
+  const view: CalendarView = search.view ?? 'month';
+  const [cursor, setCursor] = useState(() => new Date());
+  const [selected, setSelected] = useState<CalendarOccurrence | null>(null);
+
+  // The span lives in the URL so a link can point at a specific module view.
+  const setView = (next: CalendarView) => {
+    void navigate({ replace: true, search: (current) => ({ ...current, view: next }) });
+  };
+
+  const calendarQuery = useQuery(subjectQueries.calendarBoard());
+  const entries = useMemo(() => calendarQuery.data ?? [], [calendarQuery.data]);
+  const subjectLinkState = useMemo(() => routeBackState(location, t('calendar.title')), [location, t]);
+  /**
+   * The board covers the previous, current and next month, so every month a
+   * visitor lands on can show the month before and after it while the outer
+   * bound still stops the weekly schedule from repeating forever.
+   */
+  const season = useMemo(() => boardWindow(entries[0]), [entries]);
+
+  const range = useMemo(() => {
+    if (view === 'month') return monthGridRange(cursor);
+    if (view === 'week') return weekRange(cursor);
+    return { from: cursor, to: cursor };
+  }, [cursor, view]);
+
+  const daysMap = useMemo(
+    () => groupOccurrences(buildOccurrences(entries, range.from, range.to, season)),
+    [entries, range, season],
+  );
+  const days = useMemo(() => rangeDays(range.from, range.to), [range]);
+
+  const status: ResultsStatus =
+    calendarQuery.data === undefined && calendarQuery.isLoading
+      ? 'loading'
+      : calendarQuery.data === undefined && calendarQuery.isError
+        ? 'error'
+        : entries.length === 0
+          ? 'empty'
+          : 'ready';
+
+  const move = (direction: -1 | 1) => {
+    setCursor((current) => {
+      const next = step(current, direction);
+      return isWithin(next, season) ? next : current;
+    });
+  };
+
+  const goToday = () => {
+    const now = new Date();
+    setCursor(season && !isWithin(now, season) ? new Date(season.to) : now);
+  };
+
+  const step = (from: Date, direction: -1 | 1) =>
+    view === 'month' ? shiftMonth(from, direction) : addDays(from, direction * (view === 'week' ? 7 : 1));
+
+  const canStep = (direction: -1 | 1) => isWithin(step(cursor, direction), season);
+
+  const title = useMemo(() => {
+    if (view === 'month') {
+      return new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long' }).format(cursor);
+    }
+    if (view === 'week') {
+      const from = startOfWeek(cursor);
+      const to = addDays(from, 6);
+      const formatter = new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric' });
+      return `${formatter.format(from)} – ${formatter.format(to)}`;
+    }
+    return new Intl.DateTimeFormat(locale, { month: 'long', day: 'numeric', weekday: 'long' }).format(cursor);
+  }, [cursor, locale, view]);
+
+  return (
+    <Page hideHeader ownHeading seo={false} title={t('calendar.title')} width="wide">
+      <Seo
+        description="Browse the anime airing calendar by month, week, or day."
+        path={routes.calendar}
+        title={t('nav.airingCalendar')}
+      />
+      <div className="grid gap-3 pb-10">
+        <PageHeading
+          actions={
+            <>
+              <button
+                className="h-8 shrink-0 rounded-[8px] border border-[var(--ui-border)] px-3.5 text-xs font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-bg-subtle)]"
+                onClick={goToday}
+                type="button"
+              >
+                {t('calendar.today')}
+              </button>
+              <span className="flex items-center">
+                <IconButton
+                  className={canStep(-1) ? undefined : 'opacity-30'}
+                  label={t('calendar.previous')}
+                  onClick={() => {
+                    move(-1);
+                  }}
+                >
+                  <ChevronLeft className="size-4" />
+                </IconButton>
+                <IconButton
+                  className={canStep(1) ? undefined : 'opacity-30'}
+                  label={t('calendar.next')}
+                  onClick={() => {
+                    move(1);
+                  }}
+                >
+                  <ChevronRight className="size-4" />
+                </IconButton>
+              </span>
+              <SegmentedControl
+                ariaLabel={t('calendar.viewAria')}
+                onChange={setView}
+                options={viewOptions.map((option) => ({ value: option.value, label: t(option.labelKey) }))}
+                value={view}
+              />
+            </>
+          }
+          eyebrow={t('nav.groupDiscover')}
+          meta={
+            <span
+              className="rounded-[6px] border border-[var(--cal-hairline)] px-1.5 py-0.5 text-[10px] font-medium"
+              title={AIRING_TIME_ZONE}
+            >
+              {AIRING_TIME_ZONE_LABEL}
+            </span>
+          }
+          title={title}
+        />
+
+        <ResultsState
+          emptyTitle={t('calendar.empty')}
+          errorDescription={t('calendar.errorBody')}
+          errorTitle={t('calendar.errorTitle')}
+          loadingTitle={t('calendar.loading')}
+          status={status}
+        >
+          {view === 'month' ? (
+            <MonthGrid
+              days={days}
+              daysMap={daysMap}
+              month={cursor}
+              onOpenOccurrence={setSelected}
+              onSelectDate={(date) => {
+                setCursor(date);
+                setView('day');
+              }}
+            />
+          ) : null}
+          {view === 'week' || view === 'day' ? (
+            <TimeGrid days={days} daysMap={daysMap} onOpenOccurrence={setSelected} />
+          ) : null}
+        </ResultsState>
+      </div>
+      {selected ? (
+        <EventDetails
+          occurrence={selected}
+          onClose={() => {
+            setSelected(null);
+          }}
+          state={subjectLinkState}
+        />
+      ) : null}
+    </Page>
+  );
+}

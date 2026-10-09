@@ -1,0 +1,110 @@
+@reference '../../../app/styles/global.css';
+
+@layer components {
+  .collection-editor-surface {
+    @apply overflow-hidden rounded-md border border-border bg-surface;
+  }
+
+  .collection-editor-section-header {
+    @apply flex flex-col gap-3 border-b border-border-subtle p-4 md:flex-row md:items-center md:justify-between;
+  }
+
+  .collection-empty-state {
+    @apply grid min-h-[360px] place-items-center rounded-md border border-dashed border-border bg-muted px-6 text-center;
+  }
+
+  .collection-empty-icon {
+    @apply mx-auto grid size-12 place-items-center rounded-sm border border-border bg-surface text-muted-foreground;
+  }
+
+  .collection-rail {
+    @apply flex w-full max-w-full gap-4 overflow-x-auto px-4 py-4;
+    min-width: 0;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 1rem;
+    scrollbar-width: thin;
+  }
+
+  .collection-rail.is-sorting {
+    scroll-snap-type: none;
+  }
+
+  .collection-rail-card {
+    @apply relative grid w-[205px] flex-[0_0_205px] cursor-grab gap-3 rounded-sm p-2.5 transition-colors active:cursor-grabbing;
+    scroll-snap-align: start;
+    background: transparent;
+  }
+
+  .collection-rail-card:hover {
+    background: var(--ui-bg-subtle);
+  }
+
+  .collection-rail-card.is-dragging {
+    @apply opacity-60;
+    background: var(--ui-bg-subtle);
+  }
+
+  .collection-rail-card.is-drop-before::before,
+  .collection-rail-card.is-drop-after::after {
+    content: '';
+    @apply pointer-events-none absolute bottom-2 top-2 w-1 rounded-full;
+    background: var(--ui-accent);
+    box-shadow: 0 0 0 4px var(--ui-accent-soft);
+  }
+
+  .collection-rail-card.is-drop-before::before {
+    @apply -left-2;
+  }
+
+  .collection-rail-card.is-drop-after::after {
+    @apply -right-2;
+  }
+
+  .collection-rail-card-top {
+    @apply flex items-center justify-between text-xs font-semibold text-muted-foreground;
+  }
+
+  .collection-rail-poster {
+    @apply block overflow-hidden rounded-sm border border-border bg-muted transition-colors;
+    aspect-ratio: 2 / 3;
+  }
+
+  .collection-rail-card:hover .collection-rail-poster {
+    border-color: var(--ui-accent-border);
+  }
+
+  .collection-rail-poster img,
+  .collection-rail-poster span {
+    @apply size-full object-cover;
+  }
+
+  .collection-rail-body {
+    @apply grid min-w-0 gap-2;
+  }
+
+  .collection-rail-title {
+    @apply line-clamp-2 text-sm font-semibold leading-5 text-foreground transition-colors hover:text-[var(--ui-accent-text)];
+  }
+
+  .collection-rail-body > p {
+    @apply line-clamp-2 text-xs leading-5 text-muted-foreground;
+  }
+
+  .collection-rail-badges {
+    @apply flex flex-wrap gap-1.5;
+  }
+
+  .collection-rail-comment {
+    @apply line-clamp-3 border-l-2 border-[var(--ui-accent-border)] pl-2 text-xs leading-5;
+  }
+
+  .collection-rail-actions {
+    @apply mt-auto flex items-center justify-between gap-2;
+  }
+
+  @media (width < 640px) {
+    .collection-rail-card {
+      @apply w-[190px] flex-[0_0_190px];
+    }
+  }
+}

@@ -1,0 +1,207 @@
+@reference '../../../app/styles/global.css';
+
+@layer components {
+  .home-shell {
+    @apply grid gap-0;
+  }
+
+  .home-panel {
+    @apply min-w-0;
+  }
+
+  .home-overview {
+    @apply grid gap-4 border-b pb-5 md:grid-cols-[minmax(0,1fr)_minmax(280px,390px)] md:items-center;
+    border-color: var(--ui-border-subtle);
+  }
+
+  .home-overview-main {
+    @apply min-w-0;
+  }
+
+  .home-avatar {
+    @apply size-11 shrink-0 rounded-[var(--ui-radius-control)] object-cover;
+    background: var(--ui-bg-subtle);
+    box-shadow: inset 0 0 0 1px var(--ui-border);
+  }
+
+  .home-kicker {
+    @apply text-xs font-medium;
+    color: var(--ui-text-muted);
+  }
+
+  .home-overview-title {
+    @apply mt-0.5 truncate text-lg font-semibold;
+    color: var(--ui-text);
+  }
+
+  .home-stat-grid {
+    @apply grid grid-cols-3 divide-x divide-[var(--ui-border-subtle)];
+  }
+
+  .home-stat {
+    @apply flex min-h-14 min-w-0 flex-col items-center justify-center rounded-[var(--ui-radius-control)] px-3 py-2 text-center transition-colors duration-[var(--ui-transition-fast)];
+  }
+
+  .home-stat:hover {
+    background: var(--ui-bg-subtle);
+  }
+
+  .home-stat strong {
+    @apply block text-base font-semibold leading-5 tabular-nums transition;
+    color: var(--ui-text);
+  }
+
+  .home-stat:hover strong {
+    color: var(--ui-accent-text);
+  }
+
+  .home-stat span {
+    @apply mt-1 block max-w-full truncate text-[11px] font-medium leading-4;
+    color: var(--ui-text-muted);
+  }
+
+  .home-panel-icon {
+    @apply grid size-9 shrink-0 place-items-center rounded-[var(--ui-radius-control)] border;
+    border-color: var(--ui-accent-border);
+    color: var(--ui-accent-text);
+    background: var(--ui-accent-soft);
+  }
+
+  .home-admin-panel {
+    @apply flex min-w-0 flex-col gap-3 border-b py-4 md:flex-row md:items-center md:justify-between;
+    border-color: var(--ui-border-subtle);
+  }
+
+  .home-admin-content {
+    @apply flex min-w-0 items-center gap-3.5;
+  }
+
+  .home-admin-meta {
+    @apply flex min-w-0 flex-wrap items-center gap-2 text-xs font-medium;
+    color: var(--ui-text-muted);
+  }
+
+  .home-admin-title {
+    @apply mt-1 truncate text-base font-semibold;
+    color: var(--ui-text);
+  }
+
+  .home-admin-action {
+    @apply shrink-0 max-md:w-full max-md:justify-center;
+  }
+
+  .home-layout {
+    @apply grid gap-6 pt-5 xl:grid-cols-[minmax(0,1fr)_280px] xl:gap-8;
+  }
+
+  .home-main,
+  .home-rail {
+    @apply grid min-w-0 content-start gap-6 xl:gap-7;
+  }
+
+  .home-rail {
+    @apply xl:sticky xl:self-start;
+    top: calc(var(--ui-topbar-height) + 20px);
+  }
+
+  .home-card-grid {
+    @apply grid gap-6 lg:grid-cols-2 xl:gap-7;
+  }
+
+  .home-card-grid .home-panel,
+  .home-rail .home-panel {
+    @apply border-t pt-4;
+    border-color: var(--ui-border-subtle);
+  }
+
+  .home-rail .home-panel:first-child {
+    @apply border-t-0 pt-0;
+  }
+
+  .home-section-header {
+    @apply flex min-w-0 items-center justify-between gap-3 pb-2;
+  }
+
+  .home-section-header h2 {
+    @apply truncate text-sm font-semibold;
+    color: var(--ui-text);
+  }
+
+  .home-section-header a {
+    @apply inline-flex shrink-0 items-center rounded-[var(--ui-radius-control)] px-2 py-1 text-xs font-medium transition-colors duration-[var(--ui-transition-fast)];
+    color: var(--ui-text-muted);
+  }
+
+  .home-section-header a:hover {
+    background: color-mix(in srgb, var(--ui-bg-subtle) 72%, transparent);
+    color: var(--ui-accent-text);
+  }
+
+  .home-feed-list {
+    @apply grid gap-0 pt-1;
+  }
+
+  .home-list {
+    @apply grid pt-2;
+  }
+
+  .home-list.is-compact {
+    @apply gap-0;
+  }
+
+  .home-list-item {
+    @apply grid min-w-0 grid-cols-[36px_minmax(0,1fr)] items-center gap-2.5 rounded-[var(--ui-radius-control)] px-2 py-2 transition-colors duration-[var(--ui-transition-fast)];
+    color: var(--ui-text);
+  }
+
+  .home-list-item.is-mark {
+    @apply grid-cols-[36px_minmax(0,1fr)_auto];
+  }
+
+  .home-list-item:hover,
+  .home-review-row:hover,
+  .home-collection-row:hover {
+    background: color-mix(in srgb, var(--ui-bg-subtle) 62%, transparent);
+  }
+
+  .home-list-item img {
+    @apply h-12 w-9 rounded-[var(--ui-radius-control)] object-cover;
+    background: var(--ui-bg-subtle);
+  }
+
+  .home-list-title {
+    @apply block truncate text-sm font-semibold;
+    color: var(--ui-text);
+  }
+
+  .home-list-meta {
+    @apply mt-1 block truncate text-xs;
+    color: var(--ui-text-muted);
+  }
+
+  .home-review-row,
+  .home-collection-row {
+    @apply grid gap-1 rounded-[var(--ui-radius-control)] px-2.5 py-2.5 transition-colors duration-[var(--ui-transition-fast)];
+    color: var(--ui-text);
+  }
+
+  .home-review-row p,
+  .home-collection-row p {
+    @apply line-clamp-1 text-sm font-semibold;
+  }
+
+  .home-review-row span {
+    @apply line-clamp-2 text-sm leading-6;
+    color: var(--ui-text-muted);
+  }
+
+  .home-collection-row span {
+    @apply text-xs;
+    color: var(--ui-text-muted);
+  }
+
+  .home-empty-line {
+    @apply px-2 py-4 text-sm;
+    color: var(--ui-text-muted);
+  }
+}

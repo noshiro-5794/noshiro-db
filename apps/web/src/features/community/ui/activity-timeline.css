@@ -1,0 +1,189 @@
+@reference '../../../app/styles/global.css';
+
+@layer components {
+  .activity-timeline-list {
+    @apply min-w-0 bg-surface;
+  }
+
+  .activity-timeline-item {
+    @apply border-b border-border-subtle px-4 py-4 transition-colors last:border-b-0 sm:px-5;
+  }
+
+  .activity-timeline-item:hover {
+    background: color-mix(in srgb, var(--ui-bg-subtle) 38%, transparent);
+  }
+
+  .activity-timeline-header {
+    @apply grid min-w-0 grid-cols-[36px_minmax(0,1fr)_auto] items-start gap-3;
+  }
+
+  .activity-avatar-link {
+    @apply rounded-full;
+  }
+
+  .activity-avatar {
+    @apply size-9 rounded-full bg-muted object-cover transition-shadow;
+    box-shadow: inset 0 0 0 1px var(--ui-border);
+  }
+
+  .activity-avatar:hover,
+  .timeline-comment-avatar:hover {
+    box-shadow: 0 0 0 2px var(--ui-accent-border);
+  }
+
+  .activity-timeline-body {
+    @apply min-w-0;
+  }
+
+  .activity-timeline-heading {
+    @apply min-w-0;
+  }
+
+  .activity-timeline-meta {
+    @apply flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground;
+  }
+
+  .activity-author-link {
+    @apply font-semibold text-foreground transition-colors hover:text-[var(--ui-accent-text)];
+  }
+
+  .activity-type-icon {
+    @apply mt-0.5 hidden size-7 place-items-center rounded-sm bg-muted text-subtle-foreground sm:grid;
+  }
+
+  .activity-title-link {
+    @apply mt-1 block text-[15px] font-semibold tracking-normal text-foreground transition-colors hover:text-[var(--ui-accent-text)];
+  }
+
+  .activity-timeline-content {
+    @apply ml-12 min-w-0;
+  }
+
+  .activity-body-copy {
+    @apply mt-2 line-clamp-5 whitespace-pre-line text-[15px] leading-6;
+    color: color-mix(in srgb, var(--ui-text) 82%, var(--ui-text-muted));
+  }
+
+  .activity-subject-preview {
+    @apply mt-3 grid max-w-xl min-w-0 grid-cols-[44px_minmax(0,1fr)] gap-3 rounded-sm border border-border bg-muted p-2.5 transition-colors hover:border-[var(--ui-accent-border)];
+  }
+
+  .activity-subject-preview img,
+  .activity-subject-preview > span:first-child {
+    @apply h-16 w-11 rounded-sm bg-muted object-cover;
+  }
+
+  .activity-subject-copy {
+    @apply grid min-w-0 content-center gap-1;
+  }
+
+  .activity-subject-copy > span {
+    @apply line-clamp-1 text-sm font-semibold text-foreground;
+  }
+
+  .activity-subject-copy small {
+    @apply line-clamp-2 text-xs leading-5 text-muted-foreground;
+  }
+
+  .activity-actions {
+    @apply mt-3 min-w-0;
+  }
+
+  .activity-comments-drawer {
+    @apply mt-3 border-t border-border-subtle pt-3;
+  }
+
+  .timeline-comments {
+    @apply grid gap-2;
+  }
+
+  .timeline-comments-header {
+    @apply flex items-center justify-between gap-3;
+  }
+
+  .timeline-comments-header h2 {
+    @apply text-sm font-semibold tracking-normal text-foreground;
+  }
+
+  .timeline-comments-header span {
+    @apply text-sm text-muted-foreground;
+  }
+
+  .timeline-comment-form {
+    @apply grid gap-3 border-b border-border-subtle pb-3;
+  }
+
+  .timeline-reply-pill {
+    @apply flex flex-wrap items-center justify-between gap-2 rounded-full bg-muted px-3 py-1.5 text-xs text-muted-foreground;
+  }
+
+  .timeline-comment-textarea {
+    @apply min-h-20 resize-y rounded-sm border border-transparent bg-muted px-3 py-2 text-sm leading-6 text-foreground outline-none transition-[border-color,box-shadow];
+  }
+
+  .timeline-comment-textarea::placeholder {
+    color: var(--ui-text-placeholder);
+  }
+
+  .timeline-comment-textarea:focus {
+    border-color: var(--ui-focus);
+    box-shadow: 0 0 0 3px var(--ui-focus-halo);
+  }
+
+  .timeline-comment-form-footer {
+    @apply flex flex-wrap items-center justify-between gap-3;
+  }
+
+  .timeline-comment-list {
+    @apply grid;
+  }
+
+  .timeline-comment-thread {
+    @apply border-b border-border-subtle last:border-b-0;
+  }
+
+  .timeline-comment-item {
+    @apply grid grid-cols-[34px_minmax(0,1fr)] gap-3 py-3;
+  }
+
+  .timeline-comment-avatar {
+    @apply size-8 rounded-full bg-muted object-cover transition-shadow;
+  }
+
+  .timeline-comment-meta {
+    @apply flex flex-wrap items-center gap-2 text-sm text-muted-foreground;
+  }
+
+  .timeline-comment-author {
+    @apply font-semibold text-foreground transition-colors hover:text-[var(--ui-accent-text)];
+  }
+
+  .timeline-comment-copy {
+    @apply mt-1.5 whitespace-pre-wrap text-sm leading-6 text-foreground;
+  }
+
+  .timeline-comment-copy.is-deleted {
+    @apply text-subtle-foreground;
+  }
+
+  .timeline-comment-actions {
+    @apply mt-2 flex min-w-0 flex-wrap items-center gap-x-5 gap-y-1;
+  }
+
+  .timeline-comment-children {
+    @apply relative ml-5 pl-5 sm:ml-7;
+  }
+
+  .timeline-comment-children::before {
+    @apply absolute bottom-3 left-0 top-0 w-px bg-border-subtle;
+    content: '';
+  }
+
+  .timeline-comment-children .timeline-comment-children {
+    @apply ml-0 pl-0;
+  }
+
+  .timeline-comment-children .timeline-comment-children::before {
+    display: none;
+  }
+}
