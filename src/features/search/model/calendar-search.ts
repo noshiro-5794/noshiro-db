@@ -1,6 +1,6 @@
 import type { SubjectOrdering } from '@/entities/subject';
 import type { CalendarGroup, CalendarSubjectItem, WeekdayEn } from '@/shared/api';
-import type { SafetyFilter, SubjectTypeFilter } from './search-options';
+import type { SafetyFilter, SubjectTypeFilter } from './options';
 
 export type CalendarSearchFilters = {
   keyword?: string;

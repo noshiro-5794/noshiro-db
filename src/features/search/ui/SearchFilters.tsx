@@ -14,7 +14,7 @@ import {
   safetyOptions,
   seasonOptions,
   subjectTypeOptions,
-} from '../model/search-options';
+} from '../model/options';
 
 type SearchFilterKey = 'type' | 'sourceId' | 'year' | 'season' | 'sort' | 'platform' | 'episodes' | 'safety';
 

@@ -4,7 +4,7 @@ import {
   type PublicCollectionListQuery,
   type PublicReviewListQuery,
   type PublicSubjectListQuery,
-} from '../api/public-user-api';
+} from '../api/client';
 import type { PageQuery } from '@/shared/api';
 
 export const publicUserQueryKeys = {

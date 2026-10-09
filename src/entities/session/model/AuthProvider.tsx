@@ -17,8 +17,8 @@ import {
   type RegisterInput,
 } from './session';
 import { AuthContext, type AuthState, type AuthStatus } from './auth-context-value';
-import { patchSessionProfile, type SessionProfilePatch } from './session-profile';
-import { isSessionSyncMessage, sessionSyncChannelName, type SessionSyncMessage } from './session-sync';
+import { patchSessionProfile, type SessionProfilePatch } from './profile';
+import { isSessionSyncMessage, sessionSyncChannelName, type SessionSyncMessage } from './sync';
 
 type SessionOperation = {
   controller: AbortController;

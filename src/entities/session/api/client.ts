@@ -6,12 +6,7 @@ import type {
   ProfileStats,
   SendCodePurpose,
 } from '@/shared/api';
-import {
-  decodeAccessTokenPayload,
-  decodeAvatarUpload,
-  decodeCurrentUserProfile,
-  decodeProfileStats,
-} from './session-decoders';
+import { decodeAccessTokenPayload, decodeAvatarUpload, decodeCurrentUserProfile, decodeProfileStats } from './decoders';
 
 export const authApi = {
   sendCode: (

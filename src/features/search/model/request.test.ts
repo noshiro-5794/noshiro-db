@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildSubjectSearchQuery } from './search-request';
+import { buildSubjectSearchQuery } from './request';
 
 describe('subject search request', () => {
   it('maps validated database filters to the API contract', () => {

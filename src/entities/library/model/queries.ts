@@ -11,7 +11,7 @@ import {
   type ReviewListQuery,
   type UserSubjectListQuery,
   type UserSubjectWriteBody,
-} from '../api/library-api';
+} from '../api/client';
 import { getNextApiPageParam, type PageQuery, type RatingDetail, type Review, type UUID } from '@/shared/api';
 
 export const libraryQueryKeys = {

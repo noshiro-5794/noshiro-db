@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { withSessionCookieLock } from './session-cookie-lock';
+import { withSessionCookieLock } from './cookie-lock';
 
 afterEach(() => {
   vi.unstubAllGlobals();

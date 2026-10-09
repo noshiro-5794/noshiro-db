@@ -100,3 +100,19 @@ weekdays use `Intl` through shared formatting helpers instead of duplicated labe
 Production static files live under `public/`: the generated app icons, PWA metadata, and the social card. Missing
 artwork is drawn at runtime instead of shipped as an image — see `src/shared/lib/identity.ts` for the initials and
 tone used by avatars and covers. Build output remains in `dist/` and is not source code.
+
+## Conventions
+
+Modules are named after the concern they own, not after the slice they sit in. The path already carries the domain,
+so the subject slice fetches through `entities/subject/api/client.ts` and describes its queries in
+`entities/subject/model/queries.ts`, rather than repeating "subject" in every filename. A file that belongs to
+several slices, such as the poster tile shared by the catalogue and the landing showcase, lives in the entity that
+owns the data (`entities/subject/ui/SubjectPosterCard.tsx`) instead of being copied into each consumer.
+
+Comments explain why a decision was made, in English. A comment that restates the line beneath it is noise; the
+reasoning belongs in the commit message. Docstrings on exported components and hooks get one line about the
+contract, not a restatement of the props.
+
+Enforcement: `tsc` runs with `strict`, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`,
+`verbatimModuleSyntax`, and `erasableSyntaxOnly`; ESLint extends `strictTypeChecked` and rejects imports that bypass
+a slice's public `index.ts`. Prettier owns formatting at 120 columns. `pnpm check` runs the whole chain.
