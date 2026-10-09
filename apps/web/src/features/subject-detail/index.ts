@@ -1,0 +1,12 @@
+export { metaOf, seoDescriptionOf, seoImageOf, titleOf } from './model/subject-detail';
+export { RelationsSection } from './ui/RelationsSection';
+export { PublicReviewsSection } from './ui/PublicReviewsSection';
+export { MarkEditorDialog } from './ui/MarkEditorDialog';
+export { EpisodesSection } from './ui/EpisodesSection';
+export { CharactersSection } from './ui/CharactersSection';
+export { StarRatingDisplay } from './ui/RatingStars';
+export { SubjectSidebar } from './ui/SubjectSidebar';
+export { SubjectDescriptionSection } from './ui/SubjectDescriptionSection';
+export { SubjectMarkSection } from './ui/SubjectMarkSection';
+export { SubjectReviewSection } from './ui/SubjectReviewSection';
+export { SubjectSectionNav } from './ui/SubjectSectionNav';
