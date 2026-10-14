@@ -174,6 +174,7 @@ class VNDBClient:
         try:
             self._rate_limiter.acquire()
             response = self.client.post(f"/{endpoint}", json=payload)
+            self._rate_limiter.observe(response.headers)
             response.raise_for_status()
             data = response.json()
         except httpx.HTTPStatusError as exc:

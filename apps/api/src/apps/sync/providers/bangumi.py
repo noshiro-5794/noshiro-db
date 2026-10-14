@@ -133,6 +133,7 @@ class BangumiClient:
         self._rate_limiter.acquire()
         try:
             response = self.client.get(path, **kwargs)
+            self._rate_limiter.observe(response.headers)
             response.raise_for_status()
         except httpx.HTTPStatusError as exc:
             detail = exc.response.text[:500]
@@ -153,6 +154,7 @@ class BangumiClient:
         self._rate_limiter.acquire()
         try:
             response = self.client.post(path, **kwargs)
+            self._rate_limiter.observe(response.headers)
             response.raise_for_status()
         except httpx.HTTPStatusError as exc:
             detail = exc.response.text[:500]

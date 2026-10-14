@@ -465,9 +465,14 @@ ANILIST_USER_AGENT = env(
     default=OUTBOUND_USER_AGENT,
 )
 ANILIST_TIMEOUT = env.float("ANILIST_TIMEOUT", default=30)
+# AniList answers unauthenticated calls with ``x-ratelimit-limit: 30`` per
+# minute and publishes ``X-RateLimit-Remaining``/``Reset`` so a client paces
+# itself instead of discovering the limit through 429s. Two seconds is that
+# budget with a small margin; the limiter raises it further when the headers
+# say the window is nearly spent.
 ANILIST_RATE_LIMIT_INTERVAL = env.float(
     "ANILIST_RATE_LIMIT_INTERVAL",
-    default=0.75,
+    default=2.0,
 )
 
 # MAL anime data is fetched through the official MyAnimeList API v2. Public
