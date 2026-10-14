@@ -105,11 +105,38 @@ def test_vndb_delta_refetches_known_active_records() -> None:
     )
     client = VNDBClient(Mock())
 
-    page = client.discover_vn_delta_page(watermark="0", cursor="0", page_size=10)
+    client.query = Mock(
+        return_value={
+            "results": [{"id": "v2"}, {"id": "v3"}],
+            "more": True,
+            "count": 9,
+        }
+    )
 
-    assert page.external_ids == ("v1",)
+    page = client.discover_vn_delta_page(watermark="0", cursor=None, page_size=10)
+
+    # With no watermark yet the walk starts above the highest id we hold, so a
+    # first run looks at new works rather than re-walking the whole space.
+    assert client.query.call_args.kwargs["filters"] == ["id", ">", "v1"]
+    assert client.query.call_args.kwargs["sort"] == "id"
+    assert page.external_ids == ("v2", "v3")
+    assert page.next_cursor == "2"
+    assert page.watermark == "3"
+    assert page.total_count == 9
+
+
+@pytest.mark.django_db
+def test_vndb_delta_continues_above_the_watermark() -> None:
+    client = VNDBClient(Mock())
+    client.query = Mock(return_value={"results": [], "more": False, "count": 0})
+
+    page = client.discover_vn_delta_page(watermark="60003", cursor="4", page_size=10)
+
+    assert client.query.call_args.kwargs["filters"] == ["id", ">", "v60003"]
+    assert client.query.call_args.kwargs["page"] == 4
+    assert page.external_ids == ()
     assert page.next_cursor is None
-    assert page.total_count == 1
+    assert page.watermark == "60003"
 
 
 def test_campaign_provider_registry_wires_delta_and_discovery_contract() -> None:
