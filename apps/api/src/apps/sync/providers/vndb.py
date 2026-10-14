@@ -80,6 +80,21 @@ class VNDBImportBatch:
     related_fetched: bool = False
 
 
+def vn_number(external_id: str) -> int:
+    """Numeric part of a VNDB id (``v1234`` -> 1234); 0 when it is not one."""
+    raw = str(external_id).lstrip("vV")
+    return int(raw) if raw.isdigit() else 0
+
+
+def highest_known_vn_number() -> int:
+    """Highest work id this catalogue already holds, as a delta watermark."""
+    values = ProviderRecord.objects.filter(
+        namespace__provider__slug=VNDB_SOURCE.slug,
+        namespace__slug=VNDB_VN_NAMESPACE.slug,
+    ).values_list("external_id", flat=True)
+    return max((vn_number(value) for value in values), default=0)
+
+
 class VNDBClient:
     VN_FIELDS = (
         "id,title,alttitle,aliases,released,languages,platforms,olang,description,"
@@ -246,24 +261,44 @@ class VNDBClient:
         cursor: str | None = None,
         page_size: int = 100,
     ) -> DeltaPage:
-        """Re-fetch known records; VNDB has no update-feed, so this is a payload
-        reconciliation pass. New works are found by periodic full campaigns."""
-        del watermark
-        offset = max(0, int(cursor or "0"))
-        limit = min(max(page_size, 1), 1000)
-        records = ProviderRecord.objects.filter(
-            namespace__provider__slug=VNDB_SOURCE.slug,
-            namespace__slug=VNDB_VN_NAMESPACE.slug,
-            status=ProviderRecord.Status.ACTIVE,
-        ).order_by("external_id")
-        external_ids = tuple(
-            records.values_list("external_id", flat=True)[offset : offset + limit]
+        """Walk the works added since the watermark, oldest first.
+
+        VNDB sorts and filters ids numerically, so ``["id", ">", "v60003"]``
+        with ``sort: "id"`` is a real delta over new works rather than a
+        re-fetch of everything already held. Edits to works we already have are
+        a separate question: VNDB publishes no update feed, so those are found
+        by a periodic full campaign.
+
+        The watermark is the numeric part of the highest id seen, which is what
+        the campaign accumulates; the first run starts from the highest id this
+        catalogue already holds, so it looks at new works rather than re-walking
+        the space from the beginning.
+        """
+        start = int(watermark) if watermark.isdigit() else 0
+        if start <= 0:
+            start = highest_known_vn_number()
+        page = max(1, int(cursor or "1"))
+        data = self.query(
+            "vn",
+            filters=["id", ">", f"v{start}"],
+            fields="id",
+            page=page,
+            results=page_size,
+            sort="id",
         )
+        external_ids = tuple(
+            item["id"]
+            for item in data["results"]
+            if isinstance(item, dict) and isinstance(item.get("id"), str)
+        )
+        highest = max((vn_number(value) for value in external_ids), default=start)
         return DeltaPage(
             external_ids=external_ids,
-            next_cursor=str(offset + limit) if len(external_ids) == limit else None,
-            watermark="known-record-reconciliation",
-            total_count=records.count(),
+            next_cursor=str(page + 1) if data.get("more") else None,
+            watermark=str(highest),
+            total_count=int(data["count"])
+            if isinstance(data.get("count"), int)
+            else None,
         )
 
     def fetch_related(self, endpoint: str, *, vndb_id: str, fields: str) -> list[dict]:

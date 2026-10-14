@@ -353,6 +353,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.sync.tasks.refresh.refresh_bangumi_subjects_task",
         "schedule": crontab(hour=5, minute=0),
     },
+    "vndb-incremental": {
+        "task": "apps.sync.tasks.vndb.run_vndb_incremental_task",
+        "schedule": crontab(hour=5, minute=30),
+    },
     "apply-match-proposals": {
         "task": "apps.sync.tasks.season.apply_match_proposals_task",
         "schedule": crontab(hour=4, minute=15),
