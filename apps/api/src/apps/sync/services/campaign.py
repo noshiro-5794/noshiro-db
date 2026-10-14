@@ -44,6 +44,9 @@ from apps.sync.services.manual_sync import manual_subject_sync_service
 from apps.sync.services.vndb import vndb_import_service
 
 logger = logging.getLogger(__name__)
+# Every provider below discovers by walking a numeric id space, so a fresh
+# crawl starts at its first id.
+DEFAULT_DISCOVERY_CURSOR = "1"
 
 
 @dataclass(frozen=True, slots=True)
@@ -411,7 +414,9 @@ class SyncCampaignService:
         provider = self.provider_for(campaign.provider_slug)
         params = dict(campaign.parameters or {})
         discovery = dict(params.get("discovery") or {})
-        default_cursor = self._default_cursor(campaign)
+        # Every provider in this registry discovers by walking a numeric id
+        # space, so a fresh crawl starts at its first id.
+        default_cursor = DEFAULT_DISCOVERY_CURSOR
         cursor = discovery.get("next_cursor") or default_cursor
         page_size = self._positive_int(params.get("page_size"), self.DEFAULT_PAGE_SIZE)
         max_pages = params.get("max_pages")
@@ -504,13 +509,6 @@ class SyncCampaignService:
         if pending is None or int(pending) < candidate:
             return str(candidate)
         return pending
-
-    @staticmethod
-    def _default_cursor(campaign: SyncCampaign) -> str:
-        """Return the starting discovery cursor for a fresh campaign step."""
-        if campaign.provider_slug == "bangumi":
-            return "0" if campaign.campaign_type == "incremental" else "1:0"
-        return "1"
 
     @classmethod
     def _promote_delta_window(
