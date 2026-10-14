@@ -345,6 +345,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.sync.tasks.season.reconcile_official_mal_links_task",
         "schedule": crontab(hour=4, minute=45),
     },
+    "probe-provider-frontiers": {
+        "task": "apps.sync.tasks.frontier.probe_provider_frontiers_task",
+        "schedule": crontab(hour=4, minute=30),
+    },
     "refresh-bangumi-subjects": {
         "task": "apps.sync.tasks.refresh.refresh_bangumi_subjects_task",
         "schedule": crontab(hour=5, minute=0),
@@ -491,10 +495,23 @@ MAL_RATE_LIMIT_INTERVAL = env.float(
     "MAL_RATE_LIMIT_INTERVAL",
     default=1.0,
 )
-# MAL has no catalog endpoint, so a full sync sweeps the id space. The ceiling
-# is the highest id observed upstream; newer entries arrive through the daily
-# season and airing refreshes.
+# MAL has no catalog endpoint, so a full sync sweeps the id space. This is the
+# seed the sweep starts from before the first probe: the ceiling it actually
+# uses is discovered by walking upward until records stop answering (see
+# apps/sync/providers/frontier.py), so it keeps covering new entries without
+# anyone editing this number.
 MAL_MAX_ANIME_ID = env.int("MAL_MAX_ANIME_ID", default=65500)
+# Ids the frontier probe may walk past the known ceiling in one run, and how
+# many in a row may be missing before the space is considered exhausted. Roughly
+# one request per second each, so a run costs at most a few minutes per source.
+PROVIDER_FRONTIER_PROBE_WINDOW = env.int(
+    "PROVIDER_FRONTIER_PROBE_WINDOW",
+    default=500,
+)
+PROVIDER_FRONTIER_MAX_MISSES = env.int(
+    "PROVIDER_FRONTIER_MAX_MISSES",
+    default=50,
+)
 # How many MAL records the official-id reconciliation examines per day. Each
 # pair commits on its own, so the number only bounds one day's work.
 MAL_IDENTITY_RECONCILE_BATCH_SIZE = env.int(

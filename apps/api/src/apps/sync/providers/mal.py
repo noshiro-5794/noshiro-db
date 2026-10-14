@@ -22,6 +22,7 @@ from apps.sync.providers.contracts import (
     SourceNamespaceSpec,
 )
 from apps.sync.providers.exceptions import MALAPIError
+from apps.sync.providers.frontier import read_frontier
 from apps.sync.providers.rate_limiter import DistributedRateLimiter
 from shared.outbound import httpx_client_kwargs
 
@@ -183,8 +184,16 @@ class MALAPIClient:
         complete enumeration is the id space itself — the sweep hands out
         candidates and the importer retires the ids that answer 404, which is
         cheap because a missing id costs exactly one request.
+
+        The sweep stops at the frontier the probe task has proved, not at a
+        constant: a ceiling somebody has to remember to raise is a ceiling that
+        silently stops covering the newest entries.
         """
-        ceiling = int(settings.MAL_MAX_ANIME_ID)
+        ceiling = read_frontier(
+            provider_slug=MAL_SOURCE.slug,
+            namespace_slug=MAL_ANIME_NAMESPACE.slug,
+            seed=int(settings.MAL_MAX_ANIME_ID),
+        ).ceiling
         start = max(1, int(cursor or "1"))
         if start > ceiling:
             return CatalogPage(external_ids=(), next_cursor=None, total_count=ceiling)
