@@ -261,6 +261,11 @@ class AniListClient:
                 response = self.client.post(
                     "", json={"query": query, "variables": variables}
                 )
+                # AniList answers with X-RateLimit-Limit/Remaining/Reset, and a
+                # 429 adds Retry-After: feed all of it to the shared gate so the
+                # next call — from any worker — waits for the budget to refill
+                # instead of discovering the limit again.
+                self._rate_limiter.observe(response.headers)
                 response.raise_for_status()
                 payload = response.json()
             except httpx.HTTPStatusError as exc:

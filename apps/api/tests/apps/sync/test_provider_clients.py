@@ -1,7 +1,9 @@
+import time
 from unittest.mock import Mock, patch
 
 import httpx
 import pytest
+from django.core.cache import cache
 from django.test import override_settings
 
 from apps.index.models import Provider
@@ -12,6 +14,7 @@ from apps.sync.providers.bangumi import (
     BangumiClient,
 )
 from apps.sync.providers.exceptions import AniListAPIError
+from apps.sync.providers.rate_limiter import GATE_KEY
 from apps.sync.providers.vndb import VNDB_SOURCE, VNDBAPIError, VNDBClient
 
 
@@ -301,6 +304,31 @@ def test_anilist_maintenance_403_is_unavailable_not_permanent() -> None:
     assert error.unavailable_reason == "provider_maintenance"
     http_client.post.assert_called_once()
     sleep.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_anilist_budget_headers_raise_the_shared_gate() -> None:
+    """A spent AniList window holds the next call back, from any worker."""
+    http_client = Mock()
+    request = httpx.Request("POST", "https://graphql.anilist.co")
+    http_client.post.return_value = httpx.Response(
+        200,
+        request=request,
+        json={"data": {"Page": {"media": [], "pageInfo": {"hasNextPage": False}}}},
+        headers={
+            "X-RateLimit-Limit": "30",
+            "X-RateLimit-Remaining": "0",
+            "X-RateLimit-Reset": "45",
+        },
+    )
+
+    cache.delete(GATE_KEY.format(name="anilist"))
+    with override_settings(ANILIST_RATE_LIMIT_INTERVAL=0.0):
+        AniListClient(http_client).discover_anime_page(cursor="1", page_size=25)
+
+    stored = float(cache.get(GATE_KEY.format(name="anilist")) or 0.0)
+    assert stored > time.time()
+    cache.delete(GATE_KEY.format(name="anilist"))
 
 
 def test_anilist_delta_discovery_walks_by_air_date() -> None:
