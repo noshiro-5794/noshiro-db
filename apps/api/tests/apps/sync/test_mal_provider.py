@@ -37,9 +37,13 @@ def test_quarter_maps_to_mal_season_name() -> None:
         season_name_for_quarter(5)
 
 
+@pytest.mark.django_db
 @override_settings(MAL_MAX_ANIME_ID=65500)
 def test_mal_full_discovery_sweeps_the_id_space() -> None:
-    """MAL has no catalog endpoint, so the sweep is the enumeration."""
+    """MAL has no catalog endpoint, so the sweep is the enumeration.
+
+    With no probed frontier recorded, the configured seed is the ceiling.
+    """
     client = MALAPIClient(Mock())
 
     first = client.discover_anime_page(cursor=None, page_size=3)
@@ -54,6 +58,27 @@ def test_mal_full_discovery_sweeps_the_id_space() -> None:
     exhausted = client.discover_anime_page(cursor="70000", page_size=100)
     assert exhausted.external_ids == ()
     assert exhausted.next_cursor is None
+
+
+@pytest.mark.django_db
+@override_settings(MAL_MAX_ANIME_ID=65500)
+def test_a_probed_frontier_raises_the_sweep_ceiling() -> None:
+    """The sweep follows what the probe proved, not the number someone typed."""
+    from apps.sync.models import SyncState as State
+
+    State.objects.create(
+        task_name="provider_frontier",
+        shard="mal:anime",
+        current_id=66_020,
+        end_id=66_010,
+        status=State.Status.FINISHED,
+    )
+
+    page = MALAPIClient(Mock()).discover_anime_page(cursor="66005", page_size=5)
+
+    assert page.external_ids == ("66005", "66006", "66007", "66008", "66009")
+    assert page.next_cursor == "66010"
+    assert page.total_count == 66_020
 
 
 def test_mal_is_a_registered_campaign_provider() -> None:
