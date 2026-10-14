@@ -128,6 +128,9 @@ class MALAPIClient:
             self._rate_limiter.acquire()
             try:
                 response = self.client.get(path, params=params)
+                # MAL publishes no budget headers today; observing them costs
+                # nothing and picks pacing up the day it starts to.
+                self._rate_limiter.observe(response.headers)
                 response.raise_for_status()
             except httpx.HTTPStatusError as exc:
                 status_code = exc.response.status_code
