@@ -11,6 +11,7 @@ from apps.sync.providers.contracts import (
     SourceNamespaceSpec,
 )
 from apps.sync.providers.exceptions import BangumiAPIError
+from apps.sync.providers.frontier import highest_stored_id, read_frontier
 from apps.sync.providers.rate_limiter import DistributedRateLimiter
 from shared.outbound import httpx_client_kwargs
 
@@ -75,11 +76,6 @@ BANGUMI_CALENDAR_NAMESPACE = SourceNamespaceSpec(
     resource_type="schedule",
     description="Point-in-time Bangumi weekly broadcast calendar",
 )
-
-# Bangumi's browse endpoint only accepts these subject types and skips type 5.
-BANGUMI_SUBJECT_TYPES = (1, 2, 3, 4, 6)
-# Offset paging beyond this bound is rejected by the API; treat it as terminal.
-BANGUMI_BROWSE_MAX_OFFSET = 100_000
 
 
 class BangumiClient:
@@ -215,52 +211,34 @@ class BangumiClient:
         cursor: str | None = None,
         page_size: int = 100,
     ) -> CatalogPage:
-        """Page the browse endpoint across all subject types.
+        """Enumerate subject ids by walking the id space.
 
-        ``GET /v0/subjects`` requires ``type`` and only supports date/rank
-        sorting, so the cursor encodes ``<type>:<offset>``. The endpoint is an
-        approximate catalog view rather than a stable global enumeration, so a
-        full campaign cannot prove completeness (see docs/development.md).
+        ``GET /v0/subjects`` is a bounded browse view - the API rejects offsets
+        past its own ceiling, and the view is approximate rather than a stable
+        enumeration - so it cannot be the basis of a full sync that claims
+        completeness. Subject ids are handed out monotonically and the space is
+        99.7% occupied, so walking it costs one request per gap and proves what
+        it covered: every id either answered or retired as non-existent.
+
+        The walk stops at the frontier the probe proved rather than at a
+        constant, and the importer retires the ids that answer 404.
         """
-        type_id, offset = parse_bangumi_cursor(cursor)
-        limit = min(max(page_size, 1), 100)
-        payload = self._get(
-            "/v0/subjects",
-            params={
-                "type": type_id,
-                "limit": limit,
-                "offset": offset,
-                "sort": "date",
-            },
-        )
-        if isinstance(payload, dict) and isinstance(payload.get("data"), list):
-            items = payload["data"]
-            total_count = payload.get("total")
-        elif isinstance(payload, list):
-            # Older/unwrapped responses are tolerated for forward compatibility.
-            items = payload
-            total_count = None
-        else:
-            raise BangumiAPIError("Bangumi subjects response must contain a data list.")
-        external_ids = tuple(
-            str(item["id"])
-            for item in items
-            if isinstance(item, dict) and isinstance(item.get("id"), int)
-        )
-        parsed_total = int(total_count) if isinstance(total_count, (int, str)) else None
-        next_cursor: str | None
-        if len(external_ids) == limit and offset + limit < BANGUMI_BROWSE_MAX_OFFSET:
-            next_cursor = f"{type_id}:{offset + limit}"
-        elif (next_type_index := BANGUMI_SUBJECT_TYPES.index(type_id) + 1) < len(
-            BANGUMI_SUBJECT_TYPES
-        ):
-            next_cursor = f"{BANGUMI_SUBJECT_TYPES[next_type_index]}:0"
-        else:
-            next_cursor = None
+        ceiling = read_frontier(
+            provider_slug=BANGUMI_SOURCE.slug,
+            namespace_slug=BANGUMI_SUBJECT_NAMESPACE.slug,
+            seed=highest_stored_id(
+                provider_slug=BANGUMI_SOURCE.slug,
+                namespace_slug=BANGUMI_SUBJECT_NAMESPACE.slug,
+            ),
+        ).ceiling
+        start = max(1, int(cursor or "1"))
+        if start > ceiling:
+            return CatalogPage(external_ids=(), next_cursor=None, total_count=ceiling)
+        end = min(ceiling, start + max(1, int(page_size)) - 1)
         return CatalogPage(
-            external_ids=external_ids,
-            next_cursor=next_cursor,
-            total_count=parsed_total,
+            external_ids=tuple(str(subject_id) for subject_id in range(start, end + 1)),
+            next_cursor=str(end + 1) if end < ceiling else None,
+            total_count=ceiling,
         )
 
     def discover_subject_delta_page(
@@ -270,7 +248,13 @@ class BangumiClient:
         cursor: str | None = None,
         page_size: int = 100,
     ) -> DeltaPage:
-        """Re-fetch known records; new IDs are found by periodic frontier scans."""
+        """Re-fetch known records so upstream edits land.
+
+        Bangumi publishes no change feed — every ``/v0/revisions/*`` endpoint
+        asks for one entity — so an edit can only be found by asking again. New
+        ids are a separate concern: the frontier probe extends the space and the
+        incremental walk covers it.
+        """
         del watermark
         offset = max(0, int(cursor or "0"))
         limit = min(max(page_size, 1), 1000)
@@ -320,20 +304,6 @@ class BangumiClient:
         if self._client is not None:
             self._client.close()
             self._client = None
-
-
-def parse_bangumi_cursor(cursor: str | None) -> tuple[int, int]:
-    """Parse ``<type>:<offset>`` with a safe fallback to the first subject type."""
-    if cursor:
-        raw = str(cursor).split(":", 1)
-        try:
-            type_id = int(raw[0])
-            offset = int(raw[1]) if len(raw) == 2 else 0
-            if type_id in BANGUMI_SUBJECT_TYPES and offset >= 0:
-                return type_id, offset
-        except ValueError:
-            pass
-    return BANGUMI_SUBJECT_TYPES[0], 0
 
 
 bangumi_client = BangumiClient()

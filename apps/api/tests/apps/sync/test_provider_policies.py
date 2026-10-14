@@ -3,16 +3,15 @@ from unittest.mock import Mock
 import pytest
 
 from apps.index.models import Provider, ProviderNamespace, ProviderRecord
+from apps.sync.models import SyncState
 from apps.sync.providers.anilist import AniListClient
 from apps.sync.providers.bangumi import (
     BANGUMI_SOURCE,
     BANGUMI_SUBJECT_NAMESPACE,
     BangumiClient,
-    parse_bangumi_cursor,
 )
 from apps.sync.providers.exceptions import (
     AniListAPIError,
-    BangumiAPIError,
     VNDBAPIError,
 )
 from apps.sync.providers.vndb import VNDB_SOURCE, VNDB_VN_NAMESPACE, VNDBClient
@@ -43,54 +42,35 @@ def test_unknown_relation_keeps_a_stable_slug() -> None:
     assert canonical_relation_type("custom", "Official Remake") == "official-remake"
 
 
-def test_bangumi_cursor_parsing_is_stable() -> None:
-    assert parse_bangumi_cursor("2:100") == (2, 100)
-    assert parse_bangumi_cursor("6") == (6, 0)
-    assert parse_bangumi_cursor(None) == (1, 0)
-    assert parse_bangumi_cursor("5:0") == (1, 0)  # type 5 does not exist
-    assert parse_bangumi_cursor("2:-1") == (1, 0)
-    assert parse_bangumi_cursor("junk") == (1, 0)
-
-
-def test_bangumi_catalog_discovery_pages_by_type_and_offset() -> None:
-    client = BangumiClient(Mock())
-    client._get = Mock(
-        side_effect=[
-            {"data": [{"id": 1}, {"id": 2}], "total": 100},  # type 1 short page
-            {"data": [{"id": 10}, {"id": 11}], "total": 100},  # type 2 short page
-            {"data": [{"id": 30}, {"id": 31}, {"id": 32}], "total": 100},  # full
-            {"data": [{"id": 33}, {"id": 34}], "total": 100},  # type 3 short page
-            {"data": [{"id": 40}], "total": 100},  # type 4 short page
-            {"data": [{"id": 60}], "total": 100},  # type 6 short page -> done
-        ]
+@pytest.mark.django_db
+def test_bangumi_catalog_discovery_walks_the_id_space() -> None:
+    """The browse view is bounded and approximate; the id space is neither."""
+    SyncState.objects.create(
+        task_name="provider_frontier",
+        shard="bangumi:subject",
+        current_id=204,
+        end_id=200,
+        status=SyncState.Status.FINISHED,
     )
+    http_client = Mock()
+    client = BangumiClient(http_client)
 
-    pages: list[tuple[tuple[str, ...], str | None]] = []
-    cursor = "1:0"
-    while cursor:
-        page = client.discover_subject_page(cursor=cursor, page_size=3)
-        pages.append((page.external_ids, page.next_cursor))
-        cursor = page.next_cursor
-        assert page.total_count == 100
+    first = client.discover_subject_page(cursor=None, page_size=3)
+    assert first.external_ids == ("1", "2", "3")
+    assert first.next_cursor == "4"
+    assert first.total_count == 204
 
-    assert pages == [
-        (("1", "2"), "2:0"),
-        (("10", "11"), "3:0"),
-        (("30", "31", "32"), "3:3"),
-        (("33", "34"), "4:0"),
-        (("40",), "6:0"),
-        (("60",), None),
-    ]
-    first_params = client._get.call_args_list[0].kwargs["params"]
-    assert first_params == {"type": 1, "limit": 3, "offset": 0, "sort": "date"}
+    last = client.discover_subject_page(cursor="202", page_size=3)
+    assert last.external_ids == ("202", "203", "204")
+    assert last.next_cursor is None
 
-
-def test_bangumi_catalog_discovery_rejects_unwrapped_malformed_response() -> None:
-    client = BangumiClient(Mock())
-    client._get = Mock(return_value={"nope": []})
-
-    with pytest.raises(BangumiAPIError, match="data list"):
-        client.discover_subject_page(cursor="1:0", page_size=3)
+    exhausted = client.discover_subject_page(cursor="205", page_size=3)
+    assert exhausted.external_ids == ()
+    assert exhausted.next_cursor is None
+    # The sweep never asks the browse endpoint, and never fetches a payload to
+    # hand out an id: the importer does that, one id at a time.
+    http_client.get.assert_not_called()
+    http_client.post.assert_not_called()
 
 
 @pytest.mark.django_db
