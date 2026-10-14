@@ -4,6 +4,10 @@ node_modules/
 .venv/
 venv/
 
+# Python bytecode. Compiled artefacts churn on every run and describe nothing.
+__pycache__/
+*.py[cod]
+
 # Build output and runtime data
 build/
 dist/
