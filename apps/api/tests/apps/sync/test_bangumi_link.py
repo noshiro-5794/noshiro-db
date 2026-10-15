@@ -1,6 +1,9 @@
+import uuid
 from unittest.mock import patch
 
 import pytest
+from django.conf import settings
+from django.test import override_settings
 
 from apps.ai.models import AgentRun
 from apps.index.models import (
@@ -22,7 +25,14 @@ from apps.sync.services.bangumi_link import (
 pytestmark = pytest.mark.django_db(transaction=True)
 
 
-def _entity(*, provider_slug: str, namespace_slug: str, external_id: str, title: str):
+def _entity(
+    *,
+    provider_slug: str,
+    namespace_slug: str,
+    external_id: str,
+    title: str,
+    entity_id: uuid.UUID | None = None,
+):
     provider, _ = Provider.objects.get_or_create(
         slug=provider_slug,
         defaults={"name": provider_slug.title()},
@@ -38,7 +48,7 @@ def _entity(*, provider_slug: str, namespace_slug: str, external_id: str, title:
         origin="api",
         status="active",
     )
-    entity = Entity.objects.create(kind=Entity.Kind.WORK)
+    entity = Entity.objects.create(id=entity_id, kind=Entity.Kind.WORK)
     Work.objects.create(entity=entity, work_type=Work.WorkType.ANIME)
     ProviderRepresentation.objects.create(
         provider_record=record,
@@ -53,6 +63,30 @@ def _entity(*, provider_slug: str, namespace_slug: str, external_id: str, title:
         kind=EntityName.Kind.ROMANIZED,
     )
     return entity
+
+
+def _link_bangumi(entity: Entity, *, external_id: str) -> None:
+    provider, _ = Provider.objects.get_or_create(
+        slug="bangumi",
+        defaults={"name": "Bangumi"},
+    )
+    namespace, _ = ProviderNamespace.objects.get_or_create(
+        provider=provider,
+        slug="subject",
+        defaults={"resource_type": ProviderNamespace.ResourceType.SUBJECT},
+    )
+    record = ProviderRecord.objects.create(
+        namespace=namespace,
+        external_id=external_id,
+        origin="api",
+        status="active",
+    )
+    ProviderRepresentation.objects.create(
+        provider_record=record,
+        entity=entity,
+        mapping_kind=ProviderRepresentation.MappingKind.EXACT,
+        method=ProviderRepresentation.Method.PROVIDER,
+    )
 
 
 def test_needs_bangumi_link_distinguishes_linked_and_missing_works() -> None:
@@ -211,3 +245,145 @@ def test_hallucinated_subject_id_never_triggers_sync() -> None:
     assert result["outcome"] == "abstained"
     upsert.assert_not_called()
     assert MatchDecision.objects.count() == 0
+
+
+def test_run_missing_reaches_a_later_root_past_already_linked_roots() -> None:
+    """Already linked roots must not spend the batch, or the sweep stalls."""
+    for index in range(3):
+        linked = _entity(
+            provider_slug="mal",
+            namespace_slug="anime",
+            external_id=f"90{index}",
+            title=f"Linked {index}",
+            entity_id=uuid.UUID(int=index + 1),
+        )
+        _link_bangumi(linked, external_id=f"80{index}")
+    target = _entity(
+        provider_slug="mal",
+        namespace_slug="anime",
+        external_id="999",
+        title="Unlinked Target",
+        entity_id=uuid.UUID(int=99),
+    )
+
+    with patch.object(
+        bangumi_link_service,
+        "attempt",
+        return_value={"root_entity_id": str(target.pk), "outcome": "no_match"},
+    ) as attempt:
+        result = bangumi_link_service.run_missing(limit=1)
+
+    assert result["processed"] == 1
+    attempt.assert_called_once_with(root=target, apply=False, force=False)
+
+
+def test_run_missing_does_not_spend_the_batch_on_concluded_attempts() -> None:
+    """The production stall: the first rows return skipped_existing forever."""
+    roots = [
+        _entity(
+            provider_slug="mal",
+            namespace_slug="anime",
+            external_id=f"91{index}",
+            title=f"Concluded {index}",
+            entity_id=uuid.UUID(int=index + 1),
+        )
+        for index in range(3)
+    ]
+    target = _entity(
+        provider_slug="mal",
+        namespace_slug="anime",
+        external_id="998",
+        title="Still Open",
+        entity_id=uuid.UUID(int=98),
+    )
+
+    def fake_attempt(*, root, apply=False, force=False):
+        outcome = "no_match" if root.pk == target.pk else "skipped_existing"
+        return {"root_entity_id": str(root.pk), "outcome": outcome}
+
+    with patch.object(
+        bangumi_link_service,
+        "attempt",
+        side_effect=fake_attempt,
+    ) as attempt:
+        result = bangumi_link_service.run_missing(limit=1)
+
+    assert [item["outcome"] for item in result["results"]] == ["no_match"]
+    assert result["processed"] == 1
+    assert attempt.call_count == len(roots) + 1
+
+
+@override_settings(BANGUMI_LINK_WALK_CAP=3)
+def test_run_missing_stops_walking_at_the_configured_cap() -> None:
+    for index in range(6):
+        _entity(
+            provider_slug="mal",
+            namespace_slug="anime",
+            external_id=f"92{index}",
+            title=f"Walked {index}",
+            entity_id=uuid.UUID(int=index + 1),
+        )
+
+    with patch.object(
+        bangumi_link_service,
+        "_needs_bangumi_link",
+        return_value=False,
+    ) as needs:
+        result = bangumi_link_service.run_missing(limit=10)
+
+    assert result["scanned"] == 3
+    assert result["processed"] == 0
+    assert needs.call_count == 3
+
+
+def test_search_queries_cover_distinct_scripts() -> None:
+    queries = bangumi_link_service._search_queries(
+        names=[
+            "Shingeki no Kyojin",
+            "進撃の巨人",
+            "进击的巨人",
+            "Attack on Titan",
+        ]
+    )
+
+    assert queries == ["進撃の巨人", "Shingeki no Kyojin", "进击的巨人"]
+
+
+def test_search_queries_fall_back_to_the_remaining_names() -> None:
+    queries = bangumi_link_service._search_queries(
+        names=["Attack on Titan", "Shingeki no Kyojin", "SnK"]
+    )
+
+    assert queries == ["Attack on Titan", "Shingeki no Kyojin", "SnK"]
+
+
+def test_link_bangumi_works_task_uses_the_configured_batch() -> None:
+    from apps.sync.tasks.linking import link_bangumi_works_task
+
+    with patch.object(
+        bangumi_link_service,
+        "run_missing",
+        return_value={"processed": 0},
+    ) as run:
+        link_bangumi_works_task()
+
+    run.assert_called_once_with(
+        limit=settings.BANGUMI_LINK_BATCH_SIZE,
+        apply=False,
+        force=False,
+    )
+
+
+def test_link_sweeps_are_scheduled_and_registered() -> None:
+    """A sweep nobody runs is not coverage, and a beat path must be importable."""
+    from config.celery import app
+
+    app.loader.import_default_modules()
+    scheduled = {entry["task"] for entry in settings.CELERY_BEAT_SCHEDULE.values()}
+    sweeps = {
+        "apps.sync.tasks.linking.link_bangumi_works_task",
+        "apps.sync.tasks.linking.recall_mal_links_task",
+    }
+
+    assert sweeps <= scheduled
+    assert sweeps <= set(app.tasks)

@@ -40,6 +40,16 @@ IDEMPOTENCY_SCOPE = "mal-recall:v1"
 USE_CASE = "mal_recall"
 TOOL_SCOPES = ("knowledge:read", "mal:read")
 MIN_FOUND_CONFIDENCE = 0.92
+# Attempt statuses that are still in flight; a board work in one of them is
+# already being recalled and must not spend another slot.
+IN_FLIGHT_STATUSES = frozenset(
+    {
+        AgentRun.Status.QUEUED,
+        AgentRun.Status.RUNNING,
+        AgentRun.Status.WAITING,
+        AgentRun.Status.PAUSED,
+    }
+)
 
 
 class RecallMalOutput(BaseModel):
@@ -65,10 +75,16 @@ class MalLinkRecallService:
         evaluate: bool = True,
         force: bool = False,
     ) -> dict[str, Any]:
-        """Resolve active-board Bangumi works that still lack MAL candidates."""
-        unresolved = self._unresolved_board_works(limit=limit)
+        """Resolve active-board Bangumi works that still lack MAL candidates.
+
+        ``limit`` bounds actionable works, not board rows: a work that already
+        has a concluded attempt (or one in flight) cannot be recalled again, so
+        it spends no budget and the sweep keeps walking the board to reach the
+        works earlier runs never got to.
+        """
+        limit = max(1, int(limit))
         results = []
-        for root in unresolved:
+        for root in self._unresolved_board_works(limit=limit, force=force):
             summary = self.recall_one(
                 root=root,
                 evaluate=evaluate,
@@ -100,12 +116,7 @@ class MalLinkRecallService:
         if existing is not None:
             if existing.status == AgentRun.Status.SUCCEEDED and not force:
                 return self._summary_for_run(root, existing, skipped=True)
-            if existing.status in {
-                AgentRun.Status.QUEUED,
-                AgentRun.Status.RUNNING,
-                AgentRun.Status.WAITING,
-                AgentRun.Status.PAUSED,
-            }:
+            if existing.status in IN_FLIGHT_STATUSES:
                 return self._summary_for_run(root, existing, skipped=False)
             # A failed/cancelled attempt keeps its audit trail but must free the
             # idempotency key so a fresh attempt can reuse the same scope/key.
@@ -223,7 +234,7 @@ class MalLinkRecallService:
         return result
 
     @staticmethod
-    def _unresolved_board_works(*, limit: int) -> list[Entity]:
+    def _unresolved_board_works(*, limit: int, force: bool = False) -> list[Entity]:
         board = AiringBoard.objects.filter(status=AiringBoard.Status.ACTIVE).first()
         if board is None:
             return []
@@ -242,12 +253,32 @@ class MalLinkRecallService:
                 work_type=Work.WorkType.ANIME,
             ).exists():
                 continue
-            if not MalLinkRecallService._has_pending_mal_candidate(root):
-                seen.add(root.pk)
-                roots.append(root)
+            if MalLinkRecallService._has_pending_mal_candidate(root):
+                continue
+            if not MalLinkRecallService._has_actionable_attempt(root, force=force):
+                continue
+            seen.add(root.pk)
+            roots.append(root)
             if len(roots) >= max(1, int(limit)):
                 break
         return roots
+
+    @staticmethod
+    def _has_actionable_attempt(root: Entity, *, force: bool) -> bool:
+        """Whether the newest attempt still leaves work, as ``recall_one`` sees it."""
+        newest = (
+            AgentRun.objects.filter(
+                idempotency_scope=IDEMPOTENCY_SCOPE,
+                idempotency_key=MalLinkRecallService._idempotency_key(root),
+            )
+            .order_by("-created_at")
+            .first()
+        )
+        if newest is None:
+            return True
+        if newest.status in IN_FLIGHT_STATUSES:
+            return False
+        return newest.status != AgentRun.Status.SUCCEEDED or force
 
     @staticmethod
     def _has_pending_mal_candidate(root: Entity) -> bool:
