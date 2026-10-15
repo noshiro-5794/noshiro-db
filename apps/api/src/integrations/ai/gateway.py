@@ -199,11 +199,7 @@ class OpenAICompatibleGateway:
             content=content,
             tool_calls=_parse_tool_calls(message.get("tool_calls")),
             model=model,
-            usage={
-                "model": model,
-                "input_tokens": usage.get("prompt_tokens"),
-                "output_tokens": usage.get("completion_tokens"),
-            },
+            usage=_usage_with_cost(model=model, usage=usage),
         )
 
     @staticmethod
@@ -246,11 +242,52 @@ class OpenAICompatibleGateway:
         if not isinstance(result, dict):
             raise AIProviderError("AI provider JSON output must be an object.")
         usage = data.get("usage") or {}
-        return result, {
-            "model": model,
-            "input_tokens": usage.get("prompt_tokens"),
-            "output_tokens": usage.get("completion_tokens"),
-        }
+        return result, _usage_with_cost(model=model, usage=usage)
+
+
+def _usage_with_cost(*, model: str, usage: dict[str, Any]) -> dict[str, Any]:
+    """Token counts for a call, plus what they cost when the price table knows it.
+
+    Providers report tokens and not money, so the spend on a run can only be
+    computed from a configured price. A model missing from the table keeps its
+    token counts and leaves ``cost`` unset: an absent number is honest, a guessed
+    one would be wrong in a report nobody can check.
+    """
+    input_tokens = usage.get("prompt_tokens")
+    output_tokens = usage.get("completion_tokens")
+    record: dict[str, Any] = {
+        "model": model,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+    }
+    cost = _estimate_cost(
+        model=model, input_tokens=input_tokens, output_tokens=output_tokens
+    )
+    if cost is not None:
+        record["cost"] = str(cost)
+    return record
+
+
+def _estimate_cost(
+    *, model: str, input_tokens: Any, output_tokens: Any
+) -> Decimal | None:
+    """Cost of a call from ``AI_MODEL_PRICES``, in currency units per million tokens."""
+    prices = settings.AI_MODEL_PRICES or {}
+    price = prices.get(model) if isinstance(prices, dict) else None
+    if not isinstance(price, dict):
+        return None
+    if input_tokens is None and output_tokens is None:
+        return None
+    try:
+        input_price = Decimal(str(price.get("input", 0)))
+        output_price = Decimal(str(price.get("output", 0)))
+        total = (
+            input_price * Decimal(int(input_tokens or 0))
+            + output_price * Decimal(int(output_tokens or 0))
+        ) / Decimal(1_000_000)
+    except (ArithmeticError, TypeError, ValueError):
+        return None
+    return total.quantize(Decimal("0.000001"))
 
 
 ai_gateway = OpenAICompatibleGateway()
