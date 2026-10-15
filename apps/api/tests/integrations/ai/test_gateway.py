@@ -304,3 +304,53 @@ class TestProviderFailureHandling:
             cache.delete("noshiro:ai:provider-unavailable")
 
         assert result == {"dispatched": 0, "reason": "ai_provider_unavailable"}
+
+
+class TestUsageCost:
+    """A run records what it spent only when the price table knows the model."""
+
+    @override_settings(
+        AI_MODEL_PRICES={"priced-model": {"input": "0.26", "output": "0.38"}}
+    )
+    def test_priced_model_costs_its_tokens(self) -> None:
+        from integrations.ai.gateway import _usage_with_cost
+
+        usage = _usage_with_cost(
+            model="priced-model",
+            usage={"prompt_tokens": 1000, "completion_tokens": 500},
+        )
+
+        assert usage["input_tokens"] == 1000
+        assert usage["output_tokens"] == 500
+        assert Decimal(usage["cost"]) == Decimal("0.000450")
+
+    @override_settings(AI_MODEL_PRICES={})
+    def test_unpriced_model_records_tokens_without_a_cost(self) -> None:
+        from integrations.ai.gateway import _usage_with_cost
+
+        usage = _usage_with_cost(
+            model="unknown-model",
+            usage={"prompt_tokens": 1000, "completion_tokens": 500},
+        )
+
+        assert usage["input_tokens"] == 1000
+        assert "cost" not in usage
+
+    @override_settings(AI_MODEL_PRICES={"priced-model": {"input": "0.26"}})
+    def test_missing_token_counts_produce_no_cost(self) -> None:
+        from integrations.ai.gateway import _usage_with_cost
+
+        usage = _usage_with_cost(model="priced-model", usage={})
+
+        assert "cost" not in usage
+
+    @override_settings(AI_MODEL_PRICES={"broken-model": "not-a-price-object"})
+    def test_malformed_price_entry_is_ignored(self) -> None:
+        from integrations.ai.gateway import _usage_with_cost
+
+        usage = _usage_with_cost(
+            model="broken-model",
+            usage={"prompt_tokens": 10, "completion_tokens": 10},
+        )
+
+        assert "cost" not in usage
