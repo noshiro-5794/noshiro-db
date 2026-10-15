@@ -2,10 +2,13 @@ from io import StringIO
 from unittest.mock import patch
 
 import pytest
+from django.conf import settings
 from django.core.management import call_command
 
 from apps.ai.models import AgentRun, AgentStep
 from apps.index.models import (
+    AiringBoard,
+    AiringBoardEntry,
     Entity,
     EntityName,
     MatchCandidate,
@@ -17,9 +20,11 @@ from apps.index.models import (
     Work,
 )
 from apps.sync.services.mal_link_recall import (
+    MalLinkRecallService,
     RecallMalOutput,
     mal_link_recall_service,
 )
+from apps.sync.tasks.linking import recall_mal_links_task
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -217,4 +222,99 @@ def test_failed_attempt_frees_idempotency_key_for_retry() -> None:
             idempotency_key="bangumi:595884",
         ).count()
         == 1
+    )
+
+
+def _board(*, entries: list[tuple[Entity, str]]) -> AiringBoard:
+    board = AiringBoard.objects.create(season_key="2026Q3")
+    for entity, external_id in entries:
+        AiringBoardEntry.objects.create(
+            board=board,
+            work=Work.objects.get(entity=entity),
+            source_refs=[{"provider": "bangumi", "external_id": external_id}],
+        )
+    return board
+
+
+def _concluded_recall_run(*, external_id: str) -> AgentRun:
+    return AgentRun.objects.create(
+        kind=AgentRun.Kind.ADMIN_ENRICH,
+        status=AgentRun.Status.SUCCEEDED,
+        idempotency_scope="mal-recall:v1",
+        idempotency_key=f"bangumi:{external_id}",
+        metadata={"scopes": ["knowledge:read", "mal:read"]},
+    )
+
+
+def test_unresolved_board_works_skips_concluded_attempts() -> None:
+    """A concluded recall must not occupy a slot, or the sweep never moves."""
+    blocked = []
+    for index in range(3):
+        entity = _anime_entity(
+            provider_slug="bangumi",
+            namespace_slug="subject",
+            external_id=f"60{index}",
+            title=f"Concluded {index}",
+        )
+        blocked.append((entity, f"60{index}"))
+        _concluded_recall_run(external_id=f"60{index}")
+    target = _anime_entity(
+        provider_slug="bangumi",
+        namespace_slug="subject",
+        external_id="699",
+        title="Still Open",
+    )
+    _board(entries=[*blocked, (target, "699")])
+
+    unresolved = MalLinkRecallService._unresolved_board_works(limit=10, force=False)
+
+    assert set(unresolved) == {target}
+    # A forced sweep re-runs the concluded works on purpose.
+    assert set(MalLinkRecallService._unresolved_board_works(limit=10, force=True)) == {
+        entity for entity, _ in blocked
+    } | {target}
+
+
+def test_run_missing_reaches_a_later_work_past_concluded_attempts() -> None:
+    blocked = []
+    for index in range(3):
+        entity = _anime_entity(
+            provider_slug="bangumi",
+            namespace_slug="subject",
+            external_id=f"61{index}",
+            title=f"Concluded {index}",
+        )
+        blocked.append((entity, f"61{index}"))
+        _concluded_recall_run(external_id=f"61{index}")
+    target = _anime_entity(
+        provider_slug="bangumi",
+        namespace_slug="subject",
+        external_id="698",
+        title="Still Open",
+    )
+    _board(entries=[*blocked, (target, "698")])
+
+    with patch.object(
+        mal_link_recall_service,
+        "recall_one",
+        return_value={"root_entity_id": str(target.pk), "outcome": "not_found"},
+    ) as recall:
+        result = mal_link_recall_service.run_missing(limit=1, evaluate=False)
+
+    assert result["processed"] == 1
+    recall.assert_called_once_with(root=target, evaluate=False, force=False)
+
+
+def test_recall_mal_links_task_uses_the_configured_batch() -> None:
+    with patch.object(
+        mal_link_recall_service,
+        "run_missing",
+        return_value={"processed": 0},
+    ) as run:
+        recall_mal_links_task()
+
+    run.assert_called_once_with(
+        limit=settings.MAL_LINK_RECALL_BATCH_SIZE,
+        evaluate=True,
+        force=False,
     )
