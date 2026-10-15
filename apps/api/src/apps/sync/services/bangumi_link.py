@@ -21,6 +21,7 @@ import json
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
+from django.conf import settings
 from django.db.models import Q
 from django.utils import timezone
 
@@ -47,8 +48,20 @@ POLICY_VERSION = "bangumi-search-v1"
 ATTEMPT_SCOPE = "bangumi-link:v1"
 PROMPT_VERSION = "bangumi-search-v1"
 MIN_CONFIDENCE = Decimal("0.9200")
-MAX_SEARCH_QUERIES = 2
+# Three searches are the whole external budget for one work: each query is one
+# rate-limited Bangumi call and the merged candidate list is capped before it
+# reaches the model, so a fourth spelling buys latency, not coverage.
+MAX_SEARCH_QUERIES = 3
 SEARCH_LIMIT = 8
+# Query slots ordered by how much they separate a work's spellings: a
+# kana/kanji Japanese name, the latin/romaji form, then the CJK (usually
+# Chinese) title.
+SCRIPT_PREFERENCE = ("kana", "latin", "han")
+# Outcomes that mean no work happened, so they must not spend the batch. An
+# earlier run already concluded the root, or one is still in flight.
+NO_WORK_OUTCOMES = frozenset({"skipped_existing", "already_running"})
+# Rows fetched per database round trip while walking MAL representations.
+WALK_CHUNK_SIZE = 500
 
 
 class BangumiLinkService:
@@ -59,11 +72,21 @@ class BangumiLinkService:
         apply: bool = False,
         force: bool = False,
     ) -> dict[str, Any]:
-        """Resolve MAL roots that still lack a Bangumi representation."""
+        """Resolve MAL roots that still lack a Bangumi representation.
+
+        ``limit`` bounds actionable roots, not rows walked. A root that is
+        already linked, is not an anime Work, waits on another policy's
+        candidate, or already has a concluded attempt cannot be worked on, so
+        it spends no budget and the walk continues to later roots. Walking is
+        what a run pays for a catalogue whose handled rows cluster in front;
+        ``BANGUMI_LINK_WALK_CAP`` keeps that pass bounded.
+        """
         limit = max(1, int(limit))
+        walk_cap = max(1, int(settings.BANGUMI_LINK_WALK_CAP))
         summaries: list[dict[str, Any]] = []
         processed_roots: set[str] = set()
-        mal_entity_ids = list(
+        walked = 0
+        mal_entity_ids = (
             ProviderRepresentation.objects.filter(
                 is_active=True,
                 provider_record__namespace__provider__slug="mal",
@@ -75,9 +98,10 @@ class BangumiLinkService:
             .distinct()
             .order_by("entity_id")
         )
-        for entity_id in mal_entity_ids:
-            if len(processed_roots) >= limit:
+        for entity_id in mal_entity_ids.iterator(chunk_size=WALK_CHUNK_SIZE):
+            if len(summaries) >= limit or walked >= walk_cap:
                 break
+            walked += 1
             root = entity_resolution_service.resolve(Entity.objects.get(pk=entity_id))
             if str(root.pk) in processed_roots:
                 continue
@@ -99,11 +123,13 @@ class BangumiLinkService:
                     "outcome": "failed",
                     "error": f"{type(exc).__name__}: {exc}"[:2000],
                 }
+            if summary.get("outcome") in NO_WORK_OUTCOMES:
+                continue
             summaries.append(summary)
         return {
             "policy_version": POLICY_VERSION,
             "processed": len(summaries),
-            "scanned": len(processed_roots),
+            "scanned": walked,
             "results": summaries,
         }
 
@@ -415,14 +441,24 @@ class BangumiLinkService:
 
     @staticmethod
     def _search_queries(*, names: list[str]) -> list[str]:
-        """Choose search keywords without calling the model twice."""
+        """Spend the query budget on spellings, not on the first names.
+
+        Two arbitrary names are often two romanizations of the same script,
+        which repeats one search and misses the spelling that differs most, so
+        each preferred script claims a slot before any script gets a second.
+        """
         queries: list[str] = []
+        for script in SCRIPT_PREFERENCE:
+            for name in names:
+                if name not in queries and _name_script(name) == script:
+                    queries.append(name)
+                    break
         for name in names:
-            if name not in queries:
-                queries.append(name)
             if len(queries) >= MAX_SEARCH_QUERIES:
                 break
-        return queries
+            if name not in queries:
+                queries.append(name)
+        return queries[:MAX_SEARCH_QUERIES]
 
     def _search_bangumi(
         self,
@@ -549,6 +585,7 @@ class BangumiLinkService:
         ai_run.output = stored_decision
         ai_run.input_tokens = _optional_int(usage.get("input_tokens"))
         ai_run.output_tokens = _optional_int(usage.get("output_tokens"))
+        ai_run.cost = _optional_decimal(usage.get("cost"))
         ai_run.latency_ms = max(
             0, int((timezone.now() - started).total_seconds() * 1000)
         )
@@ -559,6 +596,7 @@ class BangumiLinkService:
                 "output",
                 "input_tokens",
                 "output_tokens",
+                "cost",
                 "latency_ms",
                 "finished_at",
             ]
@@ -692,6 +730,17 @@ class BangumiLinkService:
         }
 
 
+def _name_script(name: str) -> str:
+    """Classify a name by the spelling it searches, not by its language tag."""
+    if any("\u3040" <= char <= "\u30ff" for char in name):
+        return "kana"
+    if any("\u3400" <= char <= "\u9fff" for char in name):
+        return "han"
+    if any(char.isascii() and char.isalpha() for char in name):
+        return "latin"
+    return "other"
+
+
 def _validate_output(raw: dict[str, Any], *, allowed_ids: set[int]) -> dict[str, Any]:
     decision = raw.get("decision")
     if decision not in {"found", "not_found"}:
@@ -732,6 +781,17 @@ def _optional_int(value: Any) -> int | None:
     except (TypeError, ValueError):
         return None
     return parsed if parsed >= 0 else None
+
+
+def _optional_decimal(value: Any) -> Decimal | None:
+    """The gateway's cost estimate, when the configured price table produced one."""
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        parsed = Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+    return parsed if parsed.is_finite() and parsed >= 0 else None
 
 
 def _payload_hash(payload: dict[str, Any]) -> str:
