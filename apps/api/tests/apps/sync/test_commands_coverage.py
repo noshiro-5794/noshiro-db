@@ -76,12 +76,27 @@ def test_rebuild_airing_board_command_runs_projection() -> None:
 def test_generate_match_candidates_supports_mal_source() -> None:
     with patch(
         "apps.sync.management.commands.generate_match_candidates.provider_candidate_service.generate_mal_bangumi_candidates",
-        return_value={"source_entities": 0, "candidates_created": 0, "pairs": []},
+        return_value={
+            "cursor_before": 0,
+            "cursor_after": 0,
+            "catalogue_size": 0,
+            "window": 0,
+            "skipped_processed": 0,
+            "source_entities": 0,
+            "candidates_created": 0,
+            "pairs_blocked": 0,
+            "pairs_below_floor": 0,
+            "conflicting_pairs": 0,
+            "pairs": [],
+        },
     ) as run:
         output = _run("generate_match_candidates", "--source", "mal", "--dry-run")
 
-    run.assert_called_once_with(min_similarity=0.6, top_k=5, create=False)
-    assert "mal_entities=0" in output
+    run.assert_called_once_with(
+        min_similarity=None, top_k=None, limit=None, create=False
+    )
+    assert "mal cursor=0->0" in output
+    assert "entities=0" in output
 
 
 def test_sync_anilist_season_command_runs_service() -> None:
