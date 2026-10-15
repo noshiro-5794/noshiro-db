@@ -10,6 +10,7 @@ from apps.index.models import (
     MatchCandidate,
     MatchDecision,
     MatchEvidence,
+    Work,
 )
 from integrations.ai import AIProviderError
 
@@ -22,9 +23,15 @@ def _candidate(
     margin: str = "0.1000",
     hard_conflicts: list | None = None,
     right_kind: str = Entity.Kind.WORK,
+    left_work_type: str | None = Work.WorkType.ANIME,
+    right_work_type: str | None = Work.WorkType.ANIME,
 ) -> MatchCandidate:
     left = Entity.objects.create(kind=Entity.Kind.WORK)
     right = Entity.objects.create(kind=right_kind)
+    if left_work_type is not None:
+        Work.objects.create(entity=left, work_type=left_work_type)
+    if right_kind == Entity.Kind.WORK and right_work_type is not None:
+        Work.objects.create(entity=right, work_type=right_work_type)
     candidate = MatchCandidate.objects.create(
         left_entity=left,
         right_entity=right,
@@ -156,6 +163,8 @@ def test_production_ready_policy_accepts_only_fully_gated_bind() -> None:
         ({"margin": "0.0100"}, "0.9990"),
         ({"hard_conflicts": ["release_date"]}, "0.9990"),
         ({"right_kind": Entity.Kind.CHARACTER}, "0.9990"),
+        ({"right_work_type": Work.WorkType.GALGAME}, "0.9990"),
+        ({"left_work_type": None, "right_work_type": None}, "0.9990"),
         ({}, "0.9000"),
     ],
 )

@@ -12,13 +12,14 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
 from django.utils import timezone
 
 from apps.ai.models import AIProposal
 from apps.index.exceptions import UserLibraryConflict
-from apps.index.models import MatchCandidate, MatchDecision
-from apps.index.services import entity_resolution_service
+from apps.index.models import MatchCandidate, MatchDecision, Work
+from apps.index.services import entity_resolution_service, work_families
 from apps.users.models import UserSubject
 
 MIN_CANDIDATE_SCORE = Decimal("0.9500")
@@ -119,11 +120,39 @@ class MatchApplyService:
             reasons.append("hard_conflicts")
         if candidate.left_entity.kind != candidate.right_entity.kind:
             reasons.append("entity_kind_mismatch")
+        if MatchApplyService._work_family_mismatch(candidate):
+            reasons.append("work_family_mismatch")
         if MatchApplyService._release_years_conflict(candidate):
             reasons.append("release_year_conflict")
         if MatchApplyService._has_conflicting_user_library(candidate):
             reasons.append("conflicting_user_library")
         return reasons
+
+    @staticmethod
+    def _work_family_mismatch(candidate: MatchCandidate) -> bool:
+        """Refuse works that are not the same kind of work.
+
+        Only anime and galgame carry cross-provider identity, and a batch that
+        runs unattended has no way to tell "the same work" from "the same kind of
+        record" for anything else. A pair whose sides cannot be classified is
+        refused rather than merged: this gate exists to fail closed.
+        """
+        types: dict[str, set[str]] = {}
+        try:
+            for side in ("left_entity", "right_entity"):
+                cluster = entity_resolution_service.cluster_ids(
+                    getattr(candidate, side)
+                )
+                types[side] = set(
+                    Work.objects.filter(entity_id__in=cluster).values_list(
+                        "work_type", flat=True
+                    )
+                )
+        except (AttributeError, TypeError, ValueError, ObjectDoesNotExist):
+            return True
+        return not work_families.are_bindable(
+            types["left_entity"], types["right_entity"]
+        )
 
     @staticmethod
     def _release_years_conflict(candidate: MatchCandidate) -> bool:

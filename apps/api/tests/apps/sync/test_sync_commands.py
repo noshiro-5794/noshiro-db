@@ -56,6 +56,9 @@ def _anilist_entity() -> Entity:
         language="en",
         kind=EntityName.Kind.ORIGINAL,
     )
+    # The candidate sweep only walks works that can take part in cross-provider
+    # identity, so the source needs its anime row to be in scope.
+    Work.objects.create(entity=entity, work_type=Work.WorkType.ANIME)
     return entity
 
 
@@ -139,7 +142,7 @@ def test_generate_match_candidates_dry_run_reports_counts() -> None:
     output = _run("generate_match_candidates", dry_run=True)
 
     assert "dry-run" in output
-    assert "anilist_entities=1" in output
+    assert "entities=1" in output
     assert "candidates_created=0" in output
 
 
