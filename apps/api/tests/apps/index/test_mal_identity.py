@@ -7,6 +7,7 @@ from apps.index.models import (
     EntityRedirect,
     Fact,
     MatchCandidate,
+    MergeEvent,
     Predicate,
     Provider,
     ProviderNamespace,
@@ -58,6 +59,43 @@ def _record_mal_id_fact(*, entity: Entity, mal_id: int) -> None:
         predicate=predicate,
         value=mal_id,
         value_hash=f"mal-{mal_id}",
+    )
+
+
+def _redirect_into(*, source: Entity, target: Entity) -> None:
+    """Redirect ``source`` into ``target`` without flipping its lifecycle.
+
+    Production still carries redirect rows whose source was never moved to
+    ``MERGED``, so a sweep that trusts ``lifecycle`` alone walks them as if
+    they could still bind.
+    """
+    event = MergeEvent.objects.create(
+        source_entity=source,
+        target_entity=target,
+        method=MergeEvent.Method.RULE,
+        reason="legacy backfill",
+    )
+    EntityRedirect.objects.create(
+        source_entity=source,
+        target_entity=target,
+        merge_event=event,
+    )
+
+
+def _add_mal_representation(*, entity: Entity, external_id: str) -> None:
+    """Represent a second MAL record on an entity a sweep may already have bound."""
+    namespace = ProviderNamespace.objects.get(provider__slug="mal", slug="anime")
+    record = ProviderRecord.objects.create(
+        namespace=namespace,
+        external_id=external_id,
+        origin="api",
+        status="active",
+    )
+    ProviderRepresentation.objects.create(
+        provider_record=record,
+        entity=entity,
+        mapping_kind=ProviderRepresentation.MappingKind.AGGREGATE,
+        method=ProviderRepresentation.Method.PROVIDER,
     )
 
 
@@ -210,3 +248,89 @@ def test_official_id_link_abstains_when_the_premieres_disagree() -> None:
     assert summary["bound"] == 0
     assert summary["abstained"] == 1
     assert MatchDecision.objects.filter(outcome=MatchDecision.Outcome.ABSTAIN).exists()
+
+
+def test_bounded_run_reaches_bindable_pair_behind_redirected_records() -> None:
+    """A batch must not be spent on records that are already merged away.
+
+    The ordering restarts at the first MAL id on every run, so counting
+    redirected rows against ``limit`` would leave the daily task binding the
+    same few records forever and never examining the rest of the catalogue.
+    """
+    canonical = _work_entity(
+        provider_slug="anilist", namespace_slug="anime", external_id="1"
+    )
+    for index in range(3):
+        mal_entity = _work_entity(
+            provider_slug="mal", namespace_slug="anime", external_id=str(index + 1)
+        )
+        _redirect_into(source=mal_entity, target=canonical)
+    later_mal = _work_entity(
+        provider_slug="mal", namespace_slug="anime", external_id="5000"
+    )
+    later_anilist = _work_entity(
+        provider_slug="anilist", namespace_slug="anime", external_id="9500"
+    )
+    _record_mal_id_fact(entity=later_anilist, mal_id=5000)
+
+    summary = mal_identity_service.reconcile_official_links(limit=3)
+
+    assert summary["skipped_redirected"] == 3
+    assert summary["examined"] == 1
+    assert summary["bound"] == 1
+    redirects = entity_resolution_service.redirect_map()
+    assert entity_resolution_service.resolve_with(
+        redirects, later_mal.pk
+    ) == entity_resolution_service.resolve_with(redirects, later_anilist.pk)
+
+
+def test_budget_counts_unresolved_records_not_rows_walked() -> None:
+    """With ``limit=k`` the k-th unresolved record is still considered."""
+    canonical = _work_entity(
+        provider_slug="anilist", namespace_slug="anime", external_id="1"
+    )
+    for index in range(4):
+        mal_entity = _work_entity(
+            provider_slug="mal", namespace_slug="anime", external_id=str(10 + index)
+        )
+        _redirect_into(source=mal_entity, target=canonical)
+    for index in range(3):
+        _work_entity(
+            provider_slug="mal", namespace_slug="anime", external_id=str(5000 + index)
+        )
+        twin = _work_entity(
+            provider_slug="anilist",
+            namespace_slug="anime",
+            external_id=str(9000 + index),
+        )
+        _record_mal_id_fact(entity=twin, mal_id=5000 + index)
+
+    summary = mal_identity_service.reconcile_official_links(limit=2)
+
+    assert summary["skipped_redirected"] == 4
+    assert summary["examined"] == 2
+    assert summary["bound"] == 2
+
+
+def test_walk_follows_the_merges_the_same_run_makes() -> None:
+    """The redirect map is a snapshot, so the run's own merges update it.
+
+    One entity can carry representations of several MAL records, and a pair
+    committed earlier in the sweep redirects it. Without following that
+    redirect a later row of the same entity would be examined as if it were
+    still canonical and spend budget it cannot use.
+    """
+    twin = _work_entity(
+        provider_slug="anilist", namespace_slug="anime", external_id="700"
+    )
+    mal_entity = _work_entity(
+        provider_slug="mal", namespace_slug="anime", external_id="100"
+    )
+    _record_mal_id_fact(entity=twin, mal_id=100)
+    _add_mal_representation(entity=mal_entity, external_id="999")
+
+    summary = mal_identity_service.reconcile_official_links()
+
+    assert summary["bound"] == 1
+    assert summary["examined"] == 1
+    assert summary["skipped_redirected"] == 1
