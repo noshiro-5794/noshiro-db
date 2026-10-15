@@ -118,7 +118,7 @@ class AgentLoopDriver:
                 budget.record_execution(
                     input_tokens=_int_or_zero(completion.usage.get("input_tokens")),
                     output_tokens=_int_or_zero(completion.usage.get("output_tokens")),
-                    cost=Decimal("0"),
+                    cost=_optional_decimal(completion.usage.get("cost")),
                 )
                 BudgetManager.save(run, budget)
 
@@ -295,6 +295,7 @@ class AgentLoopDriver:
             }
             air_run.input_tokens = _int_or_zero(completion.usage.get("input_tokens"))
             air_run.output_tokens = _int_or_zero(completion.usage.get("output_tokens"))
+            air_run.cost = _optional_decimal(completion.usage.get("cost"))
             air_run.finished_at = timezone.now()
             air_run.save(
                 update_fields=[
@@ -303,6 +304,7 @@ class AgentLoopDriver:
                     "output",
                     "input_tokens",
                     "output_tokens",
+                    "cost",
                     "finished_at",
                 ]
             )
@@ -457,6 +459,17 @@ def _int_or_zero(value: Any) -> int | None:
         return max(0, int(value))
     except (TypeError, ValueError):
         return None
+
+
+def _optional_decimal(value: Any) -> Decimal | None:
+    """The gateway's cost estimate, when the configured price table produced one."""
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        parsed = Decimal(str(value))
+    except (ArithmeticError, TypeError, ValueError):
+        return None
+    return parsed if parsed.is_finite() and parsed >= 0 else None
 
 
 def _payload_hash(value: dict[str, Any]) -> str:
