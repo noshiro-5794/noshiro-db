@@ -179,16 +179,12 @@ class SeasonPipelineService:
 
         from apps.index.services import provider_candidate_service
 
-        return provider_candidate_service.generate_candidates(
-            source_provider="anilist",
-            source_namespace="anime",
-            target_provider="bangumi",
-            target_namespace="subject",
-            min_similarity=0.6,
-            top_k=5,
+        # The season refresh is one more chance for the resumable sweep to move
+        # forward; thresholds and scope come from settings so the scheduled sweep
+        # and this leg cannot drift apart.
+        return provider_candidate_service.generate_anime_candidates(
             create=True,
             limit=settings.MATCH_CANDIDATE_BATCH_SIZE,
-            skip_processed=True,
         )
 
     def _dispatch_ai_evaluations(self, candidate_ids: list[str]) -> None:

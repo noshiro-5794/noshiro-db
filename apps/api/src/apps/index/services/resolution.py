@@ -10,7 +10,10 @@ from apps.index.models import (
     MatchDecision,
     MergeEvent,
     SplitEvent,
+    Work,
 )
+
+from . import work_families
 
 
 class EntityResolutionService:
@@ -156,7 +159,6 @@ class EntityResolutionService:
         )
 
     @transaction.atomic
-    @transaction.atomic
     def decide_candidate(
         self,
         *,
@@ -213,6 +215,7 @@ class EntityResolutionService:
             raise EntityResolutionError("Candidate entities already resolve together.")
         if left.kind != right.kind:
             raise EntityResolutionError("Cannot bind entities of different kinds.")
+        self._ensure_bindable_work_types(left, right)
 
         counts = {left.pk: 0, right.pk: 0}
         from apps.users.models import UserSubject
@@ -241,6 +244,33 @@ class EntityResolutionService:
             )
         source = right if target.pk == left.pk else left
         return source, target
+
+    def _ensure_bindable_work_types(self, left: Entity, right: Entity) -> None:
+        """Refuse to merge works that are not the same kind of work.
+
+        Works are what the catalogue projects, and only anime and galgame carry
+        cross-provider identity; merging an anime into a galgame would publish a
+        work whose type is a coin toss. Entities with no work row on either side -
+        characters, episodes, and the migration-era records - keep the previous
+        behaviour, because this guard cannot judge a pair it cannot classify.
+        """
+        left_types = set(
+            Work.objects.filter(entity_id__in=self.cluster_ids(left)).values_list(
+                "work_type", flat=True
+            )
+        )
+        right_types = set(
+            Work.objects.filter(entity_id__in=self.cluster_ids(right)).values_list(
+                "work_type", flat=True
+            )
+        )
+        if not left_types or not right_types:
+            return
+        if not work_families.are_bindable(left_types, right_types):
+            raise EntityResolutionError(
+                "Cannot bind works from different families: "
+                f"{sorted(left_types)} and {sorted(right_types)}."
+            )
 
     def _ensure_no_user_library_conflict(
         self, *, source: Entity, target: Entity
