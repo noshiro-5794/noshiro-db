@@ -150,3 +150,29 @@ def test_restricted_cluster_is_never_exposed_through_public_member() -> None:
     client = APIClient()
     assert client.get(f"/api/v1/index/entities/{public.pk}/").status_code == 404
     assert client.get(f"/api/v1/index/entities/{restricted.pk}/").status_code == 404
+
+
+def test_bind_refuses_works_from_different_families() -> None:
+    """An anime and a galgame are never the same work.
+
+    Works are the only entities the catalogue projects, and only anime and
+    galgame carry cross-provider identity; a merge across families would publish
+    a work whose type is a coin toss.
+    """
+    anime = Entity.objects.create(kind=Entity.Kind.WORK)
+    Work.objects.create(entity=anime, work_type=Work.WorkType.ANIME)
+    galgame = _work("A visual novel")
+    candidate = _candidate(anime, galgame)
+
+    with pytest.raises(EntityResolutionError):
+        entity_resolution_service.decide_candidate(
+            candidate=candidate,
+            outcome=MatchDecision.Outcome.BIND,
+            decided_by="test",
+            reason="family mismatch",
+        )
+
+    candidate.refresh_from_db()
+    assert candidate.status == MatchCandidate.Status.PENDING
+    assert EntityRedirect.objects.count() == 0
+    assert not MatchDecision.objects.filter(candidate=candidate).exists()

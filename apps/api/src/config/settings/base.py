@@ -361,6 +361,25 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.sync.tasks.season.apply_match_proposals_task",
         "schedule": crontab(hour=4, minute=15),
     },
+    "sweep-match-candidates": {
+        "task": "apps.sync.tasks.matching.sweep_match_candidates_task",
+        # The sweep is resumable, so this cadence decides how quickly the
+        # catalogue is walked rather than how much of it is ever seen. Anime
+        # plus galgame is roughly 120k source works at a name lookup or two
+        # each, so four windows a day is a pass every few days.
+        "schedule": crontab(
+            minute=0,
+            hour=f"*/{env.int('MATCH_CANDIDATE_SWEEP_CRON_HOURS', default=4)}",
+        ),
+    },
+    "bangumi-link-sweep": {
+        "task": "apps.sync.tasks.linking.link_bangumi_works_task",
+        "schedule": crontab(hour=6, minute=0),
+    },
+    "mal-link-recall": {
+        "task": "apps.sync.tasks.linking.recall_mal_links_task",
+        "schedule": crontab(minute=45, hour="*/6"),
+    },
     "worker-heartbeat": {
         "task": "apps.sync.tasks.maintenance.worker_heartbeat",
         "schedule": 60.0,
@@ -534,10 +553,45 @@ BANGUMI_SUBJECT_REFRESH_BATCH_SIZE = env.int(
 # trickle: 500 a day would take a week to clear a single generation run's
 # backlog.
 MATCH_APPLY_BATCH_SIZE = env.int("MATCH_APPLY_BATCH_SIZE", default=2000)
-# Source entities examined per candidate-generation run. Each one costs a
-# trigram lookup per name, so an unbounded sweep of the whole catalogue runs
-# into hours and eats the season task's budget.
-MATCH_CANDIDATE_BATCH_SIZE = env.int("MATCH_CANDIDATE_BATCH_SIZE", default=400)
+# Source entities examined per candidate-generation run. The sweep is resumable,
+# so this is a rate rather than a ceiling: it bounds how long one run takes
+# (each entity costs one trigram lookup per name it carries) while the cursor
+# carries the catalogue position forward to the next run.
+MATCH_CANDIDATE_BATCH_SIZE = env.int("MATCH_CANDIDATE_BATCH_SIZE", default=2000)
+# Blocking threshold. Deliberately permissive: a pair that is never proposed can
+# never be reviewed, and precision is enforced by the evidence and the policy
+# gates rather than by the threshold. The filter only has to be selective enough
+# that the evaluator's budget is spent on plausible pairs.
+MATCH_CANDIDATE_MIN_SIMILARITY = env.float(
+    "MATCH_CANDIDATE_MIN_SIMILARITY", default=0.3
+)
+# Candidates kept per source work. The runner-up margin needs more than one, and
+# a work whose strongest hit is wrong is usually still somewhere in this list.
+MATCH_CANDIDATE_TOP_K = env.int("MATCH_CANDIDATE_TOP_K", default=20)
+# Similarity a blocked pair needs before it is worth a model call. Blocking is
+# permissive so that nothing plausible is missed, but persisting all twenty
+# blocked pairs per work would queue nineteen calls known to be wrong; a work
+# whose best hit lands below this floor still gets exactly that one look.
+MATCH_CANDIDATE_EVAL_MIN_SIMILARITY = env.float(
+    "MATCH_CANDIDATE_EVAL_MIN_SIMILARITY", default=0.5
+)
+# MAL-anchored works the Bangumi-link sweep acts on per run. Every actionable
+# work costs a few rate-limited Bangumi searches plus one model call, so the
+# batch stays small and the daily cadence is what pays the thirty-thousand-work
+# backlog down without saturating the provider.
+BANGUMI_LINK_BATCH_SIZE = env.int("BANGUMI_LINK_BATCH_SIZE", default=50)
+# MAL representations the Bangumi-link sweep walks per run while looking for
+# actionable roots. Roots that are already linked or already attempted spend no
+# budget, so a run has to walk past them; the cap keeps that pass bounded. The
+# MAL anime namespace holds roughly thirty thousand rows today and a run must
+# still be able to reach every one of them, so the cap sits above that and is
+# raised only when the catalogue grows past it.
+BANGUMI_LINK_WALK_CAP = env.int("BANGUMI_LINK_WALK_CAP", default=40000)
+# Active-board works the MAL-recall sweep acts on per run. Each recall is a full
+# agent loop of knowledge-graph and MAL API searches, so the batch is smaller
+# than the search-and-verdict sweeps and the task repeats through the day; the
+# board is a single season, so the walk is bounded without a second cap.
+MAL_LINK_RECALL_BATCH_SIZE = env.int("MAL_LINK_RECALL_BATCH_SIZE", default=25)
 
 AI_AGENT_API_BASE_URL = env(
     "AI_AGENT_API_BASE_URL",
@@ -556,6 +610,14 @@ AI_REASONING_MODEL = env(
     "AI_REASONING_MODEL",
     default="deepseek-ai/DeepSeek-V4-Pro",
 )
+
+# What each model costs, as currency units per million tokens, so a run can
+# record what it spent. The provider reports tokens rather than money and does
+# not publish prices through its API, so the table is configuration: a JSON
+# object mapping a model name to its input and output price. A model absent from
+# the table records its token counts with no cost, because an absent number is
+# honest and a guessed one is wrong in a report nobody can verify.
+AI_MODEL_PRICES = env.json("AI_MODEL_PRICES", default={})
 
 AI_AGENT_TIMEOUT = env.float("AI_AGENT_TIMEOUT", default=30)
 # Retries for calls the provider asks us to repeat (429, 5xx, dropped
