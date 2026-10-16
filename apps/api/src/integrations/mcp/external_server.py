@@ -4,6 +4,7 @@ from typing import Any
 from asgiref.sync import sync_to_async
 from django.conf import settings
 from mcp.server.auth.middleware.auth_context import get_access_token
+from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from integrations.mcp.auth import MCPRateLimiter, NoshiroJWTTokenVerifier
@@ -12,22 +13,22 @@ from integrations.mcp.queries import (
     get_public_relations,
     search_public_entities,
 )
-from integrations.mcp.server import AuthenticatedFastMCP
+from integrations.mcp.server import AuthenticatedMCPServer
 
 READ_ONLY = ToolAnnotations(
-    readOnlyHint=True,
-    destructiveHint=False,
-    idempotentHint=True,
-    openWorldHint=False,
+    read_only_hint=True,
+    destructive_hint=False,
+    idempotent_hint=True,
+    open_world_hint=False,
 )
 
 
-def create_external_mcp_server() -> AuthenticatedFastMCP:
+def create_external_mcp_server() -> AuthenticatedMCPServer:
     limiter = MCPRateLimiter(
         limit=settings.MCP_RATE_LIMIT,
         window_seconds=settings.MCP_RATE_WINDOW_SECONDS,
     )
-    server = AuthenticatedFastMCP(
+    server = AuthenticatedMCPServer(
         "Noshiro Public Knowledge",
         instructions="Read authenticated public safe knowledge projections only.",
         token_verifier=NoshiroJWTTokenVerifier(),
@@ -42,8 +43,13 @@ def create_external_mcp_server() -> AuthenticatedFastMCP:
     async def authorize() -> str:
         access_token = get_access_token()
         if access_token is None or access_token.subject is None:
-            raise PermissionError("Authenticated MCP subject is required.")
-        await sync_to_async(limiter.check, thread_sensitive=False)(access_token.subject)
+            raise ToolError("Authenticated MCP subject is required.")
+        try:
+            await sync_to_async(limiter.check, thread_sensitive=False)(
+                access_token.subject
+            )
+        except PermissionError as exc:
+            raise ToolError(str(exc)) from exc
         return access_token.subject
 
     @server.tool(annotations=READ_ONLY, structured_output=True)
