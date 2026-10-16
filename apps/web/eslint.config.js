@@ -50,6 +50,12 @@ export default tseslint.config(
       'react-hooks/set-state-in-effect': 'off',
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
       '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
+      // The Markdown components destructure `node` only to keep it out of the
+      // rest spread they hand to the DOM element, and the calendar client keeps
+      // its `_query` parameter so callers still pass a typed filter. Both
+      // bindings are intentionally unused, so name and bind them for that
+      // instead of writing no-op `void` statements.
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', ignoreRestSiblings: true }],
       'no-restricted-imports': architectureImports(),
     },
   },
