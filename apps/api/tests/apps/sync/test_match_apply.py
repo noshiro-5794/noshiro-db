@@ -62,18 +62,23 @@ def _anime_entity(
 
 
 def _pending_proposal(
-    *, decision: str = "bind", confidence: str = "0.97"
+    *, decision: str = "bind", confidence: str = "0.97", suffix: str = ""
 ) -> AIProposal:
+    """A pending AI bind proposal over a fresh, gate-passing anime pair.
+
+    ``suffix`` keeps the provider records unique so one test can build a whole
+    pending set; the entities are otherwise identical and eligible.
+    """
     bangumi = _anime_entity(
         provider_slug="bangumi",
         namespace_slug="subject",
-        external_id="572768",
+        external_id=f"572768{suffix}",
         title="一念永恒 完结季",
     )
     mal = _anime_entity(
         provider_slug="mal",
         namespace_slug="anime",
-        external_id="62248",
+        external_id=f"62248{suffix}",
         title="一念永恒 完结季",
     )
     left, right = sorted((bangumi.pk, mal.pk), key=lambda value: str(value))
@@ -237,12 +242,13 @@ def test_keep_pending_defers_ineligible_proposals() -> None:
         ),
     )
     with (
-        patch("apps.sync.services.match_apply.AIProposal.objects.filter") as proposals,
+        patch.object(
+            match_apply_service,
+            "_read_window",
+            return_value=([proposal], 1),
+        ),
         patch.object(match_apply_service, "_decide") as decide,
     ):
-        proposals.return_value.select_related.return_value.order_by.return_value.__getitem__.return_value = [
-            proposal
-        ]
         result = match_apply_service.run(limit=1, apply=True, abstain_ineligible=False)
 
     assert result["deferred"] == 1
@@ -404,3 +410,104 @@ def test_same_title_years_apart_is_not_a_duplicate() -> None:
             },
         )()
     )
+
+
+def test_rotation_reaches_eligible_proposals_behind_gated_ones() -> None:
+    """The starvation regression: a run must not re-read the same head forever.
+
+    Three high-confidence proposals are refused by a gate and stay pending, and
+    the eligible proposal ranks below the batch size. Because the ordering was
+    by ``-confidence`` and a deferred proposal stays pending, every run used to
+    spend itself on those same rows and the eligible one was never reached.
+    """
+    gated = [
+        _pending_proposal(decision="abstain", confidence="0.99", suffix=f"g{index}")
+        for index in range(3)
+    ]
+    eligible = _pending_proposal(confidence="0.93", suffix="e")
+
+    first = match_apply_service.run(limit=2, apply=True, abstain_ineligible=False)
+
+    assert first["processed"] == 2
+    assert first["deferred"] == 2
+    assert first["accepted"] == 0
+    assert first["cursor_after"] == 2
+    assert match_apply_service._read_cursor() == 2
+
+    second = match_apply_service.run(limit=2, apply=True, abstain_ineligible=False)
+
+    assert second["processed"] == 2
+    assert second["deferred"] == 1
+    assert second["accepted"] == 1
+    assert second["cursor_after"] == 3
+    for proposal in gated:
+        proposal.refresh_from_db()
+        assert proposal.status == AIProposal.Status.PENDING
+    eligible.refresh_from_db()
+    assert eligible.status == AIProposal.Status.ACCEPTED
+
+
+def test_cursor_wraps_around_when_the_pending_set_is_exhausted() -> None:
+    """A finished pass restarts at the top instead of parking past the tail."""
+    gated = _pending_proposal(decision="abstain", confidence="0.99", suffix="w")
+
+    first = match_apply_service.run(limit=1, apply=True, abstain_ineligible=False)
+    assert first["deferred"] == 1
+    assert first["cursor_after"] == 1
+
+    # The one-row set is exhausted, so this run wraps to the top instead of
+    # reading an empty window for a day.
+    wrapped = match_apply_service.run(limit=1, apply=True, abstain_ineligible=False)
+    assert wrapped["completed_pass"] is True
+    assert wrapped["cursor_before"] == 0
+    assert wrapped["processed"] == 1
+    assert wrapped["deferred"] == 1
+    assert wrapped["cursor_after"] == 1
+    gated.refresh_from_db()
+    assert gated.status == AIProposal.Status.PENDING
+
+    # A proposal that arrived after the pass closed is reached on the next run.
+    eligible = _pending_proposal(confidence="0.93", suffix="we")
+    third = match_apply_service.run(limit=1, apply=True, abstain_ineligible=False)
+
+    assert third["processed"] == 1
+    assert third["accepted"] == 1
+    eligible.refresh_from_db()
+    assert eligible.status == AIProposal.Status.ACCEPTED
+
+
+def test_dry_run_reports_the_window_without_moving_the_cursor() -> None:
+    """A dry run must leave the rotation exactly where it found it."""
+    gated = _pending_proposal(decision="abstain", confidence="0.99", suffix="d")
+    _pending_proposal(confidence="0.93", suffix="de")
+
+    dry = match_apply_service.run(limit=1, apply=False, abstain_ineligible=False)
+
+    assert dry["processed"] == 1
+    assert dry["would_bind"] == 0
+    assert dry["cursor_before"] == 0
+    assert dry["cursor_after"] == 0
+    assert match_apply_service._read_cursor() == 0
+
+    # The real run still starts at the top, because the dry run examined nothing.
+    applied = match_apply_service.run(limit=1, apply=True, abstain_ineligible=False)
+
+    assert applied["processed"] == 1
+    assert applied["deferred"] == 1
+    assert applied["cursor_after"] == 1
+    gated.refresh_from_db()
+    assert gated.status == AIProposal.Status.PENDING
+
+
+def test_dry_run_does_not_persist_the_wraparound() -> None:
+    """Reading past the tail on a dry run must not reset the stored cursor."""
+    _pending_proposal(decision="abstain", confidence="0.99", suffix="t")
+    match_apply_service.run(limit=5, apply=True, abstain_ineligible=False)
+    assert match_apply_service._read_cursor() == 1
+
+    dry = match_apply_service.run(limit=5, apply=False, abstain_ineligible=False)
+
+    assert dry["completed_pass"] is True
+    assert dry["processed"] == 1
+    assert dry["cursor_after"] == 0
+    assert match_apply_service._read_cursor() == 1
