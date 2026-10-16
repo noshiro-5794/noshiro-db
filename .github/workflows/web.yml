@@ -1,10 +1,9 @@
 name: Web
 
 on:
+  # Unfiltered for pull requests so the required check is always reported; see
+  # the note in api.yml. The push filter keeps merges cheap.
   pull_request:
-    paths:
-      - apps/web/**
-      - .github/workflows/web.yml
   push:
     branches: [main]
     paths:
@@ -24,6 +23,9 @@ defaults:
 
 jobs:
   quality:
+    # Distinct from the API workflow's job name so the branch rules can offer
+    # one unambiguous check per app.
+    name: web quality
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
