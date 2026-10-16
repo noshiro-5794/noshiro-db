@@ -324,7 +324,6 @@ export const indexApi = {
       }),
 
   getCalendar: (_query: { weekday_en?: WeekdayEn } = {}, context: ApiRequestContext = {}) => {
-    void _query;
     return api.get<CalendarGroup[]>('/api/v1/index/calendar/events/', {
       ...context,
       decode: decodeCalendarEventsToGroups,
