@@ -2,13 +2,14 @@ import asyncio
 import uuid
 from unittest.mock import patch
 
-import httpx
+import httpx2
 import pytest
 from django.test import override_settings
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
-from mcp.server.fastmcp import FastMCP
-from mcp.types import LATEST_PROTOCOL_VERSION
+from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
+from mcp.types.version import LATEST_HANDSHAKE_VERSION
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.ai.models import AIProposal, AIRun
@@ -22,8 +23,13 @@ from integrations.mcp.queries import get_public_entity, search_public_entities
 pytestmark = pytest.mark.django_db(transaction=True)
 
 
-def _tool_names(server: FastMCP) -> set[str]:
+def _tool_names(server: MCPServer) -> set[str]:
     return {tool.name for tool in asyncio.run(server.list_tools())}
+
+
+def _structured(result) -> dict:
+    assert result.structured_content is not None
+    return result.structured_content
 
 
 def test_internal_and_external_servers_have_isolated_tool_allowlists() -> None:
@@ -54,15 +60,17 @@ def test_internal_submit_proposal_is_audited_without_canonical_decision() -> Non
     )
     server = create_internal_mcp_server()
 
-    _content, result = asyncio.run(
-        server.call_tool(
-            "submit_proposal",
-            {
-                "candidate_id": str(candidate.id),
-                "decision": "bind",
-                "confidence": "0.9990",
-                "reason": "Two independent evidence types agree.",
-            },
+    result = _structured(
+        asyncio.run(
+            server.call_tool(
+                "submit_proposal",
+                {
+                    "candidate_id": str(candidate.id),
+                    "decision": "bind",
+                    "confidence": "0.9990",
+                    "reason": "Two independent evidence types agree.",
+                },
+            )
         )
     )
 
@@ -127,7 +135,7 @@ def test_public_queries_never_return_restricted_entities() -> None:
     results = search_public_entities(query="title", limit=50)["results"]
 
     assert [item["id"] for item in results] == [str(public.id)]
-    with pytest.raises(ValueError, match="Public entity not found"):
+    with pytest.raises(ToolError, match="Public entity not found"):
         get_public_entity(entity_id=restricted.id)
 
 
@@ -145,7 +153,7 @@ def test_external_tools_enforce_rate_limit_before_query() -> None:
         return_value=access_token,
     ):
         asyncio.run(server.call_tool("search_entities", {"limit": 1}))
-        with pytest.raises(Exception, match="rate limit exceeded"):
+        with pytest.raises(ToolError, match="rate limit exceeded"):
             asyncio.run(server.call_tool("search_entities", {"limit": 1}))
 
 
@@ -176,15 +184,15 @@ def test_public_streamable_http_authentication_and_safe_projection() -> None:
             "id": 1,
             "method": "initialize",
             "params": {
-                "protocolVersion": LATEST_PROTOCOL_VERSION,
+                "protocolVersion": LATEST_HANDSHAKE_VERSION,
                 "capabilities": {},
                 "clientInfo": {"name": "noshiro-test", "version": "1"},
             },
         }
-        transport = httpx.ASGITransport(app=app)
+        transport = httpx2.ASGITransport(app=app)
 
         async with server.session_manager.run():
-            async with httpx.AsyncClient(
+            async with httpx2.AsyncClient(
                 transport=transport,
                 base_url="http://127.0.0.1:8010",
             ) as anonymous_client:
@@ -203,7 +211,7 @@ def test_public_streamable_http_authentication_and_safe_projection() -> None:
             assert refresh_token.status_code == 401
 
             async with (
-                httpx.AsyncClient(
+                httpx2.AsyncClient(
                     transport=transport,
                     base_url="http://127.0.0.1:8010",
                     headers={"Authorization": f"Bearer {tokens.access_token}"},
@@ -212,7 +220,7 @@ def test_public_streamable_http_authentication_and_safe_projection() -> None:
                     "http://127.0.0.1:8010/mcp",
                     http_client=authenticated_client,
                     terminate_on_close=False,
-                ) as (read_stream, write_stream, _session_id),
+                ) as (read_stream, write_stream),
                 ClientSession(read_stream, write_stream) as session,
             ):
                 initialized = await session.initialize()
@@ -222,14 +230,14 @@ def test_public_streamable_http_authentication_and_safe_projection() -> None:
                     {"query": "Transport", "limit": 50},
                 )
 
-            assert initialized.protocolVersion == LATEST_PROTOCOL_VERSION
+            assert initialized.protocol_version == LATEST_HANDSHAKE_VERSION
             assert {tool.name for tool in tools.tools} == {
                 "get_entity",
                 "get_entity_relations",
                 "search_entities",
             }
-            assert result.isError is False
-            assert [item["id"] for item in result.structuredContent["results"]] == [
+            assert result.is_error is False
+            assert [item["id"] for item in result.structured_content["results"]] == [
                 str(visible.id)
             ]
 
@@ -256,8 +264,10 @@ def test_internal_search_entities_returns_safe_projection() -> None:
     )
     server = create_internal_mcp_server()
 
-    _content, result = asyncio.run(
-        server.call_tool("search_entities", {"query": "Searchable", "limit": 50})
+    result = _structured(
+        asyncio.run(
+            server.call_tool("search_entities", {"query": "Searchable", "limit": 50})
+        )
     )
     assert [item["id"] for item in result["results"]] == [str(public.id)]
 
@@ -276,8 +286,10 @@ def test_internal_get_match_candidate_returns_evidence() -> None:
     )
     server = create_internal_mcp_server()
 
-    _content, result = asyncio.run(
-        server.call_tool("get_match_candidate", {"candidate_id": str(candidate.id)})
+    result = _structured(
+        asyncio.run(
+            server.call_tool("get_match_candidate", {"candidate_id": str(candidate.id)})
+        )
     )
     assert result["id"] == str(candidate.id)
 
@@ -285,7 +297,7 @@ def test_internal_get_match_candidate_returns_evidence() -> None:
 def test_get_public_entity_raises_for_nonexistent_id() -> None:
     import uuid
 
-    with pytest.raises(ValueError, match="Public entity not found"):
+    with pytest.raises(ToolError, match="Public entity not found"):
         get_public_entity(entity_id=uuid.uuid4())
 
 
@@ -294,7 +306,7 @@ def test_get_match_candidate_raises_for_nonexistent_id() -> None:
 
     from integrations.mcp.queries import get_match_candidate
 
-    with pytest.raises(ValueError, match="Match candidate not found"):
+    with pytest.raises(ToolError, match="Match candidate not found"):
         get_match_candidate(candidate_id=uuid.uuid4())
 
 

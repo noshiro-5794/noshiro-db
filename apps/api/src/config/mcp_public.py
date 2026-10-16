@@ -8,4 +8,4 @@ mcp = create_external_mcp_server()
 
 
 if __name__ == "__main__":
-    mcp.run(transport="streamable-http")
+    mcp.run_streamable_http()
