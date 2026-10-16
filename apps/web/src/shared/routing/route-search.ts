@@ -2,7 +2,13 @@ import { parseIntegerParam, parsePageParam, parseTextParam } from './search-para
 
 type RawSearch = Record<string, unknown>;
 
-export function validateEmptySearch(): Record<never, never> {
+// Routes without search parameters still need a validator, and the router needs
+// its return type to stay the empty object type. The return type is inferred on
+// purpose: annotating it either resolves to `{}`, which the strict lint rule
+// `@typescript-eslint/no-generated-empty-object-type` rejects, or adds an index
+// signature of `never`, which rejects the comment-page parameters the pages
+// merge into the root route's search.
+export function validateEmptySearch() {
   return {};
 }
 
