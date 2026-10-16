@@ -1,6 +1,7 @@
 import uuid
 
 from django.core.exceptions import ObjectDoesNotExist
+from mcp.server.mcpserver.exceptions import ToolError
 
 from apps.index.models import Entity, MatchCandidate
 from apps.index.selectors.current import current_entity_relations
@@ -43,13 +44,13 @@ def get_public_entity(*, entity_id: uuid.UUID, language: str = "") -> dict:
             "provider_representations__provider_record__namespace__provider",
         ).get(pk=entity_id)
     except Entity.DoesNotExist as exc:
-        raise ValueError("Public entity not found.") from exc
+        raise ToolError("Public entity not found.") from exc
     entity = entity_resolution_service.resolve(entity)
     if (
         entity.lifecycle != Entity.Lifecycle.ACTIVE
         or not entity_resolution_service.is_public(entity)
     ):
-        raise ValueError("Public entity not found.")
+        raise ToolError("Public entity not found.")
     return entity_detail(entity, language=language[:35], safe=True)
 
 
@@ -104,7 +105,7 @@ def get_match_candidate(candidate_id: uuid.UUID) -> dict:
             .get(pk=candidate_id)
         )
     except ObjectDoesNotExist as exc:
-        raise ValueError("Match candidate not found.") from exc
+        raise ToolError("Match candidate not found.") from exc
     return {
         "id": str(candidate.id),
         "status": candidate.status,
