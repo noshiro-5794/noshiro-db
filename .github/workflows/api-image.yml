@@ -1,0 +1,71 @@
+name: API image
+
+on:
+  # Pull requests are filtered to the files that actually change the image, so
+  # the build-and-scan job stays off the critical path for every other PR: the
+  # job is not a required check, and it used to add roughly two minutes to every
+  # pull request. A change to the dependency files or the Dockerfile is exactly
+  # the case where the scanned image is new, and that is worth waiting for.
+  pull_request:
+    paths:
+      - apps/api/Dockerfile
+      - apps/api/docker/**
+      - apps/api/pyproject.toml
+      - apps/api/uv.lock
+      - .github/workflows/api-image.yml
+  # Every merge to main rebuilds and rescans the image that will be deployed.
+  push:
+    branches: [main]
+    paths:
+      - apps/api/Dockerfile
+      - apps/api/docker/**
+      - apps/api/pyproject.toml
+      - apps/api/uv.lock
+      - .github/workflows/api-image.yml
+  # A weekly scan finds CVEs disclosed after the last merge in a base image that
+  # nobody has touched, which no amount of pull-request triggering can catch.
+  schedule:
+    - cron: "23 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  container:
+    name: api image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build image
+        run: docker build --tag noshiro-db/backend:ci apps/api
+
+      - name: Scan image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: noshiro-db/backend:ci
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+          vuln-type: os,library
+
+      # Advisory only: lower-severity findings in the base image are reported to
+      # the log but never fail the run. The job exists to gate on what blocks a
+      # deploy, not to hold an unreachable zero.
+      - name: Scan image (advisory, low and medium)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: noshiro-db/backend:ci
+          exit-code: "0"
+          ignore-unfixed: true
+          severity: LOW,MEDIUM
+          vuln-type: os,library
