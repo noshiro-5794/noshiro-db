@@ -76,33 +76,11 @@ jobs:
       - name: Audit production dependencies
         run: pnpm check:dependencies
 
-  dependency-review:
-    # Checks on a pull request must be unique per workflow: the "web quality"
-    # check name is used by the job above, so this one gets its own.
-    name: web dependency review
-    # Non-required on purpose. It flags what the pull request is about to add,
-    # before pip-audit and pnpm check:dependencies can see it after the merge.
-    if: github.event_name == 'pull_request'
-    # Advisory until the repository's Dependency graph is enabled: without it the
-    # action exits with "Dependency review is not supported on this repository"
-    # rather than reporting a review, and that must not paint a pull request red.
-    # Turning on Settings > Advanced Security > Dependency graph flips this job
-    # into a working gate with no further edit here.
-    continue-on-error: true
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-      # Read the base ref's manifests through the API; nothing is written back.
-      pull-requests: read
-    steps:
-      - name: Review dependency changes
-        uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
-        with:
-          # The project's declared policy is high-and-above for both toolchains,
-          # matching `pip-audit --strict` and `pnpm check:dependencies`.
-          fail-on-severity: high
-          # The e2e toolchain is a build dependency; a vulnerable dev-only
-          # package must not block a pull request.
-          fail-on-scopes: runtime
-          show-patched-versions: true
+# A dependency-review job was tried here and removed again: the action cannot run
+# on this repository yet. It exits non-zero with "Dependency review is not
+# supported on this repository. Please ensure that Dependency graph is enabled",
+# and a job-level `continue-on-error` does not help because the check run is still
+# reported as a failure — it would paint a red X on every pull request forever.
+# Enable Settings > Advanced Security > Dependency graph and add
+# actions/dependency-review-action (fail-on-severity: high, fail-on-scopes:
+# runtime) back as a pull-request job.
