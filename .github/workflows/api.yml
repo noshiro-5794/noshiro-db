@@ -1,10 +1,12 @@
 name: API
 
 on:
+  # No path filter here on purpose: a required status check must be reported on
+  # every pull request. A filtered workflow simply never runs for a PR that
+  # touches other paths, and the check then waits forever, which blocks the
+  # merge instead of protecting it. The push filter stays, so a merge only
+  # re-runs the suite for the app it changed.
   pull_request:
-    paths:
-      - apps/api/**
-      - .github/workflows/api.yml
   push:
     branches: [main]
     paths:
@@ -24,6 +26,10 @@ defaults:
 
 jobs:
   quality:
+    # Distinct from the web workflow's job name: two workflows reporting the
+    # same check name leave the branch rules with an ambiguous entry, and the
+    # required-status-check picker offers nothing at all.
+    name: api quality
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -58,6 +64,11 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v7
         with:
+          # Pinned to the version the project's `required-version` range
+          # accepts. Left floating, the action installs whatever uv was
+          # released last, and a new minor silently fails the whole job at
+          # `uv sync` before a single test runs.
+          version: "0.12.1"
           enable-cache: true
 
       - name: Install dependencies
@@ -81,15 +92,22 @@ jobs:
 
       - name: Enforce changed-code coverage
         if: github.event_name == 'pull_request'
-        run: >-
-          uv run diff-cover coverage.xml
-          --compare-branch=origin/${{ github.base_ref }}
-          --fail-under=80
+        run: |
+          # The job runs for every pull request now, so a change that touches no
+          # Python has nothing to measure and must not fail the check.
+          if git diff --name-only "origin/${{ github.base_ref }}...HEAD" | grep -q '^apps/api/.*\.py$'; then
+            uv run diff-cover coverage.xml \
+              --compare-branch="origin/${{ github.base_ref }}" \
+              --fail-under=80
+          else
+            echo "No Python changes in this pull request; skipping changed-code coverage."
+          fi
 
       - name: Audit Python dependencies
         run: uv run pip-audit --strict
 
   container:
+    name: api image
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
