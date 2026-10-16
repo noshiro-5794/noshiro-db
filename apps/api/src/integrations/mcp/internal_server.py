@@ -10,24 +10,24 @@ from integrations.mcp.queries import (
     get_match_candidate as query_match_candidate,
 )
 from integrations.mcp.queries import search_public_entities
-from integrations.mcp.server import FastMCP
+from integrations.mcp.server import MCPServer
 
 READ_ONLY = ToolAnnotations(
-    readOnlyHint=True,
-    destructiveHint=False,
-    idempotentHint=True,
-    openWorldHint=False,
+    read_only_hint=True,
+    destructive_hint=False,
+    idempotent_hint=True,
+    open_world_hint=False,
 )
 PROPOSAL_WRITE = ToolAnnotations(
-    readOnlyHint=False,
-    destructiveHint=False,
-    idempotentHint=False,
-    openWorldHint=False,
+    read_only_hint=False,
+    destructive_hint=False,
+    idempotent_hint=False,
+    open_world_hint=False,
 )
 
 
-def create_internal_mcp_server() -> FastMCP:
-    server = FastMCP(
+def create_internal_mcp_server() -> MCPServer:
+    server = MCPServer(
         "Noshiro Internal Knowledge Harness",
         instructions=(
             "Read source-neutral safe projections and submit auditable proposals. "
