@@ -3,6 +3,16 @@ import { describe, expect, it } from 'vitest';
 import { validateSearchPageSearch } from '@/shared/routing/route-search';
 import { createAppRouter } from './router';
 
+// @tanstack/router-core 1.171.37 renamed the match's global not-found marker
+// from `globalNotFound` to `_notFound`, dropped the `hasNotFoundMatch()` helper,
+// and stopped leaving `status: 'notFound'` on the route match. Read whichever
+// signal the installed version provides.
+type NotFoundMatch = { status: string; globalNotFound?: boolean; _notFound?: boolean };
+
+function isNotFoundMatch(match: NotFoundMatch): boolean {
+  return match.status === 'notFound' || match.globalNotFound === true || match._notFound === true;
+}
+
 describe('application router', () => {
   it.each([
     ['/docs/introduction', { slug: 'introduction' }],
@@ -52,7 +62,7 @@ describe('application router', () => {
 
       await router.load();
 
-      expect(router.state.matches.some((match) => match.status === 'notFound')).toBe(true);
+      expect(router.state.matches.some(isNotFoundMatch)).toBe(true);
     },
   );
 
@@ -61,7 +71,9 @@ describe('application router', () => {
 
     await router.load();
 
-    expect(router.state.matches.at(-1)?.globalNotFound).toBe(true);
+    const lastMatch = router.state.matches.at(-1);
+
+    expect(lastMatch !== undefined && isNotFoundMatch(lastMatch)).toBe(true);
   });
 
   it('configures application-level pending and error boundaries', () => {
