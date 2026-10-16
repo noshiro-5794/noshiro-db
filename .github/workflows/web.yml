@@ -9,12 +9,19 @@ on:
     paths:
       - apps/web/**
       - .github/workflows/web.yml
+  # Manual runs use the workflow file from the default branch and ignore the
+  # push path filter, so a full run needs no dummy commit.
+  workflow_dispatch:
 
+# Read-only at the workflow level: the jobs only read the repository. The
+# dependency-review job below narrows its own permissions further.
 permissions:
   contents: read
 
+# Keyed on the workflow as well as the ref: the API workflow running on the
+# same ref must not be cancelled by this one.
 concurrency:
-  group: web-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 defaults:
@@ -51,6 +58,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # The browser revision is a function of the @playwright/test version in
+      # the lockfile, so the lockfile hash is the cache key. A miss costs the
+      # download it always used to cost; a hit skips it.
+      - name: Cache Playwright browsers
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('apps/web/pnpm-lock.yaml') }}
+
       - name: Install Playwright browser
         run: pnpm exec playwright install --with-deps chromium
 
@@ -59,3 +75,28 @@ jobs:
 
       - name: Audit production dependencies
         run: pnpm check:dependencies
+
+  dependency-review:
+    # Checks on a pull request must be unique per workflow: the "web quality"
+    # check name is used by the job above, so this one gets its own.
+    name: web dependency review
+    # Non-required on purpose. It flags what the pull request is about to add,
+    # before pip-audit and pnpm check:dependencies can see it after the merge.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      # Read the base ref's manifests through the API; nothing is written back.
+      pull-requests: read
+    steps:
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
+        with:
+          # The project's declared policy is high-and-above for both toolchains,
+          # matching `pip-audit --strict` and `pnpm check:dependencies`.
+          fail-on-severity: high
+          # The e2e toolchain is a build dependency; a vulnerable dev-only
+          # package must not block a pull request.
+          fail-on-scopes: runtime
+          show-patched-versions: true
