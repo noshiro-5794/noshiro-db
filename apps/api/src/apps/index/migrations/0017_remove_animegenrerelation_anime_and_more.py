@@ -68,13 +68,17 @@ class Migration(migrations.Migration):
             model_name='galgame',
             name='genres',
         ),
-        migrations.RemoveField(
-            model_name='galgame',
-            name='subject',
-        ),
+        # The legacy galgame table is keyed by subject_id, so the incoming foreign
+        # key from galgame_genre_relation has to go before that column does. Django
+        # 6.0 dropped the implicit CASCADE from its DROP COLUMN, so the column drop
+        # now fails on any database that still has the dependent constraint.
         migrations.RemoveField(
             model_name='galgamegenrerelation',
             name='galgame',
+        ),
+        migrations.RemoveField(
+            model_name='galgame',
+            name='subject',
         ),
         migrations.RemoveField(
             model_name='galgamegenrerelation',
