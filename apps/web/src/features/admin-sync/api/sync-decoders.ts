@@ -296,12 +296,3 @@ export function decodeBangumiSubjectResult(
   if (isSubjectResyncResult(value)) return value;
   return invalidSyncResponse();
 }
-
-export function decodeSubjectResyncResult(value: unknown): (QueuedTask & { subject_id: string }) | SubjectResyncResult {
-  if (isRecord(value)) {
-    const subjectId = value['subject_id'];
-    if (isQueuedTask(value) && isString(subjectId)) return { ...value, subject_id: subjectId };
-  }
-  if (isSubjectResyncResult(value)) return value;
-  return invalidSyncResponse();
-}

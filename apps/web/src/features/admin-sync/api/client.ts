@@ -55,5 +55,3 @@ export const operationsApi = {
       decode: decodeSyncCampaign,
     }),
 };
-
-export const syncApi = operationsApi;
