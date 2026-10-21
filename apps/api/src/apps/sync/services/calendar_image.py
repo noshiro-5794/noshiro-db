@@ -23,6 +23,7 @@ class CalendarImageService:
         if self._client is None:
             self._client = httpx.Client(
                 **httpx_client_kwargs(
+                    base_url=settings.BANGUMI_API_BASE_URL,
                     headers={"User-Agent": settings.BANGUMI_USER_AGENT},
                     timeout=settings.BANGUMI_TIMEOUT,
                     follow_redirects=True,

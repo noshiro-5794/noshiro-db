@@ -354,3 +354,33 @@ class TestUsageCost:
         )
 
         assert "cost" not in usage
+
+
+class TestGatewayClientTargetsItsProvider:
+    """The client must know its own host, or the no-proxy list never applies.
+
+    ``httpx_client_kwargs`` decides the proxy from ``base_url``; a client built
+    without it is proxied unconditionally, which is how every evaluation ended
+    up on the overseas proxy and failing.
+    """
+
+    def test_client_is_built_for_the_configured_provider(self) -> None:
+        from unittest.mock import patch
+
+        from django.test import override_settings
+
+        gateway = OpenAICompatibleGateway()
+        with (
+            override_settings(
+                AI_AGENT_API_KEY="sk-test",
+                AI_AGENT_API_BASE_URL="https://api.example.cn/v1/chat/completions",
+                OUTBOUND_PROXY_URL="http://proxy.local:7890",
+                OUTBOUND_NO_PROXY_HOSTS=("api.example.cn",),
+            ),
+            patch("integrations.ai.gateway.httpx.Client") as client_cls,
+        ):
+            gateway.client  # noqa: B018 - the property builds the client
+
+            kwargs = client_cls.call_args.kwargs
+            assert kwargs["base_url"] == "https://api.example.cn/v1/chat/completions"
+            assert "proxy" not in kwargs

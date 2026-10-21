@@ -144,6 +144,11 @@ class OpenAICompatibleGateway:
                 headers["Authorization"] = f"Bearer {settings.AI_AGENT_API_KEY}"
             self._client = httpx.Client(
                 **httpx_client_kwargs(
+                    # The base URL is what the outbound proxy decision reads:
+                    # without it the client cannot see its own host, so the
+                    # no-proxy list is never consulted and every call is
+                    # proxied.
+                    base_url=settings.AI_AGENT_API_BASE_URL,
                     headers=headers,
                     timeout=settings.AI_AGENT_TIMEOUT,
                     # The provider closes idle keep-alive connections without
