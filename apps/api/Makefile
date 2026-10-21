@@ -23,8 +23,12 @@ lint:
 	$(RUN) ruff check .
 	$(RUN) ruff format --check src tests
 
+# Parallel by default: the suite is database-bound and serial runs spend most
+# of their time in setup. Override with `make test PYTEST_FLAGS=` for one worker.
+PYTEST_FLAGS ?= -n auto
+
 test:
-	$(RUN) pytest
+	$(RUN) pytest $(PYTEST_FLAGS)
 
 coverage:
 	$(RUN) pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-fail-under=60

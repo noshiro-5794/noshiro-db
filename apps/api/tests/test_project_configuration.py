@@ -1,3 +1,5 @@
+import re
+
 from django.apps import apps
 from django.conf import settings
 from django.core.checks import run_checks
@@ -31,7 +33,10 @@ def test_test_database_is_isolated() -> None:
     database = settings.DATABASES["default"]
 
     assert database["ENGINE"] == "django.db.backends.postgresql"
-    assert database["NAME"].endswith("_test")
+    # pytest-xdist gives every worker its own database, so the name carries a
+    # `_gwN` suffix in a parallel run. What must hold either way is that the
+    # settings never point at a database that is not a test database.
+    assert re.fullmatch(r".*_test(_gw\d+)?", database["NAME"])
     assert database["TEST"]["NAME"] == database["NAME"]
     assert database["CONN_MAX_AGE"] == 0
     assert database["CONN_HEALTH_CHECKS"] is False
