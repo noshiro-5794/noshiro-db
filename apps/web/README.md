@@ -7,7 +7,7 @@ Modern React frontend for **Noshiro DB**, a personal anime and galgame database 
 - React 19
 - TypeScript
 - Vite
-- pnpm 11
+- pnpm 12
 - TanStack Router
 - TanStack Query
 - Tailwind CSS v4

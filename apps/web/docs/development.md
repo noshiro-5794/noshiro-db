@@ -4,7 +4,7 @@
 
 - Node.js 24 LTS
 - fnm 1.39+
-- pnpm 11
+- pnpm 12
 - A running Noshiro DB backend API
 
 When the shell does not load Node automatically, activate the project runtime first:
