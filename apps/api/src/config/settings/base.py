@@ -359,7 +359,11 @@ CELERY_BEAT_SCHEDULE = {
     },
     "apply-match-proposals": {
         "task": "apps.sync.tasks.season.apply_match_proposals_task",
-        "schedule": crontab(hour=4, minute=15),
+        # The evaluation side produces proposals all day, and a proposal that
+        # nobody applies is a match the catalogue does not have. Once a day was
+        # too coarse to keep up; the window is resumable, so a shorter cadence
+        # only decides how quickly the queue empties.
+        "schedule": crontab(minute="*/30"),
     },
     "sweep-match-candidates": {
         "task": "apps.sync.tasks.matching.sweep_match_candidates_task",
