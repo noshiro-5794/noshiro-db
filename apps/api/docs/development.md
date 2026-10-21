@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- uv `0.11.x`
+- uv `0.13.x`
 - Python `3.13.14`
 - PostgreSQL
 - Redis when running Celery or shared-cache workflows
