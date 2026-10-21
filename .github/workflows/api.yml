@@ -78,7 +78,7 @@ jobs:
           # accepts. Left floating, the action installs whatever uv was
           # released last, and a new minor silently fails the whole job at
           # `uv sync` before a single test runs.
-          version: "0.12.1"
+          version: "0.13.1"
           enable-cache: true
 
       - name: Install dependencies
