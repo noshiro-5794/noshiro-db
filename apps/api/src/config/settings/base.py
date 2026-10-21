@@ -623,6 +623,7 @@ AI_AGENT_TIMEOUT = env.float("AI_AGENT_TIMEOUT", default=30)
 # Retries for calls the provider asks us to repeat (429, 5xx, dropped
 # connections). Account failures are not retried at all.
 AI_AGENT_MAX_ATTEMPTS = env.int("AI_AGENT_MAX_ATTEMPTS", default=3)
+AI_AGENT_MAX_OUTPUT_TOKENS = env.int("AI_AGENT_MAX_OUTPUT_TOKENS", default=1024)
 AI_AGENT_RETRY_BASE_SECONDS = env.float("AI_AGENT_RETRY_BASE_SECONDS", default=2.0)
 # How long the gateway stays closed after an account-level refusal (401/402/403)
 # so a dead balance does not queue hundreds of doomed calls.

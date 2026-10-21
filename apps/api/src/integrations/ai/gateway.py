@@ -146,6 +146,12 @@ class OpenAICompatibleGateway:
                 **httpx_client_kwargs(
                     headers=headers,
                     timeout=settings.AI_AGENT_TIMEOUT,
+                    # The provider closes idle keep-alive connections without
+                    # telling the client, so a pooled connection can be dead by
+                    # the time it is reused and every request that lands on it
+                    # fails as an SSL EOF. One connection per call costs a
+                    # handshake and removes the whole failure mode.
+                    limits=httpx.Limits(max_keepalive_connections=0),
                 )
             )
         return self._client
@@ -229,6 +235,10 @@ class OpenAICompatibleGateway:
             ],
             "response_format": {"type": "json_object"},
             "temperature": 0,
+            # Without a cap the model is free to keep writing: one observed
+            # verdict took 967 completion tokens and 90 seconds, which is both
+            # slow and a long window for the connection to be dropped.
+            "max_tokens": settings.AI_AGENT_MAX_OUTPUT_TOKENS,
         }
         data = self._post(url=settings.AI_AGENT_API_BASE_URL, payload=request_payload)
         try:
