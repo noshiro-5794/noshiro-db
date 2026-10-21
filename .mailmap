@@ -1,0 +1,4 @@
+# Display identities: GitHub authors commits it generates with the account's
+# noreply address, while local commits use the personal address. The history
+# keeps both; this file makes shortlog and log show one person.
+Noshiro_5794 <hangyuan2005@gmail.com> <40492260+noshiro-5794@users.noreply.github.com>
