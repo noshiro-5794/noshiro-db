@@ -18,7 +18,6 @@ export {
   groupOccurrences,
   isWithin,
   monthGridRange,
-  occurrenceFor,
   rangeDays,
   shiftMonth,
   startOfWeek,

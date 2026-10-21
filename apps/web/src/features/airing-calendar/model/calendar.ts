@@ -35,7 +35,7 @@ export type WeekdayBucket = {
 };
 
 /** ISO weekday order used by both the grid header and the broadcast board. */
-export const isoWeekdays = [1, 2, 3, 4, 5, 6, 7] as const;
+const isoWeekdays = [1, 2, 3, 4, 5, 6, 7] as const;
 
 export function dateKey(date: Date): string {
   const year = date.getFullYear();
@@ -48,10 +48,6 @@ export function addDays(date: Date, amount: number): Date {
   const next = new Date(date);
   next.setDate(next.getDate() + amount);
   return next;
-}
-
-export function addMonths(date: Date, amount: number): Date {
-  return new Date(date.getFullYear(), date.getMonth() + amount, 1);
 }
 
 /** Move by whole months while keeping the day of month when it exists. */
@@ -67,7 +63,7 @@ export function startOfWeek(date: Date): Date {
   return addDays(next, -weekday);
 }
 
-export function startOfMonth(date: Date): Date {
+function startOfMonth(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), 1);
 }
 
@@ -112,7 +108,7 @@ export function boardWindow(entry: CalendarBoardEntry | undefined): { from: Date
 }
 
 /** Parse a `YYYY-MM-DD` payload value without shifting it into another zone. */
-export function parseDateOnly(value: string | null): Date | null {
+function parseDateOnly(value: string | null): Date | null {
   if (!value) return null;
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
   if (!match) return null;
@@ -131,7 +127,7 @@ export function parseDateOnly(value: string | null): Date | null {
  * season. When the finale is unknown it is derived from the episode count, and
  * when even the premiere is unknown the entry falls back to the board window.
  */
-export function runWindowOf(entry: CalendarBoardEntry): { from: Date; to: Date | null } | null {
+function runWindowOf(entry: CalendarBoardEntry): { from: Date; to: Date | null } | null {
   const from = parseDateOnly(entry.premieredOn);
   if (!from) return null;
   const explicitEnd = parseDateOnly(entry.endedOn);
@@ -189,7 +185,7 @@ const airingDateFormatter = new Intl.DateTimeFormat('en-CA', {
 });
 
 /** Calendar date of an instant in the broadcast zone. */
-export function airingCalendarDate(value: string | null): Date | null {
+function airingCalendarDate(value: string | null): Date | null {
   if (!value) return null;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
@@ -218,7 +214,7 @@ export function startMinutesOf(entry: CalendarBoardEntry): number | null {
   return parts.hours * 60 + parts.minutes;
 }
 
-export function durationMinutesOf(entry: CalendarBoardEntry): number {
+function durationMinutesOf(entry: CalendarBoardEntry): number {
   if (entry.durationMinutes) return entry.durationMinutes;
   if (entry.startsAt && entry.endsAt) {
     const start = new Date(entry.startsAt).getTime();
@@ -385,7 +381,7 @@ export function titleOf(occurrence: CalendarOccurrence): string {
   return titleOfEntry(occurrence.entry);
 }
 
-export function weekdaysOf(entry: CalendarBoardEntry): (number | null)[] {
+function weekdaysOf(entry: CalendarBoardEntry): (number | null)[] {
   const weekday = entryWeekday(entry);
   return weekday === null ? [null] : [weekday];
 }
@@ -442,11 +438,6 @@ export function titleOfEntry(entry: CalendarBoardEntry): string {
   return entry.work?.displayName || entry.workId;
 }
 
-/** Whether the work has no weekly slot (films, OVAs, one-off specials). */
-export function isWeekdayless(entry: CalendarBoardEntry): boolean {
-  return entryWeekday(entry) === null;
-}
-
 /** Localised release date in the broadcast zone, e.g. "7月24日". */
 export function formatAiringDate(value: string | null, locale: string): string {
   if (!value) return '';
@@ -470,10 +461,6 @@ export function formatDayTitle(date: Date, locale: string): string {
     day: 'numeric',
     weekday: 'long',
   }).format(date);
-}
-
-export function formatMonthTitle(date: Date, locale: string): string {
-  return new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long' }).format(date);
 }
 
 export function formatWeekday(date: Date, locale: string): string {

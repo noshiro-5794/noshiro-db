@@ -5,26 +5,6 @@ const relationVisualPageBudget = 6.4;
 const relationChunkSize = 9;
 const maxUnknownValueDepth = 5;
 
-const importantInfoboxKeys = [
-  '话数',
-  '放送开始',
-  '放送星期',
-  '上映年度',
-  '发售日',
-  '开发',
-  '发行',
-  '平台',
-  '游戏类型',
-  '原作',
-  '导演',
-  '監督',
-  '脚本',
-  '音乐',
-  '音楽',
-  '动画制作',
-  '製作',
-];
-
 const importantStaffRoles = [
   '監督',
   '导演',
@@ -190,14 +170,6 @@ export function getInfoboxRows(infobox: unknown): InfoboxRow[] {
       return key && value ? { key, value } : null;
     })
     .filter((row): row is InfoboxRow => Boolean(row));
-}
-
-export function sortInfoboxRows(rows: InfoboxRow[]) {
-  return [...rows].sort((a, b) => {
-    const aIndex = importantInfoboxKeys.findIndex((key) => a.key.includes(key));
-    const bIndex = importantInfoboxKeys.findIndex((key) => b.key.includes(key));
-    return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
-  });
 }
 
 /**
