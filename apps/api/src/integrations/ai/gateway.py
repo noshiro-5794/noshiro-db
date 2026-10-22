@@ -90,9 +90,12 @@ class OpenAICompatibleGateway:
         last_error: AIProviderError | None = None
         for attempt in range(1, attempts + 1):
             if not self.provider_available():
+                # The provider is already known to be refusing every call. A
+                # retry cannot change that, and the task layer reads `retryable`
+                # to decide whether to try again.
                 raise AIProviderError(
                     "AI provider is marked unavailable; skipping the call.",
-                    retryable=True,
+                    retryable=False,
                 )
             try:
                 response = self.client.post(url, json=payload)

@@ -1,5 +1,5 @@
 from decimal import Decimal
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 from django.conf import settings
@@ -384,3 +384,16 @@ class TestGatewayClientTargetsItsProvider:
             kwargs = client_cls.call_args.kwargs
             assert kwargs["base_url"] == "https://api.example.cn/v1/chat/completions"
             assert "proxy" not in kwargs
+
+
+class TestBreakerOpenIsTerminal:
+    def test_breaker_open_error_is_not_retryable(self) -> None:
+        gateway = OpenAICompatibleGateway()
+        with (
+            patch.object(
+                OpenAICompatibleGateway, "provider_available", return_value=False
+            ),
+            pytest.raises(AIProviderError) as excinfo,
+        ):
+            gateway._post(url="https://api.example.invalid/v1/chat", payload={})
+        assert excinfo.value.retryable is False

@@ -1,4 +1,8 @@
+import logging
+from typing import NoReturn
+
 from celery import shared_task
+from celery.exceptions import Ignore
 from django.conf import settings
 
 from apps.ai.services import (
@@ -9,63 +13,78 @@ from apps.ai.services import (
 )
 from integrations.ai import AIProviderError
 
-
-@shared_task(
-    autoretry_for=(AIProviderError,),
-    retry_backoff=True,
-    retry_jitter=True,
-    max_retries=3,
-    soft_time_limit=180,
-    time_limit=210,
-)
-def evaluate_match_candidate_task(candidate_id: str) -> str:
-    proposal = ai_matching_service.evaluate(candidate_id=candidate_id)
-    return str(proposal.id)
+logger = logging.getLogger(__name__)
 
 
-@shared_task(
-    autoretry_for=(AIProviderError,),
-    retry_backoff=True,
-    retry_jitter=True,
-    max_retries=3,
-    soft_time_limit=180,
-    time_limit=210,
-)
-def classify_entity_task(entity_id: str) -> str:
-    proposal = ai_knowledge_proposal_service.classify_entity(entity_id=entity_id)
-    return str(proposal.id)
+def _retry_provider_call(
+    task,
+    error: AIProviderError,
+    *,
+    max_retries: int,
+) -> NoReturn:
+    """Retry a provider call only when another attempt could plausibly succeed.
 
-
-@shared_task(
-    autoretry_for=(AIProviderError,),
-    retry_backoff=True,
-    retry_jitter=True,
-    max_retries=3,
-    soft_time_limit=180,
-    time_limit=210,
-)
-def extract_observation_evidence_task(observation_id: str, entity_id: str) -> str:
-    proposal = ai_knowledge_proposal_service.extract_evidence(
-        observation_id=observation_id,
-        entity_id=entity_id,
+    ``AIProviderError.retryable`` is false for account problems (401/402/403)
+    and for a provider the gateway has already marked unavailable. Celery's
+    ``autoretry_for`` cannot express that distinction — it retries every
+    instance of the exception — so the tasks make the decision here. Without
+    it, an unpaid balance turns one dispatched batch into thousands of retries:
+    measured once at 18,412 failed runs in ten minutes.
+    """
+    if not error.retryable:
+        logger.warning(
+            "AI provider error is terminal; not retrying: %s", str(error)[:200]
+        )
+        raise Ignore() from error
+    task.retry(
+        exc=error,
+        countdown=min(300, 30 * 2**task.request.retries),
+        max_retries=max_retries,
     )
+    raise AssertionError("task.retry returned without raising")
+
+
+@shared_task(bind=True, max_retries=3, soft_time_limit=180, time_limit=210)
+def evaluate_match_candidate_task(self, candidate_id: str) -> str:
+    try:
+        return str(ai_matching_service.evaluate(candidate_id=candidate_id).id)
+    except AIProviderError as error:
+        _retry_provider_call(self, error, max_retries=3)
+
+
+@shared_task(bind=True, max_retries=3, soft_time_limit=180, time_limit=210)
+def classify_entity_task(self, entity_id: str) -> str:
+    try:
+        return str(
+            ai_knowledge_proposal_service.classify_entity(entity_id=entity_id).id
+        )
+    except AIProviderError as error:
+        _retry_provider_call(self, error, max_retries=3)
+
+
+@shared_task(bind=True, max_retries=3, soft_time_limit=180, time_limit=210)
+def extract_observation_evidence_task(self, observation_id: str, entity_id: str) -> str:
+    try:
+        proposal = ai_knowledge_proposal_service.extract_evidence(
+            observation_id=observation_id,
+            entity_id=entity_id,
+        )
+    except AIProviderError as error:
+        _retry_provider_call(self, error, max_retries=3)
     return str(proposal.id)
 
 
-@shared_task(
-    autoretry_for=(AIProviderError,),
-    retry_backoff=True,
-    retry_jitter=True,
-    max_retries=2,
-    soft_time_limit=600,
-    time_limit=700,
-)
+@shared_task(bind=True, max_retries=2, soft_time_limit=600, time_limit=700)
 def complete_missing_schedule_slots_task(
+    self,
     *,
     limit: int | None = None,
     apply: bool = True,
 ) -> dict:
-    return schedule_completion_service.run(limit=limit, apply=apply)
+    try:
+        return schedule_completion_service.run(limit=limit, apply=apply)
+    except AIProviderError as error:
+        _retry_provider_call(self, error, max_retries=2)
 
 
 @shared_task(
