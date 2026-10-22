@@ -7,15 +7,15 @@ from urllib.parse import urlparse
 from django.db import transaction
 
 from apps.index.models import (
+    CandidateDecision,
     Entity,
+    EntityRepresentation,
     Fact,
     FactEvidence,
     MatchCandidate,
-    MatchDecision,
     MatchEvidence,
     Observation,
     Predicate,
-    ProviderRepresentation,
     Work,
 )
 
@@ -183,7 +183,7 @@ class CrossProviderIdentityService:
         vndb_id: str,
     ) -> None:
         representation = (
-            ProviderRepresentation.objects.filter(
+            EntityRepresentation.objects.filter(
                 provider_record__namespace__provider__slug="vndb",
                 provider_record__namespace__slug="vn",
                 provider_record__external_id=vndb_id,
@@ -246,7 +246,7 @@ class CrossProviderIdentityService:
         if hard_conflicts:
             entity_resolution_service.decide_candidate(
                 candidate=candidate,
-                outcome=MatchDecision.Outcome.ABSTAIN,
+                outcome=CandidateDecision.Outcome.ABSTAIN,
                 decided_by="official_external_id",
                 reason="Official identifier conflicts with canonical entity types.",
             )
@@ -254,14 +254,14 @@ class CrossProviderIdentityService:
         try:
             entity_resolution_service.decide_candidate(
                 candidate=candidate,
-                outcome=MatchDecision.Outcome.BIND,
+                outcome=CandidateDecision.Outcome.BIND,
                 decided_by="official_external_id",
                 reason=f"Bangumi explicitly references VNDB {vndb_id}.",
             )
         except EntityResolutionError as exc:
             entity_resolution_service.decide_candidate(
                 candidate=candidate,
-                outcome=MatchDecision.Outcome.ABSTAIN,
+                outcome=CandidateDecision.Outcome.ABSTAIN,
                 decided_by="official_external_id",
                 reason=f"Verified identifier could not be bound safely: {exc}",
             )

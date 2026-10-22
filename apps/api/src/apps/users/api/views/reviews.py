@@ -16,7 +16,7 @@ from apps.users.api.serializers.reviews import (
     ReviewListRequestSerializer,
     ReviewUpdateRequestSerializer,
 )
-from apps.users.models import Review
+from apps.users.models import UserReview
 from apps.users.services.library.review import ReviewService
 from shared.api.contracts import (
     PaginationQuerySerializer,
@@ -27,7 +27,7 @@ from shared.api.pagination import DefaultPageNumberPagination
 
 
 def review_queryset(*, viewer=None):
-    queryset = Review.objects.select_related(
+    queryset = UserReview.objects.select_related(
         "user_subject",
         "user_subject__entity",
         "user_subject__entity__work",
@@ -66,7 +66,7 @@ def review_queryset(*, viewer=None):
     return queryset
 
 
-def review_data(review: Review) -> dict:
+def review_data(review: UserReview) -> dict:
     profile = getattr(review.user_subject.user, "profile", None)
     return {
         "id": review.id,
@@ -91,15 +91,15 @@ def review_data(review: Review) -> dict:
     }
 
 
-def get_my_review(*, user, review_id: int) -> Review:
+def get_my_review(*, user, review_id: int) -> UserReview:
     try:
         return review_queryset(viewer=user).get(
             pk=review_id,
             user_subject__user=user,
             user_subject__entity__isnull=False,
         )
-    except Review.DoesNotExist as exc:
-        raise NotFound("Review not found.") from exc
+    except UserReview.DoesNotExist as exc:
+        raise NotFound("UserReview not found.") from exc
 
 
 @extend_schema_view(
@@ -252,8 +252,8 @@ class PublicReviewDetailView(APIView):
                 user_subject__is_public=True,
                 is_public=True,
             )
-        except Review.DoesNotExist as exc:
-            raise NotFound("Review not found.") from exc
+        except UserReview.DoesNotExist as exc:
+            raise NotFound("UserReview not found.") from exc
         if (
             request.user.is_authenticated
             and UserBlock.objects.filter(
@@ -261,5 +261,5 @@ class PublicReviewDetailView(APIView):
                 | Q(user=review.user_subject.user, blocked_user=request.user)
             ).exists()
         ):
-            raise NotFound("Review not found.")
+            raise NotFound("UserReview not found.")
         return Response(review_data(review))

@@ -11,12 +11,12 @@ from apps.ai.services import (
 from apps.index.models import (
     CurrentObservation,
     Entity,
+    EntityRepresentation,
     Fact,
     Observation,
     Provider,
     ProviderNamespace,
     ProviderRecord,
-    ProviderRepresentation,
     Work,
 )
 from integrations.ai import AIProviderError
@@ -58,11 +58,11 @@ def _observation(
         normalized_data={"title": "Fixture", "developer": "Studio"},
         normalized_hash="a" * 64,
     )
-    ProviderRepresentation.objects.create(
+    EntityRepresentation.objects.create(
         provider_record=record,
         entity=entity,
-        mapping_kind=ProviderRepresentation.MappingKind.EXACT,
-        method=ProviderRepresentation.Method.PROVIDER,
+        mapping_kind=EntityRepresentation.MappingKind.EXACT,
+        method=EntityRepresentation.Method.PROVIDER,
     )
     if current:
         CurrentObservation.objects.create(

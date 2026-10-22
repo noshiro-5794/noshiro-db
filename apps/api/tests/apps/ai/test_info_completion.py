@@ -21,11 +21,11 @@ from apps.ai.tools.web import WebSearchInput, WebSearchOutput
 from apps.index.models import (
     Entity,
     EntityName,
+    EntityRepresentation,
     Observation,
     Provider,
     ProviderNamespace,
     ProviderRecord,
-    ProviderRepresentation,
     ProviderRevision,
 )
 
@@ -47,11 +47,11 @@ def _fixture() -> tuple[Entity, Observation, AgentRun]:
         namespace=namespace, external_id="100", origin="api", status="active"
     )
     entity = Entity.objects.create(kind=Entity.Kind.WORK)
-    ProviderRepresentation.objects.create(
+    EntityRepresentation.objects.create(
         provider_record=record,
         entity=entity,
-        mapping_kind=ProviderRepresentation.MappingKind.EXACT,
-        method=ProviderRepresentation.Method.EXTERNAL_ID,
+        mapping_kind=EntityRepresentation.MappingKind.EXACT,
+        method=EntityRepresentation.Method.EXTERNAL_ID,
     )
     revision = ProviderRevision.objects.create(
         record=record,

@@ -11,8 +11,8 @@ from apps.index.models import (
     AiringBoardEntry,
     AiringEvent,
     Entity,
+    EntityRepresentation,
     ProviderRecord,
-    ProviderRepresentation,
 )
 
 SUPPORTED_SOURCES = ("bangumi", "anilist", "mal")
@@ -102,7 +102,7 @@ class ScheduleCoverageService:
     @staticmethod
     def _identity_coverage() -> dict[str, Any]:
         rows = (
-            ProviderRepresentation.objects.filter(
+            EntityRepresentation.objects.filter(
                 is_active=True,
                 provider_record__namespace__provider__slug__in=SUPPORTED_SOURCES,
                 provider_record__status=ProviderRecord.Status.ACTIVE,

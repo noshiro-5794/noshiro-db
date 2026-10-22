@@ -15,6 +15,7 @@ from apps.index.models import (
     EntityName,
     EntityRelation,
     EntityRelationEvidence,
+    EntityRepresentation,
     EntityTerm,
     ExternalLink,
     Fact,
@@ -23,7 +24,6 @@ from apps.index.models import (
     Organization,
     Person,
     ProviderRecord,
-    ProviderRepresentation,
     ProviderRevision,
     Release,
     ReleaseWork,
@@ -276,7 +276,7 @@ def test_vndb_persistence_failure_rolls_back_complete_batch() -> None:
 
     assert ProviderRecord.objects.count() == 0
     assert ProviderRevision.objects.count() == 0
-    assert ProviderRepresentation.objects.count() == 0
+    assert EntityRepresentation.objects.count() == 0
     assert Entity.objects.count() == 0
 
 
@@ -304,7 +304,7 @@ def test_vndb_complete_batch_is_idempotent() -> None:
     assert ReleaseWorkEvidence.objects.count() == 1
     assert ProviderRecord.objects.count() == 10
     assert ProviderRevision.objects.count() == 5
-    assert ProviderRepresentation.objects.count() == 7
+    assert EntityRepresentation.objects.count() == 7
     assert MetricSnapshot.objects.count() == 2
     assert Observation.objects.count() == 5
     assert CurrentObservation.objects.count() == 5

@@ -3,13 +3,13 @@ from unittest.mock import patch
 import pytest
 
 from apps.index.models import (
+    CuratedCollection,
+    CuratedMembership,
     Entity,
-    IndexCollection,
-    IndexMembership,
+    EntityRepresentation,
     Provider,
     ProviderNamespace,
     ProviderRecord,
-    ProviderRepresentation,
     Work,
 )
 from apps.sync.models import SyncError
@@ -46,19 +46,19 @@ def _subject_record(
     if listed:
         entity = Entity.objects.create(kind=Entity.Kind.WORK)
         Work.objects.create(entity=entity, work_type=Work.WorkType.ANIME)
-        collection, _ = IndexCollection.objects.get_or_create(
+        collection, _ = CuratedCollection.objects.get_or_create(
             slug="anime", defaults={"name": "Anime"}
         )
-        IndexMembership.objects.create(
+        CuratedMembership.objects.create(
             collection=collection,
             entity=entity,
-            listing_state=IndexMembership.State.LISTED,
+            listing_state=CuratedMembership.State.LISTED,
         )
-        ProviderRepresentation.objects.create(
+        EntityRepresentation.objects.create(
             entity=entity,
             provider_record=record,
-            mapping_kind=ProviderRepresentation.MappingKind.EXACT,
-            method=ProviderRepresentation.Method.PROVIDER,
+            mapping_kind=EntityRepresentation.MappingKind.EXACT,
+            method=EntityRepresentation.Method.PROVIDER,
         )
     return record
 

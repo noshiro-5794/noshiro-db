@@ -10,11 +10,11 @@ from apps.index.models import (
     CurrentObservation,
     Entity,
     EntityName,
+    EntityRepresentation,
     Observation,
     Provider,
     ProviderNamespace,
     ProviderRecord,
-    ProviderRepresentation,
     Work,
 )
 from apps.index.services import knowledge_ingestion_service
@@ -44,11 +44,11 @@ def _anilist_entity() -> Entity:
         namespace=namespace, external_id="1", origin="api", status="active"
     )
     entity = Entity.objects.create(kind=Entity.Kind.WORK)
-    ProviderRepresentation.objects.create(
+    EntityRepresentation.objects.create(
         provider_record=record,
         entity=entity,
-        mapping_kind=ProviderRepresentation.MappingKind.EXACT,
-        method=ProviderRepresentation.Method.EXTERNAL_ID,
+        mapping_kind=EntityRepresentation.MappingKind.EXACT,
+        method=EntityRepresentation.Method.EXTERNAL_ID,
     )
     EntityName.objects.create(
         entity=entity,
@@ -90,11 +90,11 @@ def _contributor_entity(
         namespace=namespace, external_id="3", origin="api", status="active"
     )
     entity = Entity.objects.create(kind=Entity.Kind.CONTRIBUTOR)
-    ProviderRepresentation.objects.create(
+    EntityRepresentation.objects.create(
         provider_record=record,
         entity=entity,
-        mapping_kind=ProviderRepresentation.MappingKind.EXACT,
-        method=ProviderRepresentation.Method.EXTERNAL_ID,
+        mapping_kind=EntityRepresentation.MappingKind.EXACT,
+        method=EntityRepresentation.Method.EXTERNAL_ID,
     )
     EntityName.objects.create(
         entity=entity,
@@ -127,11 +127,11 @@ def _observed_episode_entity(
         observation=observation,
     )
     entity = Entity.objects.create(kind=Entity.Kind.EPISODE)
-    ProviderRepresentation.objects.create(
+    EntityRepresentation.objects.create(
         provider_record=record,
         entity=entity,
-        mapping_kind=ProviderRepresentation.MappingKind.EXACT,
-        method=ProviderRepresentation.Method.PROVIDER,
+        mapping_kind=EntityRepresentation.MappingKind.EXACT,
+        method=EntityRepresentation.Method.PROVIDER,
     )
     return entity, observation
 
@@ -157,11 +157,11 @@ def test_backfill_entity_name_observations_links_legacy_names() -> None:
     )
     work_record = _observed_work_record(namespace=namespace)
     work_entity = Entity.objects.create(kind=Entity.Kind.WORK)
-    ProviderRepresentation.objects.create(
+    EntityRepresentation.objects.create(
         provider_record=work_record,
         entity=work_entity,
-        mapping_kind=ProviderRepresentation.MappingKind.EXACT,
-        method=ProviderRepresentation.Method.PROVIDER,
+        mapping_kind=EntityRepresentation.MappingKind.EXACT,
+        method=EntityRepresentation.Method.PROVIDER,
     )
     work = Work.objects.create(
         entity=work_entity,

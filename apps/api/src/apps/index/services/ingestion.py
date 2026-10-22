@@ -12,6 +12,8 @@ from apps.index.models import (
     AnimeProfile,
     ContentSafety,
     Contributor,
+    CuratedCollection,
+    CuratedMembership,
     CurrentObservation,
     Entity,
     EntityDescription,
@@ -19,11 +21,10 @@ from apps.index.models import (
     EntityName,
     EntityRelation,
     EntityRelationEvidence,
+    EntityRepresentation,
     Fact,
     FactEvidence,
     GalgameProfile,
-    IndexCollection,
-    IndexMembership,
     MappingRun,
     MediaAsset,
     MetricSnapshot,
@@ -32,7 +33,6 @@ from apps.index.models import (
     Person,
     Predicate,
     ProviderRecord,
-    ProviderRepresentation,
     Work,
 )
 
@@ -236,7 +236,7 @@ class KnowledgeIngestionService:
         normalized_data: dict[str, Any],
         mapped_data: dict[str, Any],
         mapper_version: str,
-        representation_method: str = ProviderRepresentation.Method.PROVIDER,
+        representation_method: str = EntityRepresentation.Method.PROVIDER,
     ) -> Entity:
         observation = self.record_observation(
             provider_record=provider_record,
@@ -326,7 +326,7 @@ class KnowledgeIngestionService:
         mapped_data: dict[str, Any],
         mapper: str,
         mapper_version: str,
-        representation_method: str = ProviderRepresentation.Method.PROVIDER,
+        representation_method: str = EntityRepresentation.Method.PROVIDER,
     ) -> Entity:
         observation = self.record_observation(
             provider_record=provider_record,
@@ -376,7 +376,7 @@ class KnowledgeIngestionService:
         mapped_data: dict[str, Any],
         mapper: str,
         mapper_version: str,
-        representation_method: str = ProviderRepresentation.Method.PROVIDER,
+        representation_method: str = EntityRepresentation.Method.PROVIDER,
     ) -> Contributor:
         observation = self.record_observation(
             provider_record=provider_record,
@@ -427,7 +427,7 @@ class KnowledgeIngestionService:
         relationship_observation: Observation,
         relationship_json_pointer: str,
         mapper_version: str,
-        representation_method: str = ProviderRepresentation.Method.PROVIDER,
+        representation_method: str = EntityRepresentation.Method.PROVIDER,
     ) -> Entity:
         observation = self.record_observation(
             provider_record=provider_record,
@@ -438,7 +438,7 @@ class KnowledgeIngestionService:
             schema_version="1",
         )
         representation = (
-            ProviderRepresentation.objects.filter(
+            EntityRepresentation.objects.filter(
                 provider_record=provider_record,
                 is_active=True,
             )
@@ -555,7 +555,7 @@ class KnowledgeIngestionService:
         audience: str,
     ) -> Entity:
         representation = (
-            ProviderRepresentation.objects.filter(
+            EntityRepresentation.objects.filter(
                 provider_record=provider_record,
                 is_active=True,
             )
@@ -584,10 +584,10 @@ class KnowledgeIngestionService:
         entity: Entity,
         representation_method: str,
     ) -> None:
-        ProviderRepresentation.objects.update_or_create(
+        EntityRepresentation.objects.update_or_create(
             provider_record=provider_record,
             entity=entity,
-            mapping_kind=ProviderRepresentation.MappingKind.EXACT,
+            mapping_kind=EntityRepresentation.MappingKind.EXACT,
             defaults={
                 "method": representation_method,
                 "confidence": Decimal("1"),
@@ -699,15 +699,15 @@ class KnowledgeIngestionService:
     def _sync_membership(*, entity: Entity, work_type: str) -> None:
         if work_type not in {Work.WorkType.ANIME, Work.WorkType.GALGAME}:
             return
-        collection, _ = IndexCollection.objects.get_or_create(
+        collection, _ = CuratedCollection.objects.get_or_create(
             slug=work_type,
             defaults={"name": work_type.capitalize()},
         )
-        IndexMembership.objects.update_or_create(
+        CuratedMembership.objects.update_or_create(
             collection=collection,
             entity=entity,
             defaults={
-                "listing_state": IndexMembership.State.LISTED,
+                "listing_state": CuratedMembership.State.LISTED,
                 "inclusion_reason": "mapped work type",
             },
         )

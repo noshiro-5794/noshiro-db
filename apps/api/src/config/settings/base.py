@@ -177,7 +177,7 @@ SPECTACULAR_SETTINGS = {
         "EntityLifecycle": "apps.index.models.Entity.Lifecycle",
         "EntityAudience": "apps.index.models.Entity.Audience",
         "EntityKind": "apps.index.models.Entity.Kind",
-        "LibraryStatus": "apps.users.models.UserSubject.Status",
+        "LibraryStatus": "apps.users.models.UserLibraryEntry.Status",
         "ReleaseStatus": "apps.users.models.UserRelease.Status",
         "SyncJobStatus": "apps.sync.models.SyncJob.Status",
         "CommunityReportStatus": "apps.community.models.CommunityReport.ReportStatus",

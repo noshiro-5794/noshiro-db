@@ -26,7 +26,7 @@ from apps.users.api.serializers.profile import (
     UserSettingsUpdateRequestSerializer,
 )
 from apps.users.exceptions import InvalidWatchDateRange, UserNotFound
-from apps.users.models import User, UserSubject, UserSubjectTag, UserTag
+from apps.users.models import User, UserLibraryEntry, UserLibraryEntryTag, UserTag
 from apps.users.selectors.public.public_profile import PublicProfileSelector
 from apps.users.services.library.subject import UserSubjectService
 
@@ -108,10 +108,14 @@ def test_user_list_queries_reject_unknown_filters() -> None:
 
 
 def test_watch_dates_use_native_date_fields_and_a_range_constraint() -> None:
-    assert isinstance(UserSubject._meta.get_field("watch_start_date"), models.DateField)
-    assert isinstance(UserSubject._meta.get_field("watch_end_date"), models.DateField)
+    assert isinstance(
+        UserLibraryEntry._meta.get_field("watch_start_date"), models.DateField
+    )
+    assert isinstance(
+        UserLibraryEntry._meta.get_field("watch_end_date"), models.DateField
+    )
     assert "ck_watch_date_range" in {
-        constraint.name for constraint in UserSubject._meta.constraints
+        constraint.name for constraint in UserLibraryEntry._meta.constraints
     }
 
 
@@ -129,18 +133,18 @@ def test_library_queries_apply_keyword_type_tag_and_ordering() -> None:
             language="en",
             kind=EntityName.Kind.ORIGINAL,
         )
-        UserSubject.objects.create(
+        UserLibraryEntry.objects.create(
             user=owner,
             entity=entity,
-            status=UserSubject.Status.DOING,
+            status=UserLibraryEntry.Status.DOING,
             rating=Decimal(rating),
             comment=f"comment {title}",
             is_public=True,
         )
-        UserSubject.objects.create(
+        UserLibraryEntry.objects.create(
             user=public_user,
             entity=entity,
-            status=UserSubject.Status.DOING,
+            status=UserLibraryEntry.Status.DOING,
             rating=Decimal(rating),
             is_public=True,
         )
@@ -165,8 +169,8 @@ def test_library_queries_apply_keyword_type_tag_and_ordering() -> None:
     assert response.json()["results"][0]["entity"]["id"] == str(anime.id)
 
     tag = UserTag.objects.create(user=owner, name="watch")
-    UserSubjectTag.objects.create(
-        user_subject=UserSubject.objects.get(user=owner, entity=anime),
+    UserLibraryEntryTag.objects.create(
+        user_subject=UserLibraryEntry.objects.get(user=owner, entity=anime),
         tag=tag,
     )
     tag_response = client.get(

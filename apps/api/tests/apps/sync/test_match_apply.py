@@ -6,15 +6,15 @@ from django.core.management import call_command
 
 from apps.ai.models import AIProposal, AIRun
 from apps.index.models import (
+    CandidateDecision,
     Entity,
     EntityName,
+    EntityRepresentation,
     MatchCandidate,
-    MatchDecision,
     MatchEvidence,
     Provider,
     ProviderNamespace,
     ProviderRecord,
-    ProviderRepresentation,
     Work,
 )
 from apps.sync.services.match_apply import match_apply_service
@@ -46,11 +46,11 @@ def _anime_entity(
     )
     entity = Entity.objects.create(kind=Entity.Kind.WORK)
     Work.objects.create(entity=entity, work_type=Work.WorkType.ANIME)
-    ProviderRepresentation.objects.create(
+    EntityRepresentation.objects.create(
         provider_record=record,
         entity=entity,
-        mapping_kind=ProviderRepresentation.MappingKind.EXACT,
-        method=ProviderRepresentation.Method.PROVIDER,
+        mapping_kind=EntityRepresentation.MappingKind.EXACT,
+        method=EntityRepresentation.Method.PROVIDER,
     )
     EntityName.objects.create(
         entity=entity,
@@ -136,9 +136,9 @@ def test_apply_binds_eligible_candidate_and_records_admin_decision() -> None:
     assert proposal.status == AIProposal.Status.ACCEPTED
     assert proposal.match_candidate.status == MatchCandidate.Status.ACCEPTED
     assert (
-        MatchDecision.objects.filter(
+        CandidateDecision.objects.filter(
             candidate=proposal.match_candidate,
-            outcome=MatchDecision.Outcome.BIND,
+            outcome=CandidateDecision.Outcome.BIND,
             decided_by="admin_batch",
         ).exists()
         is True
@@ -159,10 +159,10 @@ def test_apply_abstains_low_confidence_proposal() -> None:
 def _work_entity(*, provider_slug: str, external_id: str):
     from apps.index.models import (
         Entity,
+        EntityRepresentation,
         Provider,
         ProviderNamespace,
         ProviderRecord,
-        ProviderRepresentation,
         Work,
     )
 
@@ -179,11 +179,11 @@ def _work_entity(*, provider_slug: str, external_id: str):
     )
     entity = Entity.objects.create(kind=Entity.Kind.WORK)
     Work.objects.create(entity=entity, work_type=Work.WorkType.ANIME)
-    ProviderRepresentation.objects.create(
+    EntityRepresentation.objects.create(
         entity=entity,
         provider_record=record,
-        mapping_kind=ProviderRepresentation.MappingKind.EXACT,
-        method=ProviderRepresentation.Method.PROVIDER,
+        mapping_kind=EntityRepresentation.MappingKind.EXACT,
+        method=EntityRepresentation.Method.PROVIDER,
     )
     return entity
 
@@ -336,11 +336,11 @@ def test_user_library_conflict_is_recorded_not_retried() -> None:
     from unittest.mock import patch
 
     from apps.index.exceptions import UserLibraryConflict
-    from apps.index.models import MatchDecision
+    from apps.index.models import CandidateDecision
 
     def decide(*, candidate, outcome, decided_by, reason):
         # Only the bind is refused; the follow-up abstain has to go through.
-        if outcome == MatchDecision.Outcome.BIND:
+        if outcome == CandidateDecision.Outcome.BIND:
             raise UserLibraryConflict()
         return
 

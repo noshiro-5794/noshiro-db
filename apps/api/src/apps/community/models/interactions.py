@@ -26,14 +26,14 @@ class CommunityReaction(models.Model):
         related_name="reactions",
     )
     review = models.ForeignKey(
-        "users.Review",
+        "users.UserReview",
         on_delete=models.CASCADE,
         null=True,
         blank=True,
         related_name="community_reactions",
     )
     collection = models.ForeignKey(
-        "users.Collection",
+        "users.UserCollection",
         on_delete=models.CASCADE,
         null=True,
         blank=True,
@@ -137,14 +137,14 @@ class CommunityBookmark(models.Model):
         related_name="bookmarks",
     )
     review = models.ForeignKey(
-        "users.Review",
+        "users.UserReview",
         on_delete=models.CASCADE,
         null=True,
         blank=True,
         related_name="community_bookmarks",
     )
     collection = models.ForeignKey(
-        "users.Collection",
+        "users.UserCollection",
         on_delete=models.CASCADE,
         null=True,
         blank=True,

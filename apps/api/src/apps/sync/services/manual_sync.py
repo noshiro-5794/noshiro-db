@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from uuid import UUID
 
-from apps.index.models import ProviderRepresentation, Work
+from apps.index.models import EntityRepresentation, Work
 from apps.index.selectors.projections import preferred_name
 from apps.sync.exceptions import SyncSubjectNotFound, SyncSubjectNotSupported
 from apps.sync.providers.bangumi import BANGUMI_SUBJECT_NAMESPACE
@@ -44,7 +44,7 @@ class ManualSubjectSyncService:
     ) -> dict:
         try:
             representation = (
-                ProviderRepresentation.objects.filter(
+                EntityRepresentation.objects.filter(
                     entity_id=subject_id,
                     provider_record__namespace__provider__slug=(
                         BANGUMI_SUBJECT_NAMESPACE.source.slug

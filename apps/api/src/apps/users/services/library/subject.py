@@ -8,7 +8,7 @@ from apps.index.constants import PRIMARY_SUBJECT_TYPES
 from apps.index.exceptions import SubjectNotFound, SubjectTypeNotSupported
 from apps.index.models import Entity
 from apps.users.exceptions import InvalidWatchDateRange
-from apps.users.models import UserSubject
+from apps.users.models import UserLibraryEntry
 from apps.users.selectors.library.subject import SubjectSelector
 
 
@@ -46,7 +46,7 @@ class UserSubjectService:
         watch_start_date=None,
         watch_end_date=None,
         is_public: bool = True,
-    ) -> tuple[UserSubject, bool]:
+    ) -> tuple[UserLibraryEntry, bool]:
         try:
             entity = Entity.objects.select_related("work").get(pk=subject_id)
         except Entity.DoesNotExist as exc:
@@ -66,7 +66,7 @@ class UserSubjectService:
             watch_end_date=watch_end_date,
         )
 
-        user_subject, created = UserSubject.objects.update_or_create(
+        user_subject, created = UserLibraryEntry.objects.update_or_create(
             user=user,
             entity=entity,
             defaults={
@@ -95,7 +95,9 @@ class UserSubjectService:
 
     @staticmethod
     @transaction.atomic
-    def update_subject(*, user, user_subject_id: int, **fields: Any) -> UserSubject:
+    def update_subject(
+        *, user, user_subject_id: int, **fields: Any
+    ) -> UserLibraryEntry:
         user_subject = SubjectSelector.get_user_subject_for_update_or_raise(
             user=user,
             user_subject_id=user_subject_id,

@@ -46,7 +46,7 @@ class CollectionCreateRequestSerializer(serializers.Serializer):
         value = value.strip()
 
         if not value:
-            raise serializers.ValidationError("Collection name can not be blank.")
+            raise serializers.ValidationError("UserCollection name can not be blank.")
 
         return value
 
@@ -75,7 +75,7 @@ class CollectionUpdateRequestSerializer(serializers.Serializer):
         value = value.strip()
 
         if not value:
-            raise serializers.ValidationError("Collection name can not be blank.")
+            raise serializers.ValidationError("UserCollection name can not be blank.")
 
         return value
 

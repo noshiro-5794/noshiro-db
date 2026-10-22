@@ -2,8 +2,8 @@ from django.db import transaction
 
 from apps.index.models import (
     Entity,
+    EntityRepresentation,
     ProviderRecord,
-    ProviderRepresentation,
 )
 from apps.index.services import knowledge_ingestion_service
 from apps.sync.providers.bangumi import (
@@ -72,7 +72,7 @@ class CharacterService:
     @staticmethod
     def _resolve_entity(record: ProviderRecord) -> Entity | None:
         representation = (
-            ProviderRepresentation.objects.filter(
+            EntityRepresentation.objects.filter(
                 provider_record=record,
                 is_active=True,
             )

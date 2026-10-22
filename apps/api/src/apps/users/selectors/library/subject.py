@@ -5,9 +5,9 @@ from django.db.models.functions import Coalesce, Greatest
 from apps.index.constants import PRIMARY_SUBJECT_TYPES
 from apps.users.exceptions import UserSubjectNotFound
 from apps.users.models import (
-    Review,
     UserEpisodeProgress,
-    UserSubject,
+    UserLibraryEntry,
+    UserReview,
     UserSubjectRatingDetail,
     UserTag,
 )
@@ -16,7 +16,7 @@ from apps.users.models import (
 class SubjectSelector:
     @staticmethod
     def base_queryset():
-        return UserSubject.objects.select_related(
+        return UserLibraryEntry.objects.select_related(
             "user", "entity", "entity__work"
         ).prefetch_related(
             "tag_relations__tag",
@@ -25,7 +25,7 @@ class SubjectSelector:
         )
 
     @classmethod
-    def get_user_subject(cls, *, user, user_subject_id: int) -> UserSubject:
+    def get_user_subject(cls, *, user, user_subject_id: int) -> UserLibraryEntry:
         return cls.base_queryset().get(
             id=user_subject_id,
             user=user,
@@ -34,19 +34,21 @@ class SubjectSelector:
         )
 
     @classmethod
-    def get_user_subject_or_raise(cls, *, user, user_subject_id: int) -> UserSubject:
+    def get_user_subject_or_raise(
+        cls, *, user, user_subject_id: int
+    ) -> UserLibraryEntry:
         try:
             return cls.get_user_subject(
                 user=user,
                 user_subject_id=user_subject_id,
             )
-        except UserSubject.DoesNotExist as exc:
+        except UserLibraryEntry.DoesNotExist as exc:
             raise UserSubjectNotFound() from exc
 
     @classmethod
     def get_user_subject_for_update_or_raise(
         cls, *, user, user_subject_id: int
-    ) -> UserSubject:
+    ) -> UserLibraryEntry:
         try:
             return (
                 cls.base_queryset()
@@ -58,7 +60,7 @@ class SubjectSelector:
                     entity__work__work_type__in=PRIMARY_SUBJECT_TYPES,
                 )
             )
-        except UserSubject.DoesNotExist as exc:
+        except UserLibraryEntry.DoesNotExist as exc:
             raise UserSubjectNotFound() from exc
 
     @classmethod
@@ -156,7 +158,7 @@ class SubjectSelector:
             user_subject=user_subject,
         ).order_by("id")
 
-        reviews = Review.objects.filter(
+        reviews = UserReview.objects.filter(
             user_subject=user_subject,
         ).order_by("-created_at", "-id")
 

@@ -11,7 +11,7 @@ from apps.community.models import (
 )
 from apps.community.selectors.activity import ActivitySelector
 from apps.community.selectors.relationship import UserRelationshipSelector
-from apps.users.models import Collection, Review
+from apps.users.models import UserCollection, UserReview
 
 
 class CommunityTargetSelector:
@@ -52,7 +52,7 @@ class CommunityTargetSelector:
     @staticmethod
     def _get_public_review(target_id):
         return (
-            Review.objects.select_related(
+            UserReview.objects.select_related(
                 "user_subject",
                 "user_subject__user",
                 "user_subject__user__profile",
@@ -70,7 +70,7 @@ class CommunityTargetSelector:
     @staticmethod
     def _get_public_collection(target_id):
         return (
-            Collection.objects.select_related("user", "user__profile")
+            UserCollection.objects.select_related("user", "user__profile")
             .filter(
                 id=target_id,
                 is_public=True,
@@ -131,8 +131,8 @@ class CommunityTargetSelector:
     def owner_for_target(target):
         if isinstance(target, (CommunityPost, CommunityComment)):
             return target.author
-        if isinstance(target, Review):
+        if isinstance(target, UserReview):
             return target.user_subject.user
-        if isinstance(target, Collection):
+        if isinstance(target, UserCollection):
             return target.user
         return getattr(target, "user", None)

@@ -5,17 +5,17 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.index.models import (
+    CandidateDecision,
     Entity,
     EntityName,
     EntityRedirect,
     MatchCandidate,
-    MatchDecision,
     MergeEvent,
     SplitEvent,
     Work,
 )
 from apps.index.services import EntityResolutionError, entity_resolution_service
-from apps.users.models import User, UserSubject
+from apps.users.models import User, UserLibraryEntry
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -54,7 +54,7 @@ def test_bind_creates_reversible_redirect_and_combined_projection() -> None:
     canonical.refresh_from_db()
     decision = entity_resolution_service.decide_candidate(
         candidate=_candidate(canonical, representation),
-        outcome=MatchDecision.Outcome.BIND,
+        outcome=CandidateDecision.Outcome.BIND,
         decided_by="manual",
         reason="Verified cross-provider identity.",
     )
@@ -116,21 +116,25 @@ def test_bind_abstains_from_conflicting_user_library_data() -> None:
     left = _work("Left")
     right = _work("Right")
     user = User.objects.create_user(email="conflict@example.com")
-    UserSubject.objects.create(user=user, entity=left, status=UserSubject.Status.DOING)
-    UserSubject.objects.create(user=user, entity=right, status=UserSubject.Status.WISH)
+    UserLibraryEntry.objects.create(
+        user=user, entity=left, status=UserLibraryEntry.Status.DOING
+    )
+    UserLibraryEntry.objects.create(
+        user=user, entity=right, status=UserLibraryEntry.Status.WISH
+    )
     candidate = _candidate(left, right)
 
     with pytest.raises(EntityResolutionError, match="conflicting user library entries"):
         entity_resolution_service.decide_candidate(
             candidate=candidate,
-            outcome=MatchDecision.Outcome.BIND,
+            outcome=CandidateDecision.Outcome.BIND,
             decided_by="manual",
             reason="Unsafe attempted bind.",
         )
 
     candidate.refresh_from_db()
     assert candidate.status == MatchCandidate.Status.PENDING
-    assert not MatchDecision.objects.exists()
+    assert not CandidateDecision.objects.exists()
     assert not EntityRedirect.objects.exists()
 
 
@@ -167,7 +171,7 @@ def test_bind_refuses_works_from_different_families() -> None:
     with pytest.raises(EntityResolutionError):
         entity_resolution_service.decide_candidate(
             candidate=candidate,
-            outcome=MatchDecision.Outcome.BIND,
+            outcome=CandidateDecision.Outcome.BIND,
             decided_by="test",
             reason="family mismatch",
         )
@@ -175,4 +179,4 @@ def test_bind_refuses_works_from_different_families() -> None:
     candidate.refresh_from_db()
     assert candidate.status == MatchCandidate.Status.PENDING
     assert EntityRedirect.objects.count() == 0
-    assert not MatchDecision.objects.filter(candidate=candidate).exists()
+    assert not CandidateDecision.objects.filter(candidate=candidate).exists()

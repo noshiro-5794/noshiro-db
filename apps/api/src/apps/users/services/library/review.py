@@ -1,7 +1,7 @@
 from django.db import transaction
 
 from apps.community.services.activity import ActivityService
-from apps.users.models import Review
+from apps.users.models import UserReview
 from apps.users.selectors.library.review import ReviewSelector
 
 
@@ -66,7 +66,7 @@ class ReviewService:
         is_public: bool,
         is_spoiler: bool,
     ):
-        review = Review.objects.create(
+        review = UserReview.objects.create(
             user_subject=user_subject,
             title=title.strip(),
             content=content,

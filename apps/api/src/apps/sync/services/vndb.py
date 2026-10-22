@@ -10,24 +10,24 @@ from apps.index.models import (
     ContentRating,
     Contributor,
     Credit,
+    CuratedCollection,
+    CuratedMembership,
     Entity,
     EntityDescription,
     EntityMedia,
     EntityName,
     EntityRelation,
     EntityRelationEvidence,
+    EntityRepresentation,
     EntityTerm,
     ExternalLink,
     GalgameProfile,
-    IndexCollection,
-    IndexMembership,
     MediaAsset,
     MetricSnapshot,
     Organization,
     Person,
     Predicate,
     ProviderRecord,
-    ProviderRepresentation,
     Release,
     ReleaseWork,
     ReleaseWorkEvidence,
@@ -93,9 +93,9 @@ class VNDBImportService:
             schema_version="1",
         )
         representation = (
-            ProviderRepresentation.objects.filter(
+            EntityRepresentation.objects.filter(
                 provider_record=recorded.record,
-                mapping_kind=ProviderRepresentation.MappingKind.EXACT,
+                mapping_kind=EntityRepresentation.MappingKind.EXACT,
                 is_active=True,
             )
             .select_related("entity")
@@ -112,11 +112,11 @@ class VNDBImportService:
                 playtime_minutes=self._positive_int(data.get("length_minutes")),
                 development_status=self._development_status(data.get("devstatus")),
             )
-            ProviderRepresentation.objects.create(
+            EntityRepresentation.objects.create(
                 provider_record=recorded.record,
                 entity=entity,
-                mapping_kind=ProviderRepresentation.MappingKind.EXACT,
-                method=ProviderRepresentation.Method.PROVIDER,
+                mapping_kind=EntityRepresentation.MappingKind.EXACT,
+                method=EntityRepresentation.Method.PROVIDER,
                 confidence=1,
             )
         else:
@@ -171,14 +171,14 @@ class VNDBImportService:
             observation=observation,
             items=tuple(data.get("relations") or ()),
         )
-        collection, _ = IndexCollection.objects.get_or_create(
+        collection, _ = CuratedCollection.objects.get_or_create(
             slug="galgame", defaults={"name": "Galgame"}
         )
-        IndexMembership.objects.update_or_create(
+        CuratedMembership.objects.update_or_create(
             collection=collection,
             entity=entity,
             defaults={
-                "listing_state": IndexMembership.State.LISTED,
+                "listing_state": CuratedMembership.State.LISTED,
                 "inclusion_reason": "VNDB visual novel",
             },
         )
@@ -261,7 +261,7 @@ class VNDBImportService:
                 schema_version="1",
             )
             representation = (
-                ProviderRepresentation.objects.filter(
+                EntityRepresentation.objects.filter(
                     provider_record=recorded.record, is_active=True
                 )
                 .select_related("entity")
@@ -307,12 +307,12 @@ class VNDBImportService:
                     json_pointer=f"/releases/{index}/vns/{vn_index}",
                     defaults={"raw_role": str(raw_role)[:64]},
                 )
-            ProviderRepresentation.objects.update_or_create(
+            EntityRepresentation.objects.update_or_create(
                 provider_record=recorded.record,
                 entity=entity,
-                mapping_kind=ProviderRepresentation.MappingKind.EXACT,
+                mapping_kind=EntityRepresentation.MappingKind.EXACT,
                 defaults={
-                    "method": ProviderRepresentation.Method.PROVIDER,
+                    "method": EntityRepresentation.Method.PROVIDER,
                     "confidence": 1,
                     "is_active": True,
                 },
@@ -387,7 +387,7 @@ class VNDBImportService:
                 schema_version="1",
             )
             representation = (
-                ProviderRepresentation.objects.filter(
+                EntityRepresentation.objects.filter(
                     provider_record=recorded.record, is_active=True
                 )
                 .select_related("entity")
@@ -398,12 +398,12 @@ class VNDBImportService:
                 if representation
                 else Entity.objects.create(kind=Entity.Kind.CHARACTER)
             )
-            ProviderRepresentation.objects.update_or_create(
+            EntityRepresentation.objects.update_or_create(
                 provider_record=recorded.record,
                 entity=entity,
-                mapping_kind=ProviderRepresentation.MappingKind.EXACT,
+                mapping_kind=EntityRepresentation.MappingKind.EXACT,
                 defaults={
-                    "method": ProviderRepresentation.Method.PROVIDER,
+                    "method": EntityRepresentation.Method.PROVIDER,
                     "confidence": 1,
                     "is_active": True,
                 },
@@ -487,7 +487,7 @@ class VNDBImportService:
                 schema_version="1",
             )
             representation = (
-                ProviderRepresentation.objects.filter(
+                EntityRepresentation.objects.filter(
                     provider_record=recorded.record, is_active=True
                 )
                 .select_related("entity")
@@ -503,12 +503,12 @@ class VNDBImportService:
                 defaults={"kind": Contributor.Kind.PERSON},
             )
             Person.objects.get_or_create(contributor=contributor)
-            ProviderRepresentation.objects.update_or_create(
+            EntityRepresentation.objects.update_or_create(
                 provider_record=recorded.record,
                 entity=entity,
-                mapping_kind=ProviderRepresentation.MappingKind.EXACT,
+                mapping_kind=EntityRepresentation.MappingKind.EXACT,
                 defaults={
-                    "method": ProviderRepresentation.Method.PROVIDER,
+                    "method": EntityRepresentation.Method.PROVIDER,
                     "confidence": 1,
                     "is_active": True,
                 },
@@ -790,9 +790,9 @@ class VNDBImportService:
     @staticmethod
     def _get_or_create_entity(*, record: ProviderRecord, kind: str) -> Entity:
         representation = (
-            ProviderRepresentation.objects.filter(
+            EntityRepresentation.objects.filter(
                 provider_record=record,
-                mapping_kind=ProviderRepresentation.MappingKind.EXACT,
+                mapping_kind=EntityRepresentation.MappingKind.EXACT,
                 is_active=True,
             )
             .select_related("entity")
@@ -806,11 +806,11 @@ class VNDBImportService:
                 )
             return representation.entity
         entity = Entity.objects.create(kind=kind)
-        ProviderRepresentation.objects.create(
+        EntityRepresentation.objects.create(
             provider_record=record,
             entity=entity,
-            mapping_kind=ProviderRepresentation.MappingKind.EXACT,
-            method=ProviderRepresentation.Method.PROVIDER,
+            mapping_kind=EntityRepresentation.MappingKind.EXACT,
+            method=EntityRepresentation.Method.PROVIDER,
             confidence=1,
         )
         return entity
@@ -871,12 +871,12 @@ class VNDBImportService:
             origin=ProviderRecord.Origin.API,
             canonical_url=staff_record.canonical_url if staff_record else "",
         )
-        ProviderRepresentation.objects.update_or_create(
+        EntityRepresentation.objects.update_or_create(
             provider_record=record,
             entity=entity,
-            mapping_kind=ProviderRepresentation.MappingKind.VARIANT,
+            mapping_kind=EntityRepresentation.MappingKind.VARIANT,
             defaults={
-                "method": ProviderRepresentation.Method.PROVIDER,
+                "method": EntityRepresentation.Method.PROVIDER,
                 "confidence": 1,
                 "is_active": True,
             },

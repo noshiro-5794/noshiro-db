@@ -8,9 +8,9 @@ from django.utils import timezone
 
 from apps.index.models import (
     AiringEvent,
+    EntityRepresentation,
     Observation,
     ProviderRecord,
-    ProviderRepresentation,
     Work,
 )
 from apps.index.services import knowledge_ingestion_service
@@ -425,7 +425,7 @@ class CalendarSyncService:
     @staticmethod
     def _bangumi_id_for_work(work: Work) -> int | None:
         representation = (
-            ProviderRepresentation.objects.filter(
+            EntityRepresentation.objects.filter(
                 entity_id=work.entity_id,
                 provider_record__namespace__provider__slug=(
                     BANGUMI_SUBJECT_NAMESPACE.source.slug

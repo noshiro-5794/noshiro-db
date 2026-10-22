@@ -51,7 +51,7 @@ class Entity(TimestampedModel):
     spoiler_level = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
-        db_table = "index_entity"
+        db_table = "entity"
         constraints = [
             models.CheckConstraint(
                 condition=Q(spoiler_level__lte=3),
@@ -425,24 +425,24 @@ class EntityMedia(models.Model):
         ]
 
 
-class IndexCollection(TimestampedModel):
+class CuratedCollection(TimestampedModel):
     slug = models.SlugField(max_length=64, unique=True)
     name = models.CharField(max_length=128)
     is_enabled = models.BooleanField(default=True)
 
     class Meta:
-        db_table = "index_collection"
+        db_table = "curated_collection"
         ordering = ["slug"]
 
 
-class IndexMembership(TimestampedModel):
+class CuratedMembership(TimestampedModel):
     class State(models.TextChoices):
         LISTED = "listed", "Listed"
         UNLISTED = "unlisted", "Unlisted"
         SUPPRESSED = "suppressed", "Suppressed"
 
     collection = models.ForeignKey(
-        "IndexCollection",
+        "CuratedCollection",
         on_delete=models.CASCADE,
         related_name="memberships",
     )
@@ -459,7 +459,7 @@ class IndexMembership(TimestampedModel):
     inclusion_reason = models.CharField(max_length=256, blank=True)
 
     class Meta:
-        db_table = "index_membership"
+        db_table = "curated_membership"
         constraints = [
             models.UniqueConstraint(
                 fields=["collection", "entity"],

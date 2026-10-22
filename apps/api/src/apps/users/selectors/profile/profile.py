@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 from django.db.models import Count
 from django.db.models.functions import TruncDate
 
-from apps.users.models import Collection, User, UserSubject
+from apps.users.models import User, UserCollection, UserLibraryEntry
 
 
 class ProfileSelector:
@@ -19,7 +19,7 @@ class ProfileSelector:
         user_timezone: ZoneInfo,
     ) -> dict[str, Any]:
         mark_calendar = list(
-            UserSubject.objects.filter(
+            UserLibraryEntry.objects.filter(
                 user=user,
                 created_at__gte=start_datetime,
                 created_at__lt=end_datetime,
@@ -31,14 +31,14 @@ class ProfileSelector:
         )
         available_years = [
             value.year
-            for value in UserSubject.objects.filter(user=user).datetimes(
+            for value in UserLibraryEntry.objects.filter(user=user).datetimes(
                 "created_at",
                 "year",
                 order="DESC",
                 tzinfo=user_timezone,
             )
         ]
-        library_totals = UserSubject.objects.filter(user=user).aggregate(
+        library_totals = UserLibraryEntry.objects.filter(user=user).aggregate(
             subjects=Count("id", distinct=True),
             reviews=Count("reviews", distinct=True),
         )
@@ -48,7 +48,7 @@ class ProfileSelector:
             "available_years": available_years,
             "totals": {
                 **library_totals,
-                "collections": Collection.objects.filter(user=user).count(),
+                "collections": UserCollection.objects.filter(user=user).count(),
                 "marks_in_year": sum(item["count"] for item in mark_calendar),
             },
             "mark_calendar": [

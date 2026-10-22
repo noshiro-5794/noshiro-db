@@ -21,7 +21,7 @@ from apps.users.api.views.profile import (
     MySettingsView,
 )
 from apps.users.api.views.reviews import review_data, review_queryset
-from apps.users.models import Collection, Review, UserSubject
+from apps.users.models import UserCollection, UserLibraryEntry, UserReview
 from apps.users.models.account import User
 from apps.users.selectors.public.public_profile import PublicProfileSelector
 from shared.api.contracts import (
@@ -59,16 +59,16 @@ class PublicUserDetailView(APIView):
         user = get_public_user(user_id=user_id, viewer=request.user)
         profile = getattr(user, "profile", None)
         stats = {
-            "library_entry_count": UserSubject.objects.filter(
+            "library_entry_count": UserLibraryEntry.objects.filter(
                 user=user, entity__isnull=False, is_public=True
             ).count(),
-            "review_count": Review.objects.filter(
+            "review_count": UserReview.objects.filter(
                 user_subject__user=user,
                 user_subject__entity__isnull=False,
                 user_subject__is_public=True,
                 is_public=True,
             ).count(),
-            "collection_count": Collection.objects.filter(
+            "collection_count": UserCollection.objects.filter(
                 user=user, is_public=True
             ).count(),
             "following_count": UserFollow.objects.filter(follower=user).count(),

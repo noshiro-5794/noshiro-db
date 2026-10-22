@@ -26,10 +26,10 @@ from apps.index.models import (
     AiringBoardEntry,
     Entity,
     EntityName,
+    EntityRepresentation,
     MatchCandidate,
     MatchEvidence,
     ProviderRecord,
-    ProviderRepresentation,
     Work,
 )
 from apps.index.services import entity_resolution_service
@@ -298,7 +298,7 @@ class MalLinkRecallService:
 
     @staticmethod
     def _is_mal_entity(entity_id: Any) -> bool:
-        return ProviderRepresentation.objects.filter(
+        return EntityRepresentation.objects.filter(
             entity_id=entity_id,
             is_active=True,
             provider_record__namespace__provider__slug="mal",
@@ -308,7 +308,7 @@ class MalLinkRecallService:
     @staticmethod
     def _idempotency_key(root: Entity) -> str:
         subject_id = (
-            ProviderRepresentation.objects.filter(
+            EntityRepresentation.objects.filter(
                 entity_id=root,
                 is_active=True,
                 provider_record__namespace__provider__slug="bangumi",
@@ -329,7 +329,7 @@ class MalLinkRecallService:
             .values_list("text", "language", "kind")[:30]
         )
         bangumi_id = (
-            ProviderRepresentation.objects.filter(
+            EntityRepresentation.objects.filter(
                 entity_id__in=cluster,
                 is_active=True,
                 provider_record__namespace__provider__slug="bangumi",
@@ -406,7 +406,7 @@ class MalLinkRecallService:
         ).first()
         if record is None:
             return None
-        representation = ProviderRepresentation.objects.filter(
+        representation = EntityRepresentation.objects.filter(
             provider_record=record,
             is_active=True,
         ).first()

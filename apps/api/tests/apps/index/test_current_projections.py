@@ -12,9 +12,9 @@ from apps.index.models import (
     EntityName,
     EntityRelation,
     EntityRelationEvidence,
+    EntityRepresentation,
     ExternalLink,
     MediaAsset,
-    ProviderRepresentation,
     Release,
     ReleaseWork,
     ReleaseWorkEvidence,
@@ -323,11 +323,11 @@ def test_forbidden_redistribution_provider_is_excluded_from_public_projection() 
     provider = current.provider_record.namespace.provider
     provider.redistribution_policy = provider.UsagePolicy.FORBIDDEN
     provider.save(update_fields=["redistribution_policy", "updated_at"])
-    ProviderRepresentation.objects.create(
+    EntityRepresentation.objects.create(
         provider_record=current.provider_record,
         entity=entity,
-        mapping_kind=ProviderRepresentation.MappingKind.EXACT,
-        method=ProviderRepresentation.Method.PROVIDER,
+        mapping_kind=EntityRepresentation.MappingKind.EXACT,
+        method=EntityRepresentation.Method.PROVIDER,
     )
     EntityName.objects.create(
         entity=entity,

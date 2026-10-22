@@ -2,7 +2,7 @@ from django.db import models
 from django.db.models import Q
 
 
-class Collection(models.Model):
+class UserCollection(models.Model):
     user = models.ForeignKey(
         "users.User", on_delete=models.CASCADE, related_name="collections"
     )
@@ -12,7 +12,7 @@ class Collection(models.Model):
     is_public = models.BooleanField(default=True)
 
     class Meta:
-        db_table = "collection"
+        db_table = "user_collection"
         constraints = [
             models.CheckConstraint(
                 condition=Q(simple_rating__isnull=True)
@@ -28,18 +28,18 @@ class Collection(models.Model):
         return f"user={self.user_id} collection={self.name}"
 
 
-class CollectionItem(models.Model):
+class UserCollectionItem(models.Model):
     collection = models.ForeignKey(
-        "Collection", on_delete=models.CASCADE, related_name="items"
+        "UserCollection", on_delete=models.CASCADE, related_name="items"
     )
     user_subject = models.ForeignKey(
-        "UserSubject", on_delete=models.CASCADE, related_name="collection_items"
+        "UserLibraryEntry", on_delete=models.CASCADE, related_name="collection_items"
     )
     order = models.IntegerField(default=0)
     relation = models.CharField(max_length=256, blank=True)
 
     class Meta:
-        db_table = "collection_item"
+        db_table = "user_collection_item"
         constraints = [
             models.UniqueConstraint(
                 fields=["collection", "user_subject"], name="uq_collection_user_subject"

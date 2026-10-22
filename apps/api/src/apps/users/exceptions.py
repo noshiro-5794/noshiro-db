@@ -89,19 +89,19 @@ class InvalidTagIds(UserError):
 
 class ReviewNotFound(UserError):
     default_code = "users.review_not_found"
-    default_message = "Review not found."
+    default_message = "UserReview not found."
     default_status = HTTPStatus.NOT_FOUND
 
 
 class CollectionNotFound(UserError):
     default_code = "users.collection_not_found"
-    default_message = "Collection not found."
+    default_message = "UserCollection not found."
     default_status = HTTPStatus.NOT_FOUND
 
 
 class CollectionItemNotFound(UserError):
     default_code = "users.collection_item_not_found"
-    default_message = "Collection item not found."
+    default_message = "UserCollection item not found."
     default_status = HTTPStatus.NOT_FOUND
 
 

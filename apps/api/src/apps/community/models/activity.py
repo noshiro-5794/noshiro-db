@@ -35,28 +35,28 @@ class Activity(models.Model):
         related_name="activities",
     )
     user_subject = models.ForeignKey(
-        "users.UserSubject",
+        "users.UserLibraryEntry",
         on_delete=models.CASCADE,
         null=True,
         blank=True,
         related_name="activities",
     )
     review = models.ForeignKey(
-        "users.Review",
+        "users.UserReview",
         on_delete=models.CASCADE,
         null=True,
         blank=True,
         related_name="activities",
     )
     collection = models.ForeignKey(
-        "users.Collection",
+        "users.UserCollection",
         on_delete=models.CASCADE,
         null=True,
         blank=True,
         related_name="activities",
     )
     collection_item = models.ForeignKey(
-        "users.CollectionItem",
+        "users.UserCollectionItem",
         on_delete=models.CASCADE,
         null=True,
         blank=True,
@@ -161,14 +161,14 @@ class Notification(models.Model):
         related_name="notifications",
     )
     review = models.ForeignKey(
-        "users.Review",
+        "users.UserReview",
         on_delete=models.CASCADE,
         null=True,
         blank=True,
         related_name="notifications",
     )
     collection = models.ForeignKey(
-        "users.Collection",
+        "users.UserCollection",
         on_delete=models.CASCADE,
         null=True,
         blank=True,

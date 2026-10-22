@@ -7,7 +7,7 @@ from typing import Any
 from django.conf import settings
 from django.db import transaction
 
-from apps.index.models import Entity, ProviderRecord, ProviderRepresentation
+from apps.index.models import Entity, EntityRepresentation, ProviderRecord
 from apps.index.services import (
     airing_board_projection_service,
     mal_identity_service,
@@ -64,7 +64,7 @@ class MALSeasonPipelineService:
     @staticmethod
     def _saved_anime_ids(*, max_items: int | None) -> list[str]:
         """Season records that no anime work represents yet."""
-        promoted = ProviderRepresentation.objects.filter(
+        promoted = EntityRepresentation.objects.filter(
             is_active=True,
             provider_record__namespace__provider__slug=(
                 MAL_SCHEDULE_ITEM_NAMESPACE.source.slug
@@ -93,7 +93,7 @@ class MALSeasonPipelineService:
         from apps.sync.services.mal import mal_import_service
 
         representation = (
-            ProviderRepresentation.objects.filter(
+            EntityRepresentation.objects.filter(
                 provider_record__namespace__provider__slug=(
                     MAL_SCHEDULE_ITEM_NAMESPACE.source.slug
                 ),

@@ -18,14 +18,14 @@ from django.utils.text import slugify
 
 from apps.index.models import (
     AnimeProfile,
+    CuratedCollection,
+    CuratedMembership,
     Entity,
     EntityName,
+    EntityRepresentation,
     ExternalLink,
-    IndexCollection,
-    IndexMembership,
     Predicate,
     ProviderRecord,
-    ProviderRepresentation,
     Work,
 )
 from apps.index.services import (
@@ -119,7 +119,7 @@ class MALImportService:
         knowledge_ingestion_service._upsert_provider_representation(
             provider_record=recorded.record,
             entity=entity,
-            representation_method=ProviderRepresentation.Method.PROVIDER,
+            representation_method=EntityRepresentation.Method.PROVIDER,
         )
         self._upsert_names(
             entity=entity,
@@ -332,15 +332,15 @@ class MALImportService:
 
     @staticmethod
     def _ensure_anime_membership(entity: Entity) -> None:
-        collection, _ = IndexCollection.objects.get_or_create(
+        collection, _ = CuratedCollection.objects.get_or_create(
             slug="anime",
             defaults={"name": "Anime"},
         )
-        IndexMembership.objects.update_or_create(
+        CuratedMembership.objects.update_or_create(
             collection=collection,
             entity=entity,
             defaults={
-                "listing_state": IndexMembership.State.LISTED,
+                "listing_state": CuratedMembership.State.LISTED,
                 "inclusion_reason": "MAL anime",
             },
         )

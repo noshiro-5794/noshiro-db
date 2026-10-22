@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from apps.index.api.serializers.knowledge import EntitySummarySerializer
 from apps.index.models import Work
-from apps.users.models import UserRelease, UserSubject, UserSubjectRatingDetail
+from apps.users.models import UserLibraryEntry, UserRelease, UserSubjectRatingDetail
 
 
 class AccessTokenSerializer(serializers.Serializer):
@@ -34,7 +34,9 @@ PUBLIC_LIBRARY_ORDERINGS = (
 
 
 class LibraryEntryQueryBaseSerializer(serializers.Serializer):
-    status = serializers.ChoiceField(choices=UserSubject.Status.choices, required=False)
+    status = serializers.ChoiceField(
+        choices=UserLibraryEntry.Status.choices, required=False
+    )
     subject_type = serializers.ChoiceField(
         choices=Work.WorkType.choices,
         required=False,
@@ -65,7 +67,9 @@ class LibraryEntryQuerySerializer(LibraryEntryQueryBaseSerializer):
 
 class LibraryEntryWriteSerializer(serializers.Serializer):
     entity_id = serializers.UUIDField(required=False)
-    status = serializers.ChoiceField(choices=UserSubject.Status.choices, required=False)
+    status = serializers.ChoiceField(
+        choices=UserLibraryEntry.Status.choices, required=False
+    )
     simple_rating = serializers.IntegerField(
         required=False, allow_null=True, min_value=1, max_value=5
     )
@@ -167,7 +171,7 @@ class ReleaseStateSerializer(serializers.Serializer):
 class LibraryEntrySerializer(serializers.Serializer):
     id = serializers.IntegerField()
     entity = EntitySummarySerializer()
-    status = serializers.ChoiceField(choices=UserSubject.Status.choices)
+    status = serializers.ChoiceField(choices=UserLibraryEntry.Status.choices)
     simple_rating = serializers.IntegerField(allow_null=True, min_value=1, max_value=5)
     rating = serializers.DecimalField(
         max_digits=3,

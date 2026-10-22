@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.ai.models import AIProposal
-from apps.index.models import MatchCandidate, MatchDecision
+from apps.index.models import CandidateDecision, MatchCandidate
 from apps.index.services import (
     EntityResolutionError,
     entity_resolution_service,
@@ -37,7 +37,7 @@ class MatchingCandidateListView(APIView):
 
 class MatchingCandidateDecideSerializer(serializers.Serializer):
     outcome = serializers.ChoiceField(
-        choices=[value for value, _ in MatchDecision.Outcome.choices]
+        choices=[value for value, _ in CandidateDecision.Outcome.choices]
     )
     reason = serializers.CharField(max_length=2000, allow_blank=True)
 
@@ -78,7 +78,7 @@ class MatchingCandidateDecideView(APIView):
             )
         except EntityResolutionError as exc:
             return Response({"detail": str(exc)}, status=409)
-        if outcome == MatchDecision.Outcome.GROUP:
+        if outcome == CandidateDecision.Outcome.GROUP:
             season_group_service.ensure_pair_group(
                 left=candidate.left_entity,
                 right=candidate.right_entity,
@@ -95,8 +95,8 @@ class MatchingCandidateDecideView(APIView):
                 AIProposal.Status.ACCEPTED
                 if outcome
                 in {
-                    MatchDecision.Outcome.BIND,
-                    MatchDecision.Outcome.GROUP,
+                    CandidateDecision.Outcome.BIND,
+                    CandidateDecision.Outcome.GROUP,
                 }
                 else AIProposal.Status.REJECTED
             )

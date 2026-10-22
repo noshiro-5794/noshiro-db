@@ -2,13 +2,13 @@ from django.db.models import Count, Exists, OuterRef, Q
 
 from apps.community.models import CommunityBookmark, CommunityReaction, UserBlock
 from apps.users.exceptions import ReviewNotFound, UserSubjectNotFound
-from apps.users.models import Review, UserSubject
+from apps.users.models import UserLibraryEntry, UserReview
 
 
 class ReviewSelector:
     @staticmethod
     def base_queryset():
-        return Review.objects.select_related(
+        return UserReview.objects.select_related(
             "user_subject",
             "user_subject__user",
             "user_subject__user__profile",
@@ -118,7 +118,7 @@ class ReviewSelector:
                 user=user,
                 review_id=review_id,
             )
-        except Review.DoesNotExist as exc:
+        except UserReview.DoesNotExist as exc:
             raise ReviewNotFound() from exc
 
     @classmethod
@@ -132,13 +132,13 @@ class ReviewSelector:
                     user_subject__user=user,
                 )
             )
-        except Review.DoesNotExist as exc:
+        except UserReview.DoesNotExist as exc:
             raise ReviewNotFound() from exc
 
     @staticmethod
     def get_my_subject(*, user, user_subject_id: int):
         return (
-            UserSubject.objects.select_related("user", "entity")
+            UserLibraryEntry.objects.select_related("user", "entity")
             .filter(
                 id=user_subject_id,
                 user=user,
@@ -149,7 +149,7 @@ class ReviewSelector:
     @staticmethod
     def get_my_subject_by_subject_id(*, user, subject_id):
         return (
-            UserSubject.objects.select_related("user", "entity")
+            UserLibraryEntry.objects.select_related("user", "entity")
             .filter(
                 entity_id=subject_id,
                 user=user,
@@ -223,5 +223,5 @@ class ReviewSelector:
                 qs,
                 viewer=viewer,
             ).get()
-        except Review.DoesNotExist as exc:
+        except UserReview.DoesNotExist as exc:
             raise ReviewNotFound() from exc

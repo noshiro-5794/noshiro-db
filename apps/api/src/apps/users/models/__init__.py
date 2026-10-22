@@ -1,29 +1,29 @@
 from .account import EmailVerification, SocialIdentity, User, UserManager
-from .collection import Collection, CollectionItem
+from .collection import UserCollection, UserCollectionItem
 from .library import (
     UserEpisodeProgress,
+    UserLibraryEntry,
+    UserLibraryEntryTag,
     UserRelease,
-    UserSubject,
     UserSubjectRatingDetail,
-    UserSubjectTag,
     UserTag,
 )
 from .profile import UserProfile
-from .review import Review
+from .review import UserReview
 
 __all__ = (
-    "Collection",
-    "CollectionItem",
     "EmailVerification",
-    "Review",
     "SocialIdentity",
     "User",
+    "UserCollection",
+    "UserCollectionItem",
     "UserEpisodeProgress",
+    "UserLibraryEntry",
+    "UserLibraryEntryTag",
     "UserManager",
     "UserProfile",
     "UserRelease",
-    "UserSubject",
+    "UserReview",
     "UserSubjectRatingDetail",
-    "UserSubjectTag",
     "UserTag",
 )

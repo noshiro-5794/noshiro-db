@@ -11,20 +11,20 @@ from apps.index.models import (
     Appearance,
     Contributor,
     Credit,
+    CuratedCollection,
+    CuratedMembership,
     Entity,
     EntityDescription,
     EntityName,
     EntityRelation,
     EntityRelationEvidence,
+    EntityRepresentation,
     EntityTerm,
     ExternalLink,
-    IndexCollection,
-    IndexMembership,
     Observation,
     Organization,
     Person,
     ProviderRecord,
-    ProviderRepresentation,
     Taxonomy,
     Term,
     TermLabel,
@@ -175,7 +175,7 @@ class AniListImportService:
         knowledge_ingestion_service._upsert_provider_representation(
             provider_record=recorded.record,
             entity=entity,
-            representation_method=ProviderRepresentation.Method.PROVIDER,
+            representation_method=EntityRepresentation.Method.PROVIDER,
         )
         self._upsert_names(
             entity=entity,
@@ -373,15 +373,15 @@ class AniListImportService:
 
     @staticmethod
     def _ensure_anime_membership(entity: Entity) -> None:
-        collection, _ = IndexCollection.objects.get_or_create(
+        collection, _ = CuratedCollection.objects.get_or_create(
             slug="anime",
             defaults={"name": "Anime"},
         )
-        IndexMembership.objects.update_or_create(
+        CuratedMembership.objects.update_or_create(
             collection=collection,
             entity=entity,
             defaults={
-                "listing_state": IndexMembership.State.LISTED,
+                "listing_state": CuratedMembership.State.LISTED,
                 "inclusion_reason": "AniList anime",
             },
         )
@@ -483,7 +483,7 @@ class AniListImportService:
         knowledge_ingestion_service._upsert_provider_representation(
             provider_record=record,
             entity=entity,
-            representation_method=ProviderRepresentation.Method.PROVIDER,
+            representation_method=EntityRepresentation.Method.PROVIDER,
         )
         Work.objects.get_or_create(
             entity=entity,
@@ -567,7 +567,7 @@ class AniListImportService:
         knowledge_ingestion_service._upsert_provider_representation(
             provider_record=record,
             entity=entity,
-            representation_method=ProviderRepresentation.Method.PROVIDER,
+            representation_method=EntityRepresentation.Method.PROVIDER,
         )
         name = node.get("name") or {}
         full_name = name.get("full") or name.get("native")
@@ -636,7 +636,7 @@ class AniListImportService:
         knowledge_ingestion_service._upsert_provider_representation(
             provider_record=record,
             entity=entity,
-            representation_method=ProviderRepresentation.Method.PROVIDER,
+            representation_method=EntityRepresentation.Method.PROVIDER,
         )
         contributor, _ = Contributor.objects.update_or_create(
             entity=entity,
@@ -675,7 +675,7 @@ class AniListImportService:
         knowledge_ingestion_service._upsert_provider_representation(
             provider_record=record,
             entity=entity,
-            representation_method=ProviderRepresentation.Method.PROVIDER,
+            representation_method=EntityRepresentation.Method.PROVIDER,
         )
         contributor, _ = Contributor.objects.update_or_create(
             entity=entity,
@@ -825,7 +825,7 @@ class AniListImportService:
         knowledge_ingestion_service._upsert_provider_representation(
             provider_record=recorded.record,
             entity=entity,
-            representation_method=ProviderRepresentation.Method.PROVIDER,
+            representation_method=EntityRepresentation.Method.PROVIDER,
         )
         if episode_number is not None:
             EntityName.objects.get_or_create(

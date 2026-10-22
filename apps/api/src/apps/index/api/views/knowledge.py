@@ -30,8 +30,8 @@ from apps.index.models import (
     AiringBoardEntry,
     AiringEvent,
     AnimeProfile,
+    CuratedCollection,
     Entity,
-    IndexCollection,
     MetricSnapshot,
 )
 from apps.index.selectors.current import (
@@ -78,7 +78,7 @@ class CollectionListView(APIView):
             IndexCollectionSerializer(
                 [
                     {"slug": collection.slug, "name": collection.name}
-                    for collection in IndexCollection.objects.filter(is_enabled=True)
+                    for collection in CuratedCollection.objects.filter(is_enabled=True)
                 ],
                 many=True,
             ).data
@@ -100,7 +100,7 @@ class CollectionEntityListView(APIView):
         ),
     )
     def get(self, request, slug):
-        if not IndexCollection.objects.filter(slug=slug, is_enabled=True).exists():
+        if not CuratedCollection.objects.filter(slug=slug, is_enabled=True).exists():
             raise NotFound("Index collection not found.")
         query = request.query_params.copy()
         query["collection"] = slug
