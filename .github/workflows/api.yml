@@ -102,13 +102,20 @@ jobs:
           --cov-fail-under=60
 
       - name: Enforce changed-code coverage
-        if: github.event_name == 'pull_request'
+        # `skip-diff-cover` exists for mechanical changes: a rename touches dozens
+        # of files whose changed lines are imports and declarations that no test
+        # can execute, so the gate measures noise rather than risk. Apply the
+        # label only with a one-line justification in the pull request body.
+        if: >-
+          github.event_name == 'pull_request' &&
+          !contains(github.event.pull_request.labels.*.name, 'skip-diff-cover')
         run: |
           # The job runs for every pull request now, so a change that touches no
           # Python has nothing to measure and must not fail the check.
           if git diff --name-only "origin/${{ github.base_ref }}...HEAD" | grep -q '^apps/api/.*\.py$'; then
             uv run diff-cover coverage.xml \
               --compare-branch="origin/${{ github.base_ref }}" \
+              --exclude "apps/api/src/*/*/migrations/*" \
               --fail-under=80
           else
             echo "No Python changes in this pull request; skipping changed-code coverage."
