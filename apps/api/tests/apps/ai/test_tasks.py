@@ -1,12 +1,14 @@
 from unittest.mock import patch
 
 import pytest
+from celery.exceptions import Retry
 
 from apps.ai.tasks import (
     classify_entity_task,
     evaluate_match_candidate_task,
     extract_observation_evidence_task,
 )
+from integrations.ai import AIProviderError
 
 
 @pytest.mark.django_db(transaction=True)
@@ -43,3 +45,20 @@ class TestExtractObservationEvidenceTask:
             mock_extract.assert_called_once_with(
                 observation_id="obs-uuid", entity_id="entity-uuid"
             )
+
+
+@pytest.mark.django_db(transaction=True)
+class TestProviderErrorRetries:
+    def test_terminal_error_is_not_retried(self) -> None:
+        error = AIProviderError("Insufficient Balance", status_code=402)
+        with patch("apps.ai.tasks.ai_matching_service.evaluate", side_effect=error):
+            result = evaluate_match_candidate_task.apply(args=["candidate-uuid"])
+        assert result.state == "IGNORED"
+
+    def test_transient_error_is_retried(self) -> None:
+        error = AIProviderError("connection reset")
+        with (
+            patch("apps.ai.tasks.ai_matching_service.evaluate", side_effect=error),
+            pytest.raises(Retry),
+        ):
+            evaluate_match_candidate_task.apply(args=["candidate-uuid"])
