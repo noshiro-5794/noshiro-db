@@ -6,9 +6,9 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.ai.models import AIEvaluationRun, AIPolicy, AIProposal, AIRun
-from apps.index.models import MatchCandidate, MatchDecision, Work
+from apps.index.models import CandidateDecision, MatchCandidate, Work
 from apps.index.services import entity_resolution_service, work_families
-from apps.users.models import UserSubject
+from apps.users.models import UserLibraryEntry
 from integrations.ai import ai_gateway
 
 from .common import (
@@ -235,10 +235,10 @@ class AIMatchingService:
 
     @staticmethod
     def _has_conflicting_user_library_data(candidate: MatchCandidate) -> bool:
-        left_users = UserSubject.objects.filter(
+        left_users = UserLibraryEntry.objects.filter(
             entity_id=candidate.left_entity_id
         ).values("user_id")
-        return UserSubject.objects.filter(
+        return UserLibraryEntry.objects.filter(
             entity_id=candidate.right_entity_id,
             user_id__in=left_users,
         ).exists()
@@ -273,7 +273,7 @@ class AIMatchingService:
         work_types = self._work_types(candidate)
         bind_allowed = all(
             (
-                proposal.payload["decision"] == MatchDecision.Outcome.BIND,
+                proposal.payload["decision"] == CandidateDecision.Outcome.BIND,
                 proposal.confidence >= policy.minimum_score,
                 candidate.score >= policy.minimum_score,
                 candidate.runner_up_margin >= policy.minimum_margin,
@@ -295,7 +295,7 @@ class AIMatchingService:
             )
             entity_resolution_service.decide_candidate(
                 candidate=candidate,
-                outcome=MatchDecision.Outcome.BIND,
+                outcome=CandidateDecision.Outcome.BIND,
                 decided_by="ai_policy",
                 reason=reason,
             )
@@ -309,7 +309,7 @@ class AIMatchingService:
         )
         entity_resolution_service.decide_candidate(
             candidate=candidate,
-            outcome=MatchDecision.Outcome.ABSTAIN,
+            outcome=CandidateDecision.Outcome.ABSTAIN,
             decided_by="ai_policy",
             reason=reason,
         )

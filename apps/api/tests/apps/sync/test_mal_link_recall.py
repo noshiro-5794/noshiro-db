@@ -11,12 +11,12 @@ from apps.index.models import (
     AiringBoardEntry,
     Entity,
     EntityName,
+    EntityRepresentation,
     MatchCandidate,
     MatchEvidence,
     Provider,
     ProviderNamespace,
     ProviderRecord,
-    ProviderRepresentation,
     Work,
 )
 from apps.sync.services.mal_link_recall import (
@@ -74,11 +74,11 @@ def _anime_entity(
     )
     entity = Entity.objects.create(kind=Entity.Kind.WORK)
     Work.objects.create(entity=entity, work_type=Work.WorkType.ANIME)
-    ProviderRepresentation.objects.create(
+    EntityRepresentation.objects.create(
         provider_record=record,
         entity=entity,
-        mapping_kind=ProviderRepresentation.MappingKind.EXACT,
-        method=ProviderRepresentation.Method.PROVIDER,
+        mapping_kind=EntityRepresentation.MappingKind.EXACT,
+        method=EntityRepresentation.Method.PROVIDER,
     )
     EntityName.objects.create(
         entity=entity,

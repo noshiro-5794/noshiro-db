@@ -5,6 +5,7 @@ import pytest
 from apps.index.models import (
     Entity,
     EntityName,
+    EntityRepresentation,
     Fact,
     MatchCandidate,
     MatchEvidence,
@@ -12,7 +13,6 @@ from apps.index.models import (
     Provider,
     ProviderNamespace,
     ProviderRecord,
-    ProviderRepresentation,
     Work,
 )
 from apps.index.services import provider_candidate_service
@@ -50,11 +50,11 @@ def _entity(
         status="active",
     )
     entity = Entity.objects.create(kind=Entity.Kind.WORK)
-    ProviderRepresentation.objects.create(
+    EntityRepresentation.objects.create(
         provider_record=record,
         entity=entity,
-        mapping_kind=ProviderRepresentation.MappingKind.EXACT,
-        method=ProviderRepresentation.Method.EXTERNAL_ID,
+        mapping_kind=EntityRepresentation.MappingKind.EXACT,
+        method=EntityRepresentation.Method.EXTERNAL_ID,
     )
     EntityName.objects.create(
         entity=entity,

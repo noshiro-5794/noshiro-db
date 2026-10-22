@@ -6,7 +6,7 @@ from apps.users.exceptions import (
     InvalidUserSubjectIds,
     UserSubjectNotFound,
 )
-from apps.users.models import Collection, CollectionItem, UserSubject
+from apps.users.models import UserCollection, UserCollectionItem, UserLibraryEntry
 from apps.users.selectors.library.collection import CollectionSelector
 
 
@@ -14,7 +14,7 @@ class CollectionService:
     @staticmethod
     def _get_my_user_subject_or_raise(*, user, user_subject_id: int):
         user_subject = (
-            UserSubject.objects.select_related("user", "entity")
+            UserLibraryEntry.objects.select_related("user", "entity")
             .filter(
                 id=user_subject_id,
                 user=user,
@@ -31,7 +31,7 @@ class CollectionService:
     @staticmethod
     def _get_my_user_subject_by_subject_id_or_raise(*, user, subject_id):
         user_subject = (
-            UserSubject.objects.select_related("user", "entity")
+            UserLibraryEntry.objects.select_related("user", "entity")
             .filter(
                 user=user,
                 entity_id=subject_id,
@@ -79,7 +79,7 @@ class CollectionService:
         ]
         user_subject_map = {
             user_subject.id: user_subject
-            for user_subject in UserSubject.objects.filter(
+            for user_subject in UserLibraryEntry.objects.filter(
                 user=user,
                 id__in=user_subject_ids,
             )
@@ -125,7 +125,7 @@ class CollectionService:
         note: str = "",
         is_public: bool = True,
     ):
-        collection = Collection.objects.create(
+        collection = UserCollection.objects.create(
             user=user,
             name=name.strip(),
             simple_rating=simple_rating,
@@ -216,7 +216,7 @@ class CollectionService:
             subject_id=subject_id,
         )
 
-        item, created = CollectionItem.objects.get_or_create(
+        item, created = UserCollectionItem.objects.get_or_create(
             collection=collection,
             user_subject=user_subject,
             defaults={
@@ -231,7 +231,7 @@ class CollectionService:
             item.save(update_fields=["order", "relation"])
 
         item = (
-            CollectionItem.objects.select_related(
+            UserCollectionItem.objects.select_related(
                 "collection",
                 "user_subject",
                 "user_subject__entity",
@@ -272,13 +272,13 @@ class CollectionService:
             items=items,
         )
 
-        CollectionItem.objects.filter(
+        UserCollectionItem.objects.filter(
             collection=collection,
         ).delete()
 
-        CollectionItem.objects.bulk_create(
+        UserCollectionItem.objects.bulk_create(
             [
-                CollectionItem(
+                UserCollectionItem(
                     collection=collection,
                     user_subject_id=item["user_subject_id"],
                     order=item.get("order", index),
@@ -308,7 +308,7 @@ class CollectionService:
         item_ids = [item["id"] for item in items]
         existing_items = {
             item.id: item
-            for item in CollectionItem.objects.select_for_update().filter(
+            for item in UserCollectionItem.objects.select_for_update().filter(
                 collection=collection,
                 id__in=item_ids,
             )

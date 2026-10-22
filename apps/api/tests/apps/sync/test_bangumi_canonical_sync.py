@@ -26,7 +26,7 @@ from apps.sync.providers.bangumi import BangumiAPIError, bangumi_client
 from apps.sync.services.calendar import calendar_sync_service
 from apps.sync.services.episode import episode_service
 from apps.sync.services.relation import relation_service
-from apps.users.models import User, UserSubject
+from apps.users.models import User, UserLibraryEntry
 from apps.users.services.profile.profile import ProfileService
 from integrations.mcp.queries import get_public_entity
 
@@ -293,10 +293,10 @@ def test_empty_episode_snapshot_retracts_current_links_without_deleting_history(
     ):
         episode_service.sync_subject_episodes(1)
         user = User.objects.create_user(email="episodes@example.test")
-        UserSubject.objects.create(
+        UserLibraryEntry.objects.create(
             user=user,
             entity_id=subject.id,
-            status=UserSubject.Status.DOING,
+            status=UserLibraryEntry.Status.DOING,
         )
         assert (
             current_entity_relations()

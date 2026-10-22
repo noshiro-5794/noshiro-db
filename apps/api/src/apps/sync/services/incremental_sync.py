@@ -8,8 +8,8 @@ from django.db.models.functions import Cast
 from django.utils import timezone
 
 from apps.index.models import (
+    EntityRepresentation,
     ProviderRecord,
-    ProviderRepresentation,
 )
 from apps.sync.exceptions import SyncTaskAlreadyRunning
 from apps.sync.models import SyncError, SyncState
@@ -326,7 +326,7 @@ class IncrementalSyncService:
     @staticmethod
     def _subject_exists(bangumi_id: int) -> bool:
         external_id = str(bangumi_id)
-        return ProviderRepresentation.objects.filter(
+        return EntityRepresentation.objects.filter(
             provider_record__namespace__provider__slug=(
                 BANGUMI_SUBJECT_NAMESPACE.source.slug
             ),

@@ -40,14 +40,14 @@ class CommunityReport(models.Model):
         related_name="reports",
     )
     review = models.ForeignKey(
-        "users.Review",
+        "users.UserReview",
         on_delete=models.CASCADE,
         null=True,
         blank=True,
         related_name="community_reports",
     )
     collection = models.ForeignKey(
-        "users.Collection",
+        "users.UserCollection",
         on_delete=models.CASCADE,
         null=True,
         blank=True,
@@ -181,14 +181,14 @@ class ModerationAction(models.Model):
         related_name="moderation_actions",
     )
     review = models.ForeignKey(
-        "users.Review",
+        "users.UserReview",
         on_delete=models.CASCADE,
         null=True,
         blank=True,
         related_name="moderation_actions",
     )
     collection = models.ForeignKey(
-        "users.Collection",
+        "users.UserCollection",
         on_delete=models.CASCADE,
         null=True,
         blank=True,

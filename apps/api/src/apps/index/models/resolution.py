@@ -8,7 +8,7 @@ from django.utils import timezone
 from .base import TimestampedModel
 
 
-class ProviderRepresentation(TimestampedModel):
+class EntityRepresentation(TimestampedModel):
     class MappingKind(models.TextChoices):
         EXACT = "exact", "Exact"
         AGGREGATE = "aggregate", "Aggregate"
@@ -44,7 +44,7 @@ class ProviderRepresentation(TimestampedModel):
     verified_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        db_table = "provider_representation"
+        db_table = "entity_representation"
         constraints = [
             models.UniqueConstraint(
                 fields=["provider_record", "entity", "mapping_kind"],
@@ -144,7 +144,7 @@ class MatchEvidence(TimestampedModel):
         ]
 
 
-class MatchDecision(TimestampedModel):
+class CandidateDecision(TimestampedModel):
     class Outcome(models.TextChoices):
         BIND = "bind", "Bind"
         GROUP = "group", "Group without merging"
@@ -161,7 +161,7 @@ class MatchDecision(TimestampedModel):
     decision_data = models.JSONField(default=dict, blank=True)
 
     class Meta:
-        db_table = "match_decision"
+        db_table = "candidate_decision"
         indexes = [
             models.Index(
                 fields=["candidate", "-created_at"], name="idx_match_decision_latest"

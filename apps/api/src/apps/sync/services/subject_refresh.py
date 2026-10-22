@@ -18,7 +18,7 @@ from typing import Any
 
 from django.db.models import F
 
-from apps.index.models import IndexMembership, ProviderRecord
+from apps.index.models import CuratedMembership, ProviderRecord
 from apps.sync.models import SyncError
 from apps.sync.providers.bangumi import BANGUMI_SOURCE, BangumiAPIError
 from apps.sync.services.subject import subject_service
@@ -119,7 +119,7 @@ class SubjectRefreshService:
             base = base.filter(
                 representations__is_active=True,
                 representations__entity__index_memberships__listing_state=(
-                    IndexMembership.State.LISTED
+                    CuratedMembership.State.LISTED
                 ),
             ).distinct()
         order = (F("last_seen_at").asc(nulls_first=True), "external_id")

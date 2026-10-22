@@ -36,10 +36,10 @@ from apps.users.api.serializers.tags import (
 )
 from apps.users.models import (
     UserEpisodeProgress,
+    UserLibraryEntry,
+    UserLibraryEntryTag,
     UserRelease,
-    UserSubject,
     UserSubjectRatingDetail,
-    UserSubjectTag,
     UserTag,
 )
 from shared.api.contracts import (
@@ -52,7 +52,7 @@ from shared.api.pagination import DefaultPageNumberPagination
 
 def library_entry_queryset(*, user):
     return (
-        UserSubject.objects.filter(user=user, entity__isnull=False)
+        UserLibraryEntry.objects.filter(user=user, entity__isnull=False)
         .select_related("entity", "entity__work")
         .prefetch_related(
             "entity__names",
@@ -63,17 +63,19 @@ def library_entry_queryset(*, user):
     )
 
 
-def library_entry_entity_ids(entry: UserSubject) -> set:
+def library_entry_entity_ids(entry: UserLibraryEntry) -> set:
     return entity_resolution_service.cluster_ids(entry.entity)
 
 
-def get_library_entry(*, user, entry_id: int, for_update: bool = False) -> UserSubject:
+def get_library_entry(
+    *, user, entry_id: int, for_update: bool = False
+) -> UserLibraryEntry:
     queryset = library_entry_queryset(user=user)
     if for_update:
         queryset = queryset.select_for_update()
     try:
         return queryset.get(pk=entry_id)
-    except UserSubject.DoesNotExist as exc:
+    except UserLibraryEntry.DoesNotExist as exc:
         raise NotFound("Library entry not found.") from exc
 
 
@@ -91,7 +93,7 @@ def release_state_data(state: UserRelease) -> dict:
     }
 
 
-def library_entry_data(entry: UserSubject) -> dict:
+def library_entry_data(entry: UserLibraryEntry) -> dict:
     return {
         "id": entry.id,
         "entity": entity_summary(entry.entity, safe=True),
@@ -108,7 +110,7 @@ def library_entry_data(entry: UserSubject) -> dict:
     }
 
 
-def validate_watch_dates(*, entry: UserSubject | None, values: dict) -> None:
+def validate_watch_dates(*, entry: UserLibraryEntry | None, values: dict) -> None:
     start = values.get(
         "watch_start_date", entry.watch_start_date if entry is not None else None
     )
@@ -190,13 +192,13 @@ class LibraryEntryListCreateView(APIView):
 
         cluster_ids = entity_resolution_service.cluster_ids(entity)
         entry = (
-            UserSubject.objects.select_for_update()
+            UserLibraryEntry.objects.select_for_update()
             .filter(user=request.user, entity_id__in=cluster_ids)
             .first()
         )
         created = entry is None
         if entry is None:
-            entry = UserSubject.objects.create(
+            entry = UserLibraryEntry.objects.create(
                 user=request.user,
                 entity=entity,
                 **values,
@@ -390,9 +392,9 @@ class LibraryEntryTagView(APIView):
             tag, _ = UserTag.objects.get_or_create(user=request.user, name=name)
             if tag.id not in {item.id for item in tags}:
                 tags.append(tag)
-        UserSubjectTag.objects.filter(user_subject=entry).delete()
-        UserSubjectTag.objects.bulk_create(
-            [UserSubjectTag(user_subject=entry, tag=tag) for tag in tags]
+        UserLibraryEntryTag.objects.filter(user_subject=entry).delete()
+        UserLibraryEntryTag.objects.bulk_create(
+            [UserLibraryEntryTag(user_subject=entry, tag=tag) for tag in tags]
         )
         return Response(UserTagResponseSerializer(tags, many=True).data)
 
@@ -433,7 +435,7 @@ class LibraryEntryRatingDetailView(APIView):
         )
 
 
-def entry_episodes(entry: UserSubject):
+def entry_episodes(entry: UserLibraryEntry):
     from apps.index.selectors.current import current_entity_relations
 
     episode_entity_ids = (
@@ -457,7 +459,7 @@ def entry_episodes(entry: UserSubject):
     )
 
 
-def episode_progress_data(*, entry: UserSubject) -> dict:
+def episode_progress_data(*, entry: UserLibraryEntry) -> dict:
     episodes = list(entry_episodes(entry))
     finished_ids = set(
         UserEpisodeProgress.objects.filter(

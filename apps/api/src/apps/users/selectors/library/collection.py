@@ -2,13 +2,13 @@ from django.db.models import Count, Exists, OuterRef, Q
 
 from apps.community.models import CommunityBookmark, CommunityReaction
 from apps.users.exceptions import CollectionNotFound
-from apps.users.models import Collection, CollectionItem
+from apps.users.models import UserCollection, UserCollectionItem
 
 
 class CollectionSelector:
     @staticmethod
     def base_queryset():
-        return Collection.objects.select_related("user").annotate(
+        return UserCollection.objects.select_related("user").annotate(
             item_count=Count("items", distinct=True),
             reaction_count=Count(
                 "community_reactions",
@@ -94,23 +94,23 @@ class CollectionSelector:
                 user=user,
                 collection_id=collection_id,
             )
-        except Collection.DoesNotExist as exc:
+        except UserCollection.DoesNotExist as exc:
             raise CollectionNotFound() from exc
 
     @staticmethod
     def get_my_collection_for_update_or_raise(*, user, collection_id: int):
         try:
-            return Collection.objects.select_for_update().get(
+            return UserCollection.objects.select_for_update().get(
                 id=collection_id,
                 user=user,
             )
-        except Collection.DoesNotExist as exc:
+        except UserCollection.DoesNotExist as exc:
             raise CollectionNotFound() from exc
 
     @staticmethod
     def list_collection_items(*, collection):
         return (
-            CollectionItem.objects.select_related(
+            UserCollectionItem.objects.select_related(
                 "collection",
                 "user_subject",
                 "user_subject__entity",
@@ -128,7 +128,7 @@ class CollectionSelector:
     @staticmethod
     def get_collection_item(*, collection, item_id: int):
         return (
-            CollectionItem.objects.select_related(
+            UserCollectionItem.objects.select_related(
                 "collection",
                 "user_subject",
                 "user_subject__entity",

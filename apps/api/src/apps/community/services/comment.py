@@ -18,7 +18,7 @@ from apps.community.models import (
 from apps.community.selectors.relationship import UserRelationshipSelector
 from apps.community.selectors.target import CommunityTargetSelector
 from apps.community.services.notification import NotificationService
-from apps.users.models import Review
+from apps.users.models import UserReview
 
 
 class CommunityCommentService:
@@ -30,7 +30,7 @@ class CommunityCommentService:
     def _entity_for_target(target):
         if isinstance(target, CommunityPost):
             return target.entity
-        if isinstance(target, Review):
+        if isinstance(target, UserReview):
             return target.user_subject.entity
         if isinstance(target, Activity):
             return target.entity

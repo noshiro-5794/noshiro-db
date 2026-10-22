@@ -12,7 +12,7 @@ import json
 
 from django.core.management.base import BaseCommand
 
-from apps.index.models import AnimeProfile, MatchDecision, MergeEvent
+from apps.index.models import AnimeProfile, CandidateDecision, MergeEvent
 from apps.index.services import entity_resolution_service
 
 
@@ -54,7 +54,7 @@ class Command(BaseCommand):
                 "work__entity_id", "premiered_on"
             )
         )
-        decisions = MatchDecision.objects.filter(outcome="bind").select_related(
+        decisions = CandidateDecision.objects.filter(outcome="bind").select_related(
             "candidate"
         )
         if decided_by:

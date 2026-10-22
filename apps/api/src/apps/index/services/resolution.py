@@ -4,10 +4,10 @@ from django.utils import timezone
 
 from apps.index.exceptions import EntityResolutionError, UserLibraryConflict
 from apps.index.models import (
+    CandidateDecision,
     Entity,
     EntityRedirect,
     MatchCandidate,
-    MatchDecision,
     MergeEvent,
     SplitEvent,
     Work,
@@ -166,7 +166,7 @@ class EntityResolutionService:
         outcome: str,
         decided_by: str,
         reason: str,
-    ) -> MatchDecision:
+    ) -> CandidateDecision:
         candidate = (
             MatchCandidate.objects.select_for_update()
             .select_related("left_entity", "right_entity")
@@ -174,7 +174,7 @@ class EntityResolutionService:
         )
         if candidate.status != MatchCandidate.Status.PENDING:
             raise EntityResolutionError("Match candidate has already been decided.")
-        decision = MatchDecision.objects.create(
+        decision = CandidateDecision.objects.create(
             candidate=candidate,
             outcome=outcome,
             decided_by=decided_by,
@@ -182,14 +182,14 @@ class EntityResolutionService:
             reason=reason,
         )
         status_by_outcome = {
-            MatchDecision.Outcome.BIND: MatchCandidate.Status.ACCEPTED,
-            MatchDecision.Outcome.GROUP: MatchCandidate.Status.GROUPED,
-            MatchDecision.Outcome.REJECT: MatchCandidate.Status.REJECTED,
-            MatchDecision.Outcome.ABSTAIN: MatchCandidate.Status.ABSTAINED,
+            CandidateDecision.Outcome.BIND: MatchCandidate.Status.ACCEPTED,
+            CandidateDecision.Outcome.GROUP: MatchCandidate.Status.GROUPED,
+            CandidateDecision.Outcome.REJECT: MatchCandidate.Status.REJECTED,
+            CandidateDecision.Outcome.ABSTAIN: MatchCandidate.Status.ABSTAINED,
         }
         candidate.status = status_by_outcome[outcome]
         candidate.save(update_fields=["status", "updated_at"])
-        if outcome == MatchDecision.Outcome.BIND:
+        if outcome == CandidateDecision.Outcome.BIND:
             source, target = self._canonical_pair(candidate)
             merge_event = self.merge(
                 source=source,
@@ -203,7 +203,7 @@ class EntityResolutionService:
                 "canonical_entity_id": str(target.id),
             }
             decision.save(update_fields=["decision_data", "updated_at"])
-        elif outcome == MatchDecision.Outcome.GROUP:
+        elif outcome == CandidateDecision.Outcome.GROUP:
             decision.decision_data = {"grouped_entities": True, "merged": False}
             decision.save(update_fields=["decision_data", "updated_at"])
         return decision
@@ -218,12 +218,12 @@ class EntityResolutionService:
         self._ensure_bindable_work_types(left, right)
 
         counts = {left.pk: 0, right.pk: 0}
-        from apps.users.models import UserSubject
+        from apps.users.models import UserLibraryEntry
 
         left_ids = self.cluster_ids(left)
         right_ids = self.cluster_ids(right)
         for row in (
-            UserSubject.objects.filter(entity_id__in=left_ids | right_ids)
+            UserLibraryEntry.objects.filter(entity_id__in=left_ids | right_ids)
             .values("entity_id")
             .annotate(total=Count("id"))
         ):
@@ -275,23 +275,23 @@ class EntityResolutionService:
     def _ensure_no_user_library_conflict(
         self, *, source: Entity, target: Entity
     ) -> None:
-        from apps.users.models import UserSubject
+        from apps.users.models import UserLibraryEntry
 
-        source_users = UserSubject.objects.filter(
+        source_users = UserLibraryEntry.objects.filter(
             entity_id__in=self.cluster_ids(source)
         ).values("user_id")
-        if UserSubject.objects.filter(
+        if UserLibraryEntry.objects.filter(
             entity_id__in=self.cluster_ids(target),
             user_id__in=source_users,
         ).exists():
             raise UserLibraryConflict()
 
     def _merge_snapshot(self, *, source: Entity, target: Entity) -> dict:
-        from apps.users.models import UserSubject
+        from apps.users.models import UserLibraryEntry
 
         cluster_ids = self.cluster_ids(source) | self.cluster_ids(target)
         entries = list(
-            UserSubject.objects.filter(entity_id__in=cluster_ids)
+            UserLibraryEntry.objects.filter(entity_id__in=cluster_ids)
             .order_by("id")
             .values("id", "user_id", "entity_id")
         )

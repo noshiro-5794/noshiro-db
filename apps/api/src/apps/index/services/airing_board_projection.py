@@ -24,8 +24,8 @@ from apps.index.models import (
     AiringEvent,
     AnimeProfile,
     Entity,
+    EntityRepresentation,
     Observation,
-    ProviderRepresentation,
     Work,
 )
 from apps.index.selectors.current import active_airing_board_events
@@ -361,7 +361,7 @@ class AiringBoardProjectionService:
     @staticmethod
     def _mal_work_index() -> dict[int, Any]:
         rows = (
-            ProviderRepresentation.objects.filter(
+            EntityRepresentation.objects.filter(
                 is_active=True,
                 provider_record__namespace__provider__slug="mal",
                 provider_record__namespace__slug="anime",

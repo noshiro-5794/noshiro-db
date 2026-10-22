@@ -13,7 +13,7 @@ from mcp.types.version import LATEST_HANDSHAKE_VERSION
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.ai.models import AIProposal, AIRun
-from apps.index.models import Entity, EntityName, MatchCandidate, MatchDecision
+from apps.index.models import CandidateDecision, Entity, EntityName, MatchCandidate
 from apps.users.models import User
 from integrations.mcp.auth import NoshiroJWTTokenVerifier
 from integrations.mcp.external_server import create_external_mcp_server
@@ -79,7 +79,7 @@ def test_internal_submit_proposal_is_audited_without_canonical_decision() -> Non
     assert proposal.run.provider == "internal_mcp"
     assert proposal.status == AIProposal.Status.PENDING
     assert candidate.status == MatchCandidate.Status.PENDING
-    assert MatchDecision.objects.count() == 0
+    assert CandidateDecision.objects.count() == 0
     assert AIRun.objects.count() == 1
     assert result["canonical_write"] is False
 

@@ -35,12 +35,12 @@ class ReviewCreateRequestSerializer(serializers.Serializer):
     def validate_title(self, value):
         value = value.strip()
         if not value:
-            raise serializers.ValidationError("Review title can not be blank.")
+            raise serializers.ValidationError("UserReview title can not be blank.")
         return value
 
     def validate_content(self, value):
         if not value.strip():
-            raise serializers.ValidationError("Review content can not be blank.")
+            raise serializers.ValidationError("UserReview content can not be blank.")
         return value
 
 
@@ -65,12 +65,12 @@ class ReviewUpdateRequestSerializer(serializers.Serializer):
     def validate_title(self, value):
         value = value.strip()
         if not value:
-            raise serializers.ValidationError("Review title can not be blank.")
+            raise serializers.ValidationError("UserReview title can not be blank.")
         return value
 
     def validate_content(self, value):
         if not value.strip():
-            raise serializers.ValidationError("Review content can not be blank.")
+            raise serializers.ValidationError("UserReview content can not be blank.")
         return value
 
     def validate(self, attrs):

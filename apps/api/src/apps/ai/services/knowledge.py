@@ -14,10 +14,10 @@ from apps.index.models import (
     ContentSafety,
     CurrentObservation,
     Entity,
+    EntityRepresentation,
     Observation,
     Predicate,
     Provider,
-    ProviderRepresentation,
     Work,
 )
 from apps.index.selectors.projections import entity_detail
@@ -52,7 +52,7 @@ class AIKnowledgeProposalService:
                 },
             )
         disallowed_providers = list(
-            ProviderRepresentation.objects.filter(
+            EntityRepresentation.objects.filter(
                 entity_id__in=entity_resolution_service.cluster_ids(entity),
                 is_active=True,
             )
@@ -111,7 +111,7 @@ class AIKnowledgeProposalService:
             "provider_record__namespace__provider"
         ).get(pk=observation_id)
         entity = entity_resolution_service.resolve(Entity.objects.get(pk=entity_id))
-        if not ProviderRepresentation.objects.filter(
+        if not EntityRepresentation.objects.filter(
             provider_record=observation.provider_record,
             entity_id__in=entity_resolution_service.cluster_ids(entity),
             is_active=True,

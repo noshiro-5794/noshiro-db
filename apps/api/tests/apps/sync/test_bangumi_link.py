@@ -7,14 +7,14 @@ from django.test import override_settings
 
 from apps.ai.models import AgentRun
 from apps.index.models import (
+    CandidateDecision,
     Entity,
     EntityName,
+    EntityRepresentation,
     MatchCandidate,
-    MatchDecision,
     Provider,
     ProviderNamespace,
     ProviderRecord,
-    ProviderRepresentation,
     Work,
 )
 from apps.sync.services.bangumi_link import (
@@ -50,11 +50,11 @@ def _entity(
     )
     entity = Entity.objects.create(id=entity_id, kind=Entity.Kind.WORK)
     Work.objects.create(entity=entity, work_type=Work.WorkType.ANIME)
-    ProviderRepresentation.objects.create(
+    EntityRepresentation.objects.create(
         provider_record=record,
         entity=entity,
-        mapping_kind=ProviderRepresentation.MappingKind.EXACT,
-        method=ProviderRepresentation.Method.PROVIDER,
+        mapping_kind=EntityRepresentation.MappingKind.EXACT,
+        method=EntityRepresentation.Method.PROVIDER,
     )
     EntityName.objects.create(
         entity=entity,
@@ -81,11 +81,11 @@ def _link_bangumi(entity: Entity, *, external_id: str) -> None:
         origin="api",
         status="active",
     )
-    ProviderRepresentation.objects.create(
+    EntityRepresentation.objects.create(
         provider_record=record,
         entity=entity,
-        mapping_kind=ProviderRepresentation.MappingKind.EXACT,
-        method=ProviderRepresentation.Method.PROVIDER,
+        mapping_kind=EntityRepresentation.MappingKind.EXACT,
+        method=EntityRepresentation.Method.PROVIDER,
     )
 
 
@@ -103,7 +103,7 @@ def test_needs_bangumi_link_distinguishes_linked_and_missing_works() -> None:
         title="Test Anime",
     )
     # Bangumi representation on the same canonical entity means already linked.
-    ProviderRepresentation.objects.filter(entity=bangumi_entity).update(entity=linked)
+    EntityRepresentation.objects.filter(entity=bangumi_entity).update(entity=linked)
 
     assert bangumi_link_service._needs_bangumi_link(linked) is False
 
@@ -199,7 +199,7 @@ def test_high_confidence_subject_is_synced_and_bound() -> None:
     assert result["subject_id"] == 23456
     upsert.assert_called_once_with(23456)
     episodes.assert_called_once_with(23456)
-    decision = MatchDecision.objects.get(outcome=MatchDecision.Outcome.BIND)
+    decision = CandidateDecision.objects.get(outcome=CandidateDecision.Outcome.BIND)
     assert decision.candidate.status == MatchCandidate.Status.ACCEPTED
 
 
@@ -244,7 +244,7 @@ def test_hallucinated_subject_id_never_triggers_sync() -> None:
 
     assert result["outcome"] == "abstained"
     upsert.assert_not_called()
-    assert MatchDecision.objects.count() == 0
+    assert CandidateDecision.objects.count() == 0
 
 
 def test_run_missing_reaches_a_later_root_past_already_linked_roots() -> None:

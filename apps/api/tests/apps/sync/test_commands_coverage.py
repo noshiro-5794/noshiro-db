@@ -149,15 +149,15 @@ def test_split_conflicting_merges_command_splits_a_remake_pair() -> None:
 
     from apps.index.models import (
         AnimeProfile,
+        CandidateDecision,
         Entity,
         EntityRedirect,
+        EntityRepresentation,
         MatchCandidate,
-        MatchDecision,
         MergeEvent,
         Provider,
         ProviderNamespace,
         ProviderRecord,
-        ProviderRepresentation,
         Work,
     )
 
@@ -178,11 +178,11 @@ def test_split_conflicting_merges_command_splits_a_remake_pair() -> None:
         AnimeProfile.objects.create(
             work=Work.objects.get(entity=entity), premiered_on=premiered
         )
-        ProviderRepresentation.objects.create(
+        EntityRepresentation.objects.create(
             entity=entity,
             provider_record=record,
-            mapping_kind=ProviderRepresentation.MappingKind.EXACT,
-            method=ProviderRepresentation.Method.PROVIDER,
+            mapping_kind=EntityRepresentation.MappingKind.EXACT,
+            method=EntityRepresentation.Method.PROVIDER,
         )
         return entity
 
@@ -204,9 +204,9 @@ def test_split_conflicting_merges_command_splits_a_remake_pair() -> None:
         runner_up_margin=Decimal("1.0000"),
         policy_version="title-similarity-v1",
     )
-    MatchDecision.objects.create(
+    CandidateDecision.objects.create(
         candidate=candidate,
-        outcome=MatchDecision.Outcome.BIND,
+        outcome=CandidateDecision.Outcome.BIND,
         decided_by="admin_batch",
         policy_version="title-similarity-v1",
         reason="test",

@@ -1,6 +1,6 @@
 from django.db import transaction
 
-from apps.index.models import Contributor, ProviderRecord, ProviderRepresentation
+from apps.index.models import Contributor, EntityRepresentation, ProviderRecord
 from apps.index.services import knowledge_ingestion_service
 from apps.sync.providers.bangumi import (
     BANGUMI_PERSON_NAMESPACE,
@@ -71,7 +71,7 @@ class StaffService:
     @staticmethod
     def _resolve_entity(record: ProviderRecord):
         representation = (
-            ProviderRepresentation.objects.filter(
+            EntityRepresentation.objects.filter(
                 provider_record=record,
                 is_active=True,
             )

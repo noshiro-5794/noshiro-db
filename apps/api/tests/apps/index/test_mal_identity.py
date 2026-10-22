@@ -5,6 +5,7 @@ import pytest
 from apps.index.models import (
     Entity,
     EntityRedirect,
+    EntityRepresentation,
     Fact,
     MatchCandidate,
     MergeEvent,
@@ -12,7 +13,6 @@ from apps.index.models import (
     Provider,
     ProviderNamespace,
     ProviderRecord,
-    ProviderRepresentation,
     Work,
 )
 from apps.index.services import entity_resolution_service, mal_identity_service
@@ -40,11 +40,11 @@ def _work_entity(
     )
     entity = Entity.objects.create(kind=Entity.Kind.WORK)
     Work.objects.create(entity=entity, work_type=Work.WorkType.ANIME)
-    ProviderRepresentation.objects.create(
+    EntityRepresentation.objects.create(
         provider_record=record,
         entity=entity,
-        mapping_kind=ProviderRepresentation.MappingKind.EXACT,
-        method=ProviderRepresentation.Method.PROVIDER,
+        mapping_kind=EntityRepresentation.MappingKind.EXACT,
+        method=EntityRepresentation.Method.PROVIDER,
     )
     return entity
 
@@ -91,11 +91,11 @@ def _add_mal_representation(*, entity: Entity, external_id: str) -> None:
         origin="api",
         status="active",
     )
-    ProviderRepresentation.objects.create(
+    EntityRepresentation.objects.create(
         provider_record=record,
         entity=entity,
-        mapping_kind=ProviderRepresentation.MappingKind.AGGREGATE,
-        method=ProviderRepresentation.Method.PROVIDER,
+        mapping_kind=EntityRepresentation.MappingKind.AGGREGATE,
+        method=EntityRepresentation.Method.PROVIDER,
     )
 
 
@@ -226,7 +226,7 @@ def test_official_id_link_abstains_when_the_premieres_disagree() -> None:
     """
     import datetime
 
-    from apps.index.models import AnimeProfile, MatchDecision
+    from apps.index.models import AnimeProfile, CandidateDecision
 
     mal_entity = _work_entity(
         provider_slug="mal", namespace_slug="anime", external_id="4190"
@@ -247,7 +247,9 @@ def test_official_id_link_abstains_when_the_premieres_disagree() -> None:
 
     assert summary["bound"] == 0
     assert summary["abstained"] == 1
-    assert MatchDecision.objects.filter(outcome=MatchDecision.Outcome.ABSTAIN).exists()
+    assert CandidateDecision.objects.filter(
+        outcome=CandidateDecision.Outcome.ABSTAIN
+    ).exists()
 
 
 def test_bounded_run_reaches_bindable_pair_behind_redirected_records() -> None:

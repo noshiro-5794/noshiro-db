@@ -10,10 +10,10 @@ from apps.community.models import (
 )
 from apps.users.exceptions import UserNotFound
 from apps.users.models import (
-    Collection,
-    CollectionItem,
-    Review,
-    UserSubject,
+    UserCollection,
+    UserCollectionItem,
+    UserLibraryEntry,
+    UserReview,
 )
 
 User = get_user_model()
@@ -128,14 +128,14 @@ class PublicProfileSelector:
     @classmethod
     def get_public_profile(cls, *, target_user_id: int, viewer=None):
         public_subject_count = cls._count_subquery(
-            UserSubject.objects.filter(
+            UserLibraryEntry.objects.filter(
                 user_id=OuterRef("pk"),
                 is_public=True,
             ),
             group_by="user_id",
         )
         public_review_count = cls._count_subquery(
-            Review.objects.filter(
+            UserReview.objects.filter(
                 user_subject__user_id=OuterRef("pk"),
                 user_subject__is_public=True,
                 is_public=True,
@@ -143,7 +143,7 @@ class PublicProfileSelector:
             group_by="user_subject__user_id",
         )
         collection_count = cls._count_subquery(
-            Collection.objects.filter(
+            UserCollection.objects.filter(
                 user_id=OuterRef("pk"),
                 is_public=True,
             ),
@@ -195,7 +195,7 @@ class PublicProfileSelector:
         keyword=None,
         ordering="-id",
     ):
-        qs = UserSubject.objects.select_related(
+        qs = UserLibraryEntry.objects.select_related(
             "user", "entity", "entity__work"
         ).filter(
             user=user,
@@ -243,7 +243,7 @@ class PublicProfileSelector:
         ordering="-id",
         viewer=None,
     ):
-        qs = Review.objects.select_related(
+        qs = UserReview.objects.select_related(
             "user_subject",
             "user_subject__user",
             "user_subject__entity",
@@ -290,7 +290,7 @@ class PublicProfileSelector:
         ordering="-id",
         viewer=None,
     ):
-        qs = Collection.objects.filter(
+        qs = UserCollection.objects.filter(
             user=user,
             is_public=True,
         )
@@ -320,7 +320,7 @@ class PublicProfileSelector:
     @classmethod
     def get_public_collection(cls, *, user, collection_id: int, viewer=None):
         return cls._annotate_collection_community_state(
-            Collection.objects.filter(
+            UserCollection.objects.filter(
                 user=user,
                 id=collection_id,
                 is_public=True,
@@ -331,7 +331,7 @@ class PublicProfileSelector:
     @staticmethod
     def list_public_collection_items(*, collection):
         return (
-            CollectionItem.objects.select_related(
+            UserCollectionItem.objects.select_related(
                 "collection",
                 "user_subject",
                 "user_subject__entity",

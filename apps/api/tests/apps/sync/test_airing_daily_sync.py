@@ -6,11 +6,11 @@ from apps.index.models import (
     AiringBoardEntry,
     AiringEvent,
     Entity,
+    EntityRepresentation,
     Observation,
     Provider,
     ProviderNamespace,
     ProviderRecord,
-    ProviderRepresentation,
     Work,
 )
 from apps.index.services.airing_board import airing_board_service
@@ -57,11 +57,11 @@ def _calendar_board(*ids: int) -> Observation:
         )
         entity = Entity.objects.create(kind=Entity.Kind.WORK)
         Work.objects.create(entity=entity, work_type=Work.WorkType.ANIME)
-        ProviderRepresentation.objects.create(
+        EntityRepresentation.objects.create(
             provider_record=record,
             entity=entity,
-            mapping_kind=ProviderRepresentation.MappingKind.EXACT,
-            method=ProviderRepresentation.Method.EXTERNAL_ID,
+            mapping_kind=EntityRepresentation.MappingKind.EXACT,
+            method=EntityRepresentation.Method.EXTERNAL_ID,
         )
         AiringEvent.objects.create(
             work_id=entity.id,
@@ -144,11 +144,11 @@ def test_daily_targets_include_board_projection_provider_records() -> None:
     )
     entity = Entity.objects.create(kind=Entity.Kind.WORK)
     Work.objects.create(entity=entity, work_type=Work.WorkType.ANIME)
-    ProviderRepresentation.objects.create(
+    EntityRepresentation.objects.create(
         provider_record=record,
         entity=entity,
-        mapping_kind=ProviderRepresentation.MappingKind.EXACT,
-        method=ProviderRepresentation.Method.PROVIDER,
+        mapping_kind=EntityRepresentation.MappingKind.EXACT,
+        method=EntityRepresentation.Method.PROVIDER,
     )
     board = airing_board_service.refresh(
         observation=None,

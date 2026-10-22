@@ -28,12 +28,12 @@ from django.utils import timezone
 from apps.ai.models import AgentRun, AgentStep, AIRun, SourceArtifact
 from apps.ai.tools.evidence import capture_artifact
 from apps.index.models import (
+    CandidateDecision,
     Entity,
     EntityName,
+    EntityRepresentation,
     MatchCandidate,
-    MatchDecision,
     MatchEvidence,
-    ProviderRepresentation,
     Work,
 )
 from apps.index.services.resolution import (
@@ -87,7 +87,7 @@ class BangumiLinkService:
         processed_roots: set[str] = set()
         walked = 0
         mal_entity_ids = (
-            ProviderRepresentation.objects.filter(
+            EntityRepresentation.objects.filter(
                 is_active=True,
                 provider_record__namespace__provider__slug="mal",
                 provider_record__namespace__slug="anime",
@@ -141,7 +141,7 @@ class BangumiLinkService:
             work_type=Work.WorkType.ANIME,
         ).exists():
             return False
-        if ProviderRepresentation.objects.filter(
+        if EntityRepresentation.objects.filter(
             entity_id__in=cluster_ids,
             is_active=True,
             provider_record__namespace__provider__slug="bangumi",
@@ -194,7 +194,7 @@ class BangumiLinkService:
         names = self._names_for_cluster(cluster_ids)
         mal_ids = sorted(
             int(value)
-            for value in ProviderRepresentation.objects.filter(
+            for value in EntityRepresentation.objects.filter(
                 entity_id__in=cluster_ids,
                 is_active=True,
                 provider_record__namespace__provider__slug="mal",
@@ -354,7 +354,7 @@ class BangumiLinkService:
         try:
             entity_resolution_service.decide_candidate(
                 candidate=candidate,
-                outcome=MatchDecision.Outcome.BIND,
+                outcome=CandidateDecision.Outcome.BIND,
                 decided_by="ai_bangumi_search",
                 reason=(
                     f"AI Bangumi search matched subject {subject_id} at "
@@ -365,7 +365,7 @@ class BangumiLinkService:
         except EntityResolutionError as exc:
             entity_resolution_service.decide_candidate(
                 candidate=candidate,
-                outcome=MatchDecision.Outcome.ABSTAIN,
+                outcome=CandidateDecision.Outcome.ABSTAIN,
                 decided_by="ai_bangumi_search",
                 reason=f"Bangumi link could not be bound safely: {exc}",
             )
@@ -396,7 +396,7 @@ class BangumiLinkService:
         cluster_ids = entity_resolution_service.cluster_ids(root)
         mal_ids = sorted(
             int(value)
-            for value in ProviderRepresentation.objects.filter(
+            for value in EntityRepresentation.objects.filter(
                 entity_id__in=cluster_ids,
                 is_active=True,
                 provider_record__namespace__provider__slug="mal",

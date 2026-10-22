@@ -21,7 +21,7 @@ from apps.ai.services.common import (
     optional_non_negative_decimal,
     optional_non_negative_int,
 )
-from apps.index.models import Entity, Observation, ProviderRepresentation, TermAlias
+from apps.index.models import Entity, EntityRepresentation, Observation, TermAlias
 from integrations.ai.gateway import ai_gateway
 
 from ..registry import SkillDefinition, skill_registry
@@ -273,7 +273,7 @@ class FieldNormalizationSkill:
             raise ValueError("Claim evidence requires exactly one source.")
         if (
             source_observation is not None
-            and not ProviderRepresentation.objects.filter(
+            and not EntityRepresentation.objects.filter(
                 provider_record=source_observation.provider_record,
                 entity=target_entity,
                 is_active=True,

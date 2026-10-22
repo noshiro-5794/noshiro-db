@@ -6,10 +6,10 @@ from rest_framework.test import APIClient
 
 from apps.ai.services.common import validate_matching_output
 from apps.index.models import (
+    CuratedCollection,
+    CuratedMembership,
     Entity,
     EntityName,
-    IndexCollection,
-    IndexMembership,
     MatchCandidate,
 )
 from apps.index.services import season_group_service
@@ -64,8 +64,8 @@ def test_season_group_is_idempotent_and_lists_both_entities() -> None:
     second = season_group_service.ensure_pair_group(left=left, right=right)
 
     assert first.pk == second.pk
-    assert IndexCollection.objects.count() == 1
-    assert IndexMembership.objects.filter(collection=first).count() == 2
+    assert CuratedCollection.objects.count() == 1
+    assert CuratedMembership.objects.filter(collection=first).count() == 2
 
 
 def test_admin_group_decision_creates_group_without_merging() -> None:
@@ -85,7 +85,7 @@ def test_admin_group_decision_creates_group_without_merging() -> None:
     assert response.status_code == 200
     candidate.refresh_from_db()
     assert candidate.status == MatchCandidate.Status.GROUPED
-    collection = IndexCollection.objects.get()
+    collection = CuratedCollection.objects.get()
     assert {member.entity_id for member in collection.memberships.all()} == {
         left.pk,
         right.pk,

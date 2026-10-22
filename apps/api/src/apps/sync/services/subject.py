@@ -4,8 +4,8 @@ from django.db import transaction
 
 from apps.index.models import (
     Entity,
+    EntityRepresentation,
     ProviderRecord,
-    ProviderRepresentation,
     Work,
 )
 from apps.index.services import knowledge_ingestion_service
@@ -74,7 +74,7 @@ class SubjectService:
     @staticmethod
     def _resolve_entity(record: ProviderRecord) -> Entity | None:
         representation = (
-            ProviderRepresentation.objects.filter(
+            EntityRepresentation.objects.filter(
                 provider_record=record,
                 is_active=True,
             )

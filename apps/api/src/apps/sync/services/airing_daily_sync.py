@@ -28,7 +28,7 @@ from apps.index.models import (
     AiringBoard,
     AiringBoardEntry,
     AiringEvent,
-    ProviderRepresentation,
+    EntityRepresentation,
 )
 from apps.index.services import airing_board_projection_service
 from apps.sync.models import SyncError, SyncState
@@ -108,7 +108,7 @@ class AiringDailySyncService:
         if not work_ids:
             return [], board.season_key
         representations = (
-            ProviderRepresentation.objects.filter(
+            EntityRepresentation.objects.filter(
                 entity_id__in=list(work_ids),
                 provider_record__namespace__provider__slug__in=(
                     SUPPORTED_PROVIDER_SLUGS

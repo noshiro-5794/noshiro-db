@@ -85,14 +85,14 @@ class CommunityComment(models.Model):
         related_name="comments",
     )
     review = models.ForeignKey(
-        "users.Review",
+        "users.UserReview",
         on_delete=models.CASCADE,
         null=True,
         blank=True,
         related_name="community_comments",
     )
     collection = models.ForeignKey(
-        "users.Collection",
+        "users.UserCollection",
         on_delete=models.CASCADE,
         null=True,
         blank=True,

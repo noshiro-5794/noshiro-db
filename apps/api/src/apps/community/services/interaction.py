@@ -15,7 +15,7 @@ from apps.community.models import (
 )
 from apps.community.selectors.target import CommunityTargetSelector
 from apps.community.services.notification import NotificationService
-from apps.users.models import Collection, Review
+from apps.users.models import UserCollection, UserReview
 
 
 class CommunityInteractionService:
@@ -44,9 +44,9 @@ class CommunityInteractionService:
             return {"post": target}
         if isinstance(target, CommunityComment):
             return {"comment": target}
-        if isinstance(target, Review):
+        if isinstance(target, UserReview):
             return {"review": target}
-        if isinstance(target, Collection):
+        if isinstance(target, UserCollection):
             return {"collection": target}
         if isinstance(target, Activity):
             return {"activity": target}

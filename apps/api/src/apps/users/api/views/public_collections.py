@@ -71,7 +71,7 @@ class PublicCollectionDetailView(APIView):
             viewer=request.user,
         )
         if collection is None:
-            raise NotFound("Collection not found.")
+            raise NotFound("UserCollection not found.")
         return Response(collection_data(collection))
 
 
@@ -99,7 +99,7 @@ class PublicCollectionItemListView(APIView):
             viewer=request.user,
         )
         if collection is None:
-            raise NotFound("Collection not found.")
+            raise NotFound("UserCollection not found.")
         queryset = PublicProfileSelector.list_public_collection_items(
             collection=collection,
         )

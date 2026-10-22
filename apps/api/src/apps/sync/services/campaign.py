@@ -25,9 +25,9 @@ from django.utils import timezone
 from apps.ai.models import AgentRun, AIClaim
 from apps.index.models import (
     Entity,
+    EntityRepresentation,
     Observation,
     ProviderRecord,
-    ProviderRepresentation,
 )
 from apps.sync.models import SyncCampaign, SyncWorkItem
 from apps.sync.providers.anilist import ANILIST_ANIME_NAMESPACE, anilist_client
@@ -700,7 +700,7 @@ class SyncCampaignService:
             .order_by("-observed_at")
             .first()
         )
-        representation_exists = ProviderRepresentation.objects.filter(
+        representation_exists = EntityRepresentation.objects.filter(
             provider_record=record, entity=entity, is_active=True
         ).exists()
         if observation is None or not representation_exists:
@@ -823,7 +823,7 @@ class SyncCampaignService:
             .order_by("-observed_at")
             .first()
         )
-        representation_exists = ProviderRepresentation.objects.filter(
+        representation_exists = EntityRepresentation.objects.filter(
             provider_record=record, entity=entity, is_active=True
         ).exists()
         if observation is None or not representation_exists:

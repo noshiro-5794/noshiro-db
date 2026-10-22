@@ -1,4 +1,4 @@
-from apps.index.models import ProviderRecord, ProviderRepresentation
+from apps.index.models import EntityRepresentation, ProviderRecord
 from apps.sync.providers.bangumi import BANGUMI_SUBJECT_NAMESPACE
 from apps.sync.services.character import character_service
 from apps.sync.services.episode import episode_service
@@ -10,7 +10,7 @@ from apps.sync.tasks.base import BaseSyncTask
 
 def _has_bangumi_subject(bangumi_id: int) -> bool:
     external_id = str(bangumi_id)
-    return ProviderRepresentation.objects.filter(
+    return EntityRepresentation.objects.filter(
         provider_record__namespace__provider__slug=BANGUMI_SUBJECT_NAMESPACE.source.slug,
         provider_record__namespace__slug=BANGUMI_SUBJECT_NAMESPACE.slug,
         provider_record__external_id=external_id,

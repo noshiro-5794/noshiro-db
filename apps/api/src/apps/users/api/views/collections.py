@@ -17,7 +17,7 @@ from apps.users.api.serializers.contracts import (
     CollectionItemWriteSerializer,
     UserCollectionSerializer,
 )
-from apps.users.models import CollectionItem
+from apps.users.models import UserCollectionItem
 from apps.users.selectors.library.collection import CollectionSelector
 from apps.users.services.library.collection import CollectionService
 from shared.api.contracts import (
@@ -44,7 +44,7 @@ def collection_data(collection) -> dict:
     }
 
 
-def collection_item_data(item: CollectionItem) -> dict:
+def collection_item_data(item: UserCollectionItem) -> dict:
     return {
         "id": item.id,
         "library_entry_id": item.user_subject_id,

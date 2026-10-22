@@ -15,9 +15,9 @@ from typing import Any
 from apps.index.models import (
     Entity,
     EntityRelationEvidence,
+    EntityRepresentation,
     Observation,
     ProviderRecord,
-    ProviderRepresentation,
 )
 from apps.sync.providers.bangumi import (
     BANGUMI_SUBJECT_NAMESPACE,
@@ -64,7 +64,7 @@ class RelationDriftService:
             if (to_entity_id, canonical) in expected:
                 continue
             target = (
-                ProviderRepresentation.objects.filter(
+                EntityRepresentation.objects.filter(
                     entity_id=to_entity_id,
                     provider_record__namespace__provider__slug="bangumi",
                     provider_record__namespace__slug=BANGUMI_SUBJECT_NAMESPACE.slug,
@@ -104,7 +104,7 @@ class RelationDriftService:
         self, record: ProviderRecord
     ) -> list[tuple[str, str, str, Any]]:
         source = (
-            ProviderRepresentation.objects.filter(
+            EntityRepresentation.objects.filter(
                 provider_record__namespace__provider__slug="bangumi",
                 provider_record__namespace__slug=BANGUMI_SUBJECT_NAMESPACE.slug,
                 provider_record__external_id=record.external_id,
@@ -134,7 +134,7 @@ class RelationDriftService:
     @staticmethod
     def _resolve_bangumi_target(external_id: str) -> Entity | None:
         representation = (
-            ProviderRepresentation.objects.filter(
+            EntityRepresentation.objects.filter(
                 provider_record__namespace__provider__slug="bangumi",
                 provider_record__namespace__slug=BANGUMI_SUBJECT_NAMESPACE.slug,
                 provider_record__external_id=external_id,

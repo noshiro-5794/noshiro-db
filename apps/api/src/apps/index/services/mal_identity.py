@@ -7,13 +7,13 @@ from typing import Any
 from uuid import UUID
 
 from apps.index.models import (
+    CandidateDecision,
     Entity,
+    EntityRepresentation,
     Fact,
     MatchCandidate,
-    MatchDecision,
     MatchEvidence,
     ProviderRecord,
-    ProviderRepresentation,
     Work,
 )
 from apps.index.services.resolution import (
@@ -73,7 +73,7 @@ class MALIdentityService:
         redirects = entity_resolution_service.redirect_map()
         root_entities: dict[Any, Entity] = {}
         mal_rows = (
-            ProviderRepresentation.objects.filter(
+            EntityRepresentation.objects.filter(
                 is_active=True,
                 provider_record__namespace__provider__slug=(
                     MAL_ANIME_NAMESPACE.source.slug
@@ -143,20 +143,20 @@ class MALIdentityService:
                         reason=(
                             f"AniList explicitly references MAL {mal_id} "
                             "for the same anime."
-                            if outcome == MatchDecision.Outcome.BIND
+                            if outcome == CandidateDecision.Outcome.BIND
                             else "Official MAL id conflicts with entity granularity."
                         ),
                     )
                 except EntityResolutionError:
                     entity_resolution_service.decide_candidate(
                         candidate=candidate,
-                        outcome=MatchDecision.Outcome.ABSTAIN,
+                        outcome=CandidateDecision.Outcome.ABSTAIN,
                         decided_by="official_mal_id",
                         reason="Official MAL id could not be bound safely.",
                     )
                     summary["abstained"] += 1
                     continue
-                if outcome == MatchDecision.Outcome.BIND:
+                if outcome == CandidateDecision.Outcome.BIND:
                     summary["bound"] += 1
                     self._follow_own_merge(redirects=redirects, decision=decision)
                 else:
@@ -164,7 +164,7 @@ class MALIdentityService:
         return summary
 
     @staticmethod
-    def _follow_own_merge(*, redirects: dict, decision: MatchDecision) -> None:
+    def _follow_own_merge(*, redirects: dict, decision: CandidateDecision) -> None:
         """Record a merge this sweep just made in its own redirect snapshot.
 
         Pairs commit as they are decided, so the graph loaded at the start of
@@ -238,20 +238,20 @@ class MALIdentityService:
             left_entity.kind != Entity.Kind.WORK
             or right_entity.kind != Entity.Kind.WORK
         ):
-            return MatchDecision.Outcome.ABSTAIN
+            return CandidateDecision.Outcome.ABSTAIN
         types = set(
             Work.objects.filter(
                 entity_id__in=(left_entity.pk, right_entity.pk)
             ).values_list("work_type", flat=True)
         )
         if types - {Work.WorkType.ANIME}:
-            return MatchDecision.Outcome.ABSTAIN
+            return CandidateDecision.Outcome.ABSTAIN
         if MALIdentityService._premieres_conflict(left_entity, right_entity):
             # AniList's idMal is authoritative about identity, but the same title
             # a generation apart is a remake: either the mapping or one side's
             # date is wrong, and silently collapsing the two rewrites history.
-            return MatchDecision.Outcome.ABSTAIN
-        return MatchDecision.Outcome.BIND
+            return CandidateDecision.Outcome.ABSTAIN
+        return CandidateDecision.Outcome.BIND
 
     @staticmethod
     def _premieres_conflict(left_entity: Entity, right_entity: Entity) -> bool:

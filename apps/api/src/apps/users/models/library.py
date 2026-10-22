@@ -2,7 +2,7 @@ from django.db import models
 from django.db.models import Q
 
 
-class UserSubject(models.Model):
+class UserLibraryEntry(models.Model):
     """User library entry; the legacy name remains during the v1 transition."""
 
     class Status(models.TextChoices):
@@ -33,7 +33,7 @@ class UserSubject(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = "user_subject"
+        db_table = "user_library_entry"
         constraints = [
             models.UniqueConstraint(
                 fields=["user", "entity"],
@@ -84,7 +84,7 @@ class UserRelease(models.Model):
         DROPPED = "dropped", "Dropped"
 
     library_entry = models.ForeignKey(
-        "UserSubject",
+        "UserLibraryEntry",
         on_delete=models.CASCADE,
         related_name="release_states",
     )
@@ -120,7 +120,7 @@ class UserRelease(models.Model):
 
 class UserSubjectRatingDetail(models.Model):
     user_subject = models.ForeignKey(
-        "UserSubject", on_delete=models.CASCADE, related_name="rating_details"
+        "UserLibraryEntry", on_delete=models.CASCADE, related_name="rating_details"
     )
     key = models.CharField(max_length=256)
     value = models.DecimalField(max_digits=3, decimal_places=1)
@@ -160,16 +160,16 @@ class UserTag(models.Model):
         return f"user={self.user_id} tag={self.name}"
 
 
-class UserSubjectTag(models.Model):
+class UserLibraryEntryTag(models.Model):
     user_subject = models.ForeignKey(
-        "UserSubject", on_delete=models.CASCADE, related_name="tag_relations"
+        "UserLibraryEntry", on_delete=models.CASCADE, related_name="tag_relations"
     )
     tag = models.ForeignKey(
         "UserTag", on_delete=models.CASCADE, related_name="subject_relations"
     )
 
     class Meta:
-        db_table = "user_subject_tag"
+        db_table = "user_library_entry_tag"
         constraints = [
             models.UniqueConstraint(
                 fields=["user_subject", "tag"], name="uq_user_subject_tag"
@@ -182,7 +182,7 @@ class UserSubjectTag(models.Model):
 
 class UserEpisodeProgress(models.Model):
     user_subject = models.ForeignKey(
-        "UserSubject", on_delete=models.CASCADE, related_name="episode_progress"
+        "UserLibraryEntry", on_delete=models.CASCADE, related_name="episode_progress"
     )
     episode_entity = models.ForeignKey(
         "index.Entity",

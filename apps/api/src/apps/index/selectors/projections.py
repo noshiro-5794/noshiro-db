@@ -2,10 +2,10 @@ from django.db.models import F, Prefetch, Q
 
 from apps.index.models import (
     ContentSafety,
+    CuratedMembership,
     Entity,
     EntityName,
     EntityRedirect,
-    IndexMembership,
     Work,
 )
 from apps.index.selectors.current import (
@@ -101,7 +101,7 @@ def entity_summary(
     ).order_by("created_at", "entity_id").first() or getattr(root, "work", None)
     memberships = [
         membership.collection.slug
-        for membership in IndexMembership.objects.filter(
+        for membership in CuratedMembership.objects.filter(
             entity_id__in=cluster_ids
         ).select_related("collection")
         if membership.listing_state == "listed"
@@ -192,7 +192,7 @@ def entity_summaries(
         works.setdefault(work.entity_id, work)
 
     memberships: dict = {}
-    for membership in IndexMembership.objects.filter(
+    for membership in CuratedMembership.objects.filter(
         entity_id__in=all_ids
     ).select_related("collection"):
         if membership.listing_state == "listed":
@@ -427,9 +427,9 @@ def entity_detail(
         )
     ]
     memberships = list(
-        IndexMembership.objects.filter(
+        CuratedMembership.objects.filter(
             entity_id__in=entity_resolution_service.cluster_ids(root),
-            listing_state=IndexMembership.State.LISTED,
+            listing_state=CuratedMembership.State.LISTED,
         )
         .select_related("collection")
         .order_by("collection__slug", "entity_id")
@@ -489,7 +489,7 @@ def entity_queryset(
     )
     collection_slugs = (collection,) if collection else ("anime", "galgame")
     if collection or scope != "all":
-        listed_ids = IndexMembership.objects.filter(
+        listed_ids = CuratedMembership.objects.filter(
             collection__slug__in=collection_slugs,
             listing_state="listed",
         ).values_list("entity_id", flat=True)

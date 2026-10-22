@@ -3,10 +3,10 @@ from decimal import Decimal
 import pytest
 
 from apps.index.models import (
+    CuratedCollection,
+    CuratedMembership,
     Entity,
     EntityRedirect,
-    IndexCollection,
-    IndexMembership,
     MergeEvent,
     MetricSnapshot,
     Provider,
@@ -43,13 +43,13 @@ def _work(
     entity = Entity.objects.create(kind=Entity.Kind.WORK)
     Work.objects.create(entity=entity, work_type=work_type)
     collection_slug = "galgame" if work_type == Work.WorkType.GALGAME else "anime"
-    collection, _ = IndexCollection.objects.get_or_create(
+    collection, _ = CuratedCollection.objects.get_or_create(
         slug=collection_slug, defaults={"name": collection_slug.title()}
     )
-    IndexMembership.objects.update_or_create(
+    CuratedMembership.objects.update_or_create(
         collection=collection,
         entity=entity,
-        defaults={"listing_state": IndexMembership.State.LISTED},
+        defaults={"listing_state": CuratedMembership.State.LISTED},
     )
     return entity, record
 

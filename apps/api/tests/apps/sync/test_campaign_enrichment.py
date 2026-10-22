@@ -7,11 +7,11 @@ import pytest
 
 from apps.index.models import (
     Entity,
+    EntityRepresentation,
     Observation,
     Provider,
     ProviderNamespace,
     ProviderRecord,
-    ProviderRepresentation,
 )
 from apps.sync.models import SyncCampaign, SyncWorkItem
 from apps.sync.services.campaign import sync_campaign_service
@@ -137,11 +137,11 @@ def test_enrich_entity_reads_provider_mapped_name_keys() -> None:
         namespace=namespace, external_id="656433", origin="api", status="active"
     )
     entity = Entity.objects.create(kind=Entity.Kind.WORK)
-    ProviderRepresentation.objects.create(
+    EntityRepresentation.objects.create(
         provider_record=record,
         entity=entity,
-        mapping_kind=ProviderRepresentation.MappingKind.EXACT,
-        method=ProviderRepresentation.Method.EXTERNAL_ID,
+        mapping_kind=EntityRepresentation.MappingKind.EXACT,
+        method=EntityRepresentation.Method.EXTERNAL_ID,
     )
     payload_hash = hashlib.sha256(
         json.dumps({"name": "日文标题"}, sort_keys=True).encode()

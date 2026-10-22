@@ -1,21 +1,21 @@
 import pytest
 
 from apps.index.models import (
+    CandidateDecision,
     Entity,
     EntityRedirect,
+    EntityRepresentation,
     Fact,
     MatchCandidate,
-    MatchDecision,
     MatchEvidence,
     Observation,
     Provider,
     ProviderNamespace,
     ProviderRecord,
-    ProviderRepresentation,
     Work,
 )
 from apps.index.services.identity import CrossProviderIdentityService
-from apps.users.models import User, UserSubject
+from apps.users.models import User, UserLibraryEntry
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -55,11 +55,11 @@ def _bangumi_observation(payload: dict) -> Observation:
 
 
 def _vndb_representation(entity: Entity, *, vndb_id: str = "v1") -> None:
-    ProviderRepresentation.objects.create(
+    EntityRepresentation.objects.create(
         provider_record=_provider_record("vndb", "vn", vndb_id),
         entity=entity,
-        mapping_kind=ProviderRepresentation.MappingKind.EXACT,
-        method=ProviderRepresentation.Method.PROVIDER,
+        mapping_kind=EntityRepresentation.MappingKind.EXACT,
+        method=EntityRepresentation.Method.PROVIDER,
         confidence=1,
     )
 
@@ -105,9 +105,9 @@ def test_official_vndb_identifier_creates_audited_reversible_binding() -> None:
     )
 
     candidate = MatchCandidate.objects.get()
-    decision = MatchDecision.objects.get(candidate=candidate)
+    decision = CandidateDecision.objects.get(candidate=candidate)
     assert candidate.status == MatchCandidate.Status.ACCEPTED
-    assert decision.outcome == MatchDecision.Outcome.BIND
+    assert decision.outcome == CandidateDecision.Outcome.BIND
     assert decision.decided_by == "official_external_id"
     assert MatchEvidence.objects.get(candidate=candidate).value == {
         "provider": "vndb",
@@ -123,15 +123,15 @@ def test_verified_id_abstains_when_user_library_entries_conflict() -> None:
     vndb = _work(Work.WorkType.GALGAME)
     _vndb_representation(vndb)
     user = User.objects.create_user(email="cross-source-conflict@example.com")
-    UserSubject.objects.create(
+    UserLibraryEntry.objects.create(
         user=user,
         entity=bangumi,
-        status=UserSubject.Status.DOING,
+        status=UserLibraryEntry.Status.DOING,
     )
-    UserSubject.objects.create(
+    UserLibraryEntry.objects.create(
         user=user,
         entity=vndb,
-        status=UserSubject.Status.WISH,
+        status=UserLibraryEntry.Status.WISH,
     )
     observation = _bangumi_observation({"infobox": [{"key": "VNDB", "value": "v1"}]})
 
@@ -143,5 +143,5 @@ def test_verified_id_abstains_when_user_library_entries_conflict() -> None:
 
     candidate = MatchCandidate.objects.get()
     assert candidate.status == MatchCandidate.Status.ABSTAINED
-    assert MatchDecision.objects.get(candidate=candidate).outcome == "abstain"
+    assert CandidateDecision.objects.get(candidate=candidate).outcome == "abstain"
     assert not EntityRedirect.objects.exists()

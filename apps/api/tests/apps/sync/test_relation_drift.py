@@ -9,11 +9,11 @@ from apps.index.models import (
     Entity,
     EntityRelation,
     EntityRelationEvidence,
+    EntityRepresentation,
     Observation,
     Provider,
     ProviderNamespace,
     ProviderRecord,
-    ProviderRepresentation,
 )
 from apps.sync.providers.bangumi import (
     BANGUMI_SUBJECT_NAMESPACE,
@@ -48,11 +48,11 @@ def _entity(
         status="active",
     )
     entity = Entity.objects.create(kind=Entity.Kind.WORK)
-    ProviderRepresentation.objects.create(
+    EntityRepresentation.objects.create(
         provider_record=record,
         entity=entity,
-        mapping_kind=ProviderRepresentation.MappingKind.EXACT,
-        method=ProviderRepresentation.Method.EXTERNAL_ID,
+        mapping_kind=EntityRepresentation.MappingKind.EXACT,
+        method=EntityRepresentation.Method.EXTERNAL_ID,
     )
     return record, entity
 

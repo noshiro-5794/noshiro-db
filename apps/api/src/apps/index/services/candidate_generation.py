@@ -346,8 +346,8 @@ class ProviderCandidateService:
         query = f"""
             WITH source AS (
                 SELECT DISTINCT e.id AS entity_id, e.created_at AS created_at
-                FROM index_entity e
-                JOIN provider_representation pr
+                FROM entity e
+                JOIN entity_representation pr
                   ON pr.entity_id = e.id AND pr.is_active
                 JOIN provider_record rec ON rec.id = pr.provider_record_id
                 JOIN provider_namespace pn
@@ -504,7 +504,7 @@ class ProviderCandidateService:
         query = f"""
             SELECT en.entity_id, en.text, similarity(en.text, %s) AS sim
             FROM entity_name en
-            JOIN provider_representation pr
+            JOIN entity_representation pr
               ON pr.entity_id = en.entity_id AND pr.is_active
             JOIN provider_record rec ON rec.id = pr.provider_record_id
             JOIN provider_namespace pn

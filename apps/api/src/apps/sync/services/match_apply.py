@@ -37,10 +37,10 @@ from django.utils import timezone
 
 from apps.ai.models import AIProposal
 from apps.index.exceptions import UserLibraryConflict
-from apps.index.models import MatchCandidate, MatchDecision, Work
+from apps.index.models import CandidateDecision, MatchCandidate, Work
 from apps.index.services import entity_resolution_service, work_families
 from apps.sync.models import SyncState
-from apps.users.models import UserSubject
+from apps.users.models import UserLibraryEntry
 
 # There is one ring of pending proposals, so the SyncState row identifies the
 # batch itself rather than a provider pair the way a sweep shard does.
@@ -249,7 +249,7 @@ class MatchApplyService:
         reasons: list[str] = []
         candidate = proposal.match_candidate
         decision = proposal.payload.get("decision")
-        if decision != MatchDecision.Outcome.BIND:
+        if decision != CandidateDecision.Outcome.BIND:
             reasons.append(f"ai_decision={decision!r}")
         if proposal.confidence < MIN_CONFIDENCE:
             reasons.append("confidence_below_threshold")
@@ -319,10 +319,10 @@ class MatchApplyService:
 
     @staticmethod
     def _has_conflicting_user_library(candidate: MatchCandidate) -> bool:
-        left_users = UserSubject.objects.filter(
+        left_users = UserLibraryEntry.objects.filter(
             entity_id=candidate.left_entity_id
         ).values("user_id")
-        return UserSubject.objects.filter(
+        return UserLibraryEntry.objects.filter(
             entity_id=candidate.right_entity_id,
             user_id__in=left_users,
         ).exists()
@@ -351,7 +351,7 @@ class MatchApplyService:
             # move on.
             entity_resolution_service.decide_candidate(
                 candidate=candidate,
-                outcome=MatchDecision.Outcome.ABSTAIN,
+                outcome=CandidateDecision.Outcome.ABSTAIN,
                 decided_by="admin_batch",
                 reason="Already bound by another rule.",
             )
@@ -368,7 +368,7 @@ class MatchApplyService:
             try:
                 entity_resolution_service.decide_candidate(
                     candidate=candidate,
-                    outcome=MatchDecision.Outcome.BIND,
+                    outcome=CandidateDecision.Outcome.BIND,
                     decided_by="admin_batch",
                     reason=reason,
                 )
@@ -382,7 +382,7 @@ class MatchApplyService:
                 )
                 entity_resolution_service.decide_candidate(
                     candidate=candidate,
-                    outcome=MatchDecision.Outcome.ABSTAIN,
+                    outcome=CandidateDecision.Outcome.ABSTAIN,
                     decided_by="admin_batch",
                     reason=reason,
                 )
@@ -398,7 +398,7 @@ class MatchApplyService:
             proposal.policy_reason = "Admin conservative batch abstained."
             entity_resolution_service.decide_candidate(
                 candidate=candidate,
-                outcome=MatchDecision.Outcome.ABSTAIN,
+                outcome=CandidateDecision.Outcome.ABSTAIN,
                 decided_by="admin_batch",
                 reason=proposal.policy_reason,
             )

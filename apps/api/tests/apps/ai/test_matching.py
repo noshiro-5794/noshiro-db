@@ -6,9 +6,9 @@ import pytest
 from apps.ai.models import AIEvaluationRun, AIPolicy, AIProposal, AIRun
 from apps.ai.services import InvalidAIProposal, ai_matching_service
 from apps.index.models import (
+    CandidateDecision,
     Entity,
     MatchCandidate,
-    MatchDecision,
     MatchEvidence,
     Work,
 )
@@ -100,7 +100,7 @@ def test_invalid_structured_output_keeps_failed_run_audit() -> None:
         ai_matching_service.evaluate(candidate_id=candidate.id)
 
     assert AIRun.objects.get().status == AIRun.Status.FAILED
-    assert MatchDecision.objects.count() == 0
+    assert CandidateDecision.objects.count() == 0
 
 
 def test_shadow_run_persists_proposal_without_deciding_candidate() -> None:
@@ -117,7 +117,7 @@ def test_shadow_run_persists_proposal_without_deciding_candidate() -> None:
     assert "Shadow proposal only" in proposal.policy_reason
     assert proposal.decided_at is None
     assert candidate.status == MatchCandidate.Status.PENDING
-    assert MatchDecision.objects.count() == 0
+    assert CandidateDecision.objects.count() == 0
     run = proposal.run
     assert run.status == AIRun.Status.SUCCEEDED
     assert run.input_tokens == 10
@@ -151,8 +151,8 @@ def test_production_ready_policy_accepts_only_fully_gated_bind() -> None:
     candidate.refresh_from_db()
     assert proposal.status == AIProposal.Status.ACCEPTED
     assert candidate.status == MatchCandidate.Status.ACCEPTED
-    decision = MatchDecision.objects.get(candidate=candidate)
-    assert decision.outcome == MatchDecision.Outcome.BIND
+    decision = CandidateDecision.objects.get(candidate=candidate)
+    assert decision.outcome == CandidateDecision.Outcome.BIND
     assert decision.decided_by == "ai_policy"
 
 
@@ -197,7 +197,7 @@ def test_production_policy_abstains_when_any_bind_gate_fails(
     candidate.refresh_from_db()
     assert proposal.status == AIProposal.Status.ABSTAINED
     assert candidate.status == MatchCandidate.Status.ABSTAINED
-    assert MatchDecision.objects.get(candidate=candidate).outcome == "abstain"
+    assert CandidateDecision.objects.get(candidate=candidate).outcome == "abstain"
 
 
 def test_prune_only_deletes_unreferenced_failures() -> None:

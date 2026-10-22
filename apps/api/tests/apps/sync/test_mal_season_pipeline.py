@@ -4,10 +4,10 @@ import pytest
 
 from apps.index.models import (
     Entity,
+    EntityRepresentation,
     Provider,
     ProviderNamespace,
     ProviderRecord,
-    ProviderRepresentation,
     ProviderRevision,
     Work,
 )
@@ -84,7 +84,7 @@ def test_pipeline_promotes_saved_schedule_record_to_entity() -> None:
     work = Work.objects.get(entity=entity)
     assert work.work_type == Work.WorkType.ANIME
     assert (
-        ProviderRepresentation.objects.filter(
+        EntityRepresentation.objects.filter(
             entity=entity,
             provider_record__namespace__slug="anime",
             provider_record__namespace__provider__slug="mal",
