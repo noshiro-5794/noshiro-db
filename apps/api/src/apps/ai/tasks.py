@@ -1,4 +1,5 @@
 import logging
+from typing import NoReturn
 
 from celery import shared_task
 from celery.exceptions import Ignore
@@ -20,7 +21,7 @@ def _retry_provider_call(
     error: AIProviderError,
     *,
     max_retries: int,
-) -> None:
+) -> NoReturn:
     """Retry a provider call only when another attempt could plausibly succeed.
 
     ``AIProviderError.retryable`` is false for account problems (401/402/403)
@@ -40,6 +41,7 @@ def _retry_provider_call(
         countdown=min(300, 30 * 2**task.request.retries),
         max_retries=max_retries,
     )
+    raise AssertionError("task.retry returned without raising")
 
 
 @shared_task(bind=True, max_retries=3, soft_time_limit=180, time_limit=210)
@@ -48,7 +50,6 @@ def evaluate_match_candidate_task(self, candidate_id: str) -> str:
         return str(ai_matching_service.evaluate(candidate_id=candidate_id).id)
     except AIProviderError as error:
         _retry_provider_call(self, error, max_retries=3)
-        raise
 
 
 @shared_task(bind=True, max_retries=3, soft_time_limit=180, time_limit=210)
@@ -59,7 +60,6 @@ def classify_entity_task(self, entity_id: str) -> str:
         )
     except AIProviderError as error:
         _retry_provider_call(self, error, max_retries=3)
-        raise
 
 
 @shared_task(bind=True, max_retries=3, soft_time_limit=180, time_limit=210)
@@ -71,7 +71,6 @@ def extract_observation_evidence_task(self, observation_id: str, entity_id: str)
         )
     except AIProviderError as error:
         _retry_provider_call(self, error, max_retries=3)
-        raise
     return str(proposal.id)
 
 
@@ -86,7 +85,6 @@ def complete_missing_schedule_slots_task(
         return schedule_completion_service.run(limit=limit, apply=apply)
     except AIProviderError as error:
         _retry_provider_call(self, error, max_retries=2)
-        raise
 
 
 @shared_task(

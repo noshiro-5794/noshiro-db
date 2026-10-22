@@ -5,6 +5,7 @@ from celery.exceptions import Retry
 
 from apps.ai.tasks import (
     classify_entity_task,
+    complete_missing_schedule_slots_task,
     evaluate_match_candidate_task,
     extract_observation_evidence_task,
 )
@@ -62,3 +63,37 @@ class TestProviderErrorRetries:
             pytest.raises(Retry),
         ):
             evaluate_match_candidate_task.apply(args=["candidate-uuid"])
+
+
+@pytest.mark.django_db(transaction=True)
+class TestTerminalErrorsAcrossTasks:
+    """A 402 means the account cannot call the provider; no task retries it."""
+
+    error = AIProviderError("Insufficient Balance", status_code=402)
+
+    def test_classify_is_not_retried(self) -> None:
+        with patch(
+            "apps.ai.tasks.ai_knowledge_proposal_service.classify_entity",
+            side_effect=self.error,
+        ):
+            result = classify_entity_task.apply(args=["entity-uuid"])
+        assert result.state == "IGNORED"
+
+    def test_extract_is_not_retried(self) -> None:
+        with patch(
+            "apps.ai.tasks.ai_knowledge_proposal_service.extract_evidence",
+            side_effect=self.error,
+        ):
+            result = extract_observation_evidence_task.apply(
+                args=["observation-uuid", "entity-uuid"]
+            )
+        assert result.state == "IGNORED"
+
+    def test_schedule_completion_is_not_retried(self) -> None:
+        with patch(
+            "apps.ai.tasks.schedule_completion_service.run", side_effect=self.error
+        ):
+            result = complete_missing_schedule_slots_task.apply(
+                kwargs={"limit": 10, "apply": False}
+            )
+        assert result.state == "IGNORED"
