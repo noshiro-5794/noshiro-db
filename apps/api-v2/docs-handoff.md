@@ -93,6 +93,7 @@ Each of these cost a round; none of them is obvious from the Django code alone.
 | Time-derived fields | `eta_seconds`, throughput differ every run | ignore them in the comparison, do not "fix" them |
 | Diff direction | `status 404 != 200` means **old** is 404 | read it twice before blaming the tool |
 | Adding what already exists | `/health/live` was there; a rewrite nearly broke it | grep the route before writing one |
+| Paths from memory | three "failures" in a sweep were paths that never existed | read the route table, not my recollection |
 
 ## Django crashes on legal writes
 
