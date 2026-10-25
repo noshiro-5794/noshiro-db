@@ -13,6 +13,8 @@ from .display import DisplayProposal
 
 def propose(bundle: dict[str, Any]) -> DisplayProposal:
     names = bundle["names"]
+    if not names:
+        raise ValueError("entity has no names to choose a title from")
     language = bundle["language"] or ""
     preferred = [item for item in names if language and item["language"] == language]
     preferred = preferred or [item for item in names if item["is_original"]]

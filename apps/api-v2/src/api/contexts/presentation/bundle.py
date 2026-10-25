@@ -48,6 +48,36 @@ SIGNAL_PREDICATES = frozenset(
 )
 
 
+async def _media(session: AsyncSession, cluster: list[str]) -> list[dict[str, Any]]:
+    rows = await fetch(
+        session,
+        current_rows(
+            table="entity_media",
+            alias="link",
+            columns="asset.id AS asset_id, asset.url, link.purpose, asset.safety,"
+            " asset.spoiler_level",
+            record="asset.provider_record_id",
+            extra_join="JOIN media_asset AS asset ON asset.id = link.asset_id",
+        )
+        + " ORDER BY link.id",
+        {"ids": cluster},
+    )
+    visible = [
+        row
+        for row in rows
+        if row.safety not in {"explicit", "suggestive"} and row.spoiler_level <= 0
+    ]
+    return [
+        {
+            "asset_id": str(row.asset_id),
+            "url": row.url,
+            "purpose": row.purpose,
+            "safety": row.safety,
+        }
+        for row in visible[:MAX_MEDIA]
+    ]
+
+
 async def _names(session: AsyncSession, cluster: list[str]) -> list[dict[str, Any]]:
     rows = await fetch(
         session,
@@ -246,7 +276,7 @@ async def build_bundle(
         "fields": await _fields(session, root),
         "credits": await _credits(session, cluster_ids),
         "relations": await _relations(session, cluster_ids),
-        "media": summary["media"][:MAX_MEDIA],
+        "media": await _media(session, cluster_ids),
     }
     canonical = json.dumps(bundle, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
     return {
