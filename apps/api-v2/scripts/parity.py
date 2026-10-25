@@ -35,6 +35,21 @@ def fetch(base_url: str, path: str, headers: dict[str, str], timeout: float) -> 
         return error.code, json.loads(body) if body else None
 
 
+def normalize(value: Any, path: str = "", unordered: frozenset[str] = frozenset()) -> Any:
+    """Sort arrays at the given paths so an unordered list compares as a set."""
+    if isinstance(value, dict):
+        return {
+            key: normalize(item, f"{path}.{key}" if path else key, unordered)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        items = [normalize(item, f"{path}[]", unordered) for item in value]
+        if path in unordered:
+            items.sort(key=lambda item: json.dumps(item, sort_keys=True, ensure_ascii=False))
+        return items
+    return value
+
+
 def _is_number(value: Any) -> bool:
     return isinstance(value, int | float) and not isinstance(value, bool)
 
@@ -83,6 +98,12 @@ def main(argv: list[str] | None = None) -> int:
         help="per-request timeout in seconds; some Django endpoints take a minute",
     )
     parser.add_argument(
+        "--unordered",
+        action="append",
+        default=[],
+        help="path whose arrays are unordered, e.g. facts[].evidence",
+    )
+    parser.add_argument(
         "--ignore",
         action="append",
         default=[],
@@ -96,6 +117,7 @@ def main(argv: list[str] | None = None) -> int:
         headers[key.strip()] = value.strip()
 
     ignore = frozenset(args.ignore)
+    unordered = frozenset(args.unordered)
     failures = 0
     for path in args.path:
         try:
@@ -109,6 +131,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"FAIL {path}: status {old_status} != {new_status}")
             failures += 1
             continue
+        expected = normalize(expected, unordered=unordered)
+        actual = normalize(actual, unordered=unordered)
         differences = list(diff(expected, actual, ignore=ignore))
         if differences:
             failures += 1

@@ -1,4 +1,4 @@
-from scripts.parity import diff
+from scripts.parity import diff, normalize
 
 
 def test_equal_documents_have_no_differences() -> None:
@@ -17,3 +17,19 @@ def test_numbers_compare_by_value_not_by_type() -> None:
 
 def test_list_length_is_reported() -> None:
     assert list(diff([1, 2], [1])) == [": length 2 != 1"]
+
+
+def test_unordered_paths_compare_as_sets() -> None:
+    old = {"facts": [{"evidence": [{"id": 1}, {"id": 2}]}]}
+    new = {"facts": [{"evidence": [{"id": 2}, {"id": 1}]}]}
+
+    assert list(diff(old, new)) != []
+    assert (
+        list(
+            diff(
+                normalize(old, unordered=frozenset({"facts[].evidence"})),
+                normalize(new, unordered=frozenset({"facts[].evidence"})),
+            )
+        )
+        == []
+    )
