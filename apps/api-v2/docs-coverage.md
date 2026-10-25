@@ -49,7 +49,7 @@ Paths omit the shared `/api/v1` prefix. `S` is a single query and a small payloa
 | `/community/me/activities/` | GET | M |
 | `/community/me/blocks/{target_user_id}/` | PUT,DELETE | M |
 | `/community/me/bookmarks/` | — | done |
-| `/community/me/bookmarks/{target_type}/{target_id}/` | PUT,DELETE | M |
+| — | — | done |
 | `/community/me/feed/` | GET | M |
 | `/community/me/mutes/{target_user_id}/` | PUT,DELETE | M |
 | `/community/me/reactions/{target_type}/{target_id}/{reaction_type}/` | PUT,DELETE | M |
