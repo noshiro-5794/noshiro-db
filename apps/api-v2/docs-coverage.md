@@ -114,12 +114,13 @@ size of 16 (max 64):
 
 - the envelope is `{next, previous, results}` — **no `count`**, unlike the
   paginated catalogue;
-- DRF encodes the cursor as base64 of `"{offset}:{reverse}"`, so it is offset
-  pagination behind a cursor: the port has to reproduce the same encoding, not
-  invent a keyset cursor, or `next` links from the old service would not resume
-  here;
-- the link carries both `cursor` and `page_size`.
+- a cursor is base64 of a query string with `o` (offset), `r` (reverse) and `p`
+  (position), where the position is `str()` of the **first ordering field** —
+  `created_at` for these endpoints — not a serialised timestamp and not a row id;
+- the query is a keyset filter on `created_at` (`<` for the forward direction)
+  with the offset handling rows that share a timestamp, and the page size is
+  fetched plus one to know whether another page exists;
+- the `next` link keeps `page_size` and replaces `cursor`.
 
-A port that treats the cursor as a keyset would answer correctly for the first
-page and diverge on the second, which is exactly the kind of difference the
-shadow runs are for.
+`apps/api-v2/src/api/shared/cursor.py` reproduces the encoding; the endpoints
+built on it still have to reproduce the filtering and the `+1` probe.
