@@ -39,7 +39,9 @@ def _is_number(value: Any) -> bool:
     return isinstance(value, int | float) and not isinstance(value, bool)
 
 
-def diff(expected: Any, actual: Any, path: str = "") -> Iterator[str]:
+def diff(
+    expected: Any, actual: Any, path: str = "", ignore: frozenset[str] = frozenset()
+) -> Iterator[str]:
     if _is_number(expected) and _is_number(actual):
         if expected != actual:
             yield f"{path}: {expected!r} != {actual!r}"
@@ -49,18 +51,20 @@ def diff(expected: Any, actual: Any, path: str = "") -> Iterator[str]:
         return
     if isinstance(expected, dict):
         for key in sorted(set(expected) | set(actual)):
+            if key in ignore:
+                continue
             if key not in actual:
                 yield f"{path}.{key}: missing in the new response"
             elif key not in expected:
                 yield f"{path}.{key}: extra in the new response"
             else:
-                yield from diff(expected[key], actual[key], f"{path}.{key}")
+                yield from diff(expected[key], actual[key], f"{path}.{key}", ignore)
         return
     if isinstance(expected, list):
         if len(expected) != len(actual):
             yield f"{path}: length {len(expected)} != {len(actual)}"
         for index, (left, right) in enumerate(zip(expected, actual, strict=False)):
-            yield from diff(left, right, f"{path}[{index}]")
+            yield from diff(left, right, f"{path}[{index}]", ignore)
         return
     if expected != actual:
         yield f"{path}: {expected!r} != {actual!r}"
@@ -72,6 +76,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--new", required=True, help="replacement base URL")
     parser.add_argument("--path", action="append", required=True)
     parser.add_argument("--header", action="append", default=[], metavar="KEY: VALUE")
+    parser.add_argument(
+        "--ignore",
+        action="append",
+        default=[],
+        help="field name to skip anywhere in the document (e.g. a random trace id)",
+    )
     args = parser.parse_args(argv)
 
     headers = dict(DEFAULT_HEADERS)
@@ -79,6 +89,7 @@ def main(argv: list[str] | None = None) -> int:
         key, _, value = header.partition(":")
         headers[key.strip()] = value.strip()
 
+    ignore = frozenset(args.ignore)
     failures = 0
     for path in args.path:
         try:
@@ -88,7 +99,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"FAIL {path}: {error}")
             failures += 1
             continue
-        differences = list(diff(expected, actual))
+        differences = list(diff(expected, actual, ignore=ignore))
         if differences:
             failures += 1
             print(f"FAIL {path}")
