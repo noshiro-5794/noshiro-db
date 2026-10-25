@@ -3,9 +3,11 @@
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Request
+from fastapi.responses import JSONResponse
 
 from api.contexts.access.dependencies import current_user
 from api.contexts.library.entries import (
+    create_entry,
     delete_entry,
     get_entry,
     list_entries,
@@ -84,3 +86,18 @@ async def update_entry(
         raise ProblemError(
             status_code=400, detail="Request validation failed.", errors=error.args[0]
         ) from error
+
+
+@router.post("/me/library/entries/")
+async def add_entry(
+    body: dict[str, Any],
+    session: SessionDep,
+    user: Annotated[Any, Depends(current_user)],
+) -> JSONResponse:
+    try:
+        data, created = await create_entry(session, user_id=user.id, values=dict(body))
+    except ValueError as error:
+        raise ProblemError(
+            status_code=400, detail="Request validation failed.", errors=error.args[0]
+        ) from error
+    return JSONResponse(data, status_code=201 if created else 200)

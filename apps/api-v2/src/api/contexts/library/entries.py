@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -284,3 +285,71 @@ async def patch_entry(
         )
         await session.commit()
     return await get_entry(session, user_id=user_id, entry_id=entry_id)
+
+
+REQUIRED = "entity_id and status are required."
+NOT_A_WORK = "A current Work entity is required."
+
+
+async def create_entry(
+    session: AsyncSession, *, user_id: int, values: dict[str, Any]
+) -> tuple[dict[str, Any], bool]:
+    raw_id = values.pop("entity_id", None)
+    if raw_id is None or "status" not in values:
+        raise ValueError({"entity_id": [REQUIRED]})
+    columns, errors = validate(values, _Blank())
+    if errors:
+        raise ValueError(errors)
+    try:
+        wanted = UUID(str(raw_id))
+    except ValueError as error:
+        raise ValueError({"entity_id": [NOT_A_WORK]}) from error
+    rows = await fetch(
+        session,
+        "SELECT id, kind, lifecycle FROM entity WHERE id = CAST(:id AS uuid)",
+        {"id": str(wanted)},
+    )
+    if not rows:
+        raise ValueError({"entity_id": [NOT_A_WORK]})
+    root = await resolve(session, wanted) or wanted
+    resolved = [row for row in rows if row.id == root]
+    if not resolved or resolved[0].kind != "work" or resolved[0].lifecycle != "active":
+        raise ValueError({"entity_id": [NOT_A_WORK]})
+    cluster = await cluster_ids(session, root)
+    existing = await fetch(
+        session,
+        f"SELECT {ENTRY_COLUMNS} FROM user_library_entry AS entry"
+        " WHERE entry.user_id = :user_id"
+        " AND entry.entity_id = ANY(CAST(:ids AS uuid[]))"
+        " ORDER BY entry.id LIMIT 1 FOR UPDATE",
+        {"user_id": user_id, "ids": [str(value) for value in cluster]},
+    )
+    if existing:
+        assignments = ", ".join(f"{name} = :{name}" for name in columns)
+        if assignments:
+            await fetch(
+                session,
+                f"UPDATE user_library_entry SET {assignments}, updated_at = now()"
+                " WHERE id = :entry_id RETURNING id",
+                {**columns, "entry_id": existing[0].id},
+            )
+        await session.commit()
+        return await get_entry(session, user_id=user_id, entry_id=existing[0].id), False
+    fields = {"user_id": user_id, "entity_id": root, **columns}
+    names = ", ".join(fields)
+    placeholders = ", ".join(f":{name}" for name in fields)
+    inserted = await fetch(
+        session,
+        f"INSERT INTO user_library_entry ({names}, created_at, updated_at)"
+        f" VALUES ({placeholders}, now(), now()) RETURNING id",
+        fields,
+    )
+    await session.commit()
+    return await get_entry(session, user_id=user_id, entry_id=inserted[0].id), True
+
+
+class _Blank:
+    """The patch validator reads the current row for the date pair; a new entry has none."""
+
+    watch_start_date = None
+    watch_end_date = None
