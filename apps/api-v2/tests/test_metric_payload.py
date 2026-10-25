@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from decimal import Decimal
 
-from noshiro.contexts.signal.domain import MetricRow
+from api.contexts.signal.domain import MetricRow
 
 
 def test_value_is_a_number_like_drf_renders_it() -> None:

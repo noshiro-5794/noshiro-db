@@ -35,6 +35,6 @@ tests/
 
 ```
 uv sync
-uv run uvicorn noshiro.main:app --reload --port 8009
+uv run uvicorn api.main:app --reload --port 8009
 uv run pytest
 ```
