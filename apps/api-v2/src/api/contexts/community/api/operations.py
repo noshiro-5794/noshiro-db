@@ -9,6 +9,7 @@ from api.contexts.community.campaigns import (
     campaign,
     campaign_claims,
     campaign_items,
+    list_campaigns,
     summary,
 )
 from api.contexts.community.import_jobs import import_job
@@ -108,3 +109,13 @@ async def sync_campaign_claims(
         page=page,
         page_size=page_size,
     )
+
+
+@router.get("/sync/")
+async def sync_campaigns(
+    session: SessionDep,
+    user: Annotated[Any, Depends(staff_user)],
+    provider: str = "",
+    status: str = "",
+) -> list[dict[str, Any]]:
+    return await list_campaigns(session, provider=provider, status=status)
