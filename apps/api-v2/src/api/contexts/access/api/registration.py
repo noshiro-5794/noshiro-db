@@ -161,3 +161,87 @@ async def register(body: dict[str, Any], session: SessionDep) -> JSONResponse:
         samesite=settings.refresh_cookie_samesite,
     )
     return response
+
+
+@router.post("/sessions/code/")
+async def code_login(body: dict[str, Any], session: SessionDep) -> JSONResponse:
+    from api.contexts.presentation.fragments import fetch
+
+    email = str(body.get("email", "")).strip().lower()
+    code = body.get("code")
+    if not EMAIL_RE.match(email) or not isinstance(code, str) or not CODE_RE.match(code):
+        raise ProblemError(
+            status_code=400,
+            detail="Request validation failed.",
+            errors={"code": ["This value does not match the required pattern."]},
+        )
+    await _verify(session, email=email, purpose="login", code=code)
+    rows = await fetch(
+        session,
+        'SELECT id, password, is_active FROM "user" WHERE lower(email) = :email',
+        {"email": email},
+    )
+    if not rows or not rows[0].is_active:
+        raise ProblemError(
+            status_code=401, detail="Invalid credentials.", code="users.invalid_credentials"
+        )
+    user = rows[0]
+    await fetch(
+        session,
+        "UPDATE email_verification SET is_used = true WHERE lower(email) = :email"
+        " AND purpose = 'login' AND NOT is_used RETURNING id",
+        {"email": email},
+    )
+    await session.commit()
+    access, refresh = create_tokens(
+        user_id=user.id,
+        password_hash=user.password,
+        secret=settings.jwt_secret,
+        access_seconds=settings.access_token_seconds,
+        refresh_seconds=settings.refresh_token_seconds,
+    )
+    response = JSONResponse({"access": access})
+    response.set_cookie(
+        key=settings.refresh_cookie_name,
+        value=refresh,
+        max_age=settings.refresh_token_seconds,
+        path=settings.refresh_cookie_path,
+        secure=settings.refresh_cookie_secure,
+        httponly=True,
+        samesite=settings.refresh_cookie_samesite,
+    )
+    return response
+
+
+@router.post("/password-resets/", status_code=204)
+async def reset_password(body: dict[str, Any], session: SessionDep) -> None:
+    from api.contexts.presentation.fragments import fetch
+
+    email = str(body.get("email", "")).strip().lower()
+    code = body.get("code")
+    new_password = body.get("new_password")
+    errors: dict[str, list[str]] = {}
+    if not EMAIL_RE.match(email):
+        errors["email"] = ["Enter a valid email address."]
+    if not isinstance(code, str) or not CODE_RE.match(code):
+        errors["code"] = ["This value does not match the required pattern."]
+    if not isinstance(new_password, str) or len(new_password) < 8:
+        errors["new_password"] = [
+            "This password is too short. It must contain at least 8 characters."
+        ]
+    if errors:
+        raise ProblemError(status_code=400, detail="Request validation failed.", errors=errors)
+    await _verify(session, email=email, purpose="reset_password", code=str(code))
+    await fetch(
+        session,
+        'UPDATE "user" SET password = :password WHERE lower(email) = :email RETURNING id',
+        {"password": hash_password(str(new_password)), "email": email},
+    )
+    await fetch(
+        session,
+        "UPDATE email_verification SET is_used = true"
+        " WHERE lower(email) = :email AND purpose = 'reset_password' AND NOT is_used"
+        " RETURNING id",
+        {"email": email},
+    )
+    await session.commit()
