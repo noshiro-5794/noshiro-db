@@ -118,4 +118,18 @@ Put the upstream back to `127.0.0.1:8008`. That is the whole of it:
 
 - The proxy change itself (1Panel-managed; I could not read its configuration).
 - The GitHub sign-in end to end (no OAuth client configured in this environment).
-- The new service under real traffic: every check so far was one request at a time.
+- Real traffic beyond a handful of connections.
+
+  One measurement exists: five concurrent clients, forty to fifty requests against
+  `/api/v1/community/posts/`, every response 200.
+
+  | | p50 | p95 | max |
+  |---|---|---|---|
+  | Django | 14–22 ms | **24–30 s** | 30 s |
+  | replacement | 7–12 ms | 10–13 ms | 14 ms |
+
+  Reproduced in three consecutive runs: roughly one request in twenty hangs for half a
+  minute on the old service, while the replacement stays flat. The cause on the Django
+  side was not investigated — only the symptom was measured. The first attempt at this
+  measured nothing at all: it left out `X-Forwarded-Proto: https`, so Django answered
+  301 and the client waited on a TLS handshake it could never finish.
