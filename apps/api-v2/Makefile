@@ -7,12 +7,12 @@ sync:
 	$(UV) sync
 
 lint:
-	$(RUN) ruff check src tests
-	$(RUN) ruff format --check src tests
+	$(RUN) ruff check api tests
+	$(RUN) ruff format --check api tests
 
 format:
-	$(RUN) ruff check --fix src tests
-	$(RUN) ruff format src tests
+	$(RUN) ruff check --fix api tests
+	$(RUN) ruff format api tests
 
 type:
 	$(RUN) mypy

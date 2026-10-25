@@ -23,7 +23,7 @@ path says "v2".
 ## Layout
 
 ```
-src/api/
+api/
   config.py            settings (pydantic-settings)
   db.py                async engine and session factory
   contexts/
