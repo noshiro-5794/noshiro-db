@@ -24,11 +24,11 @@ from typing import Any
 DEFAULT_HEADERS = {"Accept": "application/json", "X-Forwarded-Proto": "https"}
 
 
-def fetch(base_url: str, path: str, headers: dict[str, str]) -> tuple[int, Any]:
+def fetch(base_url: str, path: str, headers: dict[str, str], timeout: float) -> tuple[int, Any]:
     """Return the status code and the decoded body; 4xx/5xx are comparable too."""
     request = urllib.request.Request(base_url.rstrip("/") + path, headers=headers)
     try:
-        with urllib.request.urlopen(request, timeout=30) as response:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
             return response.status, json.loads(response.read() or b"null")
     except urllib.error.HTTPError as error:
         body = error.read()
@@ -93,8 +93,8 @@ def main(argv: list[str] | None = None) -> int:
     failures = 0
     for path in args.path:
         try:
-            old_status, expected = fetch(args.old, path, headers)
-            new_status, actual = fetch(args.new, path, headers)
+            old_status, expected = fetch(args.old, path, headers, args.timeout)
+            new_status, actual = fetch(args.new, path, headers, args.timeout)
         except Exception as error:
             print(f"FAIL {path}: {error}")
             failures += 1
