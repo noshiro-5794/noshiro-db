@@ -9,6 +9,7 @@ from api.contexts.community.bookmarks import (
     remove_bookmark,
     set_bookmark,
 )
+from api.contexts.community.reactions import remove_reaction, set_reaction
 from api.contexts.community.relationships import (
     block_user,
     follow_user,
@@ -286,3 +287,49 @@ async def unbookmark(
         )
     except (KeyError, LookupError) as error:
         raise ProblemError(status_code=404, detail="Bookmark not found.") from error
+
+
+@router.put("/me/reactions/{target_type}/{target_id}/{reaction_type}/")
+async def react(
+    target_type: str,
+    target_id: int,
+    reaction_type: str,
+    session: SessionDep,
+    user: Annotated[Any, Depends(current_user)],
+) -> JSONResponse:
+    try:
+        data, created = await set_reaction(
+            session,
+            user_id=user.id,
+            target_type=target_type,
+            target_id=target_id,
+            reaction_type=reaction_type,
+        )
+    except FileNotFoundError as error:
+        raise ProblemError(
+            status_code=404,
+            detail="Community target not found.",
+            code="community.target_not_found",
+        ) from error
+    except ValueError as error:
+        raise ProblemError(
+            status_code=400, detail="Request validation failed.", errors=error.args[0]
+        ) from error
+    return JSONResponse(data, status_code=201 if created else 200)
+
+
+@router.delete("/me/reactions/{target_type}/{target_id}/{reaction_type}/", status_code=204)
+async def unreact(
+    target_type: str,
+    target_id: int,
+    reaction_type: str,
+    session: SessionDep,
+    user: Annotated[Any, Depends(current_user)],
+) -> None:
+    await remove_reaction(
+        session,
+        user_id=user.id,
+        target_type=target_type,
+        target_id=target_id,
+        reaction_type=reaction_type,
+    )
