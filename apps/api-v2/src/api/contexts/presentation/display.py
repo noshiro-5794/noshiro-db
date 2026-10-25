@@ -185,6 +185,7 @@ async def activate(
         WHERE entity_id = CAST(:entity AS uuid)
           AND language = :language
           AND state = 'active'
+        RETURNING id
         """,
         {"entity": str(entity_id), "language": language},
     )
