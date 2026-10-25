@@ -33,3 +33,19 @@ def test_unordered_paths_compare_as_sets() -> None:
         )
         == []
     )
+
+
+def test_root_array_can_be_declared_unordered() -> None:
+    old = [{"id": 1}, {"id": 2}]
+    new = [{"id": 2}, {"id": 1}]
+
+    assert list(diff(old, new)) != []
+    assert (
+        list(
+            diff(
+                normalize(old, unordered=frozenset({"$"})),
+                normalize(new, unordered=frozenset({"$"})),
+            )
+        )
+        == []
+    )

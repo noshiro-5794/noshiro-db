@@ -44,7 +44,8 @@ def normalize(value: Any, path: str = "", unordered: frozenset[str] = frozenset(
         }
     if isinstance(value, list):
         items = [normalize(item, f"{path}[]", unordered) for item in value]
-        if path in unordered:
+        is_root = path == ""
+        if path in unordered or (is_root and "$" in unordered):
             items.sort(key=lambda item: json.dumps(item, sort_keys=True, ensure_ascii=False))
         return items
     return value
@@ -101,7 +102,7 @@ def main(argv: list[str] | None = None) -> int:
         "--unordered",
         action="append",
         default=[],
-        help="path whose arrays are unordered, e.g. facts[].evidence",
+        help="path whose arrays are unordered, e.g. facts[].evidence or $ for the root array",
     )
     parser.add_argument(
         "--ignore",
