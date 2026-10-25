@@ -21,4 +21,8 @@ async def import_job_detail(
     try:
         return await import_job(session, job_id=job_id)
     except LookupError as error:
-        raise ProblemError(status_code=404, detail="Import job not found.") from error
+        raise ProblemError(
+            status_code=404,
+            detail="Synchronization job not found.",
+            code="sync.job_not_found",
+        ) from error
