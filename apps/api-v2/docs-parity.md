@@ -19,6 +19,7 @@ is `scripts/parity.py`; it compares status codes, then the document structurally
 | 2026-10-25 | `GET /api/v1/index/entities/{id}/characters/` (pages 1 and 2) | 3 entities | **OK** — `next`/`previous` ignored, they carry each host |
 | 2026-10-25 | `GET /api/v1/index/entities/{id}/episodes/` (pages 1, 2, custom size, past last) | 4 entities | **OK** |
 | 2026-10-25 | `GET /api/v1/index/entities/` — default, page 2, collection, query, scope=all, popular, subject type, nsfw | 8 variants | **OK** |
+| 2026-10-25 | `GET /api/v1/index/entities/{id}/evidence/` | 3 entities | **OK** — compared as a set (`--unordered $`) |
 
 Reproduce against the two services sharing a database:
 
@@ -74,6 +75,9 @@ Two divergences were found by this comparison and fixed or recorded:
 12. **Currency is decided by the row's own observation.** `CURRENT` first read
    `record.status` and the provider policy through the provenance join, which for
    a cover is the asset's record; Django reads them from the observation's record.
-13. **`value` type.** The OpenAPI snapshot says string, the Django response sends
+13. **Bare lists have no order.** `evidence` returns a list with no `ORDER BY`, so
+   Django's order is the table's physical order; this service orders by id and
+   the comparison sorts the root array (`--unordered $`).
+14. **`value` type.** The OpenAPI snapshot says string, the Django response sends
    a number. Parity copies the response; the disagreement is recorded in
    `contexts/signal/domain.py` for a deliberate fix on both sides.
