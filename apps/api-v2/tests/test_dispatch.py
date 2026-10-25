@@ -46,3 +46,12 @@ def test_without_a_broker_nothing_is_published() -> None:
     app = FakeApp()
     assert dispatch.publish(dispatch.SYNC_TASK, {}, sender=app) is None
     assert app.calls == []
+
+
+def test_a_campaign_publishes_with_its_id() -> None:
+    app = FakeApp()
+    kwargs = dispatch.sync_kwargs(campaign_id="c-1")
+    assert dispatch.publish(dispatch.SYNC_TASK, kwargs, sender=app) == "task-1"
+    assert app.calls == [
+        ("apps.sync.tasks.campaign.run_sync_campaign_task", {"campaign_id": "c-1"})
+    ]

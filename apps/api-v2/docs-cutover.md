@@ -24,7 +24,7 @@ keeps the task id. Three tests pin the name, the arguments and the no-broker pat
 
 What is **not** done: the broker is unreachable in this environment — the old service
 answers 503 here for the same reason — so the round trip has never been observed. Sync
-campaigns still do not publish at all.
+campaigns publish the same way now, with their own task name and a test.
 
 ### 2. GitHub sign-in still needs Django's signer and its cache
 

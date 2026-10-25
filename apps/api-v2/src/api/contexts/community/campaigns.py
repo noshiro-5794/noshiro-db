@@ -7,6 +7,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.presentation.fragments import fetch, isoformat
+from api.shared.dispatch import SYNC_TASK, publish, sync_kwargs
 
 QUERY = """
     SELECT campaign.id, campaign.provider_slug, campaign.campaign_type,
@@ -352,5 +353,7 @@ async def create_campaign(session: AsyncSession, *, body: dict[str, Any]) -> dic
             "key": key,
         },
     )
+    campaign_id = str(rows[0].id)
+    publish(SYNC_TASK, sync_kwargs(campaign_id=campaign_id))
     await session.commit()
-    return await campaign(session, campaign_id=str(rows[0].id))
+    return await campaign(session, campaign_id=campaign_id)
