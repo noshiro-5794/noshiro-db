@@ -32,11 +32,11 @@ async def _sql(dsn: str, statement: str) -> list[dict[str, Any]]:
     return [dict(row) for row in rows]
 
 
-def _run(statement: str) -> list[dict[str, Any]]:
+def _dsn() -> str:
     dsn = os.environ.get("DATABASE_URL", "")
     if not dsn:
         raise SystemExit("DATABASE_URL is required")
-    return asyncio.run(_sql(dsn, statement))
+    return dsn
 
 
 async def _call(
@@ -53,13 +53,15 @@ async def run(args: argparse.Namespace) -> int:
         key, _, value = header.partition(":")
         headers[key.strip()] = value.strip()
 
+    dsn = _dsn()
     results = {}
     for name, base in (("old", args.old), ("new", args.new)):
-        _run(args.cleanup)
-        _run(args.setup)
+        await _sql(dsn, args.cleanup)
+        await _sql(dsn, args.setup)
         status, body = await _call(base, args.path, headers, args.timeout, args.method, args.body)
-        results[name] = {"status": status, "body": body, "state": _run(args.snapshot)}
-        _run(args.cleanup)
+        state = await _sql(dsn, args.snapshot)
+        results[name] = {"status": status, "body": body, "state": state}
+        await _sql(dsn, args.cleanup)
 
     differences = list(
         diff(
