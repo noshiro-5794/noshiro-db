@@ -619,7 +619,7 @@ async def add_post_comment(
     except LookupError as error:
         raise ProblemError(
             status_code=404,
-            detail="Comment not found.",
+            detail="Community comment not found.",
             code="community.comment_not_found",
         ) from error
     except ValueError as error:
@@ -641,7 +641,7 @@ async def patch_comment(
     except LookupError as error:
         raise ProblemError(
             status_code=404,
-            detail="Comment not found.",
+            detail="Community comment not found.",
             code="community.comment_not_found",
         ) from error
     except PermissionError as error:
@@ -673,7 +673,7 @@ async def remove_comment(
     except LookupError as error:
         raise ProblemError(
             status_code=404,
-            detail="Comment not found.",
+            detail="Community comment not found.",
             code="community.comment_not_found",
         ) from error
     except PermissionError as error:
