@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Header, Request
 
 from api.contexts.identity.resolution import cluster_ids, is_active, is_public, resolve
+from api.contexts.presentation.catalogue import entity_page
 from api.contexts.presentation.characters import character_page
 from api.contexts.presentation.credits import entity_credits
 from api.contexts.presentation.detail import entity_detail
@@ -38,6 +39,35 @@ async def _public_cluster(session: SessionDep, raw: str) -> tuple[UUID, list[str
     if not await is_public(session, ids):
         raise ProblemError(status_code=404, detail=NOT_FOUND)
     return root, [str(value) for value in ids]
+
+
+@router.get("/entities/")
+async def catalogue(
+    session: SessionDep,
+    request: Request,
+    accept_language: Annotated[str | None, Header()] = None,
+    query: str = "",
+    collection: str = "",
+    scope: str = "index",
+    subject_type: str = "",
+    ordering: str = "",
+    nsfw: bool = False,
+) -> dict[str, Any]:
+    page, page_size = page_params(request)
+    total, results = await entity_page(
+        session,
+        keyword=query.strip(),
+        scope=scope,
+        collection=collection,
+        subject_type=subject_type,
+        safe_only=not nsfw,
+        ordering=ordering,
+        language=(accept_language or "").split(",", 1)[0],
+        page=page,
+        page_size=page_size,
+    )
+    ensure_page(page, page_size, total)
+    return page_payload(request, count=total, results=results, page=page, page_size=page_size)
 
 
 @router.get("/entities/{entity_id}/")
