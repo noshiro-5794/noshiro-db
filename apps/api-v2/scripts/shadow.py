@@ -24,7 +24,7 @@ from scripts.parity import DEFAULT_HEADERS, diff, fetch, normalize
 # (suffix, ordered) — `ordered=False` means Django returns the list without an
 # ORDER BY, so the comparison sorts it before diffing.
 ENDPOINTS: tuple[tuple[str, bool], ...] = (
-    ("", True),
+    ("/", True),
     ("/metrics/", True),
     ("/characters/?page_size=8", True),
     ("/episodes/?page_size=8", True),
