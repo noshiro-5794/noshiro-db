@@ -16,7 +16,6 @@ from api.contexts.community.comments import (
     moderate_comment,
     update_comment,
 )
-from api.contexts.community.import_jobs import import_job
 from api.contexts.community.posts import (
     create_post,
     delete_post,
@@ -749,15 +748,3 @@ async def resolve(
         raise ProblemError(
             status_code=400, detail="Request validation failed.", errors=error.args[0]
         ) from error
-
-
-@router.get("/operations/import-jobs/{job_id}/")
-async def import_job_detail(
-    job_id: str,
-    session: SessionDep,
-    user: Annotated[Any, Depends(staff_user)],
-) -> dict[str, Any]:
-    try:
-        return await import_job(session, job_id=job_id)
-    except LookupError as error:
-        raise ProblemError(status_code=404, detail="Import job not found.") from error
