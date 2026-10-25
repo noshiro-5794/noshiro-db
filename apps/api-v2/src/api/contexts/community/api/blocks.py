@@ -9,7 +9,13 @@ from api.contexts.community.bookmarks import (
     remove_bookmark,
     set_bookmark,
 )
-from api.contexts.community.posts import create_post, list_posts, public_post
+from api.contexts.community.posts import (
+    create_post,
+    delete_post,
+    list_posts,
+    public_post,
+    update_post,
+)
 from api.contexts.community.reactions import remove_reaction, set_reaction
 from api.contexts.community.relationships import (
     block_user,
@@ -503,6 +509,55 @@ async def post_detail(
 ) -> dict[str, Any]:
     try:
         return await public_post(session, viewer_id=viewer.id if viewer else 0, post_id=post_id)
+    except LookupError as error:
+        raise ProblemError(
+            status_code=404,
+            detail="Community post not found.",
+            code="community.post_not_found",
+        ) from error
+
+
+@router.patch("/posts/{post_id}/")
+async def patch_post(
+    post_id: int,
+    body: dict[str, Any],
+    session: SessionDep,
+    user: Annotated[Any, Depends(current_user)],
+) -> dict[str, Any]:
+    try:
+        return await update_post(session, user_id=user.id, post_id=post_id, body=body)
+    except LookupError as error:
+        raise ProblemError(
+            status_code=404,
+            detail="Community post not found.",
+            code="community.post_not_found",
+        ) from error
+    except PermissionError as error:
+        raise ProblemError(
+            status_code=409,
+            detail="The community target is locked.",
+            code="community.target_locked",
+        ) from error
+    except KeyError as error:
+        raise ProblemError(
+            status_code=400,
+            detail="Request validation failed.",
+            errors={"non_field_errors": ["No fields to update."]},
+        ) from error
+    except ValueError as error:
+        raise ProblemError(
+            status_code=400, detail="Request validation failed.", errors=error.args[0]
+        ) from error
+
+
+@router.delete("/posts/{post_id}/", status_code=204)
+async def remove_post(
+    post_id: int,
+    session: SessionDep,
+    user: Annotated[Any, Depends(current_user)],
+) -> None:
+    try:
+        await delete_post(session, user_id=user.id, post_id=post_id)
     except LookupError as error:
         raise ProblemError(
             status_code=404,

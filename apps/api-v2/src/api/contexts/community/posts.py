@@ -240,3 +240,71 @@ async def public_post(session: AsyncSession, *, viewer_id: int, post_id: int) ->
     if not rows:
         raise LookupError(post_id)
     return await post_payload(session, rows[0])
+
+
+async def _mine(session: AsyncSession, user_id: int, post_id: int) -> Any:
+    rows = await fetch(
+        session,
+        "SELECT id, is_locked, feed_policy FROM community_post"
+        " WHERE id = :id AND author_id = :author",
+        {"id": post_id, "author": user_id},
+    )
+    if not rows:
+        raise LookupError(post_id)
+    return rows[0]
+
+
+async def update_post(
+    session: AsyncSession, *, user_id: int, post_id: int, body: dict[str, Any]
+) -> dict[str, Any]:
+    row = await _mine(session, user_id, post_id)
+    if row.is_locked or row.feed_policy == "hidden":
+        raise PermissionError(post_id)
+    errors: dict[str, list[str]] = {}
+    sets: list[str] = []
+    params: dict[str, Any] = {"id": post_id}
+    if "content" in body:
+        content = body["content"]
+        if not isinstance(content, str):
+            errors["content"] = ["Not a valid string."]
+        elif not content.strip():
+            errors["content"] = [BLANK]
+        elif len(content) > 10000:
+            errors["content"] = ["Ensure this field has no more than 10000 characters."]
+        else:
+            sets.append("content = :content")
+            params["content"] = content
+    if "visibility" in body:
+        visibility = body["visibility"]
+        if visibility not in VISIBILITIES:
+            errors["visibility"] = [f'"{visibility}" is not a valid choice.']
+        else:
+            sets.append("visibility = :visibility")
+            params["visibility"] = visibility
+    for name in ("is_spoiler", "is_nsfw"):
+        if name in body:
+            sets.append(f"{name} = :{name}")
+            params[name] = bool(body[name])
+    if errors:
+        raise ValueError(errors)
+    if not sets:
+        raise KeyError("no fields")
+    await fetch(
+        session,
+        "UPDATE community_post SET " + ", ".join(sets) + ", updated_at = now()"
+        " WHERE id = :id RETURNING id",
+        params,
+    )
+    await session.commit()
+    return await post_by_id(session, viewer_id=user_id, post_id=post_id)
+
+
+async def delete_post(session: AsyncSession, *, user_id: int, post_id: int) -> None:
+    await _mine(session, user_id, post_id)
+    await fetch(
+        session,
+        "DELETE FROM community_activity WHERE post_id = :id RETURNING id",
+        {"id": post_id},
+    )
+    await fetch(session, "DELETE FROM community_post WHERE id = :id RETURNING id", {"id": post_id})
+    await session.commit()
