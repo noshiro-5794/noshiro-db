@@ -93,10 +93,14 @@ def main(argv: list[str] | None = None) -> int:
     failures = 0
     for path in args.path:
         try:
-            expected = fetch(args.old, path, headers)
-            actual = fetch(args.new, path, headers)
+            old_status, expected = fetch(args.old, path, headers)
+            new_status, actual = fetch(args.new, path, headers)
         except Exception as error:
             print(f"FAIL {path}: {error}")
+            failures += 1
+            continue
+        if old_status != new_status:
+            print(f"FAIL {path}: status {old_status} != {new_status}")
             failures += 1
             continue
         differences = list(diff(expected, actual, ignore=ignore))
