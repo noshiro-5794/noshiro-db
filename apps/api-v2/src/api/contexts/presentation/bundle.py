@@ -152,7 +152,7 @@ async def _fields(session: AsyncSession, root: UUID) -> list[dict[str, Any]]:
                 continue
             bucket.append(
                 {
-                    "fact_id": rival.id,
+                    "fact_id": str(rival.id),
                     "value": rival.value,
                     "language": rival.language,
                     "confidence": float(rival.confidence),
@@ -162,7 +162,7 @@ async def _fields(session: AsyncSession, root: UUID) -> list[dict[str, Any]]:
         {
             "predicate": row.slug,
             "language": row.language,
-            "fact_id": row.id,
+            "fact_id": str(row.id),
             "value": row.value,
             "confidence": float(row.confidence),
             "alternates": alternates.get(row.predicate_id, []),
