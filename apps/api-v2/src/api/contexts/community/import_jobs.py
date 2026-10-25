@@ -16,10 +16,12 @@ QUERY = """
 """
 
 
-def _provider(job_type: str | None) -> str:
-    if not job_type:
-        return "unknown"
-    return job_type.replace("_import", "")
+PROVIDERS = {"vndb_import": "vndb", "anilist_import": "anilist"}
+
+
+def _provider(job_type: str | None) -> str | None:
+    """None when no import provider is registered for the job type."""
+    return PROVIDERS.get(job_type or "")
 
 
 def _params(value: Any) -> dict[str, Any]:
@@ -31,10 +33,13 @@ async def import_job(session: AsyncSession, *, job_id: str) -> dict[str, Any]:
     if not rows:
         raise LookupError(job_id)
     row = rows[0]
+    provider = _provider(row.job_type)
+    if provider is None:
+        raise KeyError(row.job_type)
     parameters = _params(row.parameters)
     return {
         "id": str(row.id),
-        "provider": _provider(row.job_type),
+        "provider": provider,
         "external_id": parameters.get("external_id"),
         "status": row.status,
         "parameters": parameters,

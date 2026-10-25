@@ -20,6 +20,8 @@ async def import_job_detail(
 ) -> dict[str, Any]:
     try:
         return await import_job(session, job_id=job_id)
+    except KeyError as error:
+        raise ProblemError(status_code=404, detail="Import job not found.") from error
     except LookupError as error:
         raise ProblemError(
             status_code=404,
