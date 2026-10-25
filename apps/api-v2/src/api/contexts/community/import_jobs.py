@@ -155,8 +155,9 @@ async def create_import_job(
         include_related = True
     rows = await fetch(
         session,
-        "INSERT INTO sync_job (id, job_type, parameters, status, created_at)"
-        " VALUES (:id, :job_type, CAST(:parameters AS jsonb), 'queued', now())"
+        "INSERT INTO sync_job (id, job_type, parameters, status, celery_task_id,"
+        " created_at) VALUES (:id, :job_type, CAST(:parameters AS jsonb), 'queued',
+        '', now())"
         " RETURNING id",
         {
             "id": str(uuid.uuid4()),
