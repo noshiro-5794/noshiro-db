@@ -117,6 +117,7 @@ uv run python -m scripts.state_parity --old ... --new ... \
 | 2026-10-25 | `GET /api/v1/operations/sync/` — the whole list | 1 | **OK** once `eta_seconds` and the throughput are ignored: both are derived from the moment the request is served |
 | 2026-10-25 | `GET /api/v1/operations/matching/candidates/` — by status | 2 | **OK** — the evidence count and the latest proposal |
 | 2026-10-25 | `GET /api/v1/operations/import-jobs/` | 1 | **OK** — the vndb jobs, cursor-paginated |
+| 2026-10-25 | dispatch: a task published by this service | 1 | **OK** — consumed by the Django worker on the `sync` queue |
 | 2026-10-26 | twelve signed-in paths in one sweep (profile, stats, settings, tags, entries, collections, notifications, unread count, activities, blocks, bookmarks, feed) | 12 | **all OK** — a later re-run of the read surface |
 | 2026-10-25 | `POST /api/v1/operations/import-jobs/` — a bad external id | 1 | **OK** — the same field error |
 | 2026-10-25 | `POST /api/v1/operations/import-jobs/` — a valid one | 1 | **deliberate gap**: the port writes the row and answers 202 but does not dispatch; the old service answers 503 here because its worker is unreachable, so its success path cannot be compared in this environment |
