@@ -14,6 +14,7 @@ from api.contexts.community.relationships import (
     unblock_user,
     unfollow_user,
 )
+from api.contexts.community.reports import list_my_reports
 from api.contexts.presentation.fragments import fetch
 from api.db import SessionDep
 from api.shared.pagination import ensure_page, page_params, page_payload
@@ -168,5 +169,17 @@ async def public_following(user_id: int, session: SessionDep, request: Request) 
     await _ensure_user(session, user_id)
     page, page_size = page_params(request)
     total, results = await list_following(session, user_id=user_id, page=page, page_size=page_size)
+    ensure_page(page, page_size, total)
+    return page_payload(request, count=total, results=results, page=page, page_size=page_size)
+
+
+@router.get("/me/reports/")
+async def my_reports(
+    session: SessionDep,
+    request: Request,
+    user: Annotated[Any, Depends(current_user)],
+) -> dict[str, Any]:
+    page, page_size = page_params(request)
+    total, results = await list_my_reports(session, user_id=user.id, page=page, page_size=page_size)
     ensure_page(page, page_size, total)
     return page_payload(request, count=total, results=results, page=page, page_size=page_size)
