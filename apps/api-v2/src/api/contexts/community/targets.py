@@ -82,3 +82,45 @@ def first_target(row: Any) -> dict[str, Any] | None:
         if target is not None:
             return target
     return activity_target(row)
+
+
+def post_summary(row: Any, entity: dict[str, Any] | None) -> dict[str, Any] | None:
+    if row.post_id is None:
+        return None
+    first = (row.post_content or "").splitlines()
+    return {
+        "type": "post",
+        "id": row.post_id,
+        "title": first[0][:96] if first else "",
+        "entity": entity,
+        "author": person(row.author_id, row.author_nickname, row.author_avatar),
+        "created_at": row.post_created_at,
+    }
+
+
+def review_summary(row: Any, entity: dict[str, Any] | None) -> dict[str, Any] | None:
+    if row.review_id is None:
+        return None
+    return {
+        "type": "review",
+        "id": row.review_id,
+        "title": row.review_title,
+        "body": (row.review_content or "")[:240],
+        "entity": entity,
+        "author": person(row.author_id, row.author_nickname, row.author_avatar),
+        "is_spoiler": row.review_is_spoiler,
+        "created_at": row.review_created_at,
+    }
+
+
+def collection_summary(row: Any) -> dict[str, Any] | None:
+    if row.collection_id is None:
+        return None
+    return {
+        "type": "collection",
+        "id": row.collection_id,
+        "title": row.collection_name,
+        "body": (row.collection_note or "")[:240],
+        "author": person(row.author_id, row.author_nickname, row.author_avatar),
+        "simple_rating": row.collection_simple_rating,
+    }
