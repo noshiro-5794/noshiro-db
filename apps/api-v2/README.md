@@ -23,13 +23,30 @@ path says "v2".
 ## Layout
 
 ```
-noshiro/
+src/api/
+  main.py              app factory; mounts context routers
   config.py            settings (pydantic-settings)
-  db.py                async engine and session factory
+  db.py                async engine, session factory, SessionDep
+  shared/problems.py   RFC 9457 error envelope
   contexts/
-    presentation/api/  read models and routers for the public catalogue
-tests/
+    identity/          redirect resolution: which entity a request means
+    presentation/      read models for the public catalogue
+      detail.py
+      api/             one module per group of routes
+    signal/            internal metrics (never rendered)
+      domain.py infrastructure.py api.py
+tests/                 mirror the contexts they exercise
+scripts/parity.py      old vs new comparison
 ```
+
+Conventions:
+
+- a context owns its routes and its read models; nothing reaches into another
+  context's SQL;
+- `api.py` when a context exposes one router, an `api/` package when it exposes
+  several — the split follows size, not taste;
+- `domain.py` is pure, `infrastructure.py` talks to the database, `api.py` only
+  translates HTTP.
 
 ## Run
 
