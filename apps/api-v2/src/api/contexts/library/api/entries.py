@@ -13,6 +13,7 @@ from api.contexts.library.entries import (
     list_entries,
     patch_entry,
 )
+from api.contexts.library.releases import delete_state, put_state
 from api.db import SessionDep
 from api.shared.pagination import ensure_page, page_params, page_payload
 from api.shared.problems import ProblemError
@@ -101,3 +102,45 @@ async def add_entry(
             status_code=400, detail="Request validation failed.", errors=error.args[0]
         ) from error
     return JSONResponse(data, status_code=201 if created else 200)
+
+
+@router.put("/me/library/entries/{entry_id}/releases/{release_id}/")
+async def set_release_state(
+    entry_id: int,
+    release_id: str,
+    body: dict[str, Any],
+    session: SessionDep,
+    user: Annotated[Any, Depends(current_user)],
+) -> JSONResponse:
+    try:
+        data, created = await put_state(
+            session,
+            user_id=user.id,
+            entry_id=entry_id,
+            release_id=release_id,
+            values=body,
+        )
+    except LookupError as error:
+        raise ProblemError(status_code=404, detail="Library entry not found.") from error
+    except FileNotFoundError as error:
+        raise ProblemError(status_code=404, detail="Release not found for this Work.") from error
+    except ValueError as error:
+        raise ProblemError(
+            status_code=400, detail="Request validation failed.", errors=error.args[0]
+        ) from error
+    return JSONResponse(data, status_code=201 if created else 200)
+
+
+@router.delete("/me/library/entries/{entry_id}/releases/{release_id}/", status_code=204)
+async def clear_release_state(
+    entry_id: int,
+    release_id: str,
+    session: SessionDep,
+    user: Annotated[Any, Depends(current_user)],
+) -> None:
+    try:
+        await delete_state(session, user_id=user.id, entry_id=entry_id, release_id=release_id)
+    except LookupError as error:
+        raise ProblemError(status_code=404, detail="Library entry not found.") from error
+    except FileNotFoundError as error:
+        raise ProblemError(status_code=404, detail="Release state not found.") from error
