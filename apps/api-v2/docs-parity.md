@@ -43,6 +43,7 @@ DATABASE_URL=... uv run python -m scripts.shadow \
 | 2026-10-25 | `POST /api/v1/auth/sessions/password/` — wrong credentials | 1 | **OK** — identical problem body |
 | 2026-10-25 | `POST /api/v1/auth/sessions/password/` — valid credentials | 1 | **OK** — same claims; Django accepts the token this service minted |
 | 2026-10-25 | `GET /api/v1/users/me/profile/` — no token, Django-created profile, service-created profile | 3 | **OK** — 401 identical; both creations produce the same body |
+| 2026-10-25 | `PATCH /api/v1/users/me/profile/` — empty, bad colour, valid, blank colour | 4 | **OK** — same validation bodies and same updated profile |
 
 Reproduce against the two services sharing a database:
 
