@@ -14,7 +14,7 @@ IMPORT_TASKS = {
     "vndb": "apps.sync.tasks.vndb.import_vndb_work_task",
     "anilist": "apps.sync.tasks.anilist.import_anilist_work_task",
 }
-SYNC_TASK = "apps.sync.tasks.campaigns.run_sync_campaign_task"
+SYNC_TASK = "apps.sync.tasks.campaign.run_sync_campaign_task"
 
 
 def task_for_import(provider: str) -> str | None:
@@ -43,3 +43,7 @@ def publish(task: str, kwargs: dict[str, Any], *, sender: Any = None) -> str | N
     app = sender or _sender()
     result = app.send_task(task, kwargs=kwargs)
     return str(result.id)
+
+
+def sync_kwargs(*, campaign_id: str) -> dict[str, Any]:
+    return {"campaign_id": campaign_id}
