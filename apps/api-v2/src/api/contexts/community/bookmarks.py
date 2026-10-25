@@ -15,6 +15,7 @@ from api.contexts.presentation.fragments import fetch, isoformat
 from api.contexts.presentation.summary import entity_summary
 
 from .targets import collection_summary, post_summary, review_summary
+from .visibility import visible
 
 BOOKMARK_TARGETS = ("post", "review", "collection")
 
@@ -170,20 +171,8 @@ async def _payload(session: AsyncSession, row: Any) -> dict[str, Any]:
     }
 
 
-VISIBLE = {
-    "post": "SELECT 1 FROM community_post WHERE id = :id"
-    " AND visibility = 'public' AND feed_policy <> 'hidden'",
-    "review": "SELECT 1 FROM user_review AS review"
-    " JOIN user_library_entry AS entry ON entry.id = review.user_subject_id"
-    " WHERE review.id = :id AND review.is_public AND entry.is_public"
-    " AND entry.entity_id IS NOT NULL",
-    "collection": "SELECT 1 FROM user_collection WHERE id = :id AND is_public",
-}
-
-
 async def _target_exists(session: AsyncSession, kind: str, target_id: int) -> bool:
-    rows = await fetch(session, VISIBLE[kind], {"id": target_id})
-    return bool(rows)
+    return await visible(session, kind, target_id)
 
 
 async def set_bookmark(
