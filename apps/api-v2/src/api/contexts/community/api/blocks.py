@@ -3,7 +3,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import JSONResponse
 
-from api.contexts.access.dependencies import current_user, staff_user
+from api.contexts.access.dependencies import current_user, optional_user, staff_user
 from api.contexts.community.bookmarks import (
     list_bookmarks,
     remove_bookmark,
@@ -353,6 +353,65 @@ async def my_activities(
         owner_id=user.id,
         cursor=parsed,
         page_size=size,
+    )
+    return {
+        "next": (
+            str(request.url.include_query_params(cursor=encode(next_cursor)))
+            if next_cursor is not None
+            else None
+        ),
+        "previous": None,
+        "results": results,
+    }
+
+
+@router.get("/activities/")
+async def public_activities(
+    session: SessionDep,
+    request: Request,
+    viewer: Annotated[Any | None, Depends(optional_user)],
+    cursor: str = "",
+    page_size: int = 16,
+) -> dict[str, Any]:
+    parsed = decode(cursor or None)
+    size = min(max(page_size, 1), 64)
+    results, next_cursor = await list_activities(
+        session,
+        viewer_id=viewer.id if viewer else 0,
+        owner_id=None,
+        cursor=parsed,
+        page_size=size,
+        public_only=True,
+    )
+    return {
+        "next": (
+            str(request.url.include_query_params(cursor=encode(next_cursor)))
+            if next_cursor is not None
+            else None
+        ),
+        "previous": None,
+        "results": results,
+    }
+
+
+@router.get("/users/{user_id}/activities/")
+async def user_activities(
+    user_id: int,
+    session: SessionDep,
+    request: Request,
+    viewer: Annotated[Any | None, Depends(optional_user)],
+    cursor: str = "",
+    page_size: int = 16,
+) -> dict[str, Any]:
+    parsed = decode(cursor or None)
+    size = min(max(page_size, 1), 64)
+    results, next_cursor = await list_activities(
+        session,
+        viewer_id=viewer.id if viewer else 0,
+        owner_id=user_id,
+        cursor=parsed,
+        page_size=size,
+        public_only=True,
     )
     return {
         "next": (
