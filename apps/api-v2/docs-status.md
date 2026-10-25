@@ -13,7 +13,8 @@ compared with the Django response:
 | catalogue | `collections/`, `collections/{slug}/entities/`, `entities/` with its filters | `docs-parity.md`, 8 + 4 variants |
 | entity | `entities/{id}/`, `metrics/`, `relations/`, `credits/`, `releases/`, `characters/`, `episodes/`, `evidence/` | `docs-parity.md`, shadow runs |
 | calendar | `calendar/events/` — board, range, timezone, works | `docs-parity.md`, 5 variants |
-| auth | `auth/social/providers/`, `auth/sessions/password/` | `docs-parity.md` |
+| auth | `auth/social/providers/`, `auth/sessions/password/`, `auth/session/`, `users/me/profile/`, `users/me/settings/` | `docs-parity.md` |
+| community | notifications (count, read-all), blocks (write, list), mutes (list), follows (write, lists) | `docs-parity.md` |
 
 `scripts/parity.py` compares named paths; `scripts/shadow.py` samples entities and
 walks every entity endpoint plus the list paths. Last shadow run: **103/103**.

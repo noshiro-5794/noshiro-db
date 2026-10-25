@@ -63,6 +63,7 @@ uv run python -m scripts.state_parity --old ... --new ... \
 | 2026-10-25 | `GET /api/v1/community/me/followers/`, `GET /api/v1/community/me/following/` | 2 | **OK** |
 | 2026-10-25 | `GET /api/v1/community/users/{id}/followers/`, `/following/` — present and missing user | 3 | **OK** — the missing account is `users.user_not_found`, not a bare 404 |
 | 2026-10-25 | `POST /api/v1/auth/session/` — with a refresh cookie | 1 | **OK** — both answer 204 and add one blacklisted token |
+| 2026-10-25 | shadow run after the community block | 10 entities × 8 endpoints + 11 list paths | **91/91 matched** |
 | 2026-10-25 | `PUT /api/v1/community/me/notifications/read-state/` | 1 | **OK** — both report two updated and leave zero unread (compared by state, because each call mutates) |
 | 2026-10-25 | `GET`/`PATCH /api/v1/users/me/settings/` — read, empty, bad choice, bad colour, adult without confirmation, valid choices, adult with confirmation | 7 | **OK** — the confirmation timestamp is per-request and compared with it ignored |
 
