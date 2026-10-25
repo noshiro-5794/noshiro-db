@@ -108,6 +108,7 @@ uv run python -m scripts.state_parity --old ... --new ... \
 | 2026-10-25 | `GET /api/v1/auth/social/providers/` | 1 | **OK** — the GitHub entry and its enabled flag |
 | 2026-10-25 | `POST /api/v1/auth/registrations/` — a fresh account and a taken nickname | 2 | **201 with an access token**; the conflict body matches |
 | 2026-10-25 | `POST /api/v1/auth/sessions/code/`, `/auth/password-resets/` | 2 | **OK** — access token on both; the reset answers 204 |
+| 2026-10-25 | `POST /api/v1/auth/verification-codes/` — no captcha token | 1 | **OK** — the same `users.invalid_captcha` |
 | 2026-10-25 | `PUT /api/v1/community/me/notifications/read-state/` | 1 | **OK** — both report two updated and leave zero unread (compared by state, because each call mutates) |
 | 2026-10-25 | `GET`/`PATCH /api/v1/users/me/settings/` — read, empty, bad choice, bad colour, adult without confirmation, valid choices, adult with confirmation | 7 | **OK** — the confirmation timestamp is per-request and compared with it ignored |
 
@@ -203,6 +204,10 @@ Two divergences were found by this comparison and fixed or recorded:
    not decrement `reaction_count`, so the number drifts upward over time. The port
    does the same: the counter is part of the old contract, and the drift is a bug
    to fix once, on both sides, not something one side should quietly correct.
-22. **`value` type.** The OpenAPI snapshot says string, the Django response sends
+22. **A code is sent without an email.** The port writes the row and answers 202 but
+   does not deliver the message: the old service hands it to Celery, and this one has
+   no sender yet. Until it does, a code has to be read from the table. Recorded so the
+   gap is not mistaken for parity.
+23. **`value` type.** The OpenAPI snapshot says string, the Django response sends
    a number. Parity copies the response; the disagreement is recorded in
    `contexts/signal/domain.py` for a deliberate fix on both sides.
