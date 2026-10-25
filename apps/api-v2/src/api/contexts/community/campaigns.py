@@ -158,6 +158,7 @@ async def summary(session: AsyncSession) -> dict[str, Any]:
     by_provider = await fetch(
         session,
         "SELECT provider_slug, count(*) AS count FROM sync_campaign GROUP BY provider_slug",
+        {},
     )
     stale = await fetch(
         session,
