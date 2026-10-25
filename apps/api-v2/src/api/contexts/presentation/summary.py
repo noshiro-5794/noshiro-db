@@ -7,6 +7,8 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.contexts.identity.resolution import cluster_ids, is_public, resolve
+
 from .fragments import current_rows, fetch, row_provenance, visible
 
 
@@ -115,3 +117,21 @@ async def entity_summary(
         "collections": sorted({row.slug for row in memberships}),
         "media": media,
     }
+
+
+async def public_summary(
+    session: AsyncSession, *, entity_id: UUID, language: str
+) -> dict[str, Any] | None:
+    """The summary of an entity, or None when the entity is not publicly visible."""
+    root = await resolve(session, entity_id)
+    if root is None:
+        return None
+    ids = await cluster_ids(session, root)
+    if not await is_public(session, ids):
+        return None
+    return await entity_summary(
+        session,
+        root=root,
+        cluster_ids=[str(value) for value in ids],
+        language=language,
+    )

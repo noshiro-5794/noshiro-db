@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Header
 
 from api.contexts.identity.resolution import cluster_ids, is_active, is_public, resolve
+from api.contexts.presentation.credits import entity_credits
 from api.contexts.presentation.detail import entity_detail
 from api.contexts.presentation.relations import entity_relations
 from api.db import SessionDep
@@ -56,6 +57,20 @@ async def relations(
     return await entity_relations(
         session,
         root=root,
+        cluster=cluster,
+        language=(accept_language or "").split(",", 1)[0],
+    )
+
+
+@router.get("/entities/{entity_id}/credits/")
+async def credits(
+    entity_id: str,
+    session: SessionDep,
+    accept_language: Annotated[str | None, Header()] = None,
+) -> list[dict[str, Any]]:
+    _, cluster = await _public_cluster(session, entity_id)
+    return await entity_credits(
+        session,
         cluster=cluster,
         language=(accept_language or "").split(",", 1)[0],
     )
