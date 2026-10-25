@@ -13,6 +13,7 @@ is `scripts/parity.py`; it compares status codes, then the document structurally
 | 2026-10-25 | `GET /api/v1/index/collections/` | 1 | **OK** |
 | 2026-10-25 | `GET /api/v1/index/entities/{id}/` | 6 (three works, a contributor, a character, a merge cluster) | **OK** |
 | 2026-10-25 | `GET /api/v1/index/entities/{id}/relations/` | 5 (two ordinary, the three with the most relations) | **OK** |
+| 2026-10-25 | `GET /api/v1/index/entities/{id}/credits/` | 4 (the three with the most credits, plus a merge cluster) | **OK** |
 
 Reproduce against the two services sharing a database:
 
@@ -45,6 +46,15 @@ Two divergences were found by this comparison and fixed or recorded:
    Django side and **7.6 s** on this one, with identical bytes. The parity tool's
    fixed 30-second timeout reported that as a failure of the new service; it is
    now `--timeout`.
-7. **`value` type.** The OpenAPI snapshot says string, the Django response sends
+7. **The summary reads current names only.** `preferred_name` runs over
+   `current_entity_names()`; the first implementation read every name in the
+   cluster, so a contributor with five spellings picked the oldest row. The
+   difference was one glyph (`DanieI` against `Daniel`), which only a byte
+   comparison finds.
+8. **Evidence order is not a contract.** Django's `prefetch_related` has no
+   `ORDER BY`, so the order it returns is PostgreSQL's physical order. This
+   service orders by id; the comparison sorts declared paths
+   (`--unordered facts[].evidence`) and still fails on a real set difference.
+9. **`value` type.** The OpenAPI snapshot says string, the Django response sends
    a number. Parity copies the response; the disagreement is recorded in
    `contexts/signal/domain.py` for a deliberate fix on both sides.
