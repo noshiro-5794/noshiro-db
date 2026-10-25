@@ -51,7 +51,6 @@ Paths omit the shared `/api/v1` prefix. `S` is a single query and a small payloa
 
 | path | methods | size |
 |---|---|---|
-| `/community/me/notifications/{notification_id}/read-state/` | PUT | S |
 | `/community/activities/` | GET | M |
 | `/community/comments/` | GET,POST | M |
 | `/community/comments/{comment_id}/` | PATCH,DELETE | M |
