@@ -36,6 +36,29 @@ What a new session needs to know that the code does not say.
 | DRF's `allow_null` | an absent field renders as `null`, not as a missing key |
 | the calendar's work summary | built even when not returned: it decides visibility and hides adult works |
 
+## What the port has already built to reuse
+
+| Piece | Where | Used by |
+|---|---|---|
+| paginated envelope | `shared/pagination.py` | every list endpoint |
+| timeline cursor | `shared/cursor.py` | notifications, next the timelines |
+| identity resolution | `presentation/identity.py` | calendar and board |
+| problem bodies | `shared/problems.py` | every failure |
+| target shapes | `community/targets.py` | notifications, bookmarks |
+| bookmark summaries | `community/targets.py` | the bookmark list and write |
+| **visibility rules** | `community/visibility.py` | bookmarks, reports, reactions next |
+
+The visibility module is the one that mattered most: "the target exists" and
+"the caller may see it" are different questions, and Django answers the second
+with the same 404 as the first so a private target cannot be probed.
+
+## Django crashes on legal writes
+
+Five are recorded in `docs-parity.md`: an inverted watch-date range, a valid
+release state, tag replacement, rating details, and one more. Each answers 500
+from the old service where this one answers 400 or 200. They are recorded, not
+reproduced — a 500 is not a contract. This is also the argument for the rewrite.
+
 ## The next block
 
 The community timelines (`me/activities`, `activities`, `me/feed`) share one
