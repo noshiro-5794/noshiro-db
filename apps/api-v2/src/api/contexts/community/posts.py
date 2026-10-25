@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -178,8 +179,39 @@ async def create_post(
             "entity": str(entity_id) if entity_id is not None else None,
         },
     )
+    post_id = rows[0].id
+    await fetch(
+        session,
+        """
+        INSERT INTO community_activity (
+            user_id, entity_id, activity_type, post_id, message, visibility,
+            feed_policy, group_key, dedupe_key, metadata, created_at
+        ) VALUES (
+            :author, CAST(:entity AS uuid), 'post_created', :post, 'Posted a status',
+            :visibility, 'normal', :group_key, :dedupe_key,
+            CAST(:metadata AS jsonb), now()
+        )
+        ON CONFLICT (dedupe_key) WHERE dedupe_key <> '' DO NOTHING RETURNING id
+        """,
+        {
+            "author": user_id,
+            "entity": str(entity_id) if entity_id is not None else None,
+            "post": post_id,
+            "visibility": visibility,
+            "group_key": f"post:{user_id}",
+            "dedupe_key": f"post_created:{post_id}",
+            "metadata": json.dumps(
+                {
+                    "post": {
+                        "id": post_id,
+                        "entity_id": str(entity_id) if entity_id is not None else None,
+                    }
+                }
+            ),
+        },
+    )
     await session.commit()
-    return await post_by_id(session, viewer_id=user_id, post_id=rows[0].id)
+    return await post_by_id(session, viewer_id=user_id, post_id=post_id)
 
 
 async def post_by_id(session: AsyncSession, *, viewer_id: int, post_id: int) -> dict[str, Any]:
