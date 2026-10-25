@@ -16,28 +16,40 @@ from fastapi.responses import JSONResponse
 
 
 class ProblemError(Exception):
-    def __init__(self, *, status_code: int, detail: str) -> None:
+    """A failure with an optional domain code.
+
+    Django renders domain errors with a type URI and a code (`users.invalid_credentials`);
+    plain 404s carry neither. The code is what the web client branches on, so it is
+    part of the payload when present and absent otherwise.
+    """
+
+    def __init__(self, *, status_code: int, detail: str, code: str = "") -> None:
         super().__init__(detail)
         self.status_code = status_code
         self.detail = detail
+        self.code = code
 
 
 def problem_payload(
-    *, status_code: int, detail: str, instance: str, trace_id: str
+    *, status_code: int, detail: str, instance: str, trace_id: str, code: str = ""
 ) -> dict[str, Any]:
-    return {
-        "type": "about:blank",
+    payload: dict[str, Any] = {
+        "type": f"https://noshiro.moe/problems/{code}" if code else "about:blank",
         "title": HTTPStatus(status_code).phrase,
         "status": status_code,
         "detail": detail,
         "instance": instance,
         "trace_id": trace_id,
     }
+    if code:
+        payload["code"] = code
+    return payload
 
 
 async def problem_handler(request: Request, error: Exception) -> JSONResponse:
     status_code = getattr(error, "status_code", 500)
     detail = getattr(error, "detail", "Internal Server Error")
+    code = getattr(error, "code", "")
     return JSONResponse(
         status_code=status_code,
         media_type="application/problem+json",
@@ -46,5 +58,6 @@ async def problem_handler(request: Request, error: Exception) -> JSONResponse:
             detail=detail,
             instance=request.url.path + (f"?{request.url.query}" if request.url.query else ""),
             trace_id=uuid4().hex,
+            code=code,
         ),
     )

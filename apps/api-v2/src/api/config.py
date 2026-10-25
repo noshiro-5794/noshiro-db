@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -15,6 +17,13 @@ class Settings(BaseSettings):
         default="",
         validation_alias=AliasChoices("AI_AGENT_API_KEY", "AI_API_KEY"),
     )
+    jwt_secret: str = Field(default="", validation_alias=AliasChoices("DJANGO_SECRET_KEY"))
+    access_token_seconds: int = 2 * 60 * 60
+    refresh_token_seconds: int = 30 * 24 * 60 * 60
+    refresh_cookie_name: str = "noshiro_refresh"
+    refresh_cookie_path: str = "/api/v1/auth/"
+    refresh_cookie_secure: bool = False
+    refresh_cookie_samesite: Literal["lax", "strict", "none"] = "lax"
     github_client_id: str = Field(
         default="",
         validation_alias=AliasChoices("GITHUB_OAUTH_CLIENT_ID"),
