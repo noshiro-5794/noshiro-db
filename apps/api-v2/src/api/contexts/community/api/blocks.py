@@ -3,7 +3,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import JSONResponse
 
-from api.contexts.access.dependencies import current_user
+from api.contexts.access.dependencies import current_user, staff_user
 from api.contexts.community.relationships import (
     block_user,
     follow_user,
@@ -14,7 +14,7 @@ from api.contexts.community.relationships import (
     unblock_user,
     unfollow_user,
 )
-from api.contexts.community.reports import list_my_reports
+from api.contexts.community.reports import list_my_reports, list_reports
 from api.contexts.presentation.fragments import fetch
 from api.db import SessionDep
 from api.shared.pagination import ensure_page, page_params, page_payload
@@ -181,5 +181,20 @@ async def my_reports(
 ) -> dict[str, Any]:
     page, page_size = page_params(request)
     total, results = await list_my_reports(session, user_id=user.id, page=page, page_size=page_size)
+    ensure_page(page, page_size, total)
+    return page_payload(request, count=total, results=results, page=page, page_size=page_size)
+
+
+@router.get("/moderation/reports/")
+async def moderation_reports(
+    session: SessionDep,
+    request: Request,
+    user: Annotated[Any, Depends(staff_user)],
+    status: str = "",
+) -> dict[str, Any]:
+    page, page_size = page_params(request)
+    total, results = await list_reports(
+        session, user_id=None, status=status, page=page, page_size=page_size
+    )
     ensure_page(page, page_size, total)
     return page_payload(request, count=total, results=results, page=page, page_size=page_size)
