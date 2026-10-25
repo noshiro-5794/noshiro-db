@@ -121,3 +121,73 @@ async def list_posts(
         },
     )
     return int(total[0].total), [await post_payload(session, row) for row in rows]
+
+
+BLANK = "Post content can not be blank."
+VISIBILITIES = ("public", "private", "followers")
+
+
+async def create_post(
+    session: AsyncSession, *, user_id: int, body: dict[str, Any]
+) -> dict[str, Any]:
+    errors: dict[str, list[str]] = {}
+    content = body.get("content")
+    if not isinstance(content, str):
+        errors["content"] = ["This field is required."]
+    elif not content.strip():
+        errors["content"] = [BLANK]
+    elif len(content) > 10000:
+        errors["content"] = ["Ensure this field has no more than 10000 characters."]
+    visibility = body.get("visibility", "public")
+    if visibility not in VISIBILITIES:
+        errors["visibility"] = [f'"{visibility}" is not a valid choice.']
+    if errors:
+        raise ValueError(errors)
+    entity_id = body.get("entity_id")
+    if entity_id is not None:
+        entity = await fetch(
+            session,
+            "SELECT id FROM entity WHERE id = CAST(:id AS uuid)"
+            " AND lifecycle = 'active' AND visibility = 'public'",
+            {"id": str(entity_id)},
+        )
+        if not entity:
+            raise FileNotFoundError(entity_id)
+    is_spoiler = bool(body.get("is_spoiler", False))
+    is_nsfw = bool(body.get("is_nsfw", False))
+    rows = await fetch(
+        session,
+        """
+        INSERT INTO community_post (
+            post_type, content, visibility, feed_policy, is_spoiler, is_nsfw,
+            is_pinned, is_locked, reply_count, reaction_count, last_activity_at,
+            created_at, updated_at, metadata, author_id, entity_id
+        ) VALUES (
+            :post_type, :content, :visibility, 'normal', :spoiler, :nsfw,
+            false, false, 0, 0, now(), now(), now(), '{}'::jsonb, :author,
+            CAST(:entity AS uuid)
+        ) RETURNING id
+        """,
+        {
+            "post_type": "entity" if entity_id is not None else "status",
+            "content": content,
+            "visibility": visibility,
+            "spoiler": is_spoiler,
+            "nsfw": is_nsfw,
+            "author": user_id,
+            "entity": str(entity_id) if entity_id is not None else None,
+        },
+    )
+    await session.commit()
+    return await post_by_id(session, viewer_id=user_id, post_id=rows[0].id)
+
+
+async def post_by_id(session: AsyncSession, *, viewer_id: int, post_id: int) -> dict[str, Any]:
+    rows = await fetch(
+        session,
+        f"SELECT {POST_COLUMNS}, {VIEWER} FROM community_post AS post {JOINS} WHERE post.id = :id",
+        {"id": post_id, "viewer": viewer_id},
+    )
+    if not rows:
+        raise LookupError(post_id)
+    return await post_payload(session, rows[0])

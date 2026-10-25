@@ -9,7 +9,7 @@ from api.contexts.community.bookmarks import (
     remove_bookmark,
     set_bookmark,
 )
-from api.contexts.community.posts import list_posts
+from api.contexts.community.posts import create_post, list_posts
 from api.contexts.community.reactions import remove_reaction, set_reaction
 from api.contexts.community.relationships import (
     block_user,
@@ -476,3 +476,20 @@ async def posts(
     )
     ensure_page(page, page_size, total)
     return page_payload(request, count=total, results=results, page=page, page_size=page_size)
+
+
+@router.post("/posts/")
+async def add_post(
+    body: dict[str, Any],
+    session: SessionDep,
+    user: Annotated[Any, Depends(current_user)],
+) -> JSONResponse:
+    try:
+        data = await create_post(session, user_id=user.id, body=body)
+    except FileNotFoundError as error:
+        raise ProblemError(status_code=404, detail="Entity not found.") from error
+    except ValueError as error:
+        raise ProblemError(
+            status_code=400, detail="Request validation failed.", errors=error.args[0]
+        ) from error
+    return JSONResponse(data, status_code=201)
