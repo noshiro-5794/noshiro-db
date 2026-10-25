@@ -5,7 +5,7 @@ entities is run through each endpoint on both services, and the run reports how
 many comparisons matched. Order-insensitive endpoints are compared as sets, the
 same way the single-path tool does it.
 
-    uv run python scripts/shadow.py --old http://127.0.0.1:8008 \
+    uv run python -m scripts.shadow --old http://127.0.0.1:8008 \
         --new http://127.0.0.1:8010 --count 20
 """
 
