@@ -41,6 +41,8 @@ dev = [
     "httpx2>=2.13,<3",
     "mypy>=1.17,<3",
     "pip-audit>=2.10,<3",
+    # Transitive through pip-audit -> cachecontrol; 3.x carries three advisories.
+    "filelock>=4.2.1,<5",
     "pytest>=8,<10",
     "pytest-cov>=7,<8",
     "pytest-django>=4.10,<5",
