@@ -52,6 +52,21 @@ The visibility module is the one that mattered most: "the target exists" and
 "the caller may see it" are different questions, and Django answers the second
 with the same 404 as the first so a private target cannot be probed.
 
+## Traps this port has already hit
+
+Each of these cost a round; none of them is obvious from the Django code alone.
+
+| Trap | What happens | Fix |
+|---|---|---|
+| Literal route vs id route | `/users/me/…` and `/operations/sync/summary/` are parsed as ids | register the literal route first |
+| Reserved column name | `user_collection_item."order"` must be quoted in the column list | quote it, qualified references are fine |
+| `metadata` is NOT NULL with no default | post, comment, moderation and profile inserts 500 | supply `'{}'::jsonb` |
+| `user_profile` has four more NOT NULL columns | register 500s | `#7F6FB0`, `auto`, `auto`, `false` |
+| A serializer field is not a column | `provider_record` is `provider_record_id` | alias in the SQL |
+| `WHERE` inside subqueries | splitting a query on `WHERE` cuts too early | replace the one clause instead |
+| Time-derived fields | `eta_seconds`, throughput differ every run | ignore them in the comparison, do not "fix" them |
+| Diff direction | `status 404 != 200` means **old** is 404 | read it twice before blaming the tool |
+
 ## Django crashes on legal writes
 
 Five are recorded in `docs-parity.md`: an inverted watch-date range, a valid
