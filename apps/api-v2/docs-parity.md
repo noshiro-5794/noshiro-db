@@ -88,6 +88,7 @@ uv run python -m scripts.state_parity --old ... --new ... \
 | 2026-10-25 | `GET /api/v1/users/{id}/` — an existing account and a missing one | 2 | **OK** — the five counts and the 404 |
 | 2026-10-25 | `PUT /api/v1/community/me/reactions/{type}/{id}/{reaction}/` — a collection, an unsupported type | 2 | **OK** — same body and same 400 |
 | 2026-10-25 | `GET /api/v1/community/me/activities/` | 1 | **OK** — the full activity payload, including the borrowed entity |
+| 2026-10-25 | `GET /api/v1/community/activities/`, `/users/{id}/activities/` | 2 | **OK** — the public filter and the viewer exclusions |
 | 2026-10-25 | `PUT /api/v1/community/me/notifications/read-state/` | 1 | **OK** — both report two updated and leave zero unread (compared by state, because each call mutates) |
 | 2026-10-25 | `GET`/`PATCH /api/v1/users/me/settings/` — read, empty, bad choice, bad colour, adult without confirmation, valid choices, adult with confirmation | 7 | **OK** — the confirmation timestamp is per-request and compared with it ignored |
 
