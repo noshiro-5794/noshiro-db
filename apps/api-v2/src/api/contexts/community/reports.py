@@ -11,6 +11,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.contexts.community.people import person as _person
 from api.contexts.presentation.fragments import fetch
 
 TARGETS = ("post", "comment", "review", "collection", "activity")
@@ -18,12 +19,6 @@ TARGETS = ("post", "comment", "review", "collection", "activity")
 
 def _iso(value: datetime | None) -> str | None:
     return value.isoformat().replace("+00:00", "Z") if value else None
-
-
-def _person(user_id: Any, nickname: Any, avatar: Any) -> dict[str, Any] | None:
-    if user_id is None:
-        return None
-    return {"id": user_id, "nickname": nickname or "", "avatar": avatar or ""}
 
 
 def _target(report: Any) -> dict[str, Any] | None:
