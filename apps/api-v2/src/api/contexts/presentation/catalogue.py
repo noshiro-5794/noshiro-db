@@ -18,7 +18,9 @@ from .summary import entity_summary
 DEFAULT_COLLECTIONS = ("anime", "galgame")
 POPULAR_ORDERING = "popular"
 
-COLLAPSE = """
+# Memberships are collapsed one level: Django's `_canonical_filter` follows a
+# single redirect, not the chain.
+COLLAPSE_ONE_LEVEL = """
     SELECT redirect.target_entity_id AS id
     FROM entity_redirect AS redirect
     WHERE redirect.is_active AND redirect.source_entity_id IN ({source})
@@ -27,6 +29,23 @@ COLLAPSE = """
     WHERE seed.id NOT IN (
         SELECT source_entity_id FROM entity_redirect
         WHERE is_active AND source_entity_id IN ({source})
+    )
+"""
+
+# Keyword matches are collapsed to the final root: Django resolves each id with
+# `resolve_with`, which follows the whole chain.
+COLLAPSE_TO_ROOT = """
+    WITH RECURSIVE chain(id) AS (
+        SELECT seed.id FROM ({source}) AS seed
+        UNION
+        SELECT redirect.target_entity_id
+        FROM entity_redirect AS redirect
+        JOIN chain ON redirect.source_entity_id = chain.id
+        WHERE redirect.is_active
+    )
+    SELECT DISTINCT chain.id FROM chain
+    WHERE chain.id NOT IN (
+        SELECT source_entity_id FROM entity_redirect WHERE is_active
     )
 """
 
@@ -77,9 +96,9 @@ def _clauses(
         "entity.visibility = 'public'",
     ]
     if use_collection:
-        clauses.append(f"entity.id IN ({COLLAPSE.format(source=MEMBERS)})")
+        clauses.append(f"entity.id IN ({COLLAPSE_ONE_LEVEL.format(source=MEMBERS)})")
     if use_keyword:
-        clauses.append(f"entity.id IN ({COLLAPSE.format(source=MATCHES)})")
+        clauses.append(f"entity.id IN ({COLLAPSE_TO_ROOT.format(source=MATCHES)})")
     if subject_type:
         clauses.append("entity.id IN (SELECT entity_id FROM work WHERE work_type = :subject_type)")
     if safe_only:
