@@ -12,6 +12,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.community.people import person as _person
+from api.contexts.community.visibility import visible
 from api.contexts.presentation.fragments import fetch
 
 TARGETS = ("post", "comment", "review", "collection", "activity")
@@ -202,7 +203,7 @@ async def create_report(
     if errors:
         raise ValueError(errors)
     owner = await _owner(session, str(target_type), target_id)
-    if owner is None:
+    if owner is None or not await visible(session, str(target_type), target_id):
         raise FileNotFoundError(target_type)
     column = f"{target_type}_id"
     rows = await fetch(
