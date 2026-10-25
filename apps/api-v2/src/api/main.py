@@ -9,6 +9,7 @@ from .contexts.community.api.blocks import router as community_blocks_router
 from .contexts.community.api.notifications import (
     router as community_notifications_router,
 )
+from .contexts.library.api.stats import router as library_stats_router
 from .contexts.library.api.tags import router as library_tags_router
 from .contexts.presentation.api.board import router as board_router
 from .contexts.presentation.api.calendar import router as calendar_router
@@ -26,6 +27,7 @@ def create_app() -> FastAPI:
     app.include_router(session_router)
     app.include_router(profile_router)
     app.include_router(library_tags_router)
+    app.include_router(library_stats_router)
     app.include_router(logout_router)
     app.include_router(settings_router)
     app.include_router(catalogue_router)
