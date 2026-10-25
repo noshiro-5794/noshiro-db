@@ -1,11 +1,13 @@
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Header
+from fastapi import APIRouter, Header, Request
 
 from api.contexts.identity.resolution import cluster_ids, is_active, is_public, resolve
+from api.contexts.presentation.characters import character_page
 from api.contexts.presentation.credits import entity_credits
 from api.contexts.presentation.detail import entity_detail
+from api.contexts.presentation.pagination import page_params, page_payload
 from api.contexts.presentation.relations import entity_relations
 from api.contexts.presentation.releases import entity_releases
 from api.db import SessionDep
@@ -89,3 +91,22 @@ async def releases(
         cluster=cluster,
         language=(accept_language or "").split(",", 1)[0],
     )
+
+
+@router.get("/entities/{entity_id}/characters/")
+async def characters(
+    entity_id: str,
+    session: SessionDep,
+    request: Request,
+    accept_language: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    _, cluster = await _public_cluster(session, entity_id)
+    page, page_size = page_params(request)
+    total, results = await character_page(
+        session,
+        cluster=cluster,
+        language=(accept_language or "").split(",", 1)[0],
+        page=page,
+        page_size=page_size,
+    )
+    return page_payload(request, count=total, results=results, page=page, page_size=page_size)
