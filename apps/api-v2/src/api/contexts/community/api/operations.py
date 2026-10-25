@@ -13,6 +13,7 @@ from api.contexts.community.campaigns import (
     summary,
 )
 from api.contexts.community.import_jobs import import_job
+from api.contexts.community.matching import list_candidates
 from api.db import SessionDep
 from api.shared.pagination import ensure_page, page_params, page_payload
 from api.shared.problems import ProblemError
@@ -119,3 +120,16 @@ async def sync_campaigns(
     status: str = "",
 ) -> list[dict[str, Any]]:
     return await list_campaigns(session, provider=provider, status=status)
+
+
+@router.get("/matching/candidates/")
+async def matching_candidates(
+    session: SessionDep,
+    request: Request,
+    user: Annotated[Any, Depends(staff_user)],
+    status: str = "",
+) -> dict[str, Any]:
+    page, page_size = page_params(request)
+    total, results = await list_candidates(session, status=status, page=page, page_size=page_size)
+    ensure_page(page, page_size, total)
+    return page_payload(request, count=total, results=results, page=page, page_size=page_size)
