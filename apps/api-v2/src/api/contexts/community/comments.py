@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -102,3 +103,129 @@ async def list_comments(
         },
     )
     return int(total[0].total), [await comment_payload(row) for row in rows]
+
+
+VISIBILITIES = ("public", "private", "followers")
+REPLY_COUNTED = ("post", "comment")
+
+
+async def _comment_row(session: AsyncSession, *, viewer_id: int, comment_id: int) -> Any:
+    rows = await fetch(
+        session, QUERY + " WHERE comment.id = :id", {"id": comment_id, "viewer": viewer_id}
+    )
+    if not rows:
+        raise LookupError(comment_id)
+    return rows[0]
+
+
+async def create_comment(
+    session: AsyncSession,
+    *,
+    user_id: int,
+    target_type: str,
+    target_id: int,
+    body: dict[str, Any],
+) -> dict[str, Any]:
+    from api.contexts.community.visibility import visible
+
+    errors: dict[str, list[str]] = {}
+    content = body.get("content")
+    if not isinstance(content, str):
+        errors["content"] = ["This field is required."]
+    elif not content.strip():
+        errors["content"] = ["Comment content can not be blank."]
+    elif len(content) > 10000:
+        errors["content"] = ["Ensure this field has no more than 10000 characters."]
+    visibility = body.get("visibility", "public")
+    if visibility not in VISIBILITIES:
+        errors["visibility"] = [f'"{visibility}" is not a valid choice.']
+    if errors:
+        raise ValueError(errors)
+    if not await visible(session, target_type, target_id):
+        raise FileNotFoundError(target_id)
+    parent_id = body.get("parent_id")
+    entity = await fetch(
+        session,
+        "SELECT entity_id FROM community_post WHERE id = :id",
+        {"id": target_id},
+    )
+    if parent_id is not None:
+        parent = await fetch(
+            session,
+            "SELECT id, parent_id FROM community_comment"
+            f" WHERE id = :id AND {target_type}_id = :target_id",
+            {"id": parent_id, "target_id": target_id},
+        )
+        if not parent:
+            raise LookupError(parent_id)
+    created = await fetch(
+        session,
+        """
+        INSERT INTO community_comment (
+            content, visibility, is_spoiler, is_hidden, is_locked, reply_count,
+            reaction_count, created_at, updated_at, metadata, author_id, parent_id,
+        """
+        + f" {target_type}_id"
+        + """
+        ) VALUES (
+            :content, :visibility, :spoiler, false, false, 0, 0, now(), now(),
+            '{}'::jsonb, :author, :parent,
+        """
+        + " :target_id"
+        + """
+        ) RETURNING id
+        """,
+        {
+            "content": content,
+            "visibility": visibility,
+            "spoiler": bool(body.get("is_spoiler", False)),
+            "author": user_id,
+            "parent": parent_id,
+            "target_id": target_id,
+        },
+    )
+    comment_id = created[0].id
+    if target_type in REPLY_COUNTED:
+        table = "community_post" if target_type == "post" else "community_comment"
+        await fetch(
+            session,
+            f"UPDATE {table} SET reply_count = reply_count + 1 WHERE id = :id RETURNING id",
+            {"id": target_id},
+        )
+    if parent_id is not None:
+        await fetch(
+            session,
+            "UPDATE community_comment SET reply_count = reply_count + 1"
+            " WHERE id = :id RETURNING id",
+            {"id": parent_id},
+        )
+    await fetch(
+        session,
+        """
+        INSERT INTO community_activity (
+            user_id, entity_id, activity_type, comment_id, message, visibility,
+            feed_policy, group_key, dedupe_key, metadata, created_at
+        ) VALUES (
+            :author, CAST(:entity AS uuid), 'comment_created', :comment,
+            :message, :visibility, 'normal', :group_key, :dedupe_key,
+            CAST(:metadata AS jsonb), now()
+        )
+        ON CONFLICT (dedupe_key) WHERE dedupe_key <> '' DO NOTHING RETURNING id
+        """,
+        {
+            "author": user_id,
+            "entity": str(entity[0].entity_id) if entity and entity[0].entity_id else None,
+            "comment": comment_id,
+            "message": f"Commented on a {target_type}",
+            "visibility": visibility,
+            "group_key": f"{target_type}_comment:{target_id}",
+            "dedupe_key": f"comment_created:{comment_id}",
+            "metadata": json.dumps(
+                {"target": {"type": target_type, "id": target_id}, "comment": {"id": comment_id}}
+            ),
+        },
+    )
+    await session.commit()
+    return await comment_payload(
+        await _comment_row(session, viewer_id=user_id, comment_id=comment_id)
+    )
