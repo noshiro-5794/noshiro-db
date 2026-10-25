@@ -12,28 +12,14 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.community.people import person
+from api.contexts.community.targets import activity_target
 from api.contexts.presentation.fragments import fetch
 from api.shared.cursor import Cursor, position_of
 
 
 def notification_payload(row: Any) -> dict[str, Any]:
     read_at = row.read_at
-    target = None
-    if row.activity_id is not None:
-        target = {
-            "type": "activity",
-            "id": row.activity_id,
-            "user": person(
-                row.activity_user_id,
-                row.activity_user_nickname,
-                row.activity_user_avatar,
-            ),
-            "target_user": person(
-                row.activity_target_id,
-                row.activity_target_nickname,
-                row.activity_target_avatar,
-            ),
-        }
+    target = activity_target(row)
     return {
         "id": row.id,
         "notification_type": row.notification_type,
