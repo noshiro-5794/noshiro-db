@@ -23,15 +23,29 @@ class ProblemError(Exception):
     part of the payload when present and absent otherwise.
     """
 
-    def __init__(self, *, status_code: int, detail: str, code: str = "") -> None:
+    def __init__(
+        self,
+        *,
+        status_code: int,
+        detail: str,
+        code: str = "",
+        errors: dict[str, list[str]] | None = None,
+    ) -> None:
         super().__init__(detail)
         self.status_code = status_code
         self.detail = detail
         self.code = code
+        self.errors = errors
 
 
 def problem_payload(
-    *, status_code: int, detail: str, instance: str, trace_id: str, code: str = ""
+    *,
+    status_code: int,
+    detail: str,
+    instance: str,
+    trace_id: str,
+    code: str = "",
+    errors: dict[str, list[str]] | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "type": f"https://noshiro.moe/problems/{code}" if code else "about:blank",
@@ -43,6 +57,8 @@ def problem_payload(
     }
     if code:
         payload["code"] = code
+    if errors is not None:
+        payload["errors"] = errors
     return payload
 
 
@@ -50,6 +66,7 @@ async def problem_handler(request: Request, error: Exception) -> JSONResponse:
     status_code = getattr(error, "status_code", 500)
     detail = getattr(error, "detail", "Internal Server Error")
     code = getattr(error, "code", "")
+    errors = getattr(error, "errors", None)
     return JSONResponse(
         status_code=status_code,
         media_type="application/problem+json",
@@ -59,5 +76,6 @@ async def problem_handler(request: Request, error: Exception) -> JSONResponse:
             instance=request.url.path + (f"?{request.url.query}" if request.url.query else ""),
             trace_id=uuid4().hex,
             code=code,
+            errors=errors,
         ),
     )
