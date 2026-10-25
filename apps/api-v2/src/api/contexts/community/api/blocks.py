@@ -151,7 +151,9 @@ async def following(
 async def _ensure_user(session: SessionDep, user_id: int) -> None:
     rows = await fetch(session, 'SELECT 1 FROM "user" WHERE id = :id', {"id": user_id})
     if not rows:
-        raise ProblemError(status_code=404, detail="User not found.")
+        raise ProblemError(
+            status_code=404, detail="User not found.", code="users.user_not_found"
+        )
 
 
 @router.get("/users/{user_id}/followers/")
