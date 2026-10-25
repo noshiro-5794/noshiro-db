@@ -124,7 +124,9 @@ async def list_bookmarks(
         if kind == "post":
             target = post_summary(row, await _entity(session, row.post_entity_id))
         elif kind == "review":
-            target = review_summary(row, await _entity(session, row.review_entity_id))
+            target = review_summary(
+                _ReviewRow(row), await _entity(session, row.review_entity_id)
+            )
         else:
             # The collection branch reuses the author fields under its own names.
             target = collection_summary(_CollectionRow(row))
