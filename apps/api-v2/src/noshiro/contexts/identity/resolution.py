@@ -56,14 +56,24 @@ async def cluster_ids(session: AsyncSession, root_id: UUID) -> set[UUID]:
     return {row[0] for row in rows}
 
 
-async def is_active_and_public(session: AsyncSession, ids: set[UUID]) -> bool:
+async def is_active(session: AsyncSession, entity_id: UUID) -> bool:
+    """The resolved entity itself must be active; merged sources need not be."""
+    row = (
+        await session.execute(
+            text("SELECT lifecycle FROM entity WHERE id = CAST(:entity_id AS uuid)"),
+            {"entity_id": str(entity_id)},
+        )
+    ).first()
+    return row is not None and row[0] == "active"
+
+
+async def is_public(session: AsyncSession, ids: set[UUID]) -> bool:
+    """Every entity in the cluster must be public, merged sources included."""
     row = (
         await session.execute(
             text(
                 """
-                SELECT count(*) FILTER (
-                    WHERE lifecycle <> 'active' OR visibility <> 'public'
-                ) AS offenders
+                SELECT count(*) FILTER (WHERE visibility <> 'public') AS offenders
                 FROM entity WHERE id = ANY(CAST(:ids AS uuid[]))
                 """
             ),
