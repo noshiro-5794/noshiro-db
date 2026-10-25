@@ -69,7 +69,7 @@ async def one_collection(
     except LookupError as error:
         raise ProblemError(
             status_code=404,
-            detail="User collection not found.",
+            detail="UserCollection not found.",
             code="users.collection_not_found",
         ) from error
 
@@ -88,7 +88,7 @@ async def patch_collection(
     except LookupError as error:
         raise ProblemError(
             status_code=404,
-            detail="User collection not found.",
+            detail="UserCollection not found.",
             code="users.collection_not_found",
         ) from error
     except ValueError as error:
@@ -108,6 +108,6 @@ async def remove_collection(
     except LookupError as error:
         raise ProblemError(
             status_code=404,
-            detail="User collection not found.",
+            detail="UserCollection not found.",
             code="users.collection_not_found",
         ) from error
