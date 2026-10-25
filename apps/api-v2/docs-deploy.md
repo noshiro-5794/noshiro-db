@@ -47,6 +47,23 @@ curl -s http://127.0.0.1:8010/health/ready/   # {"status":"ok"} after SELECT 1
 Readiness answers 503 when the pool cannot answer. The old service also pings its cache
 there; this one has no cache of its own, so that half is not reproduced.
 
+## After the switch
+
+```sh
+uv run python scripts/smoke.py --base http://127.0.0.1:8010 \
+  --email <account> --password <password> --entry <library entry id>
+```
+
+Liveness, readiness, sign in, and the four reads a browser hits first; one line per
+step and a non-zero exit if any fails. Run against the live build it reports:
+
+```
+ok   liveness (200) … ok   read entry 1143 (200)
+0 failure(s)
+```
+
+A failure here is a reason to point the host back before the first user finds it.
+
 ## Migrations
 
 Alembic owns the schema. `upgrade head` and `downgrade -1` were both run against the
