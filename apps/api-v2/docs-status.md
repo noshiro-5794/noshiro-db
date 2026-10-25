@@ -1,11 +1,11 @@
 # Status
 
-A snapshot of the replacement service at the hundredth round of work. It is not a plan; the plan is in
+A snapshot of the replacement service after the long porting run. It is not a plan; the plan is in
 `docs-display.md`, `docs-schema.md` and `docs-parity.md`.
 
 ## Covered endpoints
 
-Seventy-one operations compared with the Django response. The table below is the
+One hundred and thirty-seven operations compared with the Django response. The table below is the
 shape of the coverage; `docs-parity.md` has every recorded comparison.
 
 | Area | Endpoints | Evidence |
@@ -14,7 +14,9 @@ shape of the coverage; `docs-parity.md` has every recorded comparison.
 | entity | `entities/{id}/`, `metrics/`, `relations/`, `credits/`, `releases/`, `characters/`, `episodes/`, `evidence/` | `docs-parity.md`, shadow runs |
 | calendar | `calendar/events/` — board, range, timezone, works | `docs-parity.md`, 5 variants |
 | auth | `auth/social/providers/`, `auth/sessions/password/`, `auth/session/`, `users/me/profile/`, `users/me/settings/` | `docs-parity.md` |
-| community | notifications (count, read-all, list, single read), blocks (write, list), mutes (list), follows (write, lists), bookmarks (list, write), reports (list, write, staff queue) | `docs-parity.md` |
+| community | notifications, blocks, mutes, follows, bookmarks, reactions, reports (write, staff queue, resolution), posts (list, detail, write, moderation), comments (list, write, moderation), all four timelines | `docs-parity.md` |
+| collections | public list, mine (list, create, detail, edit, delete), items (list, add, edit, delete, replace) | `docs-parity.md` |
+| operations | import jobs (list, detail, create), sync campaigns (list, detail, create, items, claims, summary), matching candidates (list) | `docs-parity.md` |
 | library | tags (list, create, rename, delete), entries (list, read, add, update, delete), release states, rating details, reviews (list, write), yearly stats | `docs-parity.md` |
 
 `scripts/parity.py` compares named paths; `scripts/shadow.py` samples entities and
