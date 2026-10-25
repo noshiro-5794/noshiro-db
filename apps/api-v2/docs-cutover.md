@@ -11,6 +11,7 @@ rather than from optimism. The answer today is **no-go**, for four concrete reas
 | Writes | response bodies and the rows behind them, compared with resets in between |
 | Schema | Alembic owns it; four revisions, applied and reverted on production |
 | Regression | 491 of 491 comparisons matched on the latest build: 60 sampled entities across 11 list paths |
+| Production install | `uv sync --no-dev` in a clean copy starts and serves (a missing `httpx` was found this way and fixed) |
 | Tests | 54, none needing a database |
 | Auth | password and code sign-in, registration, reset, JWT the other service accepts |
 
