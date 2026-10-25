@@ -64,3 +64,16 @@ async def staff_user(user: Annotated[Any, Depends(current_user)]) -> Any:
     if not user.is_staff:
         raise ProblemError(status_code=403, detail=DENIED)
     return user
+
+
+async def optional_user(
+    session: SessionDep,
+    authorization: Annotated[str | None, Header()] = None,
+) -> Any | None:
+    """The caller when there is one, without making a token mandatory."""
+    if not authorization:
+        return None
+    try:
+        return await current_user(session, authorization)
+    except ProblemError:
+        return None
