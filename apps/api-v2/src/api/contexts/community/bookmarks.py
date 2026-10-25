@@ -159,6 +159,8 @@ async def _payload(session: AsyncSession, row: Any) -> dict[str, Any]:
         target = review_summary(_ReviewRow(row), await _entity(session, row.review_entity_id))
     else:
         target = collection_summary(_CollectionRow(row))
+    if target is not None and "created_at" in target:
+        target["created_at"] = isoformat(target["created_at"])
     return {
         "id": row.id,
         "target_type": kind,
