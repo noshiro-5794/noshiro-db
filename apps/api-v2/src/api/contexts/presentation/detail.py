@@ -142,9 +142,10 @@ async def _summary(
         await session.execute(
             text(
                 "SELECT id, text, language, kind, is_official FROM entity_name"
-                " WHERE entity_id = :root ORDER BY kind, language, text, id"
+                " WHERE entity_id = ANY(CAST(:ids AS uuid[]))"
+                " ORDER BY kind, language, text, id"
             ),
-            {"root": str(root)},
+            {"ids": cluster_ids},
         )
     ).all()
     media: list[dict[str, Any]] = []
@@ -159,14 +160,14 @@ async def _summary(
                     + " FROM entity_media AS link"
                     " JOIN media_asset AS asset ON asset.id = link.asset_id"
                     + PROVENANCE_JOINS.format(observation="link.observation_id")
-                    + " WHERE link.entity_id = :root AND "
+                    + " WHERE link.entity_id = ANY(CAST(:ids AS uuid[])) AND "
                     + CURRENT_SUPPORT.format(
                         observation="link.observation_id",
                         record="asset.provider_record_id",
                     )
                     + " ORDER BY link.id"
                 ),
-                {"root": str(root)},
+                {"ids": cluster_ids},
             )
         ).all()
         media = [
@@ -208,7 +209,7 @@ def _choose_name(names: list[Any], language: str) -> str:
     return str(sorted(candidates, key=lambda item: (not item.is_official, item.id))[0].text)
 
 
-async def _names(session: AsyncSession, root: UUID) -> list[dict[str, Any]]:
+async def _names(session: AsyncSession, cluster_ids: list[str]) -> list[dict[str, Any]]:
     rows = (
         await session.execute(
             text(
@@ -218,13 +219,13 @@ async def _names(session: AsyncSession, root: UUID) -> list[dict[str, Any]]:
                 + PROVENANCE_COLUMNS
                 + " FROM entity_name AS name"
                 + PROVENANCE_JOINS.format(observation="name.observation_id")
-                + " WHERE name.entity_id = :root AND "
+                + " WHERE name.entity_id = ANY(CAST(:ids AS uuid[])) AND "
                 + CURRENT_SUPPORT.format(
                     observation="name.observation_id", record="name.provider_record_id"
                 )
                 + " ORDER BY name.id"
             ),
-            {"root": str(root)},
+            {"ids": cluster_ids},
         )
     ).all()
     return [
@@ -245,7 +246,7 @@ async def _names(session: AsyncSession, root: UUID) -> list[dict[str, Any]]:
 
 
 async def _descriptions(
-    session: AsyncSession, root: UUID, *, content_allowed: bool
+    session: AsyncSession, cluster_ids: list[str], *, content_allowed: bool
 ) -> list[dict[str, Any]]:
     rows = (
         await session.execute(
@@ -257,14 +258,14 @@ async def _descriptions(
                 + PROVENANCE_COLUMNS
                 + " FROM entity_description AS description"
                 + PROVENANCE_JOINS.format(observation="description.observation_id")
-                + " WHERE description.entity_id = :root AND "
+                + " WHERE description.entity_id = ANY(CAST(:ids AS uuid[])) AND "
                 + CURRENT_SUPPORT.format(
                     observation="description.observation_id",
                     record="description.provider_record_id",
                 )
                 + " ORDER BY description.id"
             ),
-            {"root": str(root)},
+            {"ids": cluster_ids},
         )
     ).all()
     return [
@@ -483,8 +484,10 @@ async def entity_detail(
 ) -> dict[str, Any]:
     data = await _summary(session, root, cluster_ids, language)
     content_allowed = data["audience"] != "adult"
-    data["names"] = await _names(session, root)
-    data["descriptions"] = await _descriptions(session, root, content_allowed=content_allowed)
+    data["names"] = await _names(session, cluster_ids)
+    data["descriptions"] = await _descriptions(
+        session, cluster_ids, content_allowed=content_allowed
+    )
     data["facts"] = await _facts(session, root, cluster_ids, content_allowed=content_allowed)
     data["external_links"] = await _external_links(session, cluster_ids)
     data["content_ratings"] = await _content_ratings(session, cluster_ids)
