@@ -20,6 +20,7 @@ is `scripts/parity.py`; it compares status codes, then the document structurally
 | 2026-10-25 | `GET /api/v1/index/entities/{id}/episodes/` (pages 1, 2, custom size, past last) | 4 entities | **OK** |
 | 2026-10-25 | `GET /api/v1/index/entities/` — default, page 2, collection, query, scope=all, popular, subject type, nsfw | 8 variants | **OK** |
 | 2026-10-25 | `GET /api/v1/index/entities/{id}/evidence/` | 3 entities | **OK** — compared as a set (`--unordered $`) |
+| 2026-10-25 | `GET /api/v1/index/collections/{slug}/entities/` — anime, galgame, query, unknown slug | 4 variants | **OK** |
 
 Reproduce against the two services sharing a database:
 
@@ -78,6 +79,10 @@ Two divergences were found by this comparison and fixed or recorded:
 13. **Bare lists have no order.** `evidence` returns a list with no `ORDER BY`, so
    Django's order is the table's physical order; this service orders by id and
    the comparison sorts the root array (`--unordered $`).
-14. **`value` type.** The OpenAPI snapshot says string, the Django response sends
+14. **Two collapse rules, not one.** Django resolves keyword matches to the final
+   root (`resolve_with`, whole chain) but collapses memberships by a single hop
+   (`_canonical_filter`). Keyword matching also reads only *current* names and
+   links; searching every row returned one stale match.
+15. **`value` type.** The OpenAPI snapshot says string, the Django response sends
    a number. Parity copies the response; the disagreement is recorded in
    `contexts/signal/domain.py` for a deliberate fix on both sides.
