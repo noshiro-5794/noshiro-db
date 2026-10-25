@@ -1,7 +1,7 @@
 UV ?= uv
 RUN := $(UV) run
 
-.PHONY: sync lint format type test check
+.PHONY: sync lint format type test check migrate revision
 
 sync:
 	$(UV) sync
@@ -21,3 +21,9 @@ test:
 	$(RUN) pytest -q
 
 check: lint type test
+
+migrate:
+	$(RUN) alembic upgrade head
+
+revision:
+	$(RUN) alembic revision -m "$(m)"
