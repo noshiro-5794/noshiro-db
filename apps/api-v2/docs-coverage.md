@@ -46,7 +46,7 @@ Paths omit the shared `/api/v1` prefix. `S` is a single query and a small payloa
 | `/community/activities/` | GET | M |
 | `/community/comments/` | GET,POST | M |
 | `/community/comments/{comment_id}/` | PATCH,DELETE | M |
-| `/community/me/activities/` | GET | M |
+| — | — | done |
 | `/community/me/blocks/{target_user_id}/` | PUT,DELETE | M |
 | `/community/me/bookmarks/` | — | done |
 | — | — | done |
