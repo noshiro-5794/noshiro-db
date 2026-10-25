@@ -29,6 +29,9 @@ walks every entity endpoint plus the list paths. Last shadow run: **103/103**.
 
 ## Not started
 
+`docs-coverage.md` lists every remaining operation path by path, with a size
+estimate and the order to take them in.
+
 | Item | Why it waits |
 |---|---|
 | `calendar/board/events/` | the Gantt projection: its own round |
