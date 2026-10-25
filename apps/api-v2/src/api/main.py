@@ -10,7 +10,6 @@ from .contexts.community.api.blocks import router as community_blocks_router
 from .contexts.community.api.notifications import (
     router as community_notifications_router,
 )
-from .contexts.access.api.social import router as social_router
 from .contexts.library.api.collections import router as collections_router
 from .contexts.library.api.entries import router as library_entries_router
 from .contexts.library.api.stats import router as library_stats_router
