@@ -50,7 +50,7 @@ Paths omit the shared `/api/v1` prefix. `S` is a single query and a small payloa
 | — | — | done |
 | `/community/me/mutes/{target_user_id}/` | PUT,DELETE | M |
 | `/community/moderation/comments/{comment_id}/` | PATCH | M |
-| `/community/moderation/posts/{post_id}/` | PATCH | M |
+| `/community/moderation/posts/{post_id}/` | comment variant | M |
 | `/community/moderation/reports/` | — | done |
 | `/community/moderation/reports/{report_id}/` | PATCH | L |
 
