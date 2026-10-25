@@ -45,6 +45,7 @@ LIST_PATHS: tuple[tuple[str, bool], ...] = (
     ("/api/v1/index/collections/galgame/entities/?page_size=5", True),
     ("/api/v1/auth/social/providers/", False),
     ("/api/v1/index/calendar/events/", True),
+    ("/api/v1/index/calendar/board/events/", True),
     (
         "/api/v1/index/calendar/events/?from=2026-10-31T00:00:00Z&to=2026-10-31T06:00:00Z",
         True,
