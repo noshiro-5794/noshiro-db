@@ -40,13 +40,19 @@ CURRENT = """
         ({observation} IS NULL AND {record} IS NULL)
         OR (
             {observation} IS NOT NULL
-            AND observation.provider_record_id IS NOT NULL
-            AND record.status = 'active'
-            AND provider.redistribution_policy <> 'forbidden'
             AND EXISTS (
-                SELECT 1 FROM provider_current_observation AS pointer
+                SELECT 1
+                FROM provider_current_observation AS pointer
+                JOIN provider_record AS current_record
+                  ON current_record.id = observation.provider_record_id
+                JOIN provider_namespace AS current_namespace
+                  ON current_namespace.id = current_record.namespace_id
+                JOIN provider AS current_provider
+                  ON current_provider.id = current_namespace.provider_id
                 WHERE pointer.observation_id = {observation}
                   AND pointer.provider_record_id = observation.provider_record_id
+                  AND current_record.status = 'active'
+                  AND current_provider.redistribution_policy <> 'forbidden'
             )
         )
     )
@@ -89,23 +95,20 @@ def current_rows(
     alias: str,
     columns: str,
     record: str,
-    current_record: str | None = None,
     extra_join: str = "",
 ) -> str:
     """A current-row query for a table that carries its own provenance columns.
 
-    ``record`` is where the provenance comes from; ``current_record`` is the
-    record the cursor comparison uses. They differ for media: the cover's source
-    is the asset's record, but the row is current when the *link's* observation
-    is the selected one for its own record.
+    ``record`` is where the provenance comes from — the asset's record for a
+    cover, the row's own for a name. Whether the row is current is decided by its
+    observation, inside ``CURRENT``.
     """
     observation = f"{alias}.observation_id"
-    checked = current_record or record
     return f"""
         SELECT {columns}, {PROVENANCE}
         FROM {table} AS {alias}
         {extra_join}
         {PROVENANCE_JOINS.format(record=record, observation=observation)}
         WHERE {alias}.entity_id = ANY(CAST(:ids AS uuid[]))
-          AND {CURRENT.format(record=checked, observation=observation)}
+          AND {CURRENT.format(record=record, observation=observation)}
     """
