@@ -41,8 +41,8 @@ CURRENT_RELATION = """
 
 
 async def _evidence(
-    session: AsyncSession, relation_ids: list[UUID]
-) -> dict[UUID, list[dict[str, Any]]]:
+    session: AsyncSession, relation_ids: list[int]
+) -> dict[int, list[dict[str, Any]]]:
     if not relation_ids:
         return {}
     rows = await fetch(
@@ -56,7 +56,7 @@ async def _evidence(
                 observation="evidence.observation_id",
             )
         }
-        WHERE evidence.relation_id = ANY(CAST(:ids AS uuid[]))
+        WHERE evidence.relation_id = ANY(CAST(:ids AS bigint[]))
           AND observation.provider_record_id IS NOT NULL
           AND record.status = 'active'
           AND provider.redistribution_policy <> 'forbidden'
@@ -67,9 +67,9 @@ async def _evidence(
           )
         ORDER BY evidence.id
         """,
-        {"ids": [str(value) for value in relation_ids]},
+        {"ids": relation_ids},
     )
-    grouped: dict[UUID, list[dict[str, Any]]] = {}
+    grouped: dict[int, list[dict[str, Any]]] = {}
     for row in rows:
         grouped.setdefault(row.relation_id, []).append(
             {**(row_provenance(row) or {}), "json_pointer": row.json_pointer}
