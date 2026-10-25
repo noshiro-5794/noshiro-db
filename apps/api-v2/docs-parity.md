@@ -66,6 +66,7 @@ uv run python -m scripts.state_parity --old ... --new ... \
 | 2026-10-25 | shadow run after the community block | 10 entities × 8 endpoints + 11 list paths | **91/91 matched** |
 | 2026-10-25 | `GET /api/v1/community/me/reports/` | 1 | **OK** — a report on an activity, with its target and people |
 | 2026-10-25 | `PUT /api/v1/community/me/notifications/{id}/read-state/` | 1 | **OK** — same body; `read_at` is stamped per call and compared with it ignored |
+| 2026-10-25 | `GET /api/v1/community/me/notifications/` — first page with `page_size=2` | 1 | **OK** — same rows and the same decoded `next` cursor |
 | 2026-10-25 | `PUT /api/v1/community/me/notifications/read-state/` | 1 | **OK** — both report two updated and leave zero unread (compared by state, because each call mutates) |
 | 2026-10-25 | `GET`/`PATCH /api/v1/users/me/settings/` — read, empty, bad choice, bad colour, adult without confirmation, valid choices, adult with confirmation | 7 | **OK** — the confirmation timestamp is per-request and compared with it ignored |
 
