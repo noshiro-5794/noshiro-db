@@ -12,7 +12,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .fragments import fetch
+from .fragments import CURRENT, fetch
 from .summary import entity_summary
 
 DEFAULT_COLLECTIONS = ("anime", "galgame")
@@ -42,12 +42,27 @@ MEMBERS = """
 MATCHES = """
     SELECT name.entity_id AS id
     FROM entity_name AS name
+    LEFT JOIN provider_observation AS observation
+      ON observation.id = name.observation_id
+    LEFT JOIN provider_record AS record ON record.id = name.provider_record_id
     WHERE strpos(lower(name.text), lower(:keyword)) > 0
+      AND {name_current}
     UNION
     SELECT link.entity_id AS id
     FROM external_link AS link
+    LEFT JOIN provider_observation AS observation
+      ON observation.id = link.observation_id
+    LEFT JOIN provider_record AS record ON record.id = link.provider_record_id
     WHERE strpos(lower(link.url), lower(:keyword)) > 0
-"""
+      AND {link_current}
+""".format(
+    name_current=CURRENT.format(
+        record="name.provider_record_id", observation="name.observation_id"
+    ),
+    link_current=CURRENT.format(
+        record="link.provider_record_id", observation="link.observation_id"
+    ),
+)
 
 
 def _clauses(
