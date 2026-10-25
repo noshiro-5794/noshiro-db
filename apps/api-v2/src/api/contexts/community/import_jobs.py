@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import uuid
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -127,3 +129,48 @@ def _job(row: Any) -> dict[str, Any]:
         "finished_at": isoformat(row.finished_at),
         "updated_at": isoformat(row.updated_at),
     }
+
+
+PATTERNS = {"vndb": r"^v[1-9][0-9]*$", "anilist": r"^[1-9][0-9]*$"}
+
+
+async def create_import_job(
+    session: AsyncSession, *, viewer_id: int, body: dict[str, Any]
+) -> dict[str, Any]:
+    import re
+
+    provider = body.get("provider")
+    external_id = body.get("external_id")
+    errors: dict[str, list[str]] = {}
+    if provider not in PATTERNS:
+        errors["provider"] = [f'"{provider}" is not a valid choice.']
+    if not isinstance(external_id, str) or not external_id:
+        errors["external_id"] = ["This field is required."]
+    elif provider in PATTERNS and not re.match(PATTERNS[provider], external_id):
+        errors["external_id"] = [f"Invalid {provider} external id."]
+    if errors:
+        raise ValueError(errors)
+    include_related = body.get("include_related")
+    if not isinstance(include_related, bool):
+        include_related = True
+    rows = await fetch(
+        session,
+        "INSERT INTO sync_job (id, job_type, status, celery_task_id, parameters,"
+        " result, error, current_label, total_count, processed_count, synced_count,"
+        " skipped_count, failed_count, attempt, lease_owner, created_at, updated_at)"
+        " VALUES (:id, :job_type, 'queued', '', CAST(:parameters AS jsonb),"
+        " '{}'::jsonb, '', '', 0, 0, 0, 0, 0, 0, '', now(), now()) RETURNING id",
+        {
+            "id": str(uuid.uuid4()),
+            "job_type": JOB_TYPES[str(provider)],
+            "parameters": json.dumps(
+                {
+                    "provider": provider,
+                    "external_id": external_id,
+                    "include_related": include_related,
+                }
+            ),
+        },
+    )
+    await session.commit()
+    return await import_job(session, job_id=str(rows[0].id))
