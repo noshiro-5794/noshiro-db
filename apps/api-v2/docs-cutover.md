@@ -17,19 +17,25 @@ rather than from optimism. The answer today is **no-go**, for four concrete reas
 
 ## The four blockers
 
-### 1. Worker dispatch is written but not exercised
+### 1. Worker dispatch — closed
 
 Import jobs now publish to the same task name the Django worker listens on
 (`apps.sync.tasks.vndb.import_vndb_work_task`) through the same broker, and the job row
 keeps the task id. Three tests pin the name, the arguments and the no-broker path.
 
-A fourth test runs the real Celery app against the memory broker, sends a task, reads
-the envelope back and checks the name in the header and the arguments in the body — so
-the protocol itself is exercised, not just our arguments.
+The last piece was the queue. Workers run with `-Q` and the default queue is
+`realtime`, so a task published without a queue sits in the broker forever. The queue
+now follows the old service's routes (`apps.sync.tasks.*` → `sync`).
 
-What is **not** done: no live broker is reachable in this environment, which is also
-why the old service answers 503 here. No worker has ever consumed one of these
-messages.
+**Verified end to end** against the live broker: the task appeared in the `sync` queue,
+was gone within seconds, and the worker logged
+
+```
+Task apps.sync.tasks.campaign.run_sync_campaign_task[623dd598…] received
+```
+
+followed by the expected `DoesNotExist` for the throwaway campaign id. A task published
+by this service is consumed by the Django worker.
 
 ### 2. GitHub sign-in still needs Django's signer and its cache
 
