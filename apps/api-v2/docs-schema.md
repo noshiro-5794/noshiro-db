@@ -35,6 +35,12 @@ After the cutover the Django app is deleted and only this history remains.
 |---|---|---|
 | `0001_baseline` | the schema Django built, no operations | `stamp` on production |
 | `0002_display_profile` | `entity_display_profile` | applied, downgraded, re-applied on production |
+| `0003_metric_tables` | `metric_current`, `metric_daily` + backfill from `metric_snapshot` | applied, downgraded, re-applied; counts reproduce exactly |
+
+`0003` copies what `metric_snapshot` holds: **551,018** current rows against
+551,018 distinct `(record, metric)` keys, **697,636** daily rows against the same
+number of distinct `(record, metric, day)` keys, and a spot check against the
+latest snapshot. The backfill reruns to the same numbers in nine seconds.
 
 `0002` was checked three ways on the production database: the table has the
 expected 21 columns and 5 indexes; `downgrade -1` removes it and `upgrade head`
