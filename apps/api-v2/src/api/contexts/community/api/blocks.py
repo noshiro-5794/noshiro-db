@@ -19,6 +19,7 @@ from api.contexts.community.posts import (
     create_post,
     delete_post,
     list_posts,
+    moderate_post,
     public_post,
     update_post,
 )
@@ -681,4 +682,25 @@ async def remove_comment(
             status_code=409,
             detail="The community target is locked.",
             code="community.target_locked",
+        ) from error
+
+
+@router.patch("/moderation/posts/{post_id}/")
+async def moderate(
+    post_id: int,
+    body: dict[str, Any],
+    session: SessionDep,
+    user: Annotated[Any, Depends(staff_user)],
+) -> dict[str, Any]:
+    try:
+        return await moderate_post(session, moderator_id=user.id, post_id=post_id, body=body)
+    except LookupError as error:
+        raise ProblemError(
+            status_code=404,
+            detail="Community post not found.",
+            code="community.post_not_found",
+        ) from error
+    except ValueError as error:
+        raise ProblemError(
+            status_code=400, detail="Request validation failed.", errors=error.args[0]
         ) from error
