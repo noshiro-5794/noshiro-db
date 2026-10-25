@@ -95,10 +95,10 @@ async def list_campaigns(
     if status:
         clauses.append("campaign.status = :status")
         params["status"] = status
-    base = QUERY.split("WHERE")[0]
+    base = QUERY.replace("WHERE campaign.id = CAST(:id AS uuid)", "WHERE")
     rows = await fetch(
         session,
-        base + " WHERE " + " AND ".join(clauses) + " ORDER BY campaign.id LIMIT 100",
+        base + " AND " + " AND ".join(clauses) + " ORDER BY campaign.id LIMIT 100",
         params,
     )
     return [_payload(row) for row in rows]
