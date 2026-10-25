@@ -16,6 +16,7 @@ is `scripts/parity.py`; it compares status codes, then the document structurally
 | 2026-10-25 | `GET /api/v1/index/entities/{id}/credits/` | 4 (the three with the most credits, plus a merge cluster) | **OK** |
 | 2026-10-25 | `GET /api/v1/index/entities/{id}/releases/` | 4 (the three with the most release links, plus a merge cluster) | **OK** |
 | 2026-10-25 | regression: collections, detail, metrics, relations, credits, releases, 404 | one entity each | **7/7 OK** |
+| 2026-10-25 | `GET /api/v1/index/entities/{id}/characters/` (pages 1 and 2) | 3 entities | **OK** — `next`/`previous` ignored, they carry each host |
 
 Reproduce against the two services sharing a database:
 
@@ -57,6 +58,10 @@ Two divergences were found by this comparison and fixed or recorded:
    `ORDER BY`, so the order it returns is PostgreSQL's physical order. This
    service orders by id; the comparison sorts declared paths
    (`--unordered facts[].evidence`) and still fails on a real set difference.
-9. **`value` type.** The OpenAPI snapshot says string, the Django response sends
+9. **A page past the last one is a 404.** Django raises `Invalid page.`; this
+   service returned an empty 200.
+10. **The problem `instance` keeps the query string.** Django builds it from the
+   full path, so a page-two 404 cites `?page=2`.
+11. **`value` type.** The OpenAPI snapshot says string, the Django response sends
    a number. Parity copies the response; the disagreement is recorded in
    `contexts/signal/domain.py` for a deliberate fix on both sides.
