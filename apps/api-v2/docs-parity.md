@@ -38,6 +38,7 @@ DATABASE_URL=... uv run python -m scripts.shadow \
 | 2026-10-25 | shadow run | 30 random entities × 8 endpoints | **240/240 matched** |
 | 2026-10-25 | shadow run | 12 entities × 8 endpoints + 7 list paths | **103/103 matched** |
 | 2026-10-25 | `GET /api/v1/auth/social/providers/` | 1 | **OK** — both report GitHub disabled, matching the environment |
+| 2026-10-25 | `GET /api/v1/index/calendar/events/` — weekly board, include_work, range, range+timezone, range+include_work | 5 variants | **OK** |
 
 Reproduce against the two services sharing a database:
 
@@ -100,6 +101,10 @@ Two divergences were found by this comparison and fixed or recorded:
    root (`resolve_with`, whole chain) but collapses memberships by a single hop
    (`_canonical_filter`). Keyword matching also reads only *current* names and
    links; searching every row returned one stale match.
-15. **`value` type.** The OpenAPI snapshot says string, the Django response sends
+15. **The calendar always builds the work summary.** It decides whether a work
+   appears at all and hides adult entries, even when the caller did not ask for
+   the summary; and DRF renders the nullable `work` field as `null`, so the key is
+   always present.
+16. **`value` type.** The OpenAPI snapshot says string, the Django response sends
    a number. Parity copies the response; the disagreement is recorded in
    `contexts/signal/domain.py` for a deliberate fix on both sides.
