@@ -93,6 +93,7 @@ uv run python -m scripts.state_parity --old ... --new ... \
 | 2026-10-25 | `GET /api/v1/community/posts/` — default and by keyword | 2 | **OK** — author, entity summary and the three viewer flags |
 | 2026-10-25 | `POST /api/v1/community/posts/` | 1 | **OK** — same body and one timeline entry per post |
 | 2026-10-25 | `GET /api/v1/community/posts/{id}/` — an existing post and a missing one | 2 | **OK** — including the domain 404 |
+| 2026-10-25 | `PATCH` / `DELETE /api/v1/community/posts/{id}/` | 3 | **PATCH OK**; the locked 409 and the 204 match; deleting removes the timeline entry |
 | 2026-10-25 | `PUT /api/v1/community/me/notifications/read-state/` | 1 | **OK** — both report two updated and leave zero unread (compared by state, because each call mutates) |
 | 2026-10-25 | `GET`/`PATCH /api/v1/users/me/settings/` — read, empty, bad choice, bad colour, adult without confirmation, valid choices, adult with confirmation | 7 | **OK** — the confirmation timestamp is per-request and compared with it ignored |
 
