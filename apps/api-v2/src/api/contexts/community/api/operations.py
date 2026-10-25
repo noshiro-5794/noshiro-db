@@ -12,9 +12,10 @@ from api.contexts.community.campaigns import (
     list_campaigns,
     summary,
 )
-from api.contexts.community.import_jobs import import_job
+from api.contexts.community.import_jobs import import_job, list_import_jobs
 from api.contexts.community.matching import list_candidates
 from api.db import SessionDep
+from api.shared.cursor import decode, encode
 from api.shared.pagination import ensure_page, page_params, page_payload
 from api.shared.problems import ProblemError
 
@@ -133,3 +134,37 @@ async def matching_candidates(
     total, results = await list_candidates(session, status=status, page=page, page_size=page_size)
     ensure_page(page, page_size, total)
     return page_payload(request, count=total, results=results, page=page, page_size=page_size)
+
+
+@router.get("/import-jobs/")
+async def import_job_list(
+    session: SessionDep,
+    request: Request,
+    user: Annotated[Any, Depends(staff_user)],
+    provider: str = "",
+    status: str = "",
+    cursor: str = "",
+    page_size: int = 16,
+) -> dict[str, Any]:
+    try:
+        results, next_cursor = await list_import_jobs(
+            session,
+            viewer_id=user.id,
+            provider=provider,
+            status=status,
+            cursor=decode(cursor or None),
+            page_size=min(max(page_size, 1), 64),
+        )
+    except ValueError as error:
+        raise ProblemError(
+            status_code=400, detail="Request validation failed.", errors=error.args[0]
+        ) from error
+    return {
+        "next": (
+            str(request.url.include_query_params(cursor=encode(next_cursor)))
+            if next_cursor is not None
+            else None
+        ),
+        "previous": None,
+        "results": results,
+    }
