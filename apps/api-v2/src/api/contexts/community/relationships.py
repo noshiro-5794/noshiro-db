@@ -307,3 +307,74 @@ async def unfollow_user(session: AsyncSession, *, follower_id: int, target_user_
         {"a": follower_id, "b": target_user_id},
     )
     await session.commit()
+
+
+FOLLOW_COLUMNS = "follow.created_at, person.id AS user_id, profile.nickname, profile.avatar"
+
+
+async def _follow_page(
+    session: AsyncSession,
+    *,
+    user_id: int,
+    owner_column: str,
+    person_column: str,
+    page: int,
+    page_size: int,
+) -> tuple[int, list[dict[str, Any]]]:
+    total = await fetch(
+        session,
+        f"SELECT count(*) AS total FROM community_user_follow WHERE {owner_column} = :user_id",
+        {"user_id": user_id},
+    )
+    rows = await fetch(
+        session,
+        f"SELECT {FOLLOW_COLUMNS}"
+        " FROM community_user_follow AS follow"
+        f' JOIN "user" AS person ON person.id = follow.{person_column}'
+        " LEFT JOIN user_profile AS profile ON profile.user_id = person.id"
+        f" WHERE follow.{owner_column} = :user_id"
+        " ORDER BY follow.created_at DESC, follow.id DESC"
+        " LIMIT :limit OFFSET :offset",
+        {
+            "user_id": user_id,
+            "limit": page_size,
+            "offset": (page - 1) * page_size,
+        },
+    )
+    return int(total[0].total), [
+        {
+            "user": {
+                "id": row.user_id,
+                "nickname": row.nickname or "",
+                "avatar": row.avatar or "",
+            },
+            "followed_at": _iso(row.created_at),
+        }
+        for row in rows
+    ]
+
+
+async def list_followers(
+    session: AsyncSession, *, user_id: int, page: int, page_size: int
+) -> tuple[int, list[dict[str, Any]]]:
+    return await _follow_page(
+        session,
+        user_id=user_id,
+        owner_column="following_id",
+        person_column="follower_id",
+        page=page,
+        page_size=page_size,
+    )
+
+
+async def list_following(
+    session: AsyncSession, *, user_id: int, page: int, page_size: int
+) -> tuple[int, list[dict[str, Any]]]:
+    return await _follow_page(
+        session,
+        user_id=user_id,
+        owner_column="follower_id",
+        person_column="following_id",
+        page=page,
+        page_size=page_size,
+    )

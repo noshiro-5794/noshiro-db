@@ -8,6 +8,8 @@ from api.contexts.community.relationships import (
     block_user,
     follow_user,
     list_blocks,
+    list_followers,
+    list_following,
     list_mutes,
     unblock_user,
     unfollow_user,
@@ -119,3 +121,27 @@ async def unfollow(
     except LookupError as error:
         raise ProblemError(status_code=404, detail="User not found.") from error
     return Response(status_code=204)
+
+
+@router.get("/me/followers/")
+async def followers(
+    session: SessionDep,
+    request: Request,
+    user: Annotated[Any, Depends(current_user)],
+) -> dict[str, Any]:
+    page, page_size = page_params(request)
+    total, results = await list_followers(session, user_id=user.id, page=page, page_size=page_size)
+    ensure_page(page, page_size, total)
+    return page_payload(request, count=total, results=results, page=page, page_size=page_size)
+
+
+@router.get("/me/following/")
+async def following(
+    session: SessionDep,
+    request: Request,
+    user: Annotated[Any, Depends(current_user)],
+) -> dict[str, Any]:
+    page, page_size = page_params(request)
+    total, results = await list_following(session, user_id=user.id, page=page, page_size=page_size)
+    ensure_page(page, page_size, total)
+    return page_payload(request, count=total, results=results, page=page, page_size=page_size)
