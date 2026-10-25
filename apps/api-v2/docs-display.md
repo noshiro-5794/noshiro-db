@@ -95,6 +95,25 @@ ignored. One active title was set to `PROFILE-TITLE-PROBE`:
 
 Restoring the row restored the response. The switch is live and reversible.
 
+## The model generator
+
+`agent.py` asks the model to pick a title, rewrite the description and choose a
+cover; the field choices stay the bundle's, because those are facts and the model
+is not asked to restate facts. The answer still goes through the validator.
+
+Status: the provider answers **402 Insufficient Balance**, so the path has been
+exercised against a local stub that returns a fixed JSON object. The request is
+built (3,949 prompt tokens for one bundle), the answer parsed, validated and
+stored as a draft with the configured model name. Real generations start when the
+account is topped up.
+
+## A bug this run exposed
+
+The submit upsert matched on `(entity, language, input_hash)` and copied
+`state = EXCLUDED.state`. Resubmitting the same input — a rerun, a retry, a probe
+— therefore turned a live profile back into a draft. The update now skips active
+rows: after the fix, activating and then resubmitting leaves the row `active`.
+
 ## What is still missing
 
 - the validator and the generator themselves;
