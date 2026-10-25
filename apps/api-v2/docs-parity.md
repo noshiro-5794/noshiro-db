@@ -204,10 +204,10 @@ Two divergences were found by this comparison and fixed or recorded:
    not decrement `reaction_count`, so the number drifts upward over time. The port
    does the same: the counter is part of the old contract, and the drift is a bug
    to fix once, on both sides, not something one side should quietly correct.
-22. **A code is sent without an email.** The port writes the row and answers 202 but
-   does not deliver the message: the old service hands it to Celery, and this one has
-   no sender yet. Until it does, a code has to be read from the table. Recorded so the
-   gap is not mistaken for parity.
+22. **The verification mail is delivered, but its copy is shorter.** The port sends
+   through the same provider and key the old service uses, inline instead of Celery;
+   a provider failure is logged and never turns a written code into a failed request.
+   The branded template is not reproduced — subject and code match, the body does not.
 23. **`value` type.** The OpenAPI snapshot says string, the Django response sends
    a number. Parity copies the response; the disagreement is recorded in
    `contexts/signal/domain.py` for a deliberate fix on both sides.
