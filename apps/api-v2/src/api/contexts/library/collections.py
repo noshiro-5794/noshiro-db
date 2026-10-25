@@ -379,3 +379,151 @@ async def add_item(
         },
         True,
     )
+
+
+async def _item_row(
+    session: AsyncSession, *, user_id: int, collection_id: int, item_id: int
+) -> Any:
+    await my_collection(session, user_id=user_id, collection_id=collection_id)
+    rows = await fetch(
+        session,
+        'SELECT item.id, item.user_subject_id, item."order", item.relation,'
+        " entry.entity_id FROM user_collection_item AS item"
+        " JOIN user_library_entry AS entry ON entry.id = item.user_subject_id"
+        " WHERE item.id = :id AND item.collection_id = :collection",
+        {"id": item_id, "collection": collection_id},
+    )
+    if not rows:
+        raise LookupError(item_id)
+    return rows[0]
+
+
+async def _item_payload(session: AsyncSession, row: Any) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "library_entry_id": row.user_subject_id,
+        "entity": await entity_for(session, row.entity_id),
+        "order": row.order,
+        "relation": row.relation,
+    }
+
+
+async def update_item(
+    session: AsyncSession,
+    *,
+    user_id: int,
+    collection_id: int,
+    item_id: int,
+    body: dict[str, Any],
+) -> dict[str, Any]:
+    await _item_row(session, user_id=user_id, collection_id=collection_id, item_id=item_id)
+    sets: list[str] = []
+    params: dict[str, Any] = {"id": item_id}
+    if "order" in body:
+        order = body["order"]
+        if not isinstance(order, int) or isinstance(order, bool):
+            raise ValueError({"order": ["A valid integer is required."]})
+        sets.append('"order" = :order_value')
+        params["order_value"] = order
+    if "relation" in body:
+        relation = body["relation"]
+        if not isinstance(relation, str):
+            raise ValueError({"relation": ["Not a valid string."]})
+        if len(relation) > 256:
+            raise ValueError({"relation": ["Ensure this field has no more than 256 characters."]})
+        sets.append("relation = :relation")
+        params["relation"] = relation
+    if not sets:
+        raise KeyError("no fields")
+    await fetch(
+        session,
+        "UPDATE user_collection_item SET " + ", ".join(sets) + " WHERE id = :id RETURNING id",
+        params,
+    )
+    await session.commit()
+    return await _item_payload(
+        session,
+        await _item_row(session, user_id=user_id, collection_id=collection_id, item_id=item_id),
+    )
+
+
+async def delete_item(
+    session: AsyncSession, *, user_id: int, collection_id: int, item_id: int
+) -> None:
+    await _item_row(session, user_id=user_id, collection_id=collection_id, item_id=item_id)
+    await fetch(
+        session,
+        "UPDATE community_activity SET collection_item_id = NULL"
+        " WHERE collection_item_id = :id RETURNING id",
+        {"id": item_id},
+    )
+    await fetch(
+        session,
+        "DELETE FROM user_collection_item WHERE id = :id RETURNING id",
+        {"id": item_id},
+    )
+    await session.commit()
+
+
+async def replace_items(
+    session: AsyncSession, *, user_id: int, collection_id: int, body: dict[str, Any]
+) -> list[dict[str, Any]]:
+    await my_collection(session, user_id=user_id, collection_id=collection_id)
+    items = body.get("items")
+    if not isinstance(items, list):
+        raise ValueError({"items": ["This field is required."]})
+    entry_ids = [item.get("library_entry_id") for item in items if isinstance(item, dict)]
+    if len(entry_ids) != len(set(entry_ids)):
+        raise ValueError({"items": ["Duplicate library entries are not allowed."]})
+    await fetch(
+        session,
+        "UPDATE community_activity SET collection_item_id = NULL"
+        " WHERE collection_item_id IN (SELECT id FROM user_collection_item"
+        " WHERE collection_id = :collection) RETURNING id",
+        {"collection": collection_id},
+    )
+    await fetch(
+        session,
+        "DELETE FROM user_collection_item WHERE collection_id = :collection RETURNING id",
+        {"collection": collection_id},
+    )
+    created: list[int] = []
+    for item in items:
+        if not isinstance(item, dict):
+            raise ValueError({"items": ["Invalid item."]})
+        entry_id = item.get("library_entry_id")
+        entry = await fetch(
+            session,
+            "SELECT entity_id FROM user_library_entry WHERE id = :id AND user_id = :user_id",
+            {"id": entry_id, "user_id": user_id},
+        )
+        if not entry:
+            raise LookupError(entry_id)
+        rows = await fetch(
+            session,
+            'INSERT INTO user_collection_item ("order", relation, collection_id,'
+            " user_subject_id) VALUES (:order_value, :relation, :collection, :entry)"
+            " RETURNING id",
+            {
+                "order_value": item.get("order", 0),
+                "relation": item.get("relation", "") or "",
+                "collection": collection_id,
+                "entry": entry_id,
+            },
+        )
+        created.append(rows[0].id)
+    await session.commit()
+    payloads = []
+    for item_id in created:
+        payloads.append(
+            await _item_payload(
+                session,
+                await _item_row(
+                    session,
+                    user_id=user_id,
+                    collection_id=collection_id,
+                    item_id=item_id,
+                ),
+            )
+        )
+    return payloads
