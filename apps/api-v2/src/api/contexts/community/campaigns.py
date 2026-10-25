@@ -102,7 +102,8 @@ async def campaign_items(
     )
     rows = await fetch(
         session,
-        "SELECT item.id, item.shard, item.cursor, item.status, item.provider_record,"
+        "SELECT item.id, item.shard, item.cursor, item.status,"
+        " item.provider_record_id AS provider_record,"
         " item.result, item.error, item.attempt, item.next_retry_at,"
         " item.last_error_code, item.ai_processed_at, item.ai_enriched_at,"
         " item.started_at, item.finished_at, item.updated_at"
