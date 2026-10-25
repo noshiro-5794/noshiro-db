@@ -32,8 +32,9 @@ campaigns publish the same way now, with their own task name and a test.
 the nonce in the shared cache; the callback verifies both. A port that signs
 differently breaks the round trip.
 
-*What closing it means:* reproduce the signer (verifiable against Django's own
-`signing.loads`) and write the same cache key, or move both endpoints together.
+Start is ported with its own signer and is verified on the unconfigured branch; the
+callback is not, and it needs a real GitHub round trip to verify at all. The rule the
+cutover must hold: a sign-in that starts on one service has to finish on the same one.
 
 ### 3. The candidate decision drives the resolution engine
 
