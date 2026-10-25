@@ -127,3 +127,58 @@ def test_first_target_falls_back_to_nothing() -> None:
         activity_id=None,
     )
     assert first_target(row) is None
+
+
+def test_a_post_summary_titles_itself_with_the_first_line() -> None:
+    from types import SimpleNamespace
+
+    from api.contexts.community.targets import post_summary
+
+    row = SimpleNamespace(
+        post_id=3,
+        post_content="first line\nsecond",
+        post_created_at="2026-01-01T00:00:00Z",
+        author_id=7,
+        author_nickname="a",
+        author_avatar="",
+    )
+    summary = post_summary(row, None)
+    assert summary["title"] == "first line"
+    assert summary["type"] == "post"
+
+
+def test_a_review_summary_truncates_its_body() -> None:
+    from types import SimpleNamespace
+
+    from api.contexts.community.targets import review_summary
+
+    row = SimpleNamespace(
+        review_id=4,
+        review_title="t",
+        review_content="x" * 400,
+        review_is_spoiler=True,
+        review_created_at="2026-01-01T00:00:00Z",
+        author_id=7,
+        author_nickname="a",
+        author_avatar="",
+    )
+    assert len(review_summary(row, None)["body"]) == 240
+
+
+def test_a_collection_summary_carries_the_rating() -> None:
+    from types import SimpleNamespace
+
+    from api.contexts.community.targets import collection_summary
+
+    row = SimpleNamespace(
+        collection_id=5,
+        collection_name="n",
+        collection_note="",
+        collection_simple_rating=4,
+        author_id=7,
+        author_nickname="a",
+        author_avatar="",
+    )
+    summary = collection_summary(row)
+    assert summary["simple_rating"] == 4
+    assert summary["body"] == ""
