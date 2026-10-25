@@ -43,3 +43,9 @@ missing piece: a **target dispatcher** — `(target_type, target_id) → summary
 post, comment, review, collection and activity. The activity target is already
 implemented in `community/notifications.py` and can be generalised. Build it once,
 then port the three timelines and the remaining comment/post endpoints on top.
+
+## Step zero
+
+`git fetch origin main` before cutting the branch. A merge through the API does
+not move the local `origin/main`, so a branch cut right after a merge starts from
+the commit before it — and the import it needs is missing.
