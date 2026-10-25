@@ -61,6 +61,7 @@ uv run python -m scripts.state_parity --old ... --new ... \
 | 2026-10-25 | `GET /api/v1/community/me/blocks/`, `GET /api/v1/community/me/mutes/` | 2 | **OK** |
 | 2026-10-25 | `PUT` / `DELETE /api/v1/community/me/following/{user_id}/` | 2 | **OK** — the follow row, the activity it writes and the notification for the target all match |
 | 2026-10-25 | `GET /api/v1/community/me/followers/`, `GET /api/v1/community/me/following/` | 2 | **OK** |
+| 2026-10-25 | `GET /api/v1/community/users/{id}/followers/`, `/following/` — present and missing user | 3 | **OK** — the missing account is `users.user_not_found`, not a bare 404 |
 | 2026-10-25 | `PUT /api/v1/community/me/notifications/read-state/` | 1 | **OK** — both report two updated and leave zero unread (compared by state, because each call mutates) |
 | 2026-10-25 | `GET`/`PATCH /api/v1/users/me/settings/` — read, empty, bad choice, bad colour, adult without confirmation, valid choices, adult with confirmation | 7 | **OK** — the confirmation timestamp is per-request and compared with it ignored |
 
