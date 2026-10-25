@@ -127,8 +127,10 @@ async def register(body: dict[str, Any], session: SessionDep) -> JSONResponse:
     user_id = rows[0].id
     await fetch(
         session,
-        "INSERT INTO user_profile (nickname, avatar, bio, user_id)"
-        " VALUES (:nickname, '', '', :user_id) RETURNING id",
+        "INSERT INTO user_profile (nickname, avatar, bio, theme_color, language,"
+        " appearance, show_adult_content, user_id)"
+        " VALUES (:nickname, '', '', '#7F6FB0', 'auto', 'auto', false, :user_id)"
+        " RETURNING id",
         {"nickname": nickname, "user_id": user_id},
     )
     await fetch(
