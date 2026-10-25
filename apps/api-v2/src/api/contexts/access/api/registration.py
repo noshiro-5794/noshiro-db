@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from api.config import settings
 from api.contexts.access.security import create_tokens, hash_password
 from api.db import SessionDep
+from api.shared.mail import send_verification_code
 from api.shared.problems import ProblemError
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
@@ -47,6 +48,7 @@ async def send_code(
         {"email": email, "code": code, "purpose": purpose},
     )
     await session.commit()
+    await send_verification_code(email, code, str(purpose))
     return {"status": "accepted"}
 
 
