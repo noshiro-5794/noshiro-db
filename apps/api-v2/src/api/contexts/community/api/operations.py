@@ -10,6 +10,7 @@ from api.contexts.community.campaigns import (
     campaign,
     campaign_claims,
     campaign_items,
+    create_campaign,
     list_campaigns,
     summary,
 )
@@ -183,6 +184,21 @@ async def create_job(
 ) -> JSONResponse:
     try:
         data = await create_import_job(session, viewer_id=user.id, body=body)
+    except ValueError as error:
+        raise ProblemError(
+            status_code=400, detail="Request validation failed.", errors=error.args[0]
+        ) from error
+    return JSONResponse(data, status_code=202)
+
+
+@router.post("/sync/")
+async def create_sync_campaign(
+    body: dict[str, Any],
+    session: SessionDep,
+    user: Annotated[Any, Depends(staff_user)],
+) -> JSONResponse:
+    try:
+        data = await create_campaign(session, body=body)
     except ValueError as error:
         raise ProblemError(
             status_code=400, detail="Request validation failed.", errors=error.args[0]
