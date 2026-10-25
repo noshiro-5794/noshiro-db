@@ -112,30 +112,56 @@ async def list_entries(
         },
     )
     releases = await _releases(session, [row.id for row in rows])
-    results = []
-    for row in rows:
-        root = await resolve(session, row.entity_id)
-        cluster = await cluster_ids(session, root) if root is not None else {row.entity_id}
-        summary = await entity_summary(
-            session,
-            root=root or row.entity_id,
-            cluster_ids=[str(value) for value in cluster],
-            language="",
-        )
-        results.append(
-            {
-                "id": row.id,
-                "entity": summary,
-                "status": row.status,
-                "simple_rating": row.simple_rating,
-                "rating": float(row.rating) if row.rating is not None else None,
-                "comment": row.comment,
-                "watch_start_date": isoformat(row.watch_start_date),
-                "watch_end_date": isoformat(row.watch_end_date),
-                "is_public": row.is_public,
-                "releases": releases.get(row.id, []),
-                "created_at": isoformat(row.created_at),
-                "updated_at": isoformat(row.updated_at),
-            }
-        )
+    results = [await entry_data(session, row, releases.get(row.id, [])) for row in rows]
     return int(total[0].total), results
+
+
+async def entry_data(
+    session: AsyncSession, row: Any, releases: list[dict[str, Any]]
+) -> dict[str, Any]:
+    root = await resolve(session, row.entity_id)
+    cluster = await cluster_ids(session, root) if root is not None else {row.entity_id}
+    summary = await entity_summary(
+        session,
+        root=root or row.entity_id,
+        cluster_ids=[str(value) for value in cluster],
+        language="",
+    )
+    return {
+        "id": row.id,
+        "entity": summary,
+        "status": row.status,
+        "simple_rating": row.simple_rating,
+        "rating": float(row.rating) if row.rating is not None else None,
+        "comment": row.comment,
+        "watch_start_date": isoformat(row.watch_start_date),
+        "watch_end_date": isoformat(row.watch_end_date),
+        "is_public": row.is_public,
+        "releases": releases,
+        "created_at": isoformat(row.created_at),
+        "updated_at": isoformat(row.updated_at),
+    }
+
+
+async def get_entry(session: AsyncSession, *, user_id: int, entry_id: int) -> dict[str, Any]:
+    rows = await fetch(
+        session,
+        f"SELECT {ENTRY_COLUMNS} FROM user_library_entry AS entry"
+        " WHERE entry.id = :entry_id AND entry.user_id = :user_id",
+        {"entry_id": entry_id, "user_id": user_id},
+    )
+    if not rows:
+        raise LookupError(entry_id)
+    releases = await _releases(session, [entry_id])
+    return await entry_data(session, rows[0], releases.get(entry_id, []))
+
+
+async def delete_entry(session: AsyncSession, *, user_id: int, entry_id: int) -> None:
+    rows = await fetch(
+        session,
+        "DELETE FROM user_library_entry WHERE id = :entry_id AND user_id = :user_id RETURNING id",
+        {"entry_id": entry_id, "user_id": user_id},
+    )
+    if not rows:
+        raise LookupError(entry_id)
+    await session.commit()
