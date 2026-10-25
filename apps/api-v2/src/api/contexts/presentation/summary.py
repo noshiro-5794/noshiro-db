@@ -141,3 +141,23 @@ async def public_summary(
         cluster_ids=[str(value) for value in ids],
         language=language,
     )
+
+
+async def preferred_name(session: AsyncSession, *, entity_id: UUID, language: str) -> str:
+    """The display name for one language, without building the whole summary."""
+    root = await resolve(session, entity_id)
+    if root is None:
+        return "Untitled"
+    ids = await cluster_ids(session, root)
+    names = await fetch(
+        session,
+        current_rows(
+            table="entity_name",
+            alias="name",
+            columns="name.id, name.text, name.language, name.kind,"
+            " name.is_official, name.is_original",
+            record="name.provider_record_id",
+        ),
+        {"ids": [str(value) for value in ids]},
+    )
+    return choose_name(names, language)

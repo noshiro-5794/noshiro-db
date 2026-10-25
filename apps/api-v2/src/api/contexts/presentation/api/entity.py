@@ -7,6 +7,7 @@ from api.contexts.identity.resolution import cluster_ids, is_active, is_public, 
 from api.contexts.presentation.characters import character_page
 from api.contexts.presentation.credits import entity_credits
 from api.contexts.presentation.detail import entity_detail
+from api.contexts.presentation.episodes import episode_page
 from api.contexts.presentation.pagination import (
     ensure_page,
     page_params,
@@ -107,6 +108,26 @@ async def characters(
     _, cluster = await _public_cluster(session, entity_id)
     page, page_size = page_params(request)
     total, results = await character_page(
+        session,
+        cluster=cluster,
+        language=(accept_language or "").split(",", 1)[0],
+        page=page,
+        page_size=page_size,
+    )
+    ensure_page(page, page_size, total)
+    return page_payload(request, count=total, results=results, page=page, page_size=page_size)
+
+
+@router.get("/entities/{entity_id}/episodes/")
+async def episodes(
+    entity_id: str,
+    session: SessionDep,
+    request: Request,
+    accept_language: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    _, cluster = await _public_cluster(session, entity_id)
+    page, page_size = page_params(request, default=64)
+    total, results = await episode_page(
         session,
         cluster=cluster,
         language=(accept_language or "").split(",", 1)[0],
