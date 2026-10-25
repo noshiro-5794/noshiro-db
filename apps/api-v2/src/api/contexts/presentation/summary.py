@@ -24,7 +24,9 @@ def choose_name(names: list[Any], language: str) -> str:
     if not candidates and wanted:
         primary = wanted.split("-")[0].lower()
         candidates = [name for name in names if name.language.lower().split("-")[0] == primary]
-    candidates = candidates or [name for name in names if name.kind == "original"]
+    candidates = candidates or [
+        name for name in names if name.is_original or name.kind == "original"
+    ]
     candidates = candidates or names
     chosen = sorted(candidates, key=lambda item: (not item.is_official, item.id))[0]
     return str(chosen.text)
@@ -99,7 +101,7 @@ async def entity_summary(
     )
     names = await fetch(
         session,
-        "SELECT id, text, language, kind, is_official FROM entity_name"
+        "SELECT id, text, language, kind, is_official, is_original FROM entity_name"
         " WHERE entity_id = ANY(CAST(:ids AS uuid[]))"
         " ORDER BY kind, language, text, id",
         {"ids": cluster_ids},
