@@ -37,6 +37,12 @@ walks every entity endpoint plus the list paths. Last shadow run: **103/103**.
 | ingestion (providers, mappers, sync) | the largest remaining block; nothing else depends on it for reads |
 | decommissioning Django | last step, after every endpoint and the sync path move |
 
+## Transition affordances
+
+`docs-transition.md` lists what exists only because Django still runs — the
+password verifier, the `hash_password` claim, the forwarded-proto reading — and
+what removes each one. None of it is the target design.
+
 ## How to verify
 
 ```bash
