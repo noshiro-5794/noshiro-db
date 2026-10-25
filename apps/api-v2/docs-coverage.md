@@ -28,7 +28,6 @@ Paths omit the shared `/api/v1` prefix. `S` is a single query and a small payloa
 | `/users/me/collections/{collection_id}/items/{item_id}/` | PATCH,DELETE | M |
 | `/users/me/library/entries/{entry_id}/` | DELETE | M |
 | `/users/me/library/entries/{entry_id}/episodes/{episode_id}/progress/` | PUT,DELETE | M |
-| `/users/me/library/entries/{entry_id}/reviews/` | POST | M |
 | `/users/me/reviews/` | GET | M |
 | `/users/me/reviews/{review_id}/` | GET,PATCH,DELETE | M |
 | `/users/{user_id}/` | GET | M |
