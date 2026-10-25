@@ -37,6 +37,7 @@ async def send_code(
         errors["purpose"] = [f'"{purpose}" is not a valid choice.']
     if errors:
         raise ProblemError(status_code=400, detail="Request validation failed.", errors=errors)
+    await _verify_captcha(str(body.get("hcaptcha_token", "")))
     code = f"{secrets.randbelow(1_000_000):06d}"
     await _insert(
         session,
@@ -245,3 +246,26 @@ async def reset_password(body: dict[str, Any], session: SessionDep) -> None:
         {"email": email},
     )
     await session.commit()
+
+
+CAPTCHA_FAILED = "Captcha validation failed."
+
+
+async def _verify_captcha(token: str) -> None:
+    """Mirror the old service: only enforced when hCaptcha is switched on."""
+    import os
+
+    import httpx
+
+    if os.environ.get("HCAPTCHA_ENABLED", "").lower() not in {"1", "true", "yes"}:
+        return
+    secret = os.environ.get("HCAPTCHA_SECRET_KEY", "")
+    if not secret or not token:
+        raise ProblemError(status_code=400, detail=CAPTCHA_FAILED, code="users.invalid_captcha")
+    async with httpx.AsyncClient(timeout=10) as client:
+        response = await client.post(
+            "https://api.hcaptcha.com/siteverify",
+            data={"secret": secret, "response": token},
+        )
+    if not response.json().get("success"):
+        raise ProblemError(status_code=400, detail=CAPTCHA_FAILED, code="users.invalid_captcha")
