@@ -106,3 +106,74 @@ async def unblock_user(session: AsyncSession, *, user_id: int, target_user_id: i
         {"user_id": user_id, "target": target_user_id},
     )
     await session.commit()
+
+
+MUTE_COLUMNS = (
+    "mute.id, mute.reason, mute.created_at, muted.id AS user_id,"
+    " muted.email, profile.nickname, profile.avatar"
+)
+MUTE_JOINS = """
+    JOIN "user" AS muted ON muted.id = mute.muted_user_id
+    LEFT JOIN user_profile AS profile ON profile.user_id = muted.id
+"""
+
+
+async def _page(
+    session: AsyncSession,
+    *,
+    table: str,
+    alias: str,
+    columns: str,
+    joins: str,
+    user_id: int,
+    page: int,
+    page_size: int,
+) -> tuple[int, list[dict[str, Any]]]:
+    total = await fetch(
+        session,
+        f"SELECT count(*) AS total FROM {table} WHERE user_id = :user_id",
+        {"user_id": user_id},
+    )
+    rows = await fetch(
+        session,
+        f"SELECT {columns} FROM {table} AS {alias} {joins}"
+        f" WHERE {alias}.user_id = :user_id"
+        f" ORDER BY {alias}.created_at DESC, {alias}.id DESC"
+        " LIMIT :limit OFFSET :offset",
+        {
+            "user_id": user_id,
+            "limit": page_size,
+            "offset": (page - 1) * page_size,
+        },
+    )
+    return int(total[0].total), [block_payload(row) for row in rows]
+
+
+async def list_blocks(
+    session: AsyncSession, *, user_id: int, page: int, page_size: int
+) -> tuple[int, list[dict[str, Any]]]:
+    return await _page(
+        session,
+        table="community_user_block",
+        alias="block",
+        columns=BLOCK_COLUMNS,
+        joins=BLOCK_JOINS,
+        user_id=user_id,
+        page=page,
+        page_size=page_size,
+    )
+
+
+async def list_mutes(
+    session: AsyncSession, *, user_id: int, page: int, page_size: int
+) -> tuple[int, list[dict[str, Any]]]:
+    return await _page(
+        session,
+        table="community_user_mute",
+        alias="mute",
+        columns=MUTE_COLUMNS,
+        joins=MUTE_JOINS,
+        user_id=user_id,
+        page=page,
+        page_size=page_size,
+    )

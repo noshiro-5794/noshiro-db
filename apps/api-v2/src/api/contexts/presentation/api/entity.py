@@ -11,14 +11,14 @@ from api.contexts.presentation.detail import entity_detail
 from api.contexts.presentation.episodes import episode_page
 from api.contexts.presentation.evidence import entity_evidence
 from api.contexts.presentation.fragments import fetch
-from api.contexts.presentation.pagination import (
+from api.contexts.presentation.relations import entity_relations
+from api.contexts.presentation.releases import entity_releases
+from api.db import SessionDep
+from api.shared.pagination import (
     ensure_page,
     page_params,
     page_payload,
 )
-from api.contexts.presentation.relations import entity_relations
-from api.contexts.presentation.releases import entity_releases
-from api.db import SessionDep
 from api.shared.problems import ProblemError
 
 router = APIRouter(prefix="/api/v1/index", tags=["catalogue"])
