@@ -14,7 +14,11 @@ from api.contexts.community.relationships import (
     unblock_user,
     unfollow_user,
 )
-from api.contexts.community.reports import list_my_reports, list_reports
+from api.contexts.community.reports import (
+    create_report,
+    list_my_reports,
+    list_reports,
+)
 from api.contexts.presentation.fragments import fetch
 from api.db import SessionDep
 from api.shared.pagination import ensure_page, page_params, page_payload
@@ -198,3 +202,24 @@ async def moderation_reports(
     )
     ensure_page(page, page_size, total)
     return page_payload(request, count=total, results=results, page=page, page_size=page_size)
+
+
+@router.post("/reports/")
+async def report(
+    body: dict[str, Any],
+    session: SessionDep,
+    user: Annotated[Any, Depends(current_user)],
+) -> JSONResponse:
+    try:
+        data = await create_report(session, reporter_id=user.id, body=body)
+    except FileNotFoundError as error:
+        raise ProblemError(
+            status_code=404,
+            detail="Community target not found.",
+            code="community.target_not_found",
+        ) from error
+    except ValueError as error:
+        raise ProblemError(
+            status_code=400, detail="Request validation failed.", errors=error.args[0]
+        ) from error
+    return JSONResponse(data, status_code=201)

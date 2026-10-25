@@ -81,6 +81,7 @@ uv run python -m scripts.state_parity --old ... --new ... \
 | 2026-10-25 | `GET /api/v1/users/me/library/entries/{id}/reviews/` | 1 | **OK** — the review, its entity summary, reaction count and viewer flags |
 | 2026-10-25 | `POST /api/v1/users/me/library/entries/{id}/reviews/` | 1 | **OK** — same body once the id and timestamps are set aside |
 | 2026-10-25 | `GET /api/v1/community/moderation/reports/` — as staff | 1 | **OK** — the same queue, ordered the same way |
+| 2026-10-25 | `POST /api/v1/community/reports/` — unknown target, bad reason, a real report | 3 | **OK** — same domain 404, same field error, same created body |
 | 2026-10-25 | `PUT /api/v1/community/me/notifications/read-state/` | 1 | **OK** — both report two updated and leave zero unread (compared by state, because each call mutates) |
 | 2026-10-25 | `GET`/`PATCH /api/v1/users/me/settings/` — read, empty, bad choice, bad colour, adult without confirmation, valid choices, adult with confirmation | 7 | **OK** — the confirmation timestamp is per-request and compared with it ignored |
 
