@@ -17,6 +17,7 @@ is `scripts/parity.py`; it compares status codes, then the document structurally
 | 2026-10-25 | `GET /api/v1/index/entities/{id}/releases/` | 4 (the three with the most release links, plus a merge cluster) | **OK** |
 | 2026-10-25 | regression: collections, detail, metrics, relations, credits, releases, 404 | one entity each | **7/7 OK** |
 | 2026-10-25 | `GET /api/v1/index/entities/{id}/characters/` (pages 1 and 2) | 3 entities | **OK** — `next`/`previous` ignored, they carry each host |
+| 2026-10-25 | `GET /api/v1/index/entities/{id}/episodes/` (pages 1, 2, custom size, past last) | 4 entities | **OK** |
 
 Reproduce against the two services sharing a database:
 
