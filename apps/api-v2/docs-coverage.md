@@ -41,7 +41,6 @@ Paths omit the shared `/api/v1` prefix. `S` is a single query and a small payloa
 | `/users/{user_id}/reviews/` | GET | M |
 | `/auth/social/github/callback/` | GET | L |
 | `/users/me/collections/{collection_id}/items/` | GET,POST,PUT | L |
-| `/users/me/library/entries/` | POST | L |
 | `/users/me/library/entries/{entry_id}/episodes/progress/` | GET,PUT | L |
 
 ## community — 31 paths
