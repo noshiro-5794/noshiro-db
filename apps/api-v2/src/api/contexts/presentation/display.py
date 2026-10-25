@@ -28,7 +28,7 @@ class DisplayProposal:
     title_name_id: int
     description_text: str = ""
     description_source_ids: list[int] = field(default_factory=list)
-    cover_asset_id: UUID | None = None
+    cover_asset_id: str | None = None
     field_choices: list[dict[str, Any]] = field(default_factory=list)
     is_machine_generated: bool = False
     confidence: float | None = None
@@ -91,7 +91,7 @@ def validate(bundle: dict[str, Any], proposal: DisplayProposal, *, language: str
             errors.append(f"choice cites unknown fact: {choice.get('fact_id')}")
 
     covers = {item["asset_id"] for item in bundle["media"]}
-    if proposal.cover_asset_id is not None and str(proposal.cover_asset_id) not in covers:
+    if proposal.cover_asset_id is not None and proposal.cover_asset_id not in covers:
         errors.append("cover_asset_id is not one of the bundle covers")
 
     if language and proposal.description_text:
@@ -154,7 +154,7 @@ async def submit(
             "description_text": proposal.description_text,
             "source_ids": json.dumps(proposal.description_source_ids),
             "machine": proposal.is_machine_generated,
-            "cover": str(proposal.cover_asset_id) if proposal.cover_asset_id else None,
+            "cover": proposal.cover_asset_id,
             "choices": json.dumps(proposal.field_choices, ensure_ascii=False),
             "bundle_version": bundle["bundle_version"],
             "input_hash": input_hash,
