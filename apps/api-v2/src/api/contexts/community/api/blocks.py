@@ -25,8 +25,10 @@ from api.contexts.community.reports import (
     list_my_reports,
     list_reports,
 )
+from api.contexts.community.timeline import list_activities
 from api.contexts.presentation.fragments import fetch
 from api.db import SessionDep
+from api.shared.cursor import decode, encode
 from api.shared.pagination import ensure_page, page_params, page_payload
 from api.shared.problems import ProblemError
 
@@ -333,3 +335,31 @@ async def unreact(
         target_id=target_id,
         reaction_type=reaction_type,
     )
+
+
+@router.get("/me/activities/")
+async def my_activities(
+    session: SessionDep,
+    request: Request,
+    user: Annotated[Any, Depends(current_user)],
+    cursor: str = "",
+    page_size: int = 16,
+) -> dict[str, Any]:
+    parsed = decode(cursor or None)
+    size = min(max(page_size, 1), 64)
+    results, next_cursor = await list_activities(
+        session,
+        viewer_id=user.id,
+        owner_id=user.id,
+        cursor=parsed,
+        page_size=size,
+    )
+    return {
+        "next": (
+            str(request.url.include_query_params(cursor=encode(next_cursor)))
+            if next_cursor is not None
+            else None
+        ),
+        "previous": None,
+        "results": results,
+    }
