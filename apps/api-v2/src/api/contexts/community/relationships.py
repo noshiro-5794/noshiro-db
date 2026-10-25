@@ -76,7 +76,7 @@ async def block_user(
         session,
         "DELETE FROM community_user_follow WHERE (follower_id = :user_id"
         " AND following_id = :target) OR (follower_id = :target"
-        " AND following_id = :user_id)",
+        " AND following_id = :user_id) RETURNING id",
         {"user_id": user_id, "target": target_user_id},
     )
     await fetch(
