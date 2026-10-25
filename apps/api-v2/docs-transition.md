@@ -13,6 +13,20 @@ survive the cutover, and none of them should be presented as a feature.
 | `X-Forwarded-Proto` reading | Django refuses insecure requests; the new service must agree during the parallel run | the service is the only one behind the proxy |
 | `about:blank` for plain 404s | Django's handler emits it for `NotFound` but a type URI for domain errors | the last Django response is gone |
 
+## Tables with no owner
+
+`user_subject` holds 1,016 rows, the same count as `user_library_entry`, with the
+same columns. Nothing keeps them in step: there is no trigger, no function, and
+the foreign key from `user_review` points at `user_library_entry`. It is the copy
+left behind when the table was rebuilt under its new name.
+
+- Nothing may write to it. A port that does would create rows no reader sees.
+- It goes with the schema cleanup, after the cutover, together with the metric
+  facts and the legacy tag relation.
+
+The same check is worth running on any table whose name looks like a model that
+was renamed.
+
 ## The token contract this service wants
 
 Once nothing else has to read it:
