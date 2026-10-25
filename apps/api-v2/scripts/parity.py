@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import urllib.error
 import urllib.request
 from collections.abc import Iterator
 from typing import Any
@@ -23,10 +24,15 @@ from typing import Any
 DEFAULT_HEADERS = {"Accept": "application/json", "X-Forwarded-Proto": "https"}
 
 
-def fetch(base_url: str, path: str, headers: dict[str, str]) -> Any:
+def fetch(base_url: str, path: str, headers: dict[str, str]) -> tuple[int, Any]:
+    """Return the status code and the decoded body; 4xx/5xx are comparable too."""
     request = urllib.request.Request(base_url.rstrip("/") + path, headers=headers)
-    with urllib.request.urlopen(request, timeout=30) as response:
-        return json.loads(response.read())
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            return response.status, json.loads(response.read() or b"null")
+    except urllib.error.HTTPError as error:
+        body = error.read()
+        return error.code, json.loads(body) if body else None
 
 
 def _is_number(value: Any) -> bool:
