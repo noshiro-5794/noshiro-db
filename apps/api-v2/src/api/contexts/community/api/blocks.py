@@ -9,7 +9,7 @@ from api.contexts.community.bookmarks import (
     remove_bookmark,
     set_bookmark,
 )
-from api.contexts.community.comments import list_comments
+from api.contexts.community.comments import create_comment, list_comments
 from api.contexts.community.posts import (
     create_post,
     delete_post,
@@ -592,3 +592,29 @@ async def post_comments(
     )
     ensure_page(page, page_size, total)
     return page_payload(request, count=total, results=results, page=page, page_size=page_size)
+
+
+@router.post("/posts/{post_id}/comments/")
+async def add_post_comment(
+    post_id: int,
+    body: dict[str, Any],
+    session: SessionDep,
+    user: Annotated[Any, Depends(current_user)],
+) -> JSONResponse:
+    try:
+        data = await create_comment(
+            session, user_id=user.id, target_type="post", target_id=post_id, body=body
+        )
+    except FileNotFoundError as error:
+        raise ProblemError(
+            status_code=404,
+            detail="Community post not found.",
+            code="community.post_not_found",
+        ) from error
+    except LookupError as error:
+        raise ProblemError(status_code=404, detail="Comment not found.") from error
+    except ValueError as error:
+        raise ProblemError(
+            status_code=400, detail="Request validation failed.", errors=error.args[0]
+        ) from error
+    return JSONResponse(data, status_code=201)
