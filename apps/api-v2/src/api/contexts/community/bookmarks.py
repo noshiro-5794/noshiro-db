@@ -151,3 +151,17 @@ class _CollectionRow:
         self.author_id = row.collection_owner_id
         self.author_nickname = row.collection_owner_nickname
         self.author_avatar = row.collection_owner_avatar
+
+
+class _ReviewRow:
+    """Maps the review author columns onto the names the summary expects."""
+
+    def __init__(self, row: Any) -> None:
+        self.review_id = row.review_id
+        self.review_title = row.review_title
+        self.review_content = row.review_content
+        self.review_is_spoiler = row.review_is_spoiler
+        self.review_created_at = row.review_created_at
+        self.author_id = row.review_author_id
+        self.author_nickname = row.review_author_nickname
+        self.author_avatar = row.review_author_avatar
