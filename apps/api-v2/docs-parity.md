@@ -75,6 +75,7 @@ uv run python -m scripts.state_parity --old ... --new ... \
 | 2026-10-25 | `GET /api/v1/users/me/library/entries/{id}/` | 1 | **OK** — the same row the list returns |
 | 2026-10-25 | `PATCH /api/v1/users/me/library/entries/{id}/` — bad status, bad rating, inverted watch dates | 3 | **2 OK, 1 deliberate difference** |
 | 2026-10-25 | `POST /api/v1/users/me/library/entries/` — create, add again, missing status, unknown entity | 4 | **OK** — the second add answers 200 where the first answers 201 |
+| 2026-10-25 | `PUT /api/v1/users/me/library/entries/{id}/releases/{release_id}/` — bad status, valid state | 2 | **1 OK, 1 deliberate difference** |
 | 2026-10-25 | `PUT /api/v1/community/me/notifications/read-state/` | 1 | **OK** — both report two updated and leave zero unread (compared by state, because each call mutates) |
 | 2026-10-25 | `GET`/`PATCH /api/v1/users/me/settings/` — read, empty, bad choice, bad colour, adult without confirmation, valid choices, adult with confirmation | 7 | **OK** — the confirmation timestamp is per-request and compared with it ignored |
 
@@ -152,6 +153,11 @@ Two divergences were found by this comparison and fixed or recorded:
    field error from this one. The check exists in Django and is written before the
    save, so the crash is in the old service, not in the rule. Matching a 500 was
    not considered correct; the difference is recorded rather than reproduced.
-18. **`value` type.** The OpenAPI snapshot says string, the Django response sends
+18. **A valid release state crashes Django.** `PUT` with a good body answers
+   **500** from the Django service and **201** from this one. The state needs
+   `language` and `platform`, which the serializer does not default; the port
+   writes empty strings, which is what the column copies had. Recorded, not
+   reproduced.
+19. **`value` type.** The OpenAPI snapshot says string, the Django response sends
    a number. Parity copies the response; the disagreement is recorded in
    `contexts/signal/domain.py` for a deliberate fix on both sides.
