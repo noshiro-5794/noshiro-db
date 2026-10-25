@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -127,3 +128,45 @@ def _job(row: Any) -> dict[str, Any]:
         "finished_at": isoformat(row.finished_at),
         "updated_at": isoformat(row.updated_at),
     }
+
+
+PATTERNS = {"vndb": r"^v[1-9][0-9]*$", "anilist": r"^[1-9][0-9]*$"}
+
+
+async def create_import_job(
+    session: AsyncSession, *, viewer_id: int, body: dict[str, Any]
+) -> dict[str, Any]:
+    import re
+
+    provider = body.get("provider")
+    external_id = body.get("external_id")
+    errors: dict[str, list[str]] = {}
+    if provider not in PATTERNS:
+        errors["provider"] = [f'"{provider}" is not a valid choice.']
+    if not isinstance(external_id, str) or not external_id:
+        errors["external_id"] = ["This field is required."]
+    elif provider in PATTERNS and not re.match(PATTERNS[provider], external_id):
+        errors["external_id"] = [f"Invalid {provider} external id."]
+    if errors:
+        raise ValueError(errors)
+    include_related = body.get("include_related")
+    if not isinstance(include_related, bool):
+        include_related = True
+    rows = await fetch(
+        session,
+        "INSERT INTO sync_job (job_type, parameters, status, created_at)"
+        " VALUES (:job_type, CAST(:parameters AS jsonb), 'queued', now())"
+        " RETURNING id",
+        {
+            "job_type": JOB_TYPES[str(provider)],
+            "parameters": json.dumps(
+                {
+                    "provider": provider,
+                    "external_id": external_id,
+                    "include_related": include_related,
+                }
+            ),
+        },
+    )
+    await session.commit()
+    return await import_job(session, job_id=str(rows[0].id))

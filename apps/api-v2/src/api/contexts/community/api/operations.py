@@ -3,6 +3,7 @@
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Request
+from fastapi.responses import JSONResponse
 
 from api.contexts.access.dependencies import staff_user
 from api.contexts.community.campaigns import (
@@ -12,7 +13,11 @@ from api.contexts.community.campaigns import (
     list_campaigns,
     summary,
 )
-from api.contexts.community.import_jobs import import_job, list_import_jobs
+from api.contexts.community.import_jobs import (
+    create_import_job,
+    import_job,
+    list_import_jobs,
+)
 from api.contexts.community.matching import list_candidates
 from api.db import SessionDep
 from api.shared.cursor import decode, encode
@@ -168,3 +173,18 @@ async def import_job_list(
         "previous": None,
         "results": results,
     }
+
+
+@router.post("/import-jobs/")
+async def create_job(
+    body: dict[str, Any],
+    session: SessionDep,
+    user: Annotated[Any, Depends(staff_user)],
+) -> JSONResponse:
+    try:
+        data = await create_import_job(session, viewer_id=user.id, body=body)
+    except ValueError as error:
+        raise ProblemError(
+            status_code=400, detail="Request validation failed.", errors=error.args[0]
+        ) from error
+    return JSONResponse(data, status_code=202)
