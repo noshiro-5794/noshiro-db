@@ -348,9 +348,9 @@ async def moderate_post(
     await fetch(
         session,
         "INSERT INTO community_moderation_action (moderator_id, target_user_id,"
-        " post_id, action_type, reason, created_at)"
-        " VALUES (:moderator, :target_user, :post, :action, :reason, now())"
-        " RETURNING id",
+        " post_id, action_type, reason, metadata, created_at)"
+        " VALUES (:moderator, :target_user, :post, :action, :reason,"
+        " '{}'::jsonb, now()) RETURNING id",
         {
             "moderator": moderator_id,
             "target_user": rows[0].author_id,
