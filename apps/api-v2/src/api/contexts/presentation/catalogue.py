@@ -131,6 +131,7 @@ async def entity_page(
             root=root,
             cluster_ids=[str(value) for value in clusters.get(root, {root})],
             language=language,
+            cluster_scope=False,
         )
         for root in roots
     ]

@@ -41,7 +41,7 @@ async def cluster_entities(session: AsyncSession, cluster_ids: list[str]) -> lis
     )
 
 
-async def _media(session: AsyncSession, cluster_ids: list[str]) -> list[dict[str, Any]]:
+async def _media(session: AsyncSession, scope: list[str]) -> list[dict[str, Any]]:
     rows = await fetch(
         session,
         current_rows(
@@ -52,7 +52,7 @@ async def _media(session: AsyncSession, cluster_ids: list[str]) -> list[dict[str
             extra_join="JOIN media_asset AS asset ON asset.id = link.asset_id",
         )
         + " ORDER BY link.id",
-        {"ids": cluster_ids},
+        {"ids": scope},
     )
     return [
         {
@@ -72,7 +72,16 @@ async def entity_summary(
     root: UUID,
     cluster_ids: list[str],
     language: str,
+    cluster_scope: bool = True,
 ) -> dict[str, Any]:
+    """The summary of one entity.
+
+    ``cluster_scope`` decides whether names, memberships and media are read from
+    the whole merge cluster or from the root alone. The single-entity endpoints
+    use the cluster; the catalogue list uses the root, which is what Django's
+    batched `entity_summaries` does — an inconsistency between the two paths that
+    parity has to reproduce before it can be removed on both sides.
+    """
     members = await cluster_entities(session, cluster_ids)
     root_row = next(row for row in members if row.id == root)
     audience = "adult" if any(row.audience == "adult" for row in members) else root_row.audience
@@ -90,6 +99,7 @@ async def entity_summary(
             "SELECT entity_id, work_type FROM work WHERE entity_id = :root",
             {"root": str(root)},
         )
+    scope = cluster_ids if cluster_scope else [str(root)]
     memberships = await fetch(
         session,
         "SELECT collection.slug FROM curated_membership AS membership"
@@ -97,7 +107,7 @@ async def entity_summary(
         " ON collection.id = membership.collection_id"
         " WHERE membership.entity_id = ANY(CAST(:ids AS uuid[]))"
         " AND membership.listing_state = 'listed'",
-        {"ids": cluster_ids},
+        {"ids": scope},
     )
     names = await fetch(
         session,
@@ -108,7 +118,7 @@ async def entity_summary(
             " name.is_official, name.is_original",
             record="name.provider_record_id",
         ),
-        {"ids": cluster_ids},
+        {"ids": scope},
     )
     content_allowed = audience != "adult"
     spoiler_allowed = all(row.spoiler_level <= 0 for row in members)
