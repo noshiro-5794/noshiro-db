@@ -43,3 +43,20 @@ Once nothing else has to read it:
 
 That change needs a migration window (old tokens must keep working until they
 expire), which is why it happens after the switch, not before.
+
+
+## One endpoint stays on Django for now
+
+`POST /operations/matching/candidates/{id}/decide/` is deliberately not ported.
+
+It looks like a status update, but a `bind` outcome merges two entities: it follows
+redirects, checks the safety rank of both sides, refuses a merge when one user holds
+library entries on both, writes a merge event and a redirect, marks the source
+`merged`, and then rebuilds the fact layer for the target.
+
+That last step is the resolution engine, not the API surface. Porting the endpoint
+without the engine would produce a route that silently skips the rebuild and leaves
+the fact layer stale — worse than leaving the endpoint where it works. The decision
+belongs with the engine's move, which is a separate, larger piece of work.
+
+Everything else in `/operations/` reads or writes rows the API owns; this one does not.
