@@ -28,8 +28,7 @@ async def _user_for(session: AsyncSession, user_id: int) -> Any:
 
     rows = await fetch(
         session,
-        "SELECT id, email, password, is_staff, is_superuser, is_active"
-        ' FROM "user" WHERE id = :id',
+        'SELECT id, email, password, is_staff, is_superuser, is_active FROM "user" WHERE id = :id',
         {"id": user_id},
     )
     return rows[0] if rows else None
