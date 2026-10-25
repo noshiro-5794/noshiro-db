@@ -16,6 +16,8 @@ from api.contexts.presentation.summary import entity_summary
 
 from .targets import collection_summary, post_summary, review_summary
 
+BOOKMARK_TARGETS = ("post", "review", "collection")
+
 QUERY = """
     SELECT bookmark.id, bookmark.created_at,
            bookmark.post_id, bookmark.review_id, bookmark.collection_id,
@@ -118,25 +120,7 @@ async def list_bookmarks(
             "offset": (page - 1) * page_size,
         },
     )
-    results = []
-    for row in rows:
-        kind = _kind(row)
-        if kind == "post":
-            target = post_summary(row, await _entity(session, row.post_entity_id))
-        elif kind == "review":
-            target = review_summary(_ReviewRow(row), await _entity(session, row.review_entity_id))
-        else:
-            # The collection branch reuses the author fields under its own names.
-            target = collection_summary(_CollectionRow(row))
-        results.append(
-            {
-                "id": row.id,
-                "target_type": kind,
-                "target_id": _target_id(row, kind),
-                "target": target,
-                "created_at": isoformat(row.created_at),
-            }
-        )
+    results = [await _payload(session, row) for row in rows]
     return int(total[0].total), results
 
 
@@ -165,3 +149,73 @@ class _ReviewRow:
         self.author_id = row.review_author_id
         self.author_nickname = row.review_author_nickname
         self.author_avatar = row.review_author_avatar
+
+
+async def _payload(session: AsyncSession, row: Any) -> dict[str, Any]:
+    kind = _kind(row)
+    if kind == "post":
+        target = post_summary(row, await _entity(session, row.post_entity_id))
+    elif kind == "review":
+        target = review_summary(_ReviewRow(row), await _entity(session, row.review_entity_id))
+    else:
+        target = collection_summary(_CollectionRow(row))
+    return {
+        "id": row.id,
+        "target_type": kind,
+        "target_id": _target_id(row, kind),
+        "target": target,
+        "created_at": isoformat(row.created_at),
+    }
+
+
+async def _target_exists(session: AsyncSession, kind: str, target_id: int) -> bool:
+    table = {
+        "post": "community_post",
+        "review": "user_review",
+        "collection": "user_collection",
+    }[kind]
+    rows = await fetch(session, f"SELECT 1 FROM {table} WHERE id = :id", {"id": target_id})
+    return bool(rows)
+
+
+async def set_bookmark(
+    session: AsyncSession, *, user_id: int, target_type: str, target_id: int
+) -> tuple[dict[str, Any], bool]:
+    if target_type not in BOOKMARK_TARGETS:
+        raise KeyError(target_type)
+    if not await _target_exists(session, target_type, target_id):
+        raise LookupError(target_id)
+    existing = await fetch(
+        session,
+        "SELECT id FROM community_bookmark WHERE user_id = :user_id"
+        f" AND {target_type}_id = :target_id",
+        {"user_id": user_id, "target_id": target_id},
+    )
+    if existing:
+        rows = await fetch(session, QUERY + " WHERE bookmark.id = :id", {"id": existing[0].id})
+        return await _payload(session, rows[0]), False
+    created = await fetch(
+        session,
+        "INSERT INTO community_bookmark (created_at, user_id, " + target_type + "_id)"
+        " VALUES (now(), :user_id, :target_id) RETURNING id",
+        {"user_id": user_id, "target_id": target_id},
+    )
+    await session.commit()
+    rows = await fetch(session, QUERY + " WHERE bookmark.id = :id", {"id": created[0].id})
+    return await _payload(session, rows[0]), True
+
+
+async def remove_bookmark(
+    session: AsyncSession, *, user_id: int, target_type: str, target_id: int
+) -> None:
+    if target_type not in BOOKMARK_TARGETS:
+        raise KeyError(target_type)
+    rows = await fetch(
+        session,
+        "DELETE FROM community_bookmark WHERE user_id = :user_id"
+        f" AND {target_type}_id = :target_id RETURNING id",
+        {"user_id": user_id, "target_id": target_id},
+    )
+    if not rows:
+        raise LookupError(target_id)
+    await session.commit()

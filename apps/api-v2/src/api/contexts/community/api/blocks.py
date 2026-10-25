@@ -4,7 +4,11 @@ from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import JSONResponse
 
 from api.contexts.access.dependencies import current_user, staff_user
-from api.contexts.community.bookmarks import list_bookmarks
+from api.contexts.community.bookmarks import (
+    list_bookmarks,
+    remove_bookmark,
+    set_bookmark,
+)
 from api.contexts.community.relationships import (
     block_user,
     follow_user,
@@ -245,3 +249,40 @@ async def bookmarks(
     )
     ensure_page(page, page_size, total)
     return page_payload(request, count=total, results=results, page=page, page_size=page_size)
+
+
+@router.put("/me/bookmarks/{target_type}/{target_id}/")
+async def bookmark(
+    target_type: str,
+    target_id: int,
+    session: SessionDep,
+    user: Annotated[Any, Depends(current_user)],
+) -> JSONResponse:
+    try:
+        data, created = await set_bookmark(
+            session, user_id=user.id, target_type=target_type, target_id=target_id
+        )
+    except KeyError as error:
+        raise ProblemError(status_code=404, detail="Not found.") from error
+    except LookupError as error:
+        raise ProblemError(
+            status_code=404,
+            detail="Community target not found.",
+            code="community.target_not_found",
+        ) from error
+    return JSONResponse(data, status_code=201 if created else 200)
+
+
+@router.delete("/me/bookmarks/{target_type}/{target_id}/", status_code=204)
+async def unbookmark(
+    target_type: str,
+    target_id: int,
+    session: SessionDep,
+    user: Annotated[Any, Depends(current_user)],
+) -> None:
+    try:
+        await remove_bookmark(
+            session, user_id=user.id, target_type=target_type, target_id=target_id
+        )
+    except (KeyError, LookupError) as error:
+        raise ProblemError(status_code=404, detail="Bookmark not found.") from error
