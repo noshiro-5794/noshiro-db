@@ -53,7 +53,7 @@ Paths omit the shared `/api/v1` prefix. `S` is a single query and a small payloa
 | `/community/moderation/comments/{comment_id}/` | PATCH | M |
 | `/community/moderation/posts/{post_id}/` | PATCH | M |
 | `/community/moderation/reports/` | — | done |
-| `/community/posts/{post_id}/comments/` | GET,POST | M |
+| `/community/posts/{post_id}/comments/` | POST | M |
 | `/community/moderation/reports/{report_id}/` | PATCH | L |
 
 ## sync — 10 paths (staff only)
