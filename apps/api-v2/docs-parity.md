@@ -106,6 +106,7 @@ uv run python -m scripts.state_parity --old ... --new ... \
 | 2026-10-25 | `GET` / `POST /api/v1/users/me/collections/{id}/items/` | 2 | **OK** — the list and the added item |
 | 2026-10-25 | `PATCH` / `DELETE /api/v1/users/me/collections/{id}/items/{item}/` | 2 | **PATCH OK**, 204 |
 | 2026-10-25 | `GET /api/v1/auth/social/providers/` | 1 | **OK** — the GitHub entry and its enabled flag |
+| 2026-10-25 | `POST /api/v1/auth/registrations/` — a fresh account and a taken nickname | 2 | **201 with an access token**; the conflict body matches |
 | 2026-10-25 | `PUT /api/v1/community/me/notifications/read-state/` | 1 | **OK** — both report two updated and leave zero unread (compared by state, because each call mutates) |
 | 2026-10-25 | `GET`/`PATCH /api/v1/users/me/settings/` — read, empty, bad choice, bad colour, adult without confirmation, valid choices, adult with confirmation | 7 | **OK** — the confirmation timestamp is per-request and compared with it ignored |
 
