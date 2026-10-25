@@ -44,7 +44,7 @@ async def problem_handler(request: Request, error: Exception) -> JSONResponse:
         content=problem_payload(
             status_code=status_code,
             detail=detail,
-            instance=request.url.path,
+            instance=request.url.path + (f"?{request.url.query}" if request.url.query else ""),
             trace_id=uuid4().hex,
         ),
     )
