@@ -299,3 +299,58 @@ async def campaign_claims(
             for claim in claims
         ],
     }
+
+
+PROVIDERS = ("bangumi", "vndb", "anilist")
+CAMPAIGN_TYPES = ("full", "incremental")
+AI_MODES = ("off", "shadow", "assisted", "required")
+
+
+async def create_campaign(session: AsyncSession, *, body: dict[str, Any]) -> dict[str, Any]:
+    import json
+    import uuid
+
+    errors: dict[str, list[str]] = {}
+    provider = body.get("provider")
+    if provider not in PROVIDERS:
+        errors["provider"] = ["Unsupported sync provider."]
+    campaign_type = body.get("campaign_type", "full")
+    if campaign_type not in CAMPAIGN_TYPES:
+        errors["campaign_type"] = [f'"{campaign_type}" is not a valid choice.']
+    ai_mode = body.get("ai_mode", "shadow")
+    if ai_mode not in AI_MODES:
+        errors["ai_mode"] = [f'"{ai_mode}" is not a valid choice.']
+    parameters = body.get("parameters", {})
+    if not isinstance(parameters, dict):
+        errors["parameters"] = ["JSON parse error."]
+    key = str(body.get("idempotency_key") or "").strip()[:128]
+    if errors:
+        raise ValueError(errors)
+    if key:
+        existing = await fetch(
+            session,
+            "SELECT id FROM sync_campaign WHERE provider_slug = :provider"
+            " AND campaign_type = :campaign_type AND idempotency_key = :key",
+            {"provider": provider, "campaign_type": campaign_type, "key": key},
+        )
+        if existing:
+            return await campaign(session, campaign_id=str(existing[0].id))
+    rows = await fetch(
+        session,
+        "INSERT INTO sync_campaign (id, provider_slug, campaign_type, status, ai_mode,"
+        " parameters, total_items, processed_items, synced_items, skipped_items,"
+        " failed_items, error, created_at, updated_at, idempotency_key, lease_owner)"
+        " VALUES (:id, :provider, :campaign_type, 'queued', :ai_mode,"
+        " CAST(:parameters AS jsonb), 0, 0, 0, 0, 0, '', now(), now(), :key, '')"
+        " RETURNING id",
+        {
+            "id": str(uuid.uuid4()),
+            "provider": provider,
+            "campaign_type": campaign_type,
+            "ai_mode": ai_mode,
+            "parameters": json.dumps(parameters),
+            "key": key,
+        },
+    )
+    await session.commit()
+    return await campaign(session, campaign_id=str(rows[0].id))
