@@ -296,25 +296,25 @@ async def create_entry(
 ) -> tuple[dict[str, Any], bool]:
     raw_id = values.pop("entity_id", None)
     if raw_id is None or "status" not in values:
-        raise ValueError({"entity_id": [REQUIRED]})
+        raise ValueError({"entity_id": REQUIRED})
     columns, errors = validate(values, _Blank())
     if errors:
         raise ValueError(errors)
     try:
         wanted = UUID(str(raw_id))
     except ValueError as error:
-        raise ValueError({"entity_id": [NOT_A_WORK]}) from error
+        raise ValueError({"entity_id": NOT_A_WORK}) from error
     rows = await fetch(
         session,
         "SELECT id, kind, lifecycle FROM entity WHERE id = CAST(:id AS uuid)",
         {"id": str(wanted)},
     )
     if not rows:
-        raise ValueError({"entity_id": [NOT_A_WORK]})
+        raise ValueError({"entity_id": NOT_A_WORK})
     root = await resolve(session, wanted) or wanted
     resolved = [row for row in rows if row.id == root]
     if not resolved or resolved[0].kind != "work" or resolved[0].lifecycle != "active":
-        raise ValueError({"entity_id": [NOT_A_WORK]})
+        raise ValueError({"entity_id": NOT_A_WORK})
     cluster = await cluster_ids(session, root)
     existing = await fetch(
         session,
