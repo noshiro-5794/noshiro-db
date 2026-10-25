@@ -37,6 +37,7 @@ DATABASE_URL=... uv run python -m scripts.shadow \
 | 2026-10-25 | shadow run | 10 random entities × 8 endpoints | **80/80 matched** |
 | 2026-10-25 | shadow run | 30 random entities × 8 endpoints | **240/240 matched** |
 | 2026-10-25 | shadow run | 12 entities × 8 endpoints + 7 list paths | **103/103 matched** |
+| 2026-10-25 | `GET /api/v1/auth/social/providers/` | 1 | **OK** — both report GitHub disabled, matching the environment |
 
 Reproduce against the two services sharing a database:
 

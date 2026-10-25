@@ -43,6 +43,7 @@ LIST_PATHS: tuple[tuple[str, bool], ...] = (
     ("/api/v1/index/entities/?page_size=5&scope=all", True),
     ("/api/v1/index/collections/anime/entities/?page_size=5", True),
     ("/api/v1/index/collections/galgame/entities/?page_size=5", True),
+    ("/api/v1/auth/social/providers/", False),
 )
 
 IGNORE = frozenset({"trace_id", "next", "previous"})
