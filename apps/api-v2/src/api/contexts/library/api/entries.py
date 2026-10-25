@@ -18,6 +18,7 @@ from api.contexts.library.entries import (
     replace_tags,
 )
 from api.contexts.library.releases import delete_state, put_state
+from api.contexts.library.reviews import entry_reviews
 from api.db import SessionDep
 from api.shared.pagination import ensure_page, page_params, page_payload
 from api.shared.problems import ProblemError
@@ -200,3 +201,12 @@ async def set_rating_details(
         raise ProblemError(
             status_code=400, detail="Request validation failed.", errors=error.args[0]
         ) from error
+
+
+@router.get("/me/library/entries/{entry_id}/reviews/")
+async def get_entry_reviews(
+    entry_id: int,
+    session: SessionDep,
+    user: Annotated[Any, Depends(current_user)],
+) -> list[dict[str, Any]]:
+    return await entry_reviews(session, user_id=user.id, entry_id=entry_id)
