@@ -73,3 +73,57 @@ def test_the_report_target_names_the_one_foreign_key_set() -> None:
     assert _target(report) is None
     report.collection_id = 5
     assert _target(report) == {"type": "collection", "id": 5}
+
+
+def test_a_post_target_names_its_author() -> None:
+    from types import SimpleNamespace
+
+    from api.contexts.community.targets import post_target
+
+    row = SimpleNamespace(post_id=None)
+    assert post_target(row) is None
+    row = SimpleNamespace(post_id=5, post_author_id=7, post_nickname="a", post_avatar="")
+    assert post_target(row) == {
+        "type": "post",
+        "id": 5,
+        "author": {"id": 7, "nickname": "a", "avatar": ""},
+    }
+
+
+def test_first_target_prefers_the_post() -> None:
+    from types import SimpleNamespace
+
+    from api.contexts.community.targets import first_target
+
+    row = SimpleNamespace(
+        post_id=5,
+        post_author_id=7,
+        post_nickname="a",
+        post_avatar="",
+        comment_id=None,
+        review_id=None,
+        collection_id=None,
+        activity_id=None,
+        activity_user_id=None,
+        activity_user_nickname=None,
+        activity_user_avatar=None,
+        activity_target_id=None,
+        activity_target_nickname=None,
+        activity_target_avatar=None,
+    )
+    assert first_target(row)["type"] == "post"
+
+
+def test_first_target_falls_back_to_nothing() -> None:
+    from types import SimpleNamespace
+
+    from api.contexts.community.targets import first_target
+
+    row = SimpleNamespace(
+        post_id=None,
+        comment_id=None,
+        review_id=None,
+        collection_id=None,
+        activity_id=None,
+    )
+    assert first_target(row) is None
