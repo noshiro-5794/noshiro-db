@@ -7,8 +7,9 @@ is `scripts/parity.py`; it compares status codes, then the document structurally
 ## Shadow runs
 
 `parity.py` checks the paths it is given; `scripts/shadow.py` samples them. It
-picks random public entities, runs each through every implemented endpoint on
-both services and reports how many comparisons matched. Order-insensitive lists
+picks random public entities and also walks the catalogue, its filters and the
+collections, runs everything through both services and reports how many
+comparisons matched. Order-insensitive lists
 are compared as sets; the links (`next`, `previous`) and `trace_id` are ignored.
 
 ```bash
@@ -35,6 +36,7 @@ DATABASE_URL=... uv run python -m scripts.shadow \
 | 2026-10-25 | `GET /api/v1/index/collections/{slug}/entities/` — anime, galgame, query, unknown slug | 4 variants | **OK** |
 | 2026-10-25 | shadow run | 10 random entities × 8 endpoints | **80/80 matched** |
 | 2026-10-25 | shadow run | 30 random entities × 8 endpoints | **240/240 matched** |
+| 2026-10-25 | shadow run | 12 entities × 8 endpoints + 7 list paths | **103/103 matched** |
 
 Reproduce against the two services sharing a database:
 
