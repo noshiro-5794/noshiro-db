@@ -60,6 +60,22 @@ is the hash doing its job, not a duplicate.
 Rerunning an entity whose bundle did not change leaves the row count untouched:
 `ON CONFLICT (entity_id, language, input_hash)` updates in place.
 
+## Activation and the dual-read check
+
+`--activate` promotes the draft to `active`, archiving the live row first because
+the unique index allows one per entity and language. `scripts/display_audit.py`
+then compares each active profile's title with what the projector shows today.
+
+```
+active 6
+draft 1
+
+6/6 active profiles agree with the projector title
+```
+
+That is the check that has to pass before any page reads the profile: serving it
+would not change the title anyone sees.
+
 ## What is still missing
 
 - the validator and the generator themselves;
