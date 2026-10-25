@@ -74,6 +74,7 @@ uv run python -m scripts.state_parity --old ... --new ... \
 | 2026-10-25 | `GET /api/v1/users/me/library/entries/` — default and filtered | 2 | **OK** — the entry, its entity summary and its release states |
 | 2026-10-25 | `GET /api/v1/users/me/library/entries/{id}/` | 1 | **OK** — the same row the list returns |
 | 2026-10-25 | `PATCH /api/v1/users/me/library/entries/{id}/` — bad status, bad rating, inverted watch dates | 3 | **2 OK, 1 deliberate difference** |
+| 2026-10-25 | `POST /api/v1/users/me/library/entries/` — create, add again, missing status, unknown entity | 4 | **OK** — the second add answers 200 where the first answers 201 |
 | 2026-10-25 | `PUT /api/v1/community/me/notifications/read-state/` | 1 | **OK** — both report two updated and leave zero unread (compared by state, because each call mutates) |
 | 2026-10-25 | `GET`/`PATCH /api/v1/users/me/settings/` — read, empty, bad choice, bad colour, adult without confirmation, valid choices, adult with confirmation | 7 | **OK** — the confirmation timestamp is per-request and compared with it ignored |
 
