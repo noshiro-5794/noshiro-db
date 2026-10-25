@@ -30,7 +30,10 @@ async def _sql(dsn: str, statement: str) -> list[dict[str, Any]]:
         # time, so they are split here.
         rows = []
         for part in [item.strip() for item in statement.split(";") if item.strip()]:
-            rows = await connection.fetch(part)
+            try:
+                rows = await connection.fetch(part)
+            except Exception as error:
+                raise SystemExit(f"SQL failed: {error}\n--- statement ---\n{part}") from error
     finally:
         await connection.close()
     return [dict(row) for row in rows]
