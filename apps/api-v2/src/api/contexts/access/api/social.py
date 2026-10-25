@@ -18,8 +18,8 @@ async def github_start(redirect: str = "") -> dict[str, str]:
     if not oauth.is_configured():
         raise ProblemError(
             status_code=503,
-            detail="Social sign-in is not available.",
-            code="users.social_unavailable",
+            detail="This sign-in provider is not configured.",
+            code="users.social_login_unavailable",
         )
     state = oauth.build_state(redirect, secret=settings.jwt_secret)
     return {"authorize_url": oauth.authorize_url(state)}
