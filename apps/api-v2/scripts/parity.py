@@ -37,12 +37,20 @@ def fetch(
     request = urllib.request.Request(
         base_url.rstrip("/") + path, data=data, headers=headers, method=method
     )
+    def _decode(body: bytes) -> Any:
+        # A 500 page is HTML; keeping the text makes the difference readable
+        # instead of raising inside the comparison.
+        text = body or b"null"
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            return text.decode("utf-8", "replace")[:300]
+
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
-            return response.status, json.loads(response.read() or b"null")
+            return response.status, _decode(response.read())
     except urllib.error.HTTPError as error:
-        body = error.read()
-        return error.code, json.loads(body) if body else None
+        return error.code, _decode(error.read())
 
 
 def normalize(value: Any, path: str = "", unordered: frozenset[str] = frozenset()) -> Any:
