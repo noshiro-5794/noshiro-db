@@ -157,9 +157,9 @@ async def create_import_job(
         session,
         "INSERT INTO sync_job (id, job_type, status, celery_task_id, parameters,"
         " result, error, current_label, total_count, processed_count, synced_count,"
-        " skipped_count, failed_count, attempt, created_at, updated_at)"
+        " skipped_count, failed_count, attempt, lease_owner, created_at, updated_at)"
         " VALUES (:id, :job_type, 'queued', '', CAST(:parameters AS jsonb),"
-        " '{}'::jsonb, '', '', 0, 0, 0, 0, 0, 0, now(), now()) RETURNING id",
+        " '{}'::jsonb, '', '', 0, 0, 0, 0, 0, 0, '', now(), now()) RETURNING id",
         {
             "id": str(uuid.uuid4()),
             "job_type": JOB_TYPES[str(provider)],
