@@ -4,6 +4,18 @@ Every endpoint is compared with the Django service before traffic moves. The too
 is `scripts/parity.py`; it compares status codes, then the document structurally
 (dict keys as sets, list order significant, numbers by value).
 
+## Shadow runs
+
+`parity.py` checks the paths it is given; `scripts/shadow.py` samples them. It
+picks random public entities, runs each through every implemented endpoint on
+both services and reports how many comparisons matched. Order-insensitive lists
+are compared as sets; the links (`next`, `previous`) and `trace_id` are ignored.
+
+```bash
+DATABASE_URL=... uv run python -m scripts.shadow \
+  --old http://127.0.0.1:8008 --new http://127.0.0.1:8010 --count 30
+```
+
 ## Evidence log
 
 | Date | Endpoint | Cases | Result |
@@ -21,6 +33,7 @@ is `scripts/parity.py`; it compares status codes, then the document structurally
 | 2026-10-25 | `GET /api/v1/index/entities/` — default, page 2, collection, query, scope=all, popular, subject type, nsfw | 8 variants | **OK** |
 | 2026-10-25 | `GET /api/v1/index/entities/{id}/evidence/` | 3 entities | **OK** — compared as a set (`--unordered $`) |
 | 2026-10-25 | `GET /api/v1/index/collections/{slug}/entities/` — anime, galgame, query, unknown slug | 4 variants | **OK** |
+| 2026-10-25 | shadow run | 10 random entities × 8 endpoints | **80/80 matched** |
 
 Reproduce against the two services sharing a database:
 
