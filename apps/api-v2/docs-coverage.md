@@ -16,8 +16,6 @@ Paths omit the shared `/api/v1` prefix. `S` is a single query and a small payloa
 | `/auth/sessions/refresh/` | POST | S |
 | `/auth/social/github/start/` | GET | S |
 | `/users/me/settings/` | GET,PATCH | S |
-| `/users/me/tags/` | GET,POST | S |
-| `/users/me/tags/{tag_id}/` | PATCH,DELETE | S |
 | `/users/reviews/{review_id}/` | GET | S |
 | `/users/{user_id}/collections/{collection_id}/` | GET | S |
 | `/auth/password-resets/` | POST | M |
