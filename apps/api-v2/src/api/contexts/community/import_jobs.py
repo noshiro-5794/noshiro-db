@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.presentation.fragments import fetch, isoformat
 from api.shared.cursor import Cursor, position_of
+from api.shared.dispatch import import_kwargs, publish, task_for_import
 
 QUERY = """
     SELECT id, job_type, parameters, result, error, status, current_label,
@@ -172,5 +173,19 @@ async def create_import_job(
             ),
         },
     )
+    task_id = publish(
+        task_for_import(str(provider)) or "",
+        import_kwargs(
+            external_id=str(external_id),
+            include_related=include_related,
+            job_id=str(rows[0].id),
+        ),
+    )
+    if task_id:
+        await fetch(
+            session,
+            "UPDATE sync_job SET celery_task_id = :task WHERE id = :id RETURNING id",
+            {"task": task_id, "id": str(rows[0].id)},
+        )
     await session.commit()
     return await import_job(session, job_id=str(rows[0].id))
