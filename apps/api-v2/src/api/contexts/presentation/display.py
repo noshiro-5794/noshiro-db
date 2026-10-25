@@ -167,3 +167,38 @@ async def submit(
     )
     row = rows[0]
     return int(row.id), str(row.state)
+
+
+async def activate(
+    session: AsyncSession, *, entity_id: UUID, language: str, input_hash: str
+) -> int | None:
+    """Promote one draft to the live profile, archiving the previous one.
+
+    Two statements in one transaction: the unique index allows a single active
+    row per entity and language, so the old one has to leave first.
+    """
+    await fetch(
+        session,
+        """
+        UPDATE entity_display_profile
+        SET state = 'archived', updated_at = now()
+        WHERE entity_id = CAST(:entity AS uuid)
+          AND language = :language
+          AND state = 'active'
+        """,
+        {"entity": str(entity_id), "language": language},
+    )
+    rows = await fetch(
+        session,
+        """
+        UPDATE entity_display_profile
+        SET state = 'active', updated_at = now()
+        WHERE entity_id = CAST(:entity AS uuid)
+          AND language = :language
+          AND input_hash = :input_hash
+          AND state = 'draft'
+        RETURNING id
+        """,
+        {"entity": str(entity_id), "language": language, "input_hash": input_hash},
+    )
+    return int(rows[0].id) if rows else None
