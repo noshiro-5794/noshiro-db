@@ -78,3 +78,41 @@ def authorize_url(state: str) -> str:
         }
     )
     return f"{AUTHORIZE_URL}?{query}"
+
+
+async def fetch_profile(code: str) -> dict[str, Any]:
+    """The GitHub profile for a code; the email is fetched separately when private."""
+    import httpx
+
+    client_id = os.environ.get("GITHUB_OAUTH_CLIENT_ID", "")
+    client_secret = os.environ.get("GITHUB_OAUTH_CLIENT_SECRET", "")
+    async with httpx.AsyncClient(timeout=20) as client:
+        token_response = await client.post(
+            "https://github.com/login/oauth/access_token",
+            data={
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "code": code,
+            },
+            headers={"Accept": "application/json"},
+        )
+        token = token_response.json().get("access_token")
+        if not token:
+            raise ValueError("no access token")
+        headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+        profile = (await client.get("https://api.github.com/user", headers=headers)).json()
+        email = profile.get("email")
+        if not email:
+            emails = (
+                await client.get("https://api.github.com/user/emails", headers=headers)
+            ).json()
+            primary = [item for item in emails if item.get("primary")]
+            if primary and primary[0].get("verified"):
+                email = primary[0].get("email")
+    return {
+        "provider": "github",
+        "subject": str(profile.get("id", "")),
+        "handle": profile.get("login") or "",
+        "email": email or "",
+        "avatar_url": profile.get("avatar_url") or "",
+    }
