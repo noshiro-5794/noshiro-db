@@ -504,4 +504,8 @@ async def post_detail(
     try:
         return await public_post(session, viewer_id=viewer.id if viewer else 0, post_id=post_id)
     except LookupError as error:
-        raise ProblemError(status_code=404, detail="Post not found.") from error
+        raise ProblemError(
+            status_code=404,
+            detail="Community post not found.",
+            code="community.post_not_found",
+        ) from error
