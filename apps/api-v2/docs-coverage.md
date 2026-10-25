@@ -18,7 +18,6 @@ Paths omit the shared `/api/v1` prefix. `S` is a single query and a small payloa
 | `/users/me/settings/` | GET,PATCH | S |
 | `/users/reviews/{review_id}/` | GET | S |
 | `/users/{user_id}/collections/{collection_id}/` | GET | S |
-| `/auth/password-resets/` | POST | M |
 | `/auth/verification-codes/` | POST | M |
 | `/auth/verification-codes/` | POST | M |
 | `/users/entities/{entity_id}/reviews/` | GET | M |
