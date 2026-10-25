@@ -157,8 +157,10 @@ async def run(*, old: str, new: str, count: int, timeout: float, token: str = ""
             print(message)
     total = passed + failed
     print(
-        f"\n{passed}/{total} comparisons matched "
-        f"({len(ids)} entities, {len(LIST_PATHS)} list paths)"
+        f"
+{passed}/{total} comparisons matched "
+        f"({len(ids)} entities, {len(LIST_PATHS)} list paths"
+        f"{", 12 signed-in paths" if token else ""})"
     )
     return 1 if failed else 0
 
