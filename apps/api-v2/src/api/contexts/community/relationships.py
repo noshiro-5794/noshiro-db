@@ -101,7 +101,8 @@ async def unblock_user(session: AsyncSession, *, user_id: int, target_user_id: i
         raise LookupError(target_user_id)
     await fetch(
         session,
-        "DELETE FROM community_user_block WHERE user_id = :user_id AND blocked_user_id = :target",
+        "DELETE FROM community_user_block"
+        " WHERE user_id = :user_id AND blocked_user_id = :target RETURNING id",
         {"user_id": user_id, "target": target_user_id},
     )
     await session.commit()
