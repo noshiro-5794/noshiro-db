@@ -46,6 +46,20 @@ bundle → generator (rules or agent) → submit → validator → draft → act
 - **Active**: one row per entity and language, enforced by
   `uq_display_profile_active`; a rejected draft never replaces a live page.
 
+## First run
+
+```bash
+DATABASE_URL=... uv run python -m scripts.display <entity-id> --apply
+```
+
+Seven drafts over six entities, every one valid. One entity has two drafts
+because the bundle changed between runs — the media query gained asset ids, the
+`input_hash` changed with it, and a different input earns a different draft. That
+is the hash doing its job, not a duplicate.
+
+Rerunning an entity whose bundle did not change leaves the row count untouched:
+`ON CONFLICT (entity_id, language, input_hash)` updates in place.
+
 ## What is still missing
 
 - the validator and the generator themselves;
