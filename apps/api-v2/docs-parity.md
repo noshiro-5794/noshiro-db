@@ -12,6 +12,7 @@ is `scripts/parity.py`; it compares status codes, then the document structurally
 | 2026-10-25 | same, unknown entity | 404 | **OK** — same `application/problem+json` envelope (`trace_id` ignored) |
 | 2026-10-25 | `GET /api/v1/index/collections/` | 1 | **OK** |
 | 2026-10-25 | `GET /api/v1/index/entities/{id}/` | 6 (three works, a contributor, a character, a merge cluster) | **OK** |
+| 2026-10-25 | `GET /api/v1/index/entities/{id}/relations/` | 5 (two ordinary, the three with the most relations) | **OK** |
 
 Reproduce against the two services sharing a database:
 
@@ -37,6 +38,13 @@ Two divergences were found by this comparison and fixed or recorded:
 4. **Provenance uses the row's own record.** A contributor's names all cited the
    staff record in Django; this service cited each name's observation record.
    `field_provenance` reads `name.provider_record`, and so must the SQL.
-5. **`value` type.** The OpenAPI snapshot says string, the Django response sends
+5. **Relation ids are bigint.** `entity_relation.id` is an `AutoField`, unlike the
+   fact tables where the key is a UUID. Passing strings into `uuid[]` made every
+   relation list answer 500.
+6. **Performance.** The heaviest relation list (1.5 MB) takes **68.5 s** on the
+   Django side and **7.6 s** on this one, with identical bytes. The parity tool's
+   fixed 30-second timeout reported that as a failure of the new service; it is
+   now `--timeout`.
+7. **`value` type.** The OpenAPI snapshot says string, the Django response sends
    a number. Parity copies the response; the disagreement is recorded in
    `contexts/signal/domain.py` for a deliberate fix on both sides.
