@@ -77,6 +77,7 @@ uv run python -m scripts.state_parity --old ... --new ... \
 | 2026-10-25 | `POST /api/v1/users/me/library/entries/` — create, add again, missing status, unknown entity | 4 | **OK** — the second add answers 200 where the first answers 201 |
 | 2026-10-25 | `PUT /api/v1/users/me/library/entries/{id}/releases/{release_id}/` — bad status, valid state | 2 | **1 OK, 1 deliberate difference** |
 | 2026-10-25 | `GET` / `PUT /api/v1/users/me/library/entries/{id}/tags/` | 2 | **GET OK; PUT deliberate difference** (Django answers 500) |
+| 2026-10-25 | `PUT /api/v1/users/me/library/entries/{id}/rating-details/` | 1 | **deliberate difference** (Django answers 500; this one 200 with both details) |
 | 2026-10-25 | `PUT /api/v1/community/me/notifications/read-state/` | 1 | **OK** — both report two updated and leave zero unread (compared by state, because each call mutates) |
 | 2026-10-25 | `GET`/`PATCH /api/v1/users/me/settings/` — read, empty, bad choice, bad colour, adult without confirmation, valid choices, adult with confirmation | 7 | **OK** — the confirmation timestamp is per-request and compared with it ignored |
 
@@ -164,6 +165,10 @@ Two divergences were found by this comparison and fixed or recorded:
    found so far (inverted dates, a valid release state, tag replacement) are the
    strongest argument for the rewrite: a service that answers 500 on a legal
    request has no client contract to preserve.
-20. **`value` type.** The OpenAPI snapshot says string, the Django response sends
+20. **Rating details crash Django too.** A valid two-item replacement answers 500
+   from the Django service and 200 from this one. That is the fifth legal write the
+   old service cannot complete — the group is now the strongest single argument
+   for the rewrite.
+21. **`value` type.** The OpenAPI snapshot says string, the Django response sends
    a number. Parity copies the response; the disagreement is recorded in
    `contexts/signal/domain.py` for a deliberate fix on both sides.
