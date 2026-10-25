@@ -9,6 +9,7 @@ from api.contexts.community.bookmarks import (
     remove_bookmark,
     set_bookmark,
 )
+from api.contexts.community.posts import list_posts
 from api.contexts.community.reactions import remove_reaction, set_reaction
 from api.contexts.community.relationships import (
     block_user,
@@ -454,3 +455,24 @@ async def feed(
         "previous": None,
         "results": results,
     }
+
+
+@router.get("/posts/")
+async def posts(
+    session: SessionDep,
+    request: Request,
+    viewer: Annotated[Any | None, Depends(optional_user)],
+    entity_id: str = "",
+    keyword: str = "",
+) -> dict[str, Any]:
+    page, page_size = page_params(request)
+    total, results = await list_posts(
+        session,
+        viewer_id=viewer.id if viewer else 0,
+        entity_id=entity_id,
+        keyword=keyword.strip(),
+        page=page,
+        page_size=page_size,
+    )
+    ensure_page(page, page_size, total)
+    return page_payload(request, count=total, results=results, page=page, page_size=page_size)
