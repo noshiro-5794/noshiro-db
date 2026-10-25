@@ -353,3 +353,81 @@ class _Blank:
 
     watch_start_date = None
     watch_end_date = None
+
+
+TAG_IDS_OR_NAMES = "tag_ids or tag_names is required."
+UNKNOWN_TAG = "Contains an unknown tag."
+BLANK_TAG = "Tag name can not be blank."
+
+
+async def entry_tags(session: AsyncSession, *, user_id: int, entry_id: int) -> list[dict[str, Any]]:
+    rows = await fetch(
+        session,
+        "SELECT tag.id, tag.name FROM user_library_entry_tag AS relation"
+        " JOIN user_tag AS tag ON tag.id = relation.tag_id"
+        " JOIN user_library_entry AS entry ON entry.id = relation.user_subject_id"
+        " WHERE entry.id = :entry_id AND entry.user_id = :user_id"
+        " ORDER BY tag.name, tag.id",
+        {"entry_id": entry_id, "user_id": user_id},
+    )
+    return [{"id": row.id, "name": row.name} for row in rows]
+
+
+async def replace_tags(
+    session: AsyncSession, *, user_id: int, entry_id: int, body: dict[str, Any]
+) -> list[dict[str, Any]]:
+    if "tag_ids" not in body and "tag_names" not in body:
+        raise ValueError({"non_field_errors": [TAG_IDS_OR_NAMES]})
+    existing = await fetch(
+        session,
+        "SELECT id FROM user_library_entry WHERE id = :entry_id AND user_id = :user_id",
+        {"entry_id": entry_id, "user_id": user_id},
+    )
+    if not existing:
+        raise LookupError(entry_id)
+    tag_ids = list(dict.fromkeys(body.get("tag_ids") or []))
+    tags = []
+    if tag_ids:
+        rows = await fetch(
+            session,
+            "SELECT id, name FROM user_tag WHERE user_id = :user_id"
+            " AND id = ANY(CAST(:ids AS bigint[])) ORDER BY name, id",
+            {"user_id": user_id, "ids": tag_ids},
+        )
+        if {row.id for row in rows} != set(tag_ids):
+            raise ValueError({"tag_ids": UNKNOWN_TAG})
+        tags = [{"id": row.id, "name": row.name} for row in rows]
+    for raw in body.get("tag_names") or []:
+        name = str(raw).strip()
+        if not name:
+            raise ValueError({"tag_names": [BLANK_TAG]})
+        if len(name) > 64:
+            raise ValueError({"tag_names": ["Ensure this field has no more than 64 characters."]})
+        rows = await fetch(
+            session,
+            "INSERT INTO user_tag (user_id, name) VALUES (:user_id, :name)"
+            " ON CONFLICT (user_id, name) DO NOTHING RETURNING id",
+            {"user_id": user_id, "name": name},
+        )
+        if not rows:
+            rows = await fetch(
+                session,
+                "SELECT id, name FROM user_tag WHERE user_id = :user_id AND name = :name",
+                {"user_id": user_id, "name": name},
+            )
+        if all(tag["id"] != rows[0].id for tag in tags):
+            tags.append({"id": rows[0].id, "name": name})
+    await fetch(
+        session,
+        "DELETE FROM user_library_entry_tag WHERE user_subject_id = :entry_id RETURNING id",
+        {"entry_id": entry_id},
+    )
+    for tag in tags:
+        await fetch(
+            session,
+            "INSERT INTO user_library_entry_tag (user_subject_id, tag_id)"
+            " VALUES (:entry_id, :tag_id) RETURNING id",
+            {"entry_id": entry_id, "tag_id": tag["id"]},
+        )
+    await session.commit()
+    return tags
