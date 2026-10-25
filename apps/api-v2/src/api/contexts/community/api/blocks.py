@@ -579,8 +579,8 @@ async def post_comments(
     if not await visible(session, "post", post_id):
         raise ProblemError(
             status_code=404,
-            detail="Community target not found.",
-            code="community.target_not_found",
+            detail="Community post not found.",
+            code="community.post_not_found",
         )
     total, results = await list_comments(
         session,
