@@ -114,6 +114,17 @@ async def register(body: dict[str, Any], session: SessionDep) -> JSONResponse:
     )
     if existing:
         raise ProblemError(status_code=409, detail="An account with this email exists.")
+    taken = await fetch(
+        session,
+        "SELECT 1 FROM user_profile WHERE lower(nickname) = :nickname",
+        {"nickname": nickname.strip().lower()},
+    )
+    if taken:
+        raise ProblemError(
+            status_code=409,
+            detail="The nickname is already in use.",
+            code="users.nickname_already_exists",
+        )
     await _verify(session, email=email, purpose="register", code=str(code))
     encoded = hash_password(str(password))
     rows = await fetch(
