@@ -100,6 +100,7 @@ uv run python -m scripts.state_parity --old ... --new ... \
 | 2026-10-25 | `PATCH /api/v1/community/moderation/posts/{id}/` — hide | 1 | **OK** — the post answers with the hidden feed policy |
 | 2026-10-25 | `PATCH /api/v1/community/moderation/comments/{id}/` — hide | 1 | **OK** — the comment answers hidden, with no author |
 | 2026-10-25 | `PATCH /api/v1/community/moderation/reports/{id}/` — rejected | 1 | **OK** — same status and resolver |
+| 2026-10-25 | `GET /api/v1/users/{id}/collections/` | 1 | **OK** — counts, viewer flags and ordering |
 | 2026-10-25 | `PUT /api/v1/community/me/notifications/read-state/` | 1 | **OK** — both report two updated and leave zero unread (compared by state, because each call mutates) |
 | 2026-10-25 | `GET`/`PATCH /api/v1/users/me/settings/` — read, empty, bad choice, bad colour, adult without confirmation, valid choices, adult with confirmation | 7 | **OK** — the confirmation timestamp is per-request and compared with it ignored |
 
