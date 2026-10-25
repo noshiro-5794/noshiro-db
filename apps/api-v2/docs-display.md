@@ -76,6 +76,25 @@ draft 1
 That is the check that has to pass before any page reads the profile: serving it
 would not change the title anyone sees.
 
+## Reader switch, proven
+
+The summary reads the active profile on an exact language match and falls back to
+the projector otherwise. Two checks say it works:
+
+- a random shadow run (15 entities, 8 endpoints): **120/120 matched**, so nothing
+  else moved;
+- the six profiled entities, detail and relations: **12/12 matched**.
+
+And a controlled probe, because agreement alone could mean the profile is
+ignored. One active title was set to `PROFILE-TITLE-PROBE`:
+
+| Service | `display_name` |
+|---|---|
+| new | `PROFILE-TITLE-PROBE` |
+| Django | `Cumming of Age` |
+
+Restoring the row restored the response. The switch is live and reversible.
+
 ## What is still missing
 
 - the validator and the generator themselves;
