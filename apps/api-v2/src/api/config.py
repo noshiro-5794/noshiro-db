@@ -15,6 +15,14 @@ class Settings(BaseSettings):
         default="",
         validation_alias=AliasChoices("AI_AGENT_API_KEY", "AI_API_KEY"),
     )
+    github_client_id: str = Field(
+        default="",
+        validation_alias=AliasChoices("GITHUB_OAUTH_CLIENT_ID"),
+    )
+    github_client_secret: str = Field(
+        default="",
+        validation_alias=AliasChoices("GITHUB_OAUTH_CLIENT_SECRET"),
+    )
     ai_model: str = Field(
         default="deepseek-flash",
         validation_alias=AliasChoices("AI_FAST_MODEL", "AI_MODEL"),

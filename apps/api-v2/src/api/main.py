@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from .contexts.access.api.social import router as social_router
 from .contexts.presentation.api.catalogue import router as catalogue_router
 from .contexts.presentation.api.entity import router as entity_router
 from .contexts.presentation.api.health import router as health_router
@@ -10,6 +11,7 @@ from .shared.problems import ProblemError, problem_handler
 def create_app() -> FastAPI:
     app = FastAPI(title="Noshiro API", version="0.1.0")
     app.include_router(health_router)
+    app.include_router(social_router)
     app.include_router(catalogue_router)
     app.include_router(entity_router)
     app.include_router(signal_router)
