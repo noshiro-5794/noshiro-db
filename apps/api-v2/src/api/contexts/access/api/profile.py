@@ -18,7 +18,7 @@ DEFAULT_LANGUAGE = "auto"
 DEFAULT_APPEARANCE = "auto"
 
 
-def _payload(profile: Any, user: Any) -> dict[str, Any]:
+def profile_payload(profile: Any, user: Any) -> dict[str, Any]:
     return {
         "user_id": user.id,
         "email": user.email,
@@ -56,7 +56,7 @@ async def _free_nickname(session: SessionDep, user_id: int) -> str:
     return f"{base}_{user_id}"
 
 
-async def _profile(session: SessionDep, user: Any) -> Any:
+async def profile_row(session: SessionDep, user: Any) -> Any:
     rows = await fetch(
         session,
         "SELECT nickname, bio, avatar, language, appearance, theme_color,"
@@ -104,10 +104,10 @@ async def _profile(session: SessionDep, user: Any) -> Any:
 
 
 @router.get("/me/profile/")
-async def my_profile(
+async def myprofile_row(
     session: SessionDep, user: Annotated[Any, Depends(current_user)]
 ) -> dict[str, Any]:
-    return _payload(await _profile(session, user), user)
+    return profile_payload(await profile_row(session, user), user)
 
 
 INVALID_COLOR = "theme_color must be a hex color, e.g. #66ccff."
@@ -148,7 +148,7 @@ def _validate(payload: dict[str, Any]) -> tuple[dict[str, Any], dict[str, list[s
 
 
 @router.patch("/me/profile/")
-async def update_profile(
+async def updateprofile_row(
     payload: dict[str, Any],
     session: SessionDep,
     user: Annotated[Any, Depends(current_user)],
@@ -158,7 +158,7 @@ async def update_profile(
         errors["non_field_errors"] = ["No fields to update."]
     if errors:
         raise ProblemError(status_code=400, detail="Request validation failed.", errors=errors)
-    profile = await _profile(session, user)
+    profile = await profile_row(session, user)
     assignments = ", ".join(f"{column} = :{column}" for column in values)
     try:
         async with session.begin_nested():
@@ -176,4 +176,4 @@ async def update_profile(
             code="users.nickname_already_exists",
         ) from error
     await session.commit()
-    return _payload(rows[0] if rows else profile, user)
+    return profile_payload(rows[0] if rows else profile, user)
