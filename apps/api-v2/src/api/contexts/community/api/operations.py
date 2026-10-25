@@ -5,13 +5,25 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Request
 
 from api.contexts.access.dependencies import staff_user
-from api.contexts.community.campaigns import campaign, campaign_items
+from api.contexts.community.campaigns import (
+    campaign,
+    campaign_items,
+    summary,
+)
 from api.contexts.community.import_jobs import import_job
 from api.db import SessionDep
 from api.shared.pagination import ensure_page, page_params, page_payload
 from api.shared.problems import ProblemError
 
 router = APIRouter(prefix="/api/v1/operations", tags=["operations"])
+
+
+@router.get("/sync/summary/")
+async def sync_summary(
+    session: SessionDep,
+    user: Annotated[Any, Depends(staff_user)],
+) -> dict[str, Any]:
+    return await summary(session)
 
 
 @router.get("/import-jobs/{job_id}/")

@@ -135,3 +135,57 @@ async def campaign_items(
         }
         for row in rows
     ]
+
+
+ACTIVE_STATUSES = (
+    "queued",
+    "discovering",
+    "fetching",
+    "mapping",
+    "normalizing",
+    "reconciling",
+    "enriching",
+    "reviewing",
+)
+
+
+async def summary(session: AsyncSession) -> dict[str, Any]:
+    by_status = await fetch(
+        session,
+        "SELECT status, count(*) AS count FROM sync_campaign GROUP BY status",
+        {},
+    )
+    by_provider = await fetch(
+        session,
+        "SELECT provider_slug, count(*) AS count FROM sync_campaign GROUP BY provider_slug",
+        {},
+    )
+    stale = await fetch(
+        session,
+        "SELECT count(*) AS count FROM sync_campaign"
+        " WHERE status = ANY(:statuses) AND lease_expires_at < now()",
+        {"statuses": list(ACTIVE_STATUSES)},
+    )
+    items = await fetch(
+        session,
+        "SELECT count(*) FILTER (WHERE status = 'queued') AS queued,"
+        " count(*) FILTER (WHERE status = 'failed') AS failed"
+        " FROM sync_work_item",
+        {},
+    )
+    claims = await fetch(
+        session,
+        "SELECT count(*) AS count FROM ai_claim AS claim"
+        " JOIN agent_step AS step ON step.id = claim.step_id"
+        " JOIN sync_campaign AS campaign ON campaign.agent_run_id = step.run_id"
+        " WHERE claim.status = 'proposed'",
+        {},
+    )
+    return {
+        "campaigns_by_status": {row.status: int(row.count) for row in by_status},
+        "campaigns_by_provider": {row.provider_slug: int(row.count) for row in by_provider},
+        "stale_leases": int(stale[0].count),
+        "queued_items": int(items[0].queued),
+        "failed_items": int(items[0].failed),
+        "pending_ai_claims": int(claims[0].count),
+    }
