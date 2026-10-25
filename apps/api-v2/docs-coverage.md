@@ -56,7 +56,7 @@ Paths omit the shared `/api/v1` prefix. `S` is a single query and a small payloa
 | `/operations/matching/candidates/` | GET | M |
 | `/operations/import-jobs/` | GET,POST | L |
 | `/operations/matching/candidates/{candidate_id}/decide/` | POST | L |
-| `/operations/sync/` | GET,POST | L |
+| `/operations/sync/` | POST | L |
 | `/operations/sync/{campaign_id}/{action}/` | POST | L |
 
 ## Order
