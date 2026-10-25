@@ -13,6 +13,8 @@ from api.contexts.library.entries import (
     get_entry,
     list_entries,
     patch_entry,
+    rating_details,
+    replace_rating_details,
     replace_tags,
 )
 from api.contexts.library.releases import delete_state, put_state
@@ -166,6 +168,32 @@ async def set_entry_tags(
 ) -> list[dict[str, Any]]:
     try:
         return await replace_tags(session, user_id=user.id, entry_id=entry_id, body=body)
+    except LookupError as error:
+        raise ProblemError(status_code=404, detail="Library entry not found.") from error
+    except ValueError as error:
+        raise ProblemError(
+            status_code=400, detail="Request validation failed.", errors=error.args[0]
+        ) from error
+
+
+@router.get("/me/library/entries/{entry_id}/rating-details/")
+async def get_rating_details(
+    entry_id: int,
+    session: SessionDep,
+    user: Annotated[Any, Depends(current_user)],
+) -> list[dict[str, Any]]:
+    return await rating_details(session, user_id=user.id, entry_id=entry_id)
+
+
+@router.put("/me/library/entries/{entry_id}/rating-details/")
+async def set_rating_details(
+    entry_id: int,
+    body: dict[str, Any],
+    session: SessionDep,
+    user: Annotated[Any, Depends(current_user)],
+) -> list[dict[str, Any]]:
+    try:
+        return await replace_rating_details(session, user_id=user.id, entry_id=entry_id, body=body)
     except LookupError as error:
         raise ProblemError(status_code=404, detail="Library entry not found.") from error
     except ValueError as error:
