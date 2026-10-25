@@ -9,7 +9,7 @@ from api.contexts.community.bookmarks import (
     remove_bookmark,
     set_bookmark,
 )
-from api.contexts.community.posts import create_post, list_posts
+from api.contexts.community.posts import create_post, list_posts, public_post
 from api.contexts.community.reactions import remove_reaction, set_reaction
 from api.contexts.community.relationships import (
     block_user,
@@ -493,3 +493,15 @@ async def add_post(
             status_code=400, detail="Request validation failed.", errors=error.args[0]
         ) from error
     return JSONResponse(data, status_code=201)
+
+
+@router.get("/posts/{post_id}/")
+async def post_detail(
+    post_id: int,
+    session: SessionDep,
+    viewer: Annotated[Any | None, Depends(optional_user)],
+) -> dict[str, Any]:
+    try:
+        return await public_post(session, viewer_id=viewer.id if viewer else 0, post_id=post_id)
+    except LookupError as error:
+        raise ProblemError(status_code=404, detail="Post not found.") from error
