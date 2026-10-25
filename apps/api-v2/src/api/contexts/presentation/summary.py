@@ -101,9 +101,13 @@ async def entity_summary(
     )
     names = await fetch(
         session,
-        "SELECT id, text, language, kind, is_official, is_original FROM entity_name"
-        " WHERE entity_id = ANY(CAST(:ids AS uuid[]))"
-        " ORDER BY kind, language, text, id",
+        current_rows(
+            table="entity_name",
+            alias="name",
+            columns="name.id, name.text, name.language, name.kind,"
+            " name.is_official, name.is_original",
+            record="name.provider_record_id",
+        ),
         {"ids": cluster_ids},
     )
     content_allowed = audience != "adult"
