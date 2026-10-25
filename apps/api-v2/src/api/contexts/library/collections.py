@@ -172,3 +172,86 @@ async def collection_by_id(
             "has_bookmarked": bool(row.has_bookmarked),
         },
     }
+
+
+async def my_collection(
+    session: AsyncSession, *, user_id: int, collection_id: int
+) -> dict[str, Any]:
+    rows = await fetch(
+        session,
+        "SELECT user_id FROM user_collection WHERE id = :id",
+        {"id": collection_id},
+    )
+    if not rows or rows[0].user_id != user_id:
+        raise LookupError(collection_id)
+    return await collection_by_id(session, viewer_id=user_id, collection_id=collection_id)
+
+
+async def update_collection(
+    session: AsyncSession, *, user_id: int, collection_id: int, body: dict[str, Any]
+) -> dict[str, Any]:
+    await my_collection(session, user_id=user_id, collection_id=collection_id)
+    errors: dict[str, list[str]] = {}
+    sets: list[str] = []
+    params: dict[str, Any] = {"id": collection_id}
+    if "name" in body:
+        raw_name = body["name"]
+        name = raw_name if isinstance(raw_name, str) else ""
+        if not name.strip():
+            errors["name"] = [BLANK_NAME]
+        elif len(name) > 256:
+            errors["name"] = ["Ensure this field has no more than 256 characters."]
+        else:
+            sets.append("name = :name")
+            params["name"] = name.strip()
+    if "simple_rating" in body:
+        rating = body["simple_rating"]
+        if rating is not None and (
+            not isinstance(rating, int) or isinstance(rating, bool) or not 1 <= rating <= 5
+        ):
+            errors["simple_rating"] = ["Ensure this value is between 1 and 5."]
+        else:
+            sets.append("simple_rating = :rating")
+            params["rating"] = rating
+    if "note" in body:
+        note = body["note"]
+        if not isinstance(note, str):
+            errors["note"] = ["Not a valid string."]
+        elif len(note) > 5000:
+            errors["note"] = ["Ensure this field has no more than 5000 characters."]
+        else:
+            sets.append("note = :note")
+            params["note"] = note
+    if "is_public" in body:
+        sets.append("is_public = :public")
+        params["public"] = bool(body["is_public"])
+    if errors:
+        raise ValueError(errors)
+    if sets:
+        await fetch(
+            session,
+            "UPDATE user_collection SET " + ", ".join(sets) + " WHERE id = :id RETURNING id",
+            params,
+        )
+        await session.commit()
+    return await collection_by_id(session, viewer_id=user_id, collection_id=collection_id)
+
+
+async def delete_collection(session: AsyncSession, *, user_id: int, collection_id: int) -> None:
+    await my_collection(session, user_id=user_id, collection_id=collection_id)
+    await fetch(
+        session,
+        "DELETE FROM community_activity WHERE collection_id = :id RETURNING id",
+        {"id": collection_id},
+    )
+    await fetch(
+        session,
+        "DELETE FROM user_collection_item WHERE collection_id = :id RETURNING id",
+        {"id": collection_id},
+    )
+    await fetch(
+        session,
+        "DELETE FROM user_collection WHERE id = :id RETURNING id",
+        {"id": collection_id},
+    )
+    await session.commit()
