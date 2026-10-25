@@ -21,9 +21,15 @@ def task_for_import(provider: str) -> str | None:
     return IMPORT_TASKS.get(provider)
 
 
-def import_kwargs(*, external_id: str, include_related: bool, job_id: str) -> dict[str, Any]:
+IMPORT_ARG = {"vndb": "vndb_id", "anilist": "anilist_id"}
+
+
+def import_kwargs(
+    *, provider: str, external_id: str, include_related: bool, job_id: str
+) -> dict[str, Any]:
+    """The keyword the task expects is named after the provider, not `external_id`."""
     return {
-        "external_id": external_id,
+        IMPORT_ARG[provider]: external_id,
         "include_related": include_related,
         "job_id": job_id,
     }

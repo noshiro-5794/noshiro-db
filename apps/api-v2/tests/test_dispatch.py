@@ -25,12 +25,14 @@ def broker(monkeypatch):
 
 def test_an_import_publishes_to_the_django_task_name() -> None:
     app = FakeApp()
-    kwargs = dispatch.import_kwargs(external_id="v123", include_related=True, job_id="job-1")
+    kwargs = dispatch.import_kwargs(
+        provider="vndb", external_id="v123", include_related=True, job_id="job-1"
+    )
     assert dispatch.publish(dispatch.task_for_import("vndb"), kwargs, sender=app) == "task-1"
     assert app.calls == [
         (
             "apps.sync.tasks.vndb.import_vndb_work_task",
-            {"external_id": "v123", "include_related": True, "job_id": "job-1"},
+            {"vndb_id": "v123", "include_related": True, "job_id": "job-1"},
             "sync",
         )
     ]

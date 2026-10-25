@@ -176,6 +176,7 @@ async def create_import_job(
     task_id = publish(
         task_for_import(str(provider)) or "",
         import_kwargs(
+            provider=str(provider),
             external_id=str(external_id),
             include_related=include_related,
             job_id=str(rows[0].id),
