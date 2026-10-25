@@ -23,7 +23,7 @@ Paths omit the shared `/api/v1` prefix. `S` is a single query and a small payloa
 | `/auth/verification-codes/` | POST | M |
 | `/users/entities/{entity_id}/reviews/` | GET | M |
 | `/users/me/avatar/` | POST | M |
-| `/users/me/collections/` | detail + items | M |
+| `/users/me/collections/{id}/` | PATCH,DELETE | M |
 | `/users/me/collections/{collection_id}/` | GET,PATCH,DELETE | M |
 | `/users/me/collections/{collection_id}/items/{item_id}/` | PATCH,DELETE | M |
 | `/users/me/library/entries/{entry_id}/` | DELETE | M |
