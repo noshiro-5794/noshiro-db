@@ -14,6 +14,7 @@ from api.contexts.community.relationships import (
     unblock_user,
     unfollow_user,
 )
+from api.contexts.presentation.fragments import fetch
 from api.db import SessionDep
 from api.shared.pagination import ensure_page, page_params, page_payload
 from api.shared.problems import ProblemError
@@ -143,5 +144,29 @@ async def following(
 ) -> dict[str, Any]:
     page, page_size = page_params(request)
     total, results = await list_following(session, user_id=user.id, page=page, page_size=page_size)
+    ensure_page(page, page_size, total)
+    return page_payload(request, count=total, results=results, page=page, page_size=page_size)
+
+
+async def _ensure_user(session: SessionDep, user_id: int) -> None:
+    rows = await fetch(session, 'SELECT 1 FROM "user" WHERE id = :id', {"id": user_id})
+    if not rows:
+        raise ProblemError(status_code=404, detail="User not found.", code="users.user_not_found")
+
+
+@router.get("/users/{user_id}/followers/")
+async def public_followers(user_id: int, session: SessionDep, request: Request) -> dict[str, Any]:
+    await _ensure_user(session, user_id)
+    page, page_size = page_params(request)
+    total, results = await list_followers(session, user_id=user_id, page=page, page_size=page_size)
+    ensure_page(page, page_size, total)
+    return page_payload(request, count=total, results=results, page=page, page_size=page_size)
+
+
+@router.get("/users/{user_id}/following/")
+async def public_following(user_id: int, session: SessionDep, request: Request) -> dict[str, Any]:
+    await _ensure_user(session, user_id)
+    page, page_size = page_params(request)
+    total, results = await list_following(session, user_id=user_id, page=page, page_size=page_size)
     ensure_page(page, page_size, total)
     return page_payload(request, count=total, results=results, page=page, page_size=page_size)
