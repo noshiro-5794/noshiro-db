@@ -78,6 +78,7 @@ uv run python -m scripts.state_parity --old ... --new ... \
 | 2026-10-25 | `PUT /api/v1/users/me/library/entries/{id}/releases/{release_id}/` — bad status, valid state | 2 | **1 OK, 1 deliberate difference** |
 | 2026-10-25 | `GET` / `PUT /api/v1/users/me/library/entries/{id}/tags/` | 2 | **GET OK; PUT deliberate difference** (Django answers 500) |
 | 2026-10-25 | `PUT /api/v1/users/me/library/entries/{id}/rating-details/` | 1 | **deliberate difference** (Django answers 500; this one 200 with both details) |
+| 2026-10-25 | `GET /api/v1/users/me/library/entries/{id}/reviews/` | 1 | **OK** — the review, its entity summary, reaction count and viewer flags |
 | 2026-10-25 | `PUT /api/v1/community/me/notifications/read-state/` | 1 | **OK** — both report two updated and leave zero unread (compared by state, because each call mutates) |
 | 2026-10-25 | `GET`/`PATCH /api/v1/users/me/settings/` — read, empty, bad choice, bad colour, adult without confirmation, valid choices, adult with confirmation | 7 | **OK** — the confirmation timestamp is per-request and compared with it ignored |
 
