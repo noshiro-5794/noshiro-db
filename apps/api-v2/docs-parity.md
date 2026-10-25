@@ -18,6 +18,7 @@ is `scripts/parity.py`; it compares status codes, then the document structurally
 | 2026-10-25 | regression: collections, detail, metrics, relations, credits, releases, 404 | one entity each | **7/7 OK** |
 | 2026-10-25 | `GET /api/v1/index/entities/{id}/characters/` (pages 1 and 2) | 3 entities | **OK** — `next`/`previous` ignored, they carry each host |
 | 2026-10-25 | `GET /api/v1/index/entities/{id}/episodes/` (pages 1, 2, custom size, past last) | 4 entities | **OK** |
+| 2026-10-25 | `GET /api/v1/index/entities/` — default, page 2, collection, query, scope=all, popular, subject type, nsfw | 8 variants | **OK** |
 
 Reproduce against the two services sharing a database:
 
@@ -63,6 +64,16 @@ Two divergences were found by this comparison and fixed or recorded:
    service returned an empty 200.
 10. **The problem `instance` keeps the query string.** Django builds it from the
    full path, so a page-two 404 cites `?page=2`.
-11. **`value` type.** The OpenAPI snapshot says string, the Django response sends
+11. **The batched summary is not the single summary.** Django's
+   `entity_summaries` (list) keys members by id, so its "cluster" is the root
+   alone: names, memberships, media, audience and the spoiler gate all follow the
+   root, while `entity_summary` (detail, relations, credits) follows the merge
+   cluster. A merged work therefore shows fewer covers and a different audience in
+   the list. Reproduced with a `cluster_scope` flag; the inconsistency is worth
+   removing on both sides.
+12. **Currency is decided by the row's own observation.** `CURRENT` first read
+   `record.status` and the provider policy through the provenance join, which for
+   a cover is the asset's record; Django reads them from the observation's record.
+13. **`value` type.** The OpenAPI snapshot says string, the Django response sends
    a number. Parity copies the response; the disagreement is recorded in
    `contexts/signal/domain.py` for a deliberate fix on both sides.
