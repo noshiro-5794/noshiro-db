@@ -89,15 +89,23 @@ def current_rows(
     alias: str,
     columns: str,
     record: str,
+    current_record: str | None = None,
     extra_join: str = "",
 ) -> str:
-    """A current-row query for a table that carries its own provenance columns."""
+    """A current-row query for a table that carries its own provenance columns.
+
+    ``record`` is where the provenance comes from; ``current_record`` is the
+    record the cursor comparison uses. They differ for media: the cover's source
+    is the asset's record, but the row is current when the *link's* observation
+    is the selected one for its own record.
+    """
     observation = f"{alias}.observation_id"
+    checked = current_record or record
     return f"""
         SELECT {columns}, {PROVENANCE}
         FROM {table} AS {alias}
         {extra_join}
         {PROVENANCE_JOINS.format(record=record, observation=observation)}
         WHERE {alias}.entity_id = ANY(CAST(:ids AS uuid[]))
-          AND {CURRENT.format(record=record, observation=observation)}
+          AND {CURRENT.format(record=checked, observation=observation)}
     """

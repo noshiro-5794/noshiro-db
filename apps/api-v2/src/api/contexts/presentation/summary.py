@@ -49,6 +49,7 @@ async def _media(session: AsyncSession, scope: list[str]) -> list[dict[str, Any]
             alias="link",
             columns="asset.url, link.purpose, asset.safety, asset.spoiler_level",
             record="asset.provider_record_id",
+            current_record="observation.provider_record_id",
             extra_join="JOIN media_asset AS asset ON asset.id = link.asset_id",
         )
         + " ORDER BY link.id",
