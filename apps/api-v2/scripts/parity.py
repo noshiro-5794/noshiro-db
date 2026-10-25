@@ -24,9 +24,19 @@ from typing import Any
 DEFAULT_HEADERS = {"Accept": "application/json", "X-Forwarded-Proto": "https"}
 
 
-def fetch(base_url: str, path: str, headers: dict[str, str], timeout: float) -> tuple[int, Any]:
+def fetch(
+    base_url: str,
+    path: str,
+    headers: dict[str, str],
+    timeout: float,
+    method: str = "GET",
+    body: str | None = None,
+) -> tuple[int, Any]:
     """Return the status code and the decoded body; 4xx/5xx are comparable too."""
-    request = urllib.request.Request(base_url.rstrip("/") + path, headers=headers)
+    data = body.encode("utf-8") if body is not None else None
+    request = urllib.request.Request(
+        base_url.rstrip("/") + path, data=data, headers=headers, method=method
+    )
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
             return response.status, json.loads(response.read() or b"null")
@@ -92,6 +102,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--new", required=True, help="replacement base URL")
     parser.add_argument("--path", action="append", required=True)
     parser.add_argument("--header", action="append", default=[], metavar="KEY: VALUE")
+    parser.add_argument("--method", default="GET", help="HTTP method to use")
+    parser.add_argument("--body", default=None, help="JSON request body")
     parser.add_argument(
         "--timeout",
         type=float,
@@ -113,6 +125,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     headers = dict(DEFAULT_HEADERS)
+    if args.body is not None:
+        headers["Content-Type"] = "application/json"
     for header in args.header:
         key, _, value = header.partition(":")
         headers[key.strip()] = value.strip()
@@ -122,8 +136,12 @@ def main(argv: list[str] | None = None) -> int:
     failures = 0
     for path in args.path:
         try:
-            old_status, expected = fetch(args.old, path, headers, args.timeout)
-            new_status, actual = fetch(args.new, path, headers, args.timeout)
+            old_status, expected = fetch(
+                args.old, path, headers, args.timeout, args.method, args.body
+            )
+            new_status, actual = fetch(
+                args.new, path, headers, args.timeout, args.method, args.body
+            )
         except Exception as error:
             print(f"FAIL {path}: {error}")
             failures += 1
