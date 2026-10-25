@@ -1,14 +1,9 @@
-from typing import Annotated
-
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.db import get_session
+from api.db import SessionDep
 
 router = APIRouter(prefix="/api/v1/index", tags=["catalogue"])
-
-SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
 
 @router.get("/collections/")

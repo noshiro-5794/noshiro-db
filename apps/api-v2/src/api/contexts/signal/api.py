@@ -1,18 +1,14 @@
 from __future__ import annotations
 
-from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter
 
-from api.db import get_session
+from api.db import SessionDep
 from api.shared.problems import ProblemError
 
 from ..identity.resolution import cluster_ids, is_active, is_public, resolve
 from .infrastructure import list_metrics
-
-SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
 router = APIRouter(prefix="/api/v1/index", tags=["catalogue"])
 
