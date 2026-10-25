@@ -36,11 +36,7 @@ QUERY = """
 """
 
 
-async def campaign(session: AsyncSession, *, campaign_id: str) -> dict[str, Any]:
-    rows = await fetch(session, QUERY, {"id": campaign_id})
-    if not rows:
-        raise LookupError(campaign_id)
-    row = rows[0]
+def _payload(row: Any) -> dict[str, Any]:
     elapsed = float(row.elapsed_seconds or 0)
     throughput = row.processed_items / elapsed if elapsed > 0 else None
     remaining = max(0, row.total_items - row.processed_items)
@@ -79,6 +75,33 @@ async def campaign(session: AsyncSession, *, campaign_id: str) -> dict[str, Any]
             else None,
         },
     }
+
+
+async def campaign(session: AsyncSession, *, campaign_id: str) -> dict[str, Any]:
+    rows = await fetch(session, QUERY, {"id": campaign_id})
+    if not rows:
+        raise LookupError(campaign_id)
+    return _payload(rows[0])
+
+
+async def list_campaigns(
+    session: AsyncSession, *, provider: str, status: str
+) -> list[dict[str, Any]]:
+    clauses = ["TRUE"]
+    params: dict[str, Any] = {}
+    if provider:
+        clauses.append("campaign.provider_slug = :provider")
+        params["provider"] = provider
+    if status:
+        clauses.append("campaign.status = :status")
+        params["status"] = status
+    base = QUERY.replace("WHERE campaign.id = CAST(:id AS uuid)", "WHERE TRUE")
+    rows = await fetch(
+        session,
+        base + " AND " + " AND ".join(clauses) + " ORDER BY campaign.id LIMIT 100",
+        params,
+    )
+    return [_payload(row) for row in rows]
 
 
 async def campaign_items(
