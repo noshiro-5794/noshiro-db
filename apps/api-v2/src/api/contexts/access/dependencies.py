@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Annotated, Any
 
 import jwt
-from fastapi import Header
+from fastapi import Depends, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.config import settings
@@ -54,4 +54,13 @@ async def current_user(
         or claims.get("hash_password") != revoke_token(user.password)
     ):
         raise ProblemError(status_code=401, detail=INVALID, code="token_not_valid")
+    return user
+
+
+DENIED = "You do not have permission to perform this action."
+
+
+async def staff_user(user: Annotated[Any, Depends(current_user)]) -> Any:
+    if not user.is_staff:
+        raise ProblemError(status_code=403, detail=DENIED)
     return user

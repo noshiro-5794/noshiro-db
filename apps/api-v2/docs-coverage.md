@@ -55,7 +55,7 @@ Paths omit the shared `/api/v1` prefix. `S` is a single query and a small payloa
 | `/community/me/reactions/{target_type}/{target_id}/{reaction_type}/` | PUT,DELETE | M |
 | `/community/moderation/comments/{comment_id}/` | PATCH | M |
 | `/community/moderation/posts/{post_id}/` | PATCH | M |
-| `/community/moderation/reports/` | GET | M |
+| `/community/moderation/reports/` | — | done |
 | `/community/posts/` | GET,POST | M |
 | `/community/posts/{post_id}/` | GET,PATCH,DELETE | M |
 | `/community/posts/{post_id}/comments/` | GET,POST | M |

@@ -29,17 +29,31 @@ def _target(report: Any) -> dict[str, Any] | None:
     return None
 
 
-async def list_my_reports(
-    session: AsyncSession, *, user_id: int, page: int, page_size: int
+async def list_reports(
+    session: AsyncSession,
+    *,
+    user_id: int | None,
+    status: str,
+    page: int,
+    page_size: int,
 ) -> tuple[int, list[dict[str, Any]]]:
+    where = ["TRUE"]
+    params: dict[str, Any] = {}
+    if user_id is not None:
+        where.append("report.reporter_id = :user_id")
+        params["user_id"] = user_id
+    if status:
+        where.append("report.status = :status")
+        params["status"] = status
+    clause = " AND ".join(where)
     total = await fetch(
         session,
-        "SELECT count(*) AS total FROM community_report WHERE reporter_id = :user_id",
-        {"user_id": user_id},
+        f"SELECT count(*) AS total FROM community_report AS report WHERE {clause}",
+        params,
     )
     rows = await fetch(
         session,
-        """
+        f"""
         SELECT report.id, report.reason, report.description, report.status,
                report.resolved_at, report.created_at,
                report.post_id, report.comment_id, report.review_id,
@@ -61,12 +75,12 @@ async def list_my_reports(
         LEFT JOIN "user" AS resolver ON resolver.id = report.resolved_by_id
         LEFT JOIN user_profile AS resolver_profile
           ON resolver_profile.user_id = resolver.id
-        WHERE report.reporter_id = :user_id
+        WHERE {clause}
         ORDER BY report.created_at DESC, report.id DESC
         LIMIT :limit OFFSET :offset
         """,
         {
-            "user_id": user_id,
+            **params,
             "limit": page_size,
             "offset": (page - 1) * page_size,
         },
@@ -88,3 +102,9 @@ async def list_my_reports(
         }
         for row in rows
     ]
+
+
+async def list_my_reports(
+    session: AsyncSession, *, user_id: int, page: int, page_size: int
+) -> tuple[int, list[dict[str, Any]]]:
+    return await list_reports(session, user_id=user_id, status="", page=page, page_size=page_size)
