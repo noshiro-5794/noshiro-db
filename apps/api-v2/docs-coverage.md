@@ -64,7 +64,6 @@ Paths omit the shared `/api/v1` prefix. `S` is a single query and a small payloa
 | `/community/me/feed/` | GET | M |
 | `/community/me/followers/` | GET | M |
 | `/community/me/following/` | GET | M |
-| `/community/me/following/{target_user_id}/` | PUT,DELETE | M |
 | `/community/me/mutes/{target_user_id}/` | PUT,DELETE | M |
 | `/community/me/notifications/` | GET | M |
 | `/community/me/reactions/{target_type}/{target_id}/{reaction_type}/` | PUT,DELETE | M |

@@ -7,6 +7,7 @@ not a block.
 
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from typing import Any
 
@@ -177,3 +178,132 @@ async def list_mutes(
         page=page,
         page_size=page_size,
     )
+
+
+async def _target(session: AsyncSession, target_user_id: int) -> Any:
+    rows = await fetch(
+        session,
+        'SELECT id, email FROM "user" WHERE id = :id',
+        {"id": target_user_id},
+    )
+    if not rows:
+        raise LookupError(target_user_id)
+    return rows[0]
+
+
+def _person(user: Any, profile: Any) -> dict[str, Any]:
+    return {
+        "id": user.id,
+        "nickname": profile.nickname if profile else "",
+        "avatar": profile.avatar if profile else "",
+    }
+
+
+async def follow_user(
+    session: AsyncSession, *, follower_id: int, target_user_id: int
+) -> tuple[dict[str, Any], bool]:
+    target = await _target(session, target_user_id)
+    if follower_id == target_user_id:
+        raise PermissionError("community.cannot_follow_self")
+    blocked = await fetch(
+        session,
+        "SELECT 1 FROM community_user_block"
+        " WHERE (user_id = :a AND blocked_user_id = :b)"
+        "    OR (user_id = :b AND blocked_user_id = :a)",
+        {"a": follower_id, "b": target_user_id},
+    )
+    if blocked:
+        raise PermissionError("community.cannot_follow_blocked_user")
+    existing = await fetch(
+        session,
+        "SELECT created_at FROM community_user_follow WHERE follower_id = :a AND following_id = :b",
+        {"a": follower_id, "b": target_user_id},
+    )
+    followed_at = existing[0].created_at if existing else None
+    created = not existing
+    if created:
+        rows = await fetch(
+            session,
+            "INSERT INTO community_user_follow (follower_id, following_id,"
+            " created_at) VALUES (:a, :b, now()) RETURNING created_at",
+            {"a": follower_id, "b": target_user_id},
+        )
+        followed_at = rows[0].created_at
+        profile = await fetch(
+            session,
+            "SELECT nickname, avatar FROM user_profile WHERE user_id = :id",
+            {"id": target_user_id},
+        )
+        person = {
+            "id": target_user_id,
+            "nickname": profile[0].nickname if profile else "",
+            "avatar": profile[0].avatar if profile else "",
+        }
+        activity = await fetch(
+            session,
+            """
+            INSERT INTO community_activity (
+                user_id, activity_type, target_user_id, message, visibility,
+                feed_policy, group_key, dedupe_key, metadata, created_at
+            ) VALUES (
+                :user_id, 'user_followed', :target_id, 'Followed a user', 'public',
+                'normal', :group_key, :dedupe_key, CAST(:metadata AS jsonb), now()
+            )
+            ON CONFLICT (dedupe_key) WHERE dedupe_key <> '' DO UPDATE SET
+                message = EXCLUDED.message,
+                metadata = EXCLUDED.metadata
+            RETURNING id
+            """,
+            {
+                "user_id": follower_id,
+                "target_id": target_user_id,
+                "group_key": f"follow:{follower_id}",
+                "dedupe_key": f"user_followed:{follower_id}:{target_user_id}",
+                "metadata": json.dumps({"target_user": person}),
+            },
+        )
+        await fetch(
+            session,
+            """
+            INSERT INTO community_notification (
+                recipient_id, actor_id, notification_type, activity_id, metadata,
+                created_at
+            ) VALUES (
+                :recipient, :actor, 'followed', :activity,
+                CAST(:metadata AS jsonb), now()
+            ) RETURNING id
+            """,
+            {
+                "recipient": target_user_id,
+                "actor": follower_id,
+                "activity": activity[0].id,
+                "metadata": json.dumps({"actor_id": follower_id}),
+            },
+        )
+    profile = await fetch(
+        session,
+        "SELECT nickname, avatar FROM user_profile WHERE user_id = :id",
+        {"id": target_user_id},
+    )
+    await session.commit()
+    return {
+        "user": _person(target, profile[0] if profile else None),
+        "followed_at": _iso(followed_at),
+    }, created
+
+
+async def unfollow_user(session: AsyncSession, *, follower_id: int, target_user_id: int) -> None:
+    await _target(session, target_user_id)
+    await fetch(
+        session,
+        "DELETE FROM community_user_follow WHERE follower_id = :a"
+        " AND following_id = :b RETURNING id",
+        {"a": follower_id, "b": target_user_id},
+    )
+    await fetch(
+        session,
+        "DELETE FROM community_activity WHERE activity_type = 'user_followed'"
+        " AND user_id = :a AND target_user_id = :b RETURNING id",
+        {"a": follower_id, "b": target_user_id},
+    )
+    await session.commit()
