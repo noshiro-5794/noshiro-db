@@ -617,7 +617,11 @@ async def add_post_comment(
             code="community.post_not_found",
         ) from error
     except LookupError as error:
-        raise ProblemError(status_code=404, detail="Comment not found.") from error
+        raise ProblemError(
+            status_code=404,
+            detail="Comment not found.",
+            code="community.comment_not_found",
+        ) from error
     except ValueError as error:
         raise ProblemError(
             status_code=400, detail="Request validation failed.", errors=error.args[0]
@@ -635,7 +639,11 @@ async def patch_comment(
     try:
         return await update_comment(session, user_id=user.id, comment_id=comment_id, body=body)
     except LookupError as error:
-        raise ProblemError(status_code=404, detail="Comment not found.") from error
+        raise ProblemError(
+            status_code=404,
+            detail="Comment not found.",
+            code="community.comment_not_found",
+        ) from error
     except PermissionError as error:
         raise ProblemError(
             status_code=409,
@@ -663,7 +671,11 @@ async def remove_comment(
     try:
         await delete_comment(session, user_id=user.id, comment_id=comment_id)
     except LookupError as error:
-        raise ProblemError(status_code=404, detail="Comment not found.") from error
+        raise ProblemError(
+            status_code=404,
+            detail="Comment not found.",
+            code="community.comment_not_found",
+        ) from error
     except PermissionError as error:
         raise ProblemError(
             status_code=409,
