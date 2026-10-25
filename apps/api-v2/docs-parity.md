@@ -98,6 +98,7 @@ uv run python -m scripts.state_parity --old ... --new ... \
 | 2026-10-25 | `POST /api/v1/community/posts/{id}/comments/` | 1 | **OK** — same body, and the post's reply count goes up by one on each |
 | 2026-10-25 | `PATCH` / `DELETE /api/v1/community/comments/{id}/` + a missing comment | 3 | **OK** — the edit, the 204 and the domain 404 |
 | 2026-10-25 | `PATCH /api/v1/community/moderation/posts/{id}/` — hide | 1 | **OK** — the post answers with the hidden feed policy |
+| 2026-10-25 | `PATCH /api/v1/community/moderation/comments/{id}/` — hide | 1 | **OK** — the comment answers hidden, with no author |
 | 2026-10-25 | `PUT /api/v1/community/me/notifications/read-state/` | 1 | **OK** — both report two updated and leave zero unread (compared by state, because each call mutates) |
 | 2026-10-25 | `GET`/`PATCH /api/v1/users/me/settings/` — read, empty, bad choice, bad colour, adult without confirmation, valid choices, adult with confirmation | 7 | **OK** — the confirmation timestamp is per-request and compared with it ignored |
 

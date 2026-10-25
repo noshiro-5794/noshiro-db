@@ -13,6 +13,7 @@ from api.contexts.community.comments import (
     create_comment,
     delete_comment,
     list_comments,
+    moderate_comment,
     update_comment,
 )
 from api.contexts.community.posts import (
@@ -699,6 +700,29 @@ async def moderate(
             status_code=404,
             detail="Community post not found.",
             code="community.post_not_found",
+        ) from error
+    except ValueError as error:
+        raise ProblemError(
+            status_code=400, detail="Request validation failed.", errors=error.args[0]
+        ) from error
+
+
+@router.patch("/moderation/comments/{comment_id}/")
+async def moderate_a_comment(
+    comment_id: int,
+    body: dict[str, Any],
+    session: SessionDep,
+    user: Annotated[Any, Depends(staff_user)],
+) -> dict[str, Any]:
+    try:
+        return await moderate_comment(
+            session, moderator_id=user.id, comment_id=comment_id, body=body
+        )
+    except LookupError as error:
+        raise ProblemError(
+            status_code=404,
+            detail="Community comment not found.",
+            code="community.comment_not_found",
         ) from error
     except ValueError as error:
         raise ProblemError(

@@ -49,8 +49,7 @@ Paths omit the shared `/api/v1` prefix. `S` is a single query and a small payloa
 | `/community/me/bookmarks/` | — | done |
 | — | — | done |
 | `/community/me/mutes/{target_user_id}/` | PUT,DELETE | M |
-| `/community/moderation/comments/{comment_id}/` | PATCH | M |
-| `/community/moderation/posts/{post_id}/` | comment variant | M |
+| `/community/moderation/comments/{comment_id}/` | — | done |
 | `/community/moderation/reports/` | — | done |
 | `/community/moderation/reports/{report_id}/` | PATCH | L |
 

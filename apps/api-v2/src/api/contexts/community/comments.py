@@ -315,3 +315,56 @@ async def delete_comment(session: AsyncSession, *, user_id: int, comment_id: int
             {"id": comment_id},
         )
     await session.commit()
+
+
+async def moderate_comment(
+    session: AsyncSession, *, moderator_id: int, comment_id: int, body: dict[str, Any]
+) -> dict[str, Any]:
+    action = body.get("action_type")
+    if action not in ("hide", "lock"):
+        raise ValueError({"action_type": [f'"{action}" is not a valid choice.']})
+    rows = await fetch(
+        session,
+        "SELECT id, author_id FROM community_comment WHERE id = :id",
+        {"id": comment_id},
+    )
+    if not rows:
+        raise LookupError(comment_id)
+    if action == "hide":
+        await fetch(
+            session,
+            "UPDATE community_comment SET is_hidden = true, updated_at = now()"
+            " WHERE id = :id RETURNING id",
+            {"id": comment_id},
+        )
+        await fetch(
+            session,
+            "UPDATE community_activity SET feed_policy = 'hidden'"
+            " WHERE comment_id = :id RETURNING id",
+            {"id": comment_id},
+        )
+    else:
+        await fetch(
+            session,
+            "UPDATE community_comment SET is_locked = true, updated_at = now()"
+            " WHERE id = :id RETURNING id",
+            {"id": comment_id},
+        )
+    await fetch(
+        session,
+        "INSERT INTO community_moderation_action (moderator_id, target_user_id,"
+        " comment_id, action_type, reason, metadata, created_at)"
+        " VALUES (:moderator, :target_user, :comment, :action, :reason,"
+        " '{}'::jsonb, now()) RETURNING id",
+        {
+            "moderator": moderator_id,
+            "target_user": rows[0].author_id,
+            "comment": comment_id,
+            "action": action,
+            "reason": body.get("reason", "") or "",
+        },
+    )
+    await session.commit()
+    return await comment_payload(
+        await _comment_row(session, viewer_id=moderator_id, comment_id=comment_id)
+    )
