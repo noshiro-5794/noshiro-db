@@ -12,7 +12,6 @@ Paths omit the shared `/api/v1` prefix. `S` is a single query and a small payloa
 
 | path | methods | size |
 |---|---|---|
-| `/auth/session/` | POST | S |
 | `/auth/sessions/code/` | POST | S |
 | `/auth/sessions/refresh/` | POST | S |
 | `/auth/social/github/start/` | GET | S |
