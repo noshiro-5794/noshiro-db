@@ -5,7 +5,12 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Request
 
 from api.contexts.access.dependencies import current_user
-from api.contexts.library.entries import delete_entry, get_entry, list_entries
+from api.contexts.library.entries import (
+    delete_entry,
+    get_entry,
+    list_entries,
+    patch_entry,
+)
 from api.db import SessionDep
 from api.shared.pagination import ensure_page, page_params, page_payload
 from api.shared.problems import ProblemError
@@ -62,3 +67,20 @@ async def remove_entry(
         await delete_entry(session, user_id=user.id, entry_id=entry_id)
     except LookupError as error:
         raise ProblemError(status_code=404, detail="Library entry not found.") from error
+
+
+@router.patch("/me/library/entries/{entry_id}/")
+async def update_entry(
+    entry_id: int,
+    body: dict[str, Any],
+    session: SessionDep,
+    user: Annotated[Any, Depends(current_user)],
+) -> dict[str, Any]:
+    try:
+        return await patch_entry(session, user_id=user.id, entry_id=entry_id, values=body)
+    except LookupError as error:
+        raise ProblemError(status_code=404, detail="Library entry not found.") from error
+    except ValueError as error:
+        raise ProblemError(
+            status_code=400, detail="Request validation failed.", errors=error.args[0]
+        ) from error

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -165,3 +166,121 @@ async def delete_entry(session: AsyncSession, *, user_id: int, entry_id: int) ->
     if not rows:
         raise LookupError(entry_id)
     await session.commit()
+
+
+STATUSES = ("doing", "wish", "done", "on_hold", "dropped")
+NOT_CHOICE = '"{}" is not a valid choice.'
+
+
+def _integer(value: Any, low: int, high: int) -> tuple[int | None, str | None]:
+    if value is None:
+        return None, None
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None, "A valid integer is required."
+    if value < low:
+        return None, f"Ensure this value is greater than or equal to {low}."
+    if value > high:
+        return None, f"Ensure this value is less than or equal to {high}."
+    return value, None
+
+
+def _decimal(value: Any) -> tuple[float | None, str | None]:
+    if value is None:
+        return None, None
+    if isinstance(value, bool):
+        return None, "A valid number is required."
+    try:
+        number = round(float(value), 1)
+    except (TypeError, ValueError):
+        return None, "A valid number is required."
+    if number < 0:
+        return None, "Ensure this value is greater than or equal to 0."
+    if number > 10:
+        return None, "Ensure this value is less than or equal to 10."
+    return number, None
+
+
+def _date(value: Any) -> tuple[Any, str | None]:
+    if value is None:
+        return None, None
+    if not isinstance(value, str):
+        return None, "Date has wrong format."
+    try:
+        return date.fromisoformat(value), None
+    except ValueError:
+        return None, "Date has wrong format. Use one of these formats instead: YYYY-MM-DD."
+
+
+def validate(values: dict[str, Any], current: Any) -> tuple[dict[str, Any], dict[str, list[str]]]:
+    columns: dict[str, Any] = {}
+    errors: dict[str, list[str]] = {}
+    if "status" in values:
+        if values["status"] not in STATUSES:
+            errors["status"] = [NOT_CHOICE.format(values["status"])]
+        else:
+            columns["status"] = values["status"]
+    if "simple_rating" in values:
+        number, error = _integer(values["simple_rating"], 1, 5)
+        (
+            errors.setdefault("simple_rating", [error])
+            if error
+            else columns.update(simple_rating=number)
+        )
+    if "rating" in values:
+        amount, error = _decimal(values["rating"])
+        if error:
+            errors["rating"] = [error]
+        else:
+            columns["rating"] = amount
+    if "comment" in values:
+        comment = values["comment"]
+        if not isinstance(comment, str):
+            errors["comment"] = ["Not a valid string."]
+        elif len(comment) > 2000:
+            errors["comment"] = ["Ensure this field has no more than 2000 characters."]
+        else:
+            columns["comment"] = comment
+    if "is_public" in values:
+        flag = values["is_public"]
+        if not isinstance(flag, bool):
+            errors["is_public"] = ["Must be a valid boolean."]
+        else:
+            columns["is_public"] = flag
+    for field in ("watch_start_date", "watch_end_date"):
+        if field in values:
+            parsed, error = _date(values[field])
+            if error:
+                errors[field] = [error]
+            else:
+                columns[field] = parsed
+    start = columns.get("watch_start_date", current.watch_start_date)
+    end = columns.get("watch_end_date", current.watch_end_date)
+    if start and end and start > end:
+        errors["watch_end_date"] = ["Must not be earlier than watch_start_date."]
+    return columns, errors
+
+
+async def patch_entry(
+    session: AsyncSession, *, user_id: int, entry_id: int, values: dict[str, Any]
+) -> dict[str, Any]:
+    rows = await fetch(
+        session,
+        f"SELECT {ENTRY_COLUMNS} FROM user_library_entry AS entry"
+        " WHERE entry.id = :entry_id AND entry.user_id = :user_id",
+        {"entry_id": entry_id, "user_id": user_id},
+    )
+    if not rows:
+        raise LookupError(entry_id)
+    columns, errors = validate(values, rows[0])
+    if errors:
+        raise ValueError(errors)
+    if columns:
+        assignments = ", ".join(f"{name} = :{name}" for name in columns)
+        await fetch(
+            session,
+            f"UPDATE user_library_entry SET {assignments}, updated_at = now()"
+            " WHERE id = :entry_id AND user_id = :user_id RETURNING id",
+            {**columns, "entry_id": entry_id, "user_id": user_id},
+        )
+        await session.commit()
+    return await get_entry(session, user_id=user_id, entry_id=entry_id)
