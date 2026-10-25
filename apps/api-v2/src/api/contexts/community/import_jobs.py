@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -154,10 +155,11 @@ async def create_import_job(
         include_related = True
     rows = await fetch(
         session,
-        "INSERT INTO sync_job (job_type, parameters, status, created_at)"
-        " VALUES (:job_type, CAST(:parameters AS jsonb), 'queued', now())"
+        "INSERT INTO sync_job (id, job_type, parameters, status, created_at)"
+        " VALUES (:id, :job_type, CAST(:parameters AS jsonb), 'queued', now())"
         " RETURNING id",
         {
+            "id": str(uuid.uuid4()),
             "job_type": JOB_TYPES[str(provider)],
             "parameters": json.dumps(
                 {
