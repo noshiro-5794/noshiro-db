@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from .contexts.access.api.logout import router as logout_router
 from .contexts.access.api.profile import router as profile_router
 from .contexts.access.api.session import router as session_router
 from .contexts.access.api.settings import router as settings_router
@@ -23,6 +24,7 @@ def create_app() -> FastAPI:
     app.include_router(social_router)
     app.include_router(session_router)
     app.include_router(profile_router)
+    app.include_router(logout_router)
     app.include_router(settings_router)
     app.include_router(catalogue_router)
     app.include_router(calendar_router)
