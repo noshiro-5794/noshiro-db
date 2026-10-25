@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Request
 from api.contexts.access.dependencies import staff_user
 from api.contexts.community.campaigns import (
     campaign,
+    campaign_claims,
     campaign_items,
     summary,
 )
@@ -77,3 +78,33 @@ async def sync_campaign_items(
         raise ProblemError(status_code=404, detail="Sync campaign not found.") from error
     ensure_page(page, page_size, total)
     return page_payload(request, count=total, results=results, page=page, page_size=page_size)
+
+
+@router.get("/sync/{campaign_id}/claims/")
+async def sync_campaign_claims(
+    campaign_id: str,
+    session: SessionDep,
+    request: Request,
+    user: Annotated[Any, Depends(staff_user)],
+    status: str = "",
+) -> dict[str, Any]:
+    page, page_size = page_params(request)
+    try:
+        data = await campaign_claims(
+            session,
+            campaign_id=campaign_id,
+            status=status,
+            page=page,
+            page_size=page_size,
+        )
+    except LookupError as error:
+        raise ProblemError(status_code=404, detail="Sync campaign not found.") from error
+    if data["count"] == 0 and not data["results"]:
+        return data
+    return page_payload(
+        request,
+        count=data["count"],
+        results=data["results"],
+        page=page,
+        page_size=page_size,
+    )
