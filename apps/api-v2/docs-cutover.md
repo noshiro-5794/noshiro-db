@@ -34,8 +34,13 @@ was gone within seconds, and the worker logged
 Task apps.sync.tasks.campaign.run_sync_campaign_task[623dd598…] received
 ```
 
-followed by the expected `DoesNotExist` for the throwaway campaign id. A task published
-by this service is consumed by the Django worker.
+followed by the expected `DoesNotExist` for the throwaway campaign id.
+
+The write path was also walked once end to end: a job created through this service's
+API was published, executed by the Django worker against VNDB, and read back as
+`failed` with the provider's own error message. The first attempt failed differently —
+the task was received and then crashed on `unexpected keyword argument 'external_id'`,
+because the task names that argument after the provider (`vndb_id`).
 
 ### 2. GitHub sign-in still needs Django's signer and its cache
 
