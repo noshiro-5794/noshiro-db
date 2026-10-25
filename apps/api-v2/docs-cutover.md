@@ -16,14 +16,15 @@ rather than from optimism. The answer today is **no-go**, for four concrete reas
 
 ## The four blockers
 
-### 1. Worker dispatch is not ported
+### 1. Worker dispatch is written but not exercised
 
-`POST /operations/import-jobs/` and `POST /operations/sync/` write the row and answer
-202, but nothing picks the job up. Django's worker does. Until this moves, those two
-endpoints look healthy and do nothing.
+Import jobs now publish to the same task name the Django worker listens on
+(`apps.sync.tasks.vndb.import_vndb_work_task`) through the same broker, and the job row
+keeps the task id. Three tests pin the name, the arguments and the no-broker path.
 
-*What closing it means:* either port the tasks, or point the new service at the same
-broker and publish with matching task names. The second is cheaper and keeps one worker.
+What is **not** done: the broker is unreachable in this environment — the old service
+answers 503 here for the same reason — so the round trip has never been observed. Sync
+campaigns still do not publish at all.
 
 ### 2. GitHub sign-in still needs Django's signer and its cache
 
