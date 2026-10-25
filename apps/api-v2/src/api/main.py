@@ -29,6 +29,7 @@ def create_app() -> FastAPI:
     app.include_router(social_router)
     app.include_router(session_router)
     app.include_router(profile_router)
+    app.include_router(social_router)
     app.include_router(collections_router)
     app.include_router(profiles_router)
     app.include_router(library_tags_router)
