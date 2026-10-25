@@ -2,6 +2,7 @@ from fastapi import FastAPI
 
 from .contexts.access.api.profile import router as profile_router
 from .contexts.access.api.session import router as session_router
+from .contexts.access.api.settings import router as settings_router
 from .contexts.access.api.social import router as social_router
 from .contexts.presentation.api.board import router as board_router
 from .contexts.presentation.api.calendar import router as calendar_router
@@ -18,6 +19,7 @@ def create_app() -> FastAPI:
     app.include_router(social_router)
     app.include_router(session_router)
     app.include_router(profile_router)
+    app.include_router(settings_router)
     app.include_router(catalogue_router)
     app.include_router(calendar_router)
     app.include_router(board_router)

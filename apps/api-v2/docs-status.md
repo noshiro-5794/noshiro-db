@@ -29,6 +29,9 @@ walks every entity endpoint plus the list paths. Last shadow run: **103/103**.
 
 ## Not started
 
+`docs-coverage.md` lists every remaining operation path by path, with a size
+estimate and the order to take them in.
+
 | Item | Why it waits |
 |---|---|
 | `calendar/board/events/` | the Gantt projection: its own round |
@@ -36,6 +39,12 @@ walks every entity endpoint plus the list paths. Last shadow run: **103/103**.
 | library, collections, reviews (writes) | need authentication first |
 | ingestion (providers, mappers, sync) | the largest remaining block; nothing else depends on it for reads |
 | decommissioning Django | last step, after every endpoint and the sync path move |
+
+## Transition affordances
+
+`docs-transition.md` lists what exists only because Django still runs — the
+password verifier, the `hash_password` claim, the forwarded-proto reading — and
+what removes each one. None of it is the target design.
 
 ## How to verify
 
