@@ -9,8 +9,8 @@ class FakeApp:
     def __init__(self) -> None:
         self.calls = []
 
-    def send_task(self, task, kwargs=None):
-        self.calls.append((task, kwargs))
+    def send_task(self, task, kwargs=None, queue=None):
+        self.calls.append((task, kwargs, queue))
 
         class Result:
             id = "task-1"
@@ -31,6 +31,7 @@ def test_an_import_publishes_to_the_django_task_name() -> None:
         (
             "apps.sync.tasks.vndb.import_vndb_work_task",
             {"external_id": "v123", "include_related": True, "job_id": "job-1"},
+            "sync",
         )
     ]
 
@@ -53,8 +54,18 @@ def test_a_campaign_publishes_with_its_id() -> None:
     kwargs = dispatch.sync_kwargs(campaign_id="c-1")
     assert dispatch.publish(dispatch.SYNC_TASK, kwargs, sender=app) == "task-1"
     assert app.calls == [
-        ("apps.sync.tasks.campaign.run_sync_campaign_task", {"campaign_id": "c-1"})
+        (
+            "apps.sync.tasks.campaign.run_sync_campaign_task",
+            {"campaign_id": "c-1"},
+            "sync",
+        )
     ]
+
+
+def test_the_queue_follows_the_old_routing() -> None:
+    assert dispatch.queue_for("apps.sync.tasks.vndb.import_vndb_work_task") == "sync"
+    assert dispatch.queue_for("apps.ai.tasks.something") == "ai"
+    assert dispatch.queue_for("apps.users.tasks.email_tasks.x") == "realtime"
 
 
 def test_the_message_reaches_a_queue(monkeypatch) -> None:
@@ -73,7 +84,7 @@ def test_the_message_reaches_a_queue(monkeypatch) -> None:
     )
 
     with app.connection_for_read() as connection:
-        queue = connection.SimpleQueue("celery")
+        queue = connection.SimpleQueue("sync")
         message = queue.get(block=True, timeout=5)
         try:
             # Protocol v2: the name rides in the header, the arguments in the body.

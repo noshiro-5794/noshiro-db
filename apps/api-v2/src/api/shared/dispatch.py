@@ -36,12 +36,27 @@ def _sender() -> Any:
     return app
 
 
-def publish(task: str, kwargs: dict[str, Any], *, sender: Any = None) -> str | None:
-    """The broker's task id, or None when there is no broker configured."""
+def queue_for(task: str) -> str:
+    """The queue the old service's routes put this task on."""
+    if task.startswith("apps.sync.tasks."):
+        return "sync"
+    if task.startswith("apps.ai.tasks."):
+        return "ai"
+    return "realtime"
+
+
+def publish(
+    task: str, kwargs: dict[str, Any], *, queue: str | None = None, sender: Any = None
+) -> str | None:
+    """The broker's task id, or None when there is no broker configured.
+
+    The queue is not optional in practice: the workers run with `-Q` and the default
+    queue is `realtime`, so a task published without one is never consumed.
+    """
     if not os.environ.get("CELERY_BROKER_URL"):
         return None
     app = sender or _sender()
-    result = app.send_task(task, kwargs=kwargs)
+    result = app.send_task(task, kwargs=kwargs, queue=queue or queue_for(task))
     return str(result.id)
 
 
