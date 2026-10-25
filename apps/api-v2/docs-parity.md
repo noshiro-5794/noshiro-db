@@ -40,6 +40,8 @@ DATABASE_URL=... uv run python -m scripts.shadow \
 | 2026-10-25 | `GET /api/v1/auth/social/providers/` | 1 | **OK** — both report GitHub disabled, matching the environment |
 | 2026-10-25 | `GET /api/v1/index/calendar/events/` — weekly board, include_work, range, range+timezone, range+include_work | 5 variants | **OK** |
 | 2026-10-25 | `GET /api/v1/index/calendar/board/events/` — default, include_work | 2 variants | **OK** |
+| 2026-10-25 | `POST /api/v1/auth/sessions/password/` — wrong credentials | 1 | **OK** — identical problem body |
+| 2026-10-25 | `POST /api/v1/auth/sessions/password/` — valid credentials | 1 | **OK** — same claims; Django accepts the token this service minted |
 
 Reproduce against the two services sharing a database:
 
@@ -106,6 +108,10 @@ Two divergences were found by this comparison and fixed or recorded:
    appears at all and hides adult entries, even when the caller did not ask for
    the summary; and DRF renders the nullable `work` field as `null`, so the key is
    always present.
-16. **`value` type.** The OpenAPI snapshot says string, the Django response sends
+16. **The password digest claim is `hash_password`.** Not SimpleJWT's default
+   name; tokens carry it under the name the service already issues. A token minted
+   here is accepted by Django (`GET /api/v1/users/me/profile/` returns 200), which
+   is the check that matters.
+17. **`value` type.** The OpenAPI snapshot says string, the Django response sends
    a number. Parity copies the response; the disagreement is recorded in
    `contexts/signal/domain.py` for a deliberate fix on both sides.
