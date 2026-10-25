@@ -37,13 +37,15 @@ declared set and only showed up when the production set was installed alone.
 
 ## Health
 
-There is no dedicated health path yet; the cheapest read that touches the database is
+The same two paths the old service exposes, with the same body and `Cache-Control`:
 
 ```sh
-curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8010/api/v1/community/posts/
+curl -s http://127.0.0.1:8010/health/live/    # {"status":"ok"} without touching the database
+curl -s http://127.0.0.1:8010/health/ready/   # {"status":"ok"} after SELECT 1
 ```
 
-A 200 means the process is up and the pool is answering.
+Readiness answers 503 when the pool cannot answer. The old service also pings its cache
+there; this one has no cache of its own, so that half is not reproduced.
 
 ## Migrations
 
