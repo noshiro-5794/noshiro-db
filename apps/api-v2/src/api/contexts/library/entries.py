@@ -431,3 +431,89 @@ async def replace_tags(
         )
     await session.commit()
     return tags
+
+
+BLANK_KEY = "Rating detail key can not be blank."
+
+
+async def rating_details(
+    session: AsyncSession, *, user_id: int, entry_id: int
+) -> list[dict[str, Any]]:
+    rows = await fetch(
+        session,
+        "SELECT detail.key, detail.value FROM user_subject_rating_detail AS detail"
+        " JOIN user_library_entry AS entry ON entry.id = detail.user_subject_id"
+        " WHERE entry.id = :entry_id AND entry.user_id = :user_id ORDER BY detail.id",
+        {"entry_id": entry_id, "user_id": user_id},
+    )
+    return [_detail(row.key, row.value) for row in rows]
+
+
+def _detail(key: str, value: Any) -> dict[str, Any]:
+    return {"key": key, "value": str(value) if value is not None else None}
+
+
+def _rating_item(item: Any) -> tuple[str, float] | str | None:
+    """A key and its value, an error message, or None when the shape is wrong."""
+    if not isinstance(item, dict):
+        return None
+    key = str(item.get("key", "")).strip()
+    if not key or len(key) > 256:
+        return BLANK_KEY
+    raw = item.get("value")
+    if isinstance(raw, bool) or raw is None:
+        return None
+    try:
+        number = round(float(str(raw)), 1)
+    except ValueError:
+        return None
+    if number < 0 or number > 10:
+        return None
+    return key, number
+
+
+async def replace_rating_details(
+    session: AsyncSession, *, user_id: int, entry_id: int, body: dict[str, Any]
+) -> list[dict[str, Any]]:
+    existing = await fetch(
+        session,
+        "SELECT id FROM user_library_entry WHERE id = :entry_id AND user_id = :user_id",
+        {"entry_id": entry_id, "user_id": user_id},
+    )
+    if not existing:
+        raise LookupError(entry_id)
+    items = body.get("details")
+    if not isinstance(items, list):
+        raise ValueError({"details": ["This field is required."]})
+    parsed: list[tuple[str, float]] = []
+    seen: set[str] = set()
+    duplicates: list[str] = []
+    for item in items:
+        result = _rating_item(item)
+        if result is None:
+            raise ValueError({"details": ["Invalid rating detail."]})
+        if isinstance(result, str):
+            raise ValueError({"details": [result]})
+        key, number = result
+        if key in seen:
+            duplicates.append(key)
+        seen.add(key)
+        parsed.append((key, number))
+    if duplicates:
+        raise ValueError({"duplicate_keys": duplicates})
+    await fetch(
+        session,
+        "DELETE FROM user_subject_rating_detail WHERE user_subject_id = :entry_id RETURNING id",
+        {"entry_id": entry_id},
+    )
+    rows = []
+    for key, number in parsed:
+        inserted = await fetch(
+            session,
+            "INSERT INTO user_subject_rating_detail (key, value, user_subject_id)"
+            " VALUES (:key, :value, :entry_id) RETURNING id, key, value",
+            {"key": key, "value": number, "entry_id": entry_id},
+        )
+        rows.append(inserted[0])
+    await session.commit()
+    return [_detail(row.key, row.value) for row in rows]
