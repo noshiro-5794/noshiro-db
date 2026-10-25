@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import JSONResponse
 
 from api.contexts.access.dependencies import current_user, staff_user
+from api.contexts.community.bookmarks import list_bookmarks
 from api.contexts.community.relationships import (
     block_user,
     follow_user,
@@ -223,3 +224,24 @@ async def report(
             status_code=400, detail="Request validation failed.", errors=error.args[0]
         ) from error
     return JSONResponse(data, status_code=201)
+
+
+@router.get("/me/bookmarks/")
+async def bookmarks(
+    session: SessionDep,
+    request: Request,
+    user: Annotated[Any, Depends(current_user)],
+    target_type: str = "",
+    keyword: str = "",
+) -> dict[str, Any]:
+    page, page_size = page_params(request)
+    total, results = await list_bookmarks(
+        session,
+        user_id=user.id,
+        target_type=target_type,
+        keyword=keyword.strip(),
+        page=page,
+        page_size=page_size,
+    )
+    ensure_page(page, page_size, total)
+    return page_payload(request, count=total, results=results, page=page, page_size=page_size)
