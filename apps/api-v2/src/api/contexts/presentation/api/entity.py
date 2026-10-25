@@ -9,6 +9,7 @@ from api.contexts.presentation.characters import character_page
 from api.contexts.presentation.credits import entity_credits
 from api.contexts.presentation.detail import entity_detail
 from api.contexts.presentation.episodes import episode_page
+from api.contexts.presentation.evidence import entity_evidence
 from api.contexts.presentation.pagination import (
     ensure_page,
     page_params,
@@ -166,3 +167,12 @@ async def episodes(
     )
     ensure_page(page, page_size, total)
     return page_payload(request, count=total, results=results, page=page, page_size=page_size)
+
+
+@router.get("/entities/{entity_id}/evidence/")
+async def evidence(
+    entity_id: str,
+    session: SessionDep,
+) -> list[dict[str, Any]]:
+    _, cluster = await _public_cluster(session, entity_id)
+    return await entity_evidence(session, cluster=cluster)
