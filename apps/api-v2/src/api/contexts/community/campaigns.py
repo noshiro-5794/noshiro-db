@@ -59,7 +59,7 @@ async def campaign(session: AsyncSession, *, campaign_id: str) -> dict[str, Any]
         "failed_items": row.failed_items,
         "quality_report": row.quality_report,
         "cost": float(row.cost) if row.cost is not None else None,
-        "error": row.error or None,
+        "error": row.error,
         "heartbeat_at": isoformat(row.heartbeat_at),
         "next_run_at": isoformat(row.next_run_at),
         "created_at": isoformat(row.created_at),
