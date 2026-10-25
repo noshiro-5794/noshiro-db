@@ -255,3 +255,126 @@ async def delete_collection(session: AsyncSession, *, user_id: int, collection_i
         {"id": collection_id},
     )
     await session.commit()
+
+
+async def list_items(
+    session: AsyncSession,
+    *,
+    viewer_id: int,
+    user_id: int,
+    collection_id: int,
+    page: int,
+    page_size: int,
+) -> tuple[int, list[dict[str, Any]]]:
+    await my_collection(session, user_id=user_id, collection_id=collection_id)
+    total = await fetch(
+        session,
+        "SELECT count(*) AS total FROM user_collection_item WHERE collection_id = :id",
+        {"id": collection_id},
+    )
+    rows = await fetch(
+        session,
+        """
+        SELECT item.id, item.user_subject_id, item.order, item.relation,
+               entry.entity_id
+        FROM user_collection_item AS item
+        JOIN user_library_entry AS entry ON entry.id = item.user_subject_id
+        WHERE item.collection_id = :id
+        ORDER BY item.order ASC, item.id ASC
+        LIMIT :limit OFFSET :offset
+        """,
+        {
+            "id": collection_id,
+            "limit": page_size,
+            "offset": (page - 1) * page_size,
+        },
+    )
+    return int(total[0].total), [
+        {
+            "id": row.id,
+            "library_entry_id": row.user_subject_id,
+            "entity": await entity_for(session, row.entity_id),
+            "order": row.order,
+            "relation": row.relation,
+        }
+        for row in rows
+    ]
+
+
+async def entity_for(session: AsyncSession, entity_id: Any) -> dict[str, Any] | None:
+    from api.contexts.identity.resolution import cluster_ids, resolve
+    from api.contexts.presentation.summary import entity_summary
+
+    if entity_id is None:
+        return None
+    root = await resolve(session, entity_id) or entity_id
+    cluster = await cluster_ids(session, root)
+    return await entity_summary(
+        session, root=root, cluster_ids=[str(value) for value in cluster], language=""
+    )
+
+
+async def add_item(
+    session: AsyncSession,
+    *,
+    user_id: int,
+    collection_id: int,
+    body: dict[str, Any],
+) -> tuple[dict[str, Any], bool]:
+    await my_collection(session, user_id=user_id, collection_id=collection_id)
+    entry_id = body.get("library_entry_id")
+    if not isinstance(entry_id, int) or isinstance(entry_id, bool) or entry_id < 1:
+        raise ValueError({"library_entry_id": ["A valid integer is required."]})
+    entry = await fetch(
+        session,
+        "SELECT entity_id FROM user_library_entry WHERE id = :id AND user_id = :user_id",
+        {"id": entry_id, "user_id": user_id},
+    )
+    if not entry:
+        raise LookupError(entry_id)
+    existing = await fetch(
+        session,
+        "SELECT id FROM user_collection_item"
+        " WHERE collection_id = :collection AND user_subject_id = :entry",
+        {"collection": collection_id, "entry": entry_id},
+    )
+    if existing:
+        rows = await fetch(
+            session,
+            "SELECT id, user_subject_id, order, relation FROM user_collection_item WHERE id = :id",
+            {"id": existing[0].id},
+        )
+        row = rows[0]
+        return (
+            {
+                "id": row.id,
+                "library_entry_id": row.user_subject_id,
+                "entity": await entity_for(session, entry[0].entity_id),
+                "order": row.order,
+                "relation": row.relation,
+            },
+            False,
+        )
+    created = await fetch(
+        session,
+        "INSERT INTO user_collection_item (order, relation, collection_id,"
+        " user_subject_id) VALUES (:order, :relation, :collection, :entry)"
+        " RETURNING id",
+        {
+            "order": body.get("order", 0),
+            "relation": body.get("relation", "") or "",
+            "collection": collection_id,
+            "entry": entry_id,
+        },
+    )
+    await session.commit()
+    return (
+        {
+            "id": created[0].id,
+            "library_entry_id": entry_id,
+            "entity": await entity_for(session, entry[0].entity_id),
+            "order": body.get("order", 0),
+            "relation": body.get("relation", "") or "",
+        },
+        True,
+    )

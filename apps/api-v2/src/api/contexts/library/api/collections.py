@@ -7,8 +7,10 @@ from fastapi.responses import JSONResponse
 
 from api.contexts.access.dependencies import current_user
 from api.contexts.library.collections import (
+    add_item,
     create_collection,
     delete_collection,
+    list_items,
     list_public_collections,
     my_collection,
     update_collection,
@@ -111,3 +113,53 @@ async def remove_collection(
             detail="UserCollection not found.",
             code="users.collection_not_found",
         ) from error
+
+
+@router.get("/me/collections/{collection_id}/items/")
+async def collection_items(
+    collection_id: int,
+    session: SessionDep,
+    request: Request,
+    user: Annotated[Any, Depends(current_user)],
+) -> dict[str, Any]:
+    page, page_size = page_params(request)
+    try:
+        total, results = await list_items(
+            session,
+            viewer_id=user.id,
+            user_id=user.id,
+            collection_id=collection_id,
+            page=page,
+            page_size=page_size,
+        )
+    except LookupError as error:
+        raise ProblemError(
+            status_code=404,
+            detail="UserCollection not found.",
+            code="users.collection_not_found",
+        ) from error
+    ensure_page(page, page_size, total)
+    return page_payload(request, count=total, results=results, page=page, page_size=page_size)
+
+
+@router.post("/me/collections/{collection_id}/items/")
+async def add_collection_item(
+    collection_id: int,
+    body: dict[str, Any],
+    session: SessionDep,
+    user: Annotated[Any, Depends(current_user)],
+) -> JSONResponse:
+    try:
+        data, created = await add_item(
+            session, user_id=user.id, collection_id=collection_id, body=body
+        )
+    except LookupError as error:
+        raise ProblemError(
+            status_code=404,
+            detail="Library entry not found.",
+        ) from error
+    except ValueError as error:
+        raise ProblemError(
+            status_code=400, detail="Request validation failed.", errors=error.args[0]
+        ) from error
+    return JSONResponse(data, status_code=201 if created else 200)
