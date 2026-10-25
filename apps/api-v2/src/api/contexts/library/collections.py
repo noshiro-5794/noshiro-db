@@ -357,7 +357,7 @@ async def add_item(
         )
     created = await fetch(
         session,
-        "INSERT INTO user_collection_item (order, relation, collection_id,"
+        "INSERT INTO user_collection_item (\"order\", relation, collection_id,"
         " user_subject_id) VALUES (:order, :relation, :collection, :entry)"
         " RETURNING id",
         {
