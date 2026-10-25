@@ -32,6 +32,18 @@ docker exec noshiro-db-api-v2-1 alembic upgrade head
 
 Django keeps serving throughout. Both read and write the same database.
 
+This phase has been run for real: the image builds from the pinned base already on the
+host, the container joins `noshiro_net`, and the smoke script against its port reports
+
+```
+ok   liveness (200) … ok   read entry 1143 (200)
+0 failure(s)
+```
+
+so the image, the shared network, the env file and the readiness probe are all proven.
+What has not been run is a container created by the compose file itself — the manual
+`docker run` above used the same image, network and env file.
+
 ## Phase 1 — prove it before anyone sees it
 
 ```sh
