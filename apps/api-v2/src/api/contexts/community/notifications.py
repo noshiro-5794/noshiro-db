@@ -155,9 +155,11 @@ async def list_for_user(
     )
     page = rows[:page_size]
     following = rows[page_size] if len(rows) > page_size else None
+    # The next page starts after the last row that was returned, not after the
+    # extra row fetched to detect it — that is what Django's link encodes.
     next_cursor = (
-        Cursor(offset=0, reverse=False, position=position_of(following))
-        if following is not None
+        Cursor(offset=0, reverse=False, position=position_of(page[-1]))
+        if following is not None and page
         else None
     )
     return [notification_payload(row) for row in page], next_cursor
