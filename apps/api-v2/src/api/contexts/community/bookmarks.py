@@ -170,13 +170,19 @@ async def _payload(session: AsyncSession, row: Any) -> dict[str, Any]:
     }
 
 
+VISIBLE = {
+    "post": "SELECT 1 FROM community_post WHERE id = :id"
+    " AND visibility = 'public' AND feed_policy <> 'hidden'",
+    "review": "SELECT 1 FROM user_review AS review"
+    " JOIN user_library_entry AS entry ON entry.id = review.user_subject_id"
+    " WHERE review.id = :id AND review.is_public AND entry.is_public"
+    " AND entry.entity_id IS NOT NULL",
+    "collection": "SELECT 1 FROM user_collection WHERE id = :id AND is_public",
+}
+
+
 async def _target_exists(session: AsyncSession, kind: str, target_id: int) -> bool:
-    table = {
-        "post": "community_post",
-        "review": "user_review",
-        "collection": "user_collection",
-    }[kind]
-    rows = await fetch(session, f"SELECT 1 FROM {table} WHERE id = :id", {"id": target_id})
+    rows = await fetch(session, VISIBLE[kind], {"id": target_id})
     return bool(rows)
 
 
