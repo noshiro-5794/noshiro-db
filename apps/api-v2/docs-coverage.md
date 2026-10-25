@@ -43,7 +43,6 @@ Paths omit the shared `/api/v1` prefix. `S` is a single query and a small payloa
 
 | path | methods | size |
 |---|---|---|
-| `/community/activities/` | GET | M |
 | `/community/comments/` | GET,POST | M |
 | `/community/comments/{comment_id}/` | PATCH,DELETE | M |
 | — | — | done |
@@ -58,7 +57,6 @@ Paths omit the shared `/api/v1` prefix. `S` is a single query and a small payloa
 | `/community/posts/` | GET,POST | M |
 | `/community/posts/{post_id}/` | GET,PATCH,DELETE | M |
 | `/community/posts/{post_id}/comments/` | GET,POST | M |
-| `/community/users/{user_id}/activities/` | GET | M |
 | `/community/moderation/reports/{report_id}/` | PATCH | L |
 
 ## sync — 10 paths (staff only)

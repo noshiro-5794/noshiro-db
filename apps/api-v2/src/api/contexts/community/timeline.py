@@ -72,6 +72,8 @@ ACTIVITY_QUERY = """
       ON review_entry.id = review.user_subject_id
     LEFT JOIN user_collection AS collection ON collection.id = activity.collection_id
     LEFT JOIN user_collection_item AS item ON item.id = activity.collection_item_id
+    LEFT JOIN user_collection AS item_collection
+      ON item_collection.id = item.collection_id
     LEFT JOIN user_library_entry AS item_entry
       ON item_entry.id = item.user_subject_id
     LEFT JOIN community_post AS post ON post.id = activity.post_id
@@ -191,21 +193,42 @@ async def activity_payload(session: AsyncSession, row: Any) -> dict[str, Any]:
     }
 
 
+PUBLIC = """
+    activity.visibility = 'public' AND activity.feed_policy <> 'hidden'
+    AND (activity.user_subject_id IS NULL OR entry.is_public)
+    AND (activity.review_id IS NULL OR (review.is_public AND review_entry.is_public))
+    AND (activity.collection_id IS NULL OR collection.is_public)
+    AND (activity.collection_item_id IS NULL
+         OR (item_collection.is_public AND item_entry.is_public))
+    AND activity.user_id NOT IN (
+        SELECT blocked_user_id FROM community_user_block WHERE user_id = :viewer)
+    AND activity.user_id NOT IN (
+        SELECT user_id FROM community_user_block WHERE blocked_user_id = :viewer)
+    AND activity.user_id NOT IN (
+        SELECT muted_user_id FROM community_user_mute WHERE user_id = :viewer)
+"""
+
+
 async def list_activities(
     session: AsyncSession,
     *,
     viewer_id: int,
-    owner_id: int,
+    owner_id: int | None,
     cursor: Cursor,
     page_size: int,
+    public_only: bool = False,
 ) -> tuple[list[dict[str, Any]], Cursor | None]:
-    clauses = ["activity.user_id = :owner"]
+    clauses = []
     params: dict[str, Any] = {
-        "owner": owner_id,
         "viewer": viewer_id,
         "limit": page_size + 1,
         "offset": cursor.offset,
     }
+    if owner_id is not None:
+        clauses.append("activity.user_id = :owner")
+        params["owner"] = owner_id
+    if public_only:
+        clauses.append(PUBLIC)
     if cursor.position is not None:
         clauses.append("activity.created_at < CAST(:position AS timestamptz)")
         params["position"] = cursor.position
