@@ -10,6 +10,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.contexts.community.activities import create_review_activity
 from api.contexts.identity.resolution import cluster_ids, resolve
 from api.contexts.presentation.fragments import fetch, isoformat
 from api.contexts.presentation.summary import entity_summary
@@ -78,3 +79,67 @@ async def entry_reviews(
         {"entry_id": entry_id, "user_id": user_id, "viewer": user_id},
     )
     return [await review_data(session, row) for row in rows]
+
+
+BLANK_TITLE = "UserReview title can not be blank."
+
+
+async def create_review(
+    session: AsyncSession, *, user_id: int, entry_id: int, body: dict[str, Any]
+) -> dict[str, Any]:
+    raw_title = body.get("title")
+    raw_content = body.get("content")
+    title = raw_title if isinstance(raw_title, str) else ""
+    content = raw_content if isinstance(raw_content, str) else ""
+    errors: dict[str, list[str]] = {}
+    if not title:
+        errors["title"] = ["This field is required."]
+    elif not title.strip():
+        errors["title"] = [BLANK_TITLE]
+    elif len(title) > 256:
+        errors["title"] = ["Ensure this field has no more than 256 characters."]
+    if not content:
+        errors["content"] = ["This field is required."]
+    elif len(content) > 20000:
+        errors["content"] = ["Ensure this field has no more than 20000 characters."]
+    if errors:
+        raise ValueError(errors)
+    entry = await fetch(
+        session,
+        "SELECT id, entity_id, is_public FROM user_library_entry"
+        " WHERE id = :entry_id AND user_id = :user_id AND entity_id IS NOT NULL",
+        {"entry_id": entry_id, "user_id": user_id},
+    )
+    if not entry:
+        raise LookupError(entry_id)
+    is_public = bool(body.get("is_public", True))
+    is_spoiler = bool(body.get("is_spoiler", False))
+    rows = await fetch(
+        session,
+        "INSERT INTO user_review (title, content, is_public, is_spoiler,"
+        " created_at, updated_at, user_subject_id)"
+        " VALUES (:title, :content, :public, :spoiler, now(), now(), :entry_id)"
+        " RETURNING id",
+        {
+            "title": title.strip(),
+            "content": content,
+            "public": is_public,
+            "spoiler": is_spoiler,
+            "entry_id": entry_id,
+        },
+    )
+    await create_review_activity(
+        session,
+        user_id=user_id,
+        entry_id=entry_id,
+        review_id=rows[0].id,
+        title=title.strip(),
+        entry_is_public=bool(entry[0].is_public),
+        review_is_public=is_public,
+        entity_id=str(entry[0].entity_id),
+    )
+    await session.commit()
+    found = await fetch(
+        session, REVIEW_QUERY + " WHERE review.id = :id", {"id": rows[0].id, "viewer": user_id}
+    )
+    return await review_data(session, found[0])

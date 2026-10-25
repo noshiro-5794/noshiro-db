@@ -18,7 +18,7 @@ from api.contexts.library.entries import (
     replace_tags,
 )
 from api.contexts.library.releases import delete_state, put_state
-from api.contexts.library.reviews import entry_reviews
+from api.contexts.library.reviews import create_review, entry_reviews
 from api.db import SessionDep
 from api.shared.pagination import ensure_page, page_params, page_payload
 from api.shared.problems import ProblemError
@@ -210,3 +210,21 @@ async def get_entry_reviews(
     user: Annotated[Any, Depends(current_user)],
 ) -> list[dict[str, Any]]:
     return await entry_reviews(session, user_id=user.id, entry_id=entry_id)
+
+
+@router.post("/me/library/entries/{entry_id}/reviews/")
+async def add_entry_review(
+    entry_id: int,
+    body: dict[str, Any],
+    session: SessionDep,
+    user: Annotated[Any, Depends(current_user)],
+) -> JSONResponse:
+    try:
+        data = await create_review(session, user_id=user.id, entry_id=entry_id, body=body)
+    except LookupError as error:
+        raise ProblemError(status_code=404, detail="Library entry not found.") from error
+    except ValueError as error:
+        raise ProblemError(
+            status_code=400, detail="Request validation failed.", errors=error.args[0]
+        ) from error
+    return JSONResponse(data, status_code=201)
