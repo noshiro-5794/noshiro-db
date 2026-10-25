@@ -19,17 +19,47 @@ import httpx
 logger = logging.getLogger(__name__)
 
 RESEND_URL = "https://api.resend.com/emails"
-SUBJECTS = {
-    "register": "Confirm your email",
-    "login": "Your sign-in code",
-    "reset_password": "Reset your password",
+BRAND_NAME = "Noshiro DB"
+CODE_EXPIRE_MINUTES = 5
+PURPOSE_COPY = {
+    "register": {
+        "subject": "Your Noshiro DB sign-up code",
+        "title": "Create your account",
+        "intent": "Account registration",
+    },
+    "login": {
+        "subject": "Your Noshiro DB login code",
+        "title": "Log in to Noshiro DB",
+        "intent": "Email code login",
+    },
+    "reset_password": {
+        "subject": "Reset your Noshiro DB password",
+        "title": "Reset your password",
+        "intent": "Password reset",
+    },
 }
 
 
+def body_text(code: str, purpose: str, site_url: str = "") -> str:
+    """The plain-text body, identical to the one the old service sends."""
+    copy = PURPOSE_COPY.get(purpose, PURPOSE_COPY["login"])
+    return (
+        f"{copy['title']}\n\n"
+        f"Your {BRAND_NAME} verification code is:\n\n"
+        f"{code}\n\n"
+        f"This code expires in {CODE_EXPIRE_MINUTES} minutes. "
+        "Do not share it with anyone.\n\n"
+        f"Requested action: {copy['intent']}\n"
+        f"Open Noshiro DB: {site_url}\n\n"
+        "If you did not request this email, you can safely ignore it.\n"
+    )
+
+
 def _payload(email: str, code: str, purpose: str) -> dict[str, Any]:
-    subject = SUBJECTS.get(purpose, SUBJECTS["login"])
+    copy = PURPOSE_COPY.get(purpose, PURPOSE_COPY["login"])
+    subject = copy["subject"]
     sender = os.environ.get("EMAIL_FROM", "noreply@localhost")
-    text = f"{subject}: {code}\n\nThis code expires in 10 minutes."
+    text = body_text(code, purpose, os.environ.get("FRONTEND_SITE_URL", "").rstrip("/"))
     return {
         "from": sender,
         "to": [email],
