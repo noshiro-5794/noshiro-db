@@ -39,7 +39,9 @@ def _proposal(row: Any) -> dict[str, Any] | None:
         "id": row.proposal_id,
         "status": row.proposal_status,
         "decision": str(payload.get("decision") or ""),
-        "confidence": row.proposal_confidence,
+        "confidence": float(row.proposal_confidence)
+        if row.proposal_confidence is not None
+        else None,
         "policy_reason": row.proposal_reason,
         "created_at": isoformat(row.proposal_created_at),
         "decided_at": isoformat(row.proposal_decided_at),
