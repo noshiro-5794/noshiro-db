@@ -17,6 +17,18 @@ DATABASE_URL=... uv run python -m scripts.shadow \
   --old http://127.0.0.1:8008 --new http://127.0.0.1:8010 --count 30
 ```
 
+## Mutations
+
+A write cannot be compared by sending the same request twice: the first call
+changes the rows the second would act on. `scripts/state_parity.py` runs the
+request against one service from a seed, snapshots the touched rows, restores the
+seed and runs it against the other, then compares the responses and the snapshots.
+
+```bash
+uv run python -m scripts.state_parity --old ... --new ... \
+  --setup "..." --snapshot "..." --cleanup "..." --method PUT --path ...
+```
+
 ## Evidence log
 
 | Date | Endpoint | Cases | Result |
@@ -45,6 +57,7 @@ DATABASE_URL=... uv run python -m scripts.shadow \
 | 2026-10-25 | `GET /api/v1/users/me/profile/` — no token, Django-created profile, service-created profile | 3 | **OK** — 401 identical; both creations produce the same body |
 | 2026-10-25 | `PATCH /api/v1/users/me/profile/` — empty, bad colour, valid, blank colour | 4 | **OK** — same validation bodies and same updated profile |
 | 2026-10-25 | `GET /api/v1/community/me/notifications/unread-count/` | 1 | **OK** |
+| 2026-10-25 | `PUT` / `DELETE /api/v1/community/me/blocks/{user_id}/` | 2 | **OK** — response and rows match; the creation time is per-request |
 | 2026-10-25 | `PUT /api/v1/community/me/notifications/read-state/` | 1 | **OK** — both report two updated and leave zero unread (compared by state, because each call mutates) |
 | 2026-10-25 | `GET`/`PATCH /api/v1/users/me/settings/` — read, empty, bad choice, bad colour, adult without confirmation, valid choices, adult with confirmation | 7 | **OK** — the confirmation timestamp is per-request and compared with it ignored |
 
