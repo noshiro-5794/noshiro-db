@@ -34,6 +34,7 @@ DATABASE_URL=... uv run python -m scripts.shadow \
 | 2026-10-25 | `GET /api/v1/index/entities/{id}/evidence/` | 3 entities | **OK** — compared as a set (`--unordered $`) |
 | 2026-10-25 | `GET /api/v1/index/collections/{slug}/entities/` — anime, galgame, query, unknown slug | 4 variants | **OK** |
 | 2026-10-25 | shadow run | 10 random entities × 8 endpoints | **80/80 matched** |
+| 2026-10-25 | shadow run | 30 random entities × 8 endpoints | **240/240 matched** |
 
 Reproduce against the two services sharing a database:
 
