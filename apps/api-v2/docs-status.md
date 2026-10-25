@@ -1,12 +1,12 @@
 # Status
 
-A snapshot of the replacement service. It is not a plan; the plan is in
+A snapshot of the replacement service at the hundredth round of work. It is not a plan; the plan is in
 `docs-display.md`, `docs-schema.md` and `docs-parity.md`.
 
 ## Covered endpoints
 
-Eleven entity and catalogue endpoints plus the auth list and the calendar, each
-compared with the Django response:
+Seventy-one operations compared with the Django response. The table below is the
+shape of the coverage; `docs-parity.md` has every recorded comparison.
 
 | Area | Endpoints | Evidence |
 |---|---|---|
@@ -14,7 +14,8 @@ compared with the Django response:
 | entity | `entities/{id}/`, `metrics/`, `relations/`, `credits/`, `releases/`, `characters/`, `episodes/`, `evidence/` | `docs-parity.md`, shadow runs |
 | calendar | `calendar/events/` — board, range, timezone, works | `docs-parity.md`, 5 variants |
 | auth | `auth/social/providers/`, `auth/sessions/password/`, `auth/session/`, `users/me/profile/`, `users/me/settings/` | `docs-parity.md` |
-| community | notifications (count, read-all), blocks (write, list), mutes (list), follows (write, lists) | `docs-parity.md` |
+| community | notifications (count, read-all, list, single read), blocks (write, list), mutes (list), follows (write, lists), bookmarks (list, write), reports (list, write, staff queue) | `docs-parity.md` |
+| library | tags (list, create, rename, delete), entries (list, read, add, update, delete), release states, rating details, reviews (list, write), yearly stats | `docs-parity.md` |
 
 `scripts/parity.py` compares named paths; `scripts/shadow.py` samples entities and
 walks every entity endpoint plus the list paths. Last shadow run: **103/103**.
