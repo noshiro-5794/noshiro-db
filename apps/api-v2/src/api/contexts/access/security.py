@@ -2,7 +2,7 @@
 
 Django stores `pbkdf2_sha256$iterations$salt$hash`; the format is checked here
 rather than trusted, because an unknown algorithm must fail closed. Tokens carry
-the same claims SimpleJWT writes, including the `revoke_token` digest of the
+the same claims SimpleJWT writes, including the `hash_password` digest of the
 password hash, so Django accepts a token minted here and the reverse.
 """
 
@@ -44,7 +44,7 @@ def _token(*, user_id: int, password_hash: str, secret: str, token_type: str, se
         "iat": int(issued.timestamp()),
         "jti": hashlib.sha256(f"{user_id}:{issued.isoformat()}".encode()).hexdigest(),
         "user_id": str(user_id),
-        "revoke_token": revoke_token(password_hash),
+        "hash_password": revoke_token(password_hash),
     }
     return jwt.encode(payload, secret, algorithm=ALGORITHM)
 

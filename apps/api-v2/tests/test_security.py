@@ -32,6 +32,6 @@ def test_tokens_carry_the_simplejwt_claims() -> None:
     decoded = jwt.decode(access, "secret", algorithms=["HS256"])
     assert decoded["token_type"] == "access"
     assert decoded["user_id"] == "7"
-    assert decoded["revoke_token"] == revoke_token(DJANGO_HASH)
+    assert decoded["hash_password"] == revoke_token(DJANGO_HASH)
     assert decoded["exp"] - decoded["iat"] == 60
     assert jwt.decode(refresh, "secret", algorithms=["HS256"])["token_type"] == "refresh"
