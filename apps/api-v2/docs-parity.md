@@ -86,6 +86,7 @@ uv run python -m scripts.state_parity --old ... --new ... \
 | 2026-10-25 | `PUT /api/v1/community/me/bookmarks/{type}/{id}/` — hidden target, public collection | 2 | **OK** — the same 404 and the same created row |
 | 2026-10-25 | `POST /api/v1/community/reports/` — a hidden review as the target | 1 | **OK** — the same 404, from the shared visibility rule |
 | 2026-10-25 | `GET /api/v1/users/{id}/` — an existing account and a missing one | 2 | **OK** — the five counts and the 404 |
+| 2026-10-25 | `PUT /api/v1/community/me/reactions/{type}/{id}/{reaction}/` — a collection, an unsupported type | 2 | **OK** — same body and same 400 |
 | 2026-10-25 | `PUT /api/v1/community/me/notifications/read-state/` | 1 | **OK** — both report two updated and leave zero unread (compared by state, because each call mutates) |
 | 2026-10-25 | `GET`/`PATCH /api/v1/users/me/settings/` — read, empty, bad choice, bad colour, adult without confirmation, valid choices, adult with confirmation | 7 | **OK** — the confirmation timestamp is per-request and compared with it ignored |
 
@@ -177,6 +178,10 @@ Two divergences were found by this comparison and fixed or recorded:
    from the Django service and 200 from this one. That is the fifth legal write the
    old service cannot complete — the group is now the strongest single argument
    for the rewrite.
-21. **`value` type.** The OpenAPI snapshot says string, the Django response sends
+21. **Removing a reaction leaves the counter.** `DELETE` removes the row and does
+   not decrement `reaction_count`, so the number drifts upward over time. The port
+   does the same: the counter is part of the old contract, and the drift is a bug
+   to fix once, on both sides, not something one side should quietly correct.
+22. **`value` type.** The OpenAPI snapshot says string, the Django response sends
    a number. Parity copies the response; the disagreement is recorded in
    `contexts/signal/domain.py` for a deliberate fix on both sides.
