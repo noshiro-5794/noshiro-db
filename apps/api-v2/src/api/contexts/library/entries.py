@@ -128,7 +128,7 @@ async def list_entries(
                 "entity": summary,
                 "status": row.status,
                 "simple_rating": row.simple_rating,
-                "rating": row.rating,
+                "rating": str(row.rating) if row.rating is not None else None,
                 "comment": row.comment,
                 "watch_start_date": isoformat(row.watch_start_date),
                 "watch_end_date": isoformat(row.watch_end_date),
