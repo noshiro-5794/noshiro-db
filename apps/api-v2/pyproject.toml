@@ -26,7 +26,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["api"]
+packages = ["noshiro"]
 
 [tool.ruff]
 line-length = 100
@@ -38,7 +38,7 @@ select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 [tool.mypy]
 python_version = "3.13"
 strict = true
-packages = ["api"]
+packages = ["noshiro"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

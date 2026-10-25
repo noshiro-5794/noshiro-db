@@ -23,7 +23,7 @@ path says "v2".
 ## Layout
 
 ```
-api/
+noshiro/
   config.py            settings (pydantic-settings)
   db.py                async engine and session factory
   contexts/
@@ -35,6 +35,6 @@ tests/
 
 ```
 uv sync
-uv run uvicorn api.main:app --reload --port 8009
+uv run uvicorn noshiro.main:app --reload --port 8009
 uv run pytest
 ```

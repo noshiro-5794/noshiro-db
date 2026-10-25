@@ -1,6 +1,6 @@
 import httpx
 
-from api.main import app
+from noshiro.main import app
 
 
 async def test_live_returns_ok() -> None:
