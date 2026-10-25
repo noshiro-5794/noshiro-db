@@ -144,6 +144,7 @@ async def submit(
             state = EXCLUDED.state,
             reject_reason = EXCLUDED.reject_reason,
             updated_at = now()
+        WHERE entity_display_profile.state <> 'active'
         RETURNING id, state
         """,
         {

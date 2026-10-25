@@ -11,6 +11,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+from api.config import settings
 from api.contexts.identity.resolution import cluster_ids, resolve
 from api.contexts.presentation.agent import propose_with_model
 from api.contexts.presentation.bundle import build_bundle
@@ -66,7 +67,7 @@ async def run(entity_id: str, language: str, apply: bool) -> int:
                 bundle=bundle,
                 proposal=model,
                 input_hash=result["input_hash"],
-                model="deepseek-flash",
+                model=settings.ai_model,
                 prompt_version="display-v1",
             )
             output["stored"] = {"id": row_id, "state": state, "valid": not errors}
