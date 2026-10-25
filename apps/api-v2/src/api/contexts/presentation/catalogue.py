@@ -90,6 +90,7 @@ async def entity_page(
     language: str,
     page: int,
     page_size: int,
+    cluster_scope: bool = False,
 ) -> tuple[int, list[dict[str, Any]]]:
     use_collection = bool(collection) or scope != "all"
     use_keyword = bool(keyword)
@@ -131,7 +132,7 @@ async def entity_page(
             root=root,
             cluster_ids=[str(value) for value in clusters.get(root, {root})],
             language=language,
-            cluster_scope=False,
+            cluster_scope=cluster_scope,
         )
         for root in roots
     ]

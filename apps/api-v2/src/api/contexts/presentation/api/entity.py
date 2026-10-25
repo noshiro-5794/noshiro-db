@@ -10,6 +10,7 @@ from api.contexts.presentation.credits import entity_credits
 from api.contexts.presentation.detail import entity_detail
 from api.contexts.presentation.episodes import episode_page
 from api.contexts.presentation.evidence import entity_evidence
+from api.contexts.presentation.fragments import fetch
 from api.contexts.presentation.pagination import (
     ensure_page,
     page_params,
@@ -176,3 +177,39 @@ async def evidence(
 ) -> list[dict[str, Any]]:
     _, cluster = await _public_cluster(session, entity_id)
     return await entity_evidence(session, cluster=cluster)
+
+
+@router.get("/collections/{slug}/entities/")
+async def collection_entities(
+    slug: str,
+    session: SessionDep,
+    request: Request,
+    accept_language: Annotated[str | None, Header()] = None,
+    query: str = "",
+    subject_type: str = "",
+    ordering: str = "",
+    nsfw: bool = False,
+) -> dict[str, Any]:
+    exists = await fetch(
+        session,
+        "SELECT 1 FROM curated_collection WHERE slug = :slug AND is_enabled",
+        {"slug": slug},
+    )
+    if not exists:
+        raise ProblemError(status_code=404, detail="Index collection not found.")
+    page, page_size = page_params(request)
+    total, results = await entity_page(
+        session,
+        keyword=query.strip(),
+        scope="index",
+        collection=slug,
+        subject_type=subject_type,
+        safe_only=not nsfw,
+        ordering=ordering,
+        language=(accept_language or "").split(",", 1)[0],
+        page=page,
+        page_size=page_size,
+        cluster_scope=True,
+    )
+    ensure_page(page, page_size, total)
+    return page_payload(request, count=total, results=results, page=page, page_size=page_size)
