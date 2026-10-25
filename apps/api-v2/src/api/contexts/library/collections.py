@@ -96,8 +96,9 @@ async def create_collection(
     session: AsyncSession, *, user_id: int, body: dict[str, Any]
 ) -> dict[str, Any]:
     errors: dict[str, list[str]] = {}
-    name = body.get("name")
-    if not isinstance(name, str):
+    raw_name = body.get("name")
+    name = raw_name if isinstance(raw_name, str) else ""
+    if not name:
         errors["name"] = ["This field is required."]
     elif not name.strip():
         errors["name"] = [BLANK_NAME]
