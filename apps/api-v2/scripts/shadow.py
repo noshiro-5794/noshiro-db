@@ -52,7 +52,6 @@ LIST_PATHS: tuple[tuple[str, bool], ...] = (
     ),
 )
 
-# Only run when a token is given: the paths a signed-in browser hits.
 SIGNED_IN_PATHS: tuple[tuple[str, bool], ...] = (
     ("/api/v1/users/me/profile/", True),
     ("/api/v1/users/me/profile/stats/", True),
@@ -157,10 +156,9 @@ async def run(*, old: str, new: str, count: int, timeout: float, token: str = ""
             print(message)
     total = passed + failed
     print(
-        f"
-{passed}/{total} comparisons matched "
+        f"\n{passed}/{total} comparisons matched "
         f"({len(ids)} entities, {len(LIST_PATHS)} list paths"
-        f"{", 12 signed-in paths" if token else ""})"
+        f"{f', {len(SIGNED_IN_PATHS)} signed-in paths' if token else ''})"
     )
     return 1 if failed else 0
 
@@ -171,11 +169,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--new", required=True)
     parser.add_argument("--count", type=int, default=10)
     parser.add_argument("--timeout", type=float, default=120.0)
-    parser.add_argument(
-        "--token",
-        default="",
-        help="access token; adds the signed-in paths a browser hits",
-    )
+    parser.add_argument("--token", default="", help="access token; adds the signed-in paths")
     args = parser.parse_args(argv)
     return asyncio.run(
         run(

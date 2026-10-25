@@ -7,8 +7,8 @@ sync:
 	$(UV) sync
 
 lint:
-	$(RUN) ruff check src tests
-	$(RUN) ruff format --check src tests
+	$(RUN) ruff check src tests scripts
+	$(RUN) ruff format --check src tests scripts
 
 format:
 	$(RUN) ruff check --fix src tests
