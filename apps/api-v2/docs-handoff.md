@@ -94,6 +94,8 @@ Each of these cost a round; none of them is obvious from the Django code alone.
 | Diff direction | `status 404 != 200` means **old** is 404 | read it twice before blaming the tool |
 | Adding what already exists | `/health/live` was there; a rewrite nearly broke it | grep the route before writing one |
 | Paths from memory | three "failures" in a sweep were paths that never existed | read the route table, not my recollection |
+| A gate that does not cover the code | a syntax error in `scripts/` passed CI | lint every directory you ship, not just `src` |
+| A task published to the default queue | it sits in the broker forever; the endpoint still answers 202 | workers run with `-Q`; routing lives in the settings |
 
 ## Django crashes on legal writes
 
