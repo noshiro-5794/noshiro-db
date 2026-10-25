@@ -205,17 +205,18 @@ async def calendar_events(
             for member in members
         )
 
+    # The summary is built whether or not it is returned: it decides whether a
+    # work may appear at all, and hides adult works.
     summaries: dict[UUID, dict[str, Any]] = {}
-    if include_work:
-        for root in work_roots:
-            if root in entities:
-                summaries[root] = await entity_summary(
-                    session,
-                    root=root,
-                    cluster_ids=[str(value) for value in clusters.get(root, {root})],
-                    language="",
-                    cluster_scope=False,
-                )
+    for root in work_roots:
+        if root in entities:
+            summaries[root] = await entity_summary(
+                session,
+                root=root,
+                cluster_ids=[str(value) for value in clusters.get(root, {root})],
+                language="",
+                cluster_scope=False,
+            )
 
     data: list[dict[str, Any]] = []
     seen: set[tuple[Any, ...]] = set()
@@ -224,9 +225,7 @@ async def calendar_events(
         if work_root not in entities or not publicly_visible(work_root):
             continue
         summary = summaries.get(work_root)
-        if include_work and summary is None:
-            continue
-        if summary is not None and summary["audience"] == "adult":
+        if summary is None or summary["audience"] == "adult":
             continue
         episode_id = None
         if event.episode_entity_id is not None:
@@ -256,8 +255,9 @@ async def calendar_events(
             "raw_value": event.raw_value,
             "collection_doing": event.collection_doing,
             "provenance": row_provenance(event),
+            # DRF renders a nullable field that is absent as null, so the key is
+            # always there.
+            "work": summary if include_work else None,
         }
-        if include_work:
-            payload["work"] = summary
         data.append(payload)
     return data
