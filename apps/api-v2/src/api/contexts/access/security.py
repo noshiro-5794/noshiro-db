@@ -11,6 +11,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import os
 from datetime import UTC, datetime, timedelta
 
 import jwt
@@ -68,3 +69,10 @@ def create_tokens(
             seconds=refresh_seconds,
         ),
     )
+
+
+def hash_password(password: str, iterations: int = 1_500_000) -> str:
+    """Django's format, so either service can verify a row the other wrote."""
+    salt = base64.b64encode(os.urandom(12)).decode().replace("+", "").replace("/", "")[:22]
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), iterations)
+    return f"pbkdf2_sha256${iterations}${salt}${base64.b64encode(digest).decode()}"
