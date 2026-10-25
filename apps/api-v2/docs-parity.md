@@ -39,6 +39,7 @@ DATABASE_URL=... uv run python -m scripts.shadow \
 | 2026-10-25 | shadow run | 12 entities × 8 endpoints + 7 list paths | **103/103 matched** |
 | 2026-10-25 | `GET /api/v1/auth/social/providers/` | 1 | **OK** — both report GitHub disabled, matching the environment |
 | 2026-10-25 | `GET /api/v1/index/calendar/events/` — weekly board, include_work, range, range+timezone, range+include_work | 5 variants | **OK** |
+| 2026-10-25 | `GET /api/v1/index/calendar/board/events/` — default, include_work | 2 variants | **OK** |
 
 Reproduce against the two services sharing a database:
 

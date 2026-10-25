@@ -17,7 +17,23 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .fragments import CURRENT, PROVENANCE, PROVENANCE_JOINS, fetch, isoformat, row_provenance
+from .fragments import (
+    CURRENT,
+    PROVENANCE,
+    PROVENANCE_JOINS,
+    fetch,
+    isoformat,
+    row_provenance,
+)
+from .identity import (
+    clusters as build_clusters,
+)
+from .identity import (
+    load_entities,
+    load_redirects,
+    publicly_visible,
+    root_of,
+)
 from .summary import entity_summary
 
 EVENT_COLUMNS = """
@@ -116,28 +132,6 @@ async def _supplementary_events(session: AsyncSession) -> list[Any]:
     )
 
 
-def _resolve_map(rows: list[Any]) -> dict[UUID, UUID]:
-    redirects = {row.source_entity_id: row.target_entity_id for row in rows}
-    resolved: dict[UUID, UUID] = {}
-
-    def walk(entity_id: UUID) -> UUID:
-        if entity_id in resolved:
-            return resolved[entity_id]
-        seen: list[UUID] = []
-        current = entity_id
-        while current in redirects and current not in seen:
-            seen.append(current)
-            current = redirects[current]
-        for value in seen:
-            resolved[value] = current
-        resolved[entity_id] = current
-        return current
-
-    for entity_id in list(redirects):
-        walk(entity_id)
-    return resolved
-
-
 async def calendar_events(
     session: AsyncSession,
     *,
@@ -159,51 +153,26 @@ async def calendar_events(
             )
         )
 
-    redirects = await fetch(
-        session,
-        "SELECT source_entity_id, target_entity_id FROM entity_redirect WHERE is_active",
-        {},
-    )
-    resolved = _resolve_map(redirects)
-    roots: dict[UUID, UUID] = {source: resolved.get(source, source) for source in resolved}
-
-    def root_of(entity_id: UUID) -> UUID:
-        return roots.get(entity_id, entity_id)
+    resolved = await load_redirects(session)
 
     if not has_range:
         collapsed: dict[UUID, Any] = {}
         for event in ordered:
-            root = root_of(event.work_entity_id)
+            root = root_of(event.work_entity_id, resolved)
             current = collapsed.get(root)
             if current is None or (event.precision == "minute" and current.precision != "minute"):
                 collapsed[root] = event
         ordered = list(collapsed.values())
 
-    work_roots = {root_of(event.work_entity_id) for event in ordered}
+    work_roots = {root_of(event.work_entity_id, resolved) for event in ordered}
     episode_roots = {
-        root_of(event.episode_entity_id) for event in ordered if event.episode_entity_id is not None
+        root_of(event.episode_entity_id, resolved)
+        for event in ordered
+        if event.episode_entity_id is not None
     }
-    clusters: dict[UUID, set[UUID]] = {root: {root} for root in work_roots | episode_roots}
-    for source, target in roots.items():
-        clusters.setdefault(target, {target}).add(source)
-    member_ids = {member for members in clusters.values() for member in members}
-
-    entities = {
-        row.id: row
-        for row in await fetch(
-            session,
-            "SELECT id, lifecycle, visibility, audience, kind, spoiler_level"
-            " FROM entity WHERE id = ANY(CAST(:ids AS uuid[]))",
-            {"ids": [str(value) for value in member_ids]},
-        )
-    }
-
-    def publicly_visible(root: UUID) -> bool:
-        members = clusters.get(root, {root})
-        return bool(members) and all(
-            entities.get(member) is not None and entities[member].visibility == "public"
-            for member in members
-        )
+    grouped = build_clusters(work_roots | episode_roots, resolved)
+    member_ids = {member for members in grouped.values() for member in members}
+    entities = await load_entities(session, member_ids)
 
     # The summary is built whether or not it is returned: it decides whether a
     # work may appear at all, and hides adult works.
@@ -213,7 +182,7 @@ async def calendar_events(
             summaries[root] = await entity_summary(
                 session,
                 root=root,
-                cluster_ids=[str(value) for value in clusters.get(root, {root})],
+                cluster_ids=[str(value) for value in grouped.get(root, {root})],
                 language="",
                 cluster_scope=False,
             )
@@ -221,16 +190,18 @@ async def calendar_events(
     data: list[dict[str, Any]] = []
     seen: set[tuple[Any, ...]] = set()
     for event in ordered:
-        work_root = root_of(event.work_entity_id)
-        if work_root not in entities or not publicly_visible(work_root):
+        work_root = root_of(event.work_entity_id, resolved)
+        if work_root not in entities or not publicly_visible(work_root, grouped, entities):
             continue
         summary = summaries.get(work_root)
         if summary is None or summary["audience"] == "adult":
             continue
         episode_id = None
         if event.episode_entity_id is not None:
-            episode_root = root_of(event.episode_entity_id)
-            if episode_root not in entities or not publicly_visible(episode_root):
+            episode_root = root_of(event.episode_entity_id, resolved)
+            if episode_root not in entities or not publicly_visible(
+                episode_root, grouped, entities
+            ):
                 continue
             episode_id = str(episode_root)
         key = (

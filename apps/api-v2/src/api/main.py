@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from .contexts.access.api.social import router as social_router
+from .contexts.presentation.api.board import router as board_router
 from .contexts.presentation.api.calendar import router as calendar_router
 from .contexts.presentation.api.catalogue import router as catalogue_router
 from .contexts.presentation.api.entity import router as entity_router
@@ -15,6 +16,7 @@ def create_app() -> FastAPI:
     app.include_router(social_router)
     app.include_router(catalogue_router)
     app.include_router(calendar_router)
+    app.include_router(board_router)
     app.include_router(entity_router)
     app.include_router(signal_router)
     app.add_exception_handler(ProblemError, problem_handler)
