@@ -79,3 +79,59 @@ async def campaign(session: AsyncSession, *, campaign_id: str) -> dict[str, Any]
             else None,
         },
     }
+
+
+async def campaign_items(
+    session: AsyncSession,
+    *,
+    campaign_id: str,
+    status: str,
+    page: int,
+    page_size: int,
+) -> tuple[int, list[dict[str, Any]]]:
+    await campaign(session, campaign_id=campaign_id)
+    where = "item.campaign_id = CAST(:campaign AS uuid)"
+    params: dict[str, Any] = {"campaign": campaign_id}
+    if status:
+        where += " AND item.status = :status"
+        params["status"] = status
+    total = await fetch(
+        session,
+        f"SELECT count(*) AS total FROM sync_work_item AS item WHERE {where}",
+        params,
+    )
+    rows = await fetch(
+        session,
+        "SELECT item.id, item.shard, item.cursor, item.status,"
+        " item.provider_record_id AS provider_record,"
+        " item.result, item.error, item.attempt, item.next_retry_at,"
+        " item.last_error_code, item.ai_processed_at, item.ai_enriched_at,"
+        " item.started_at, item.finished_at, item.updated_at"
+        f" FROM sync_work_item AS item WHERE {where}"
+        " ORDER BY item.shard, item.id LIMIT :limit OFFSET :offset",
+        {
+            **params,
+            "limit": page_size,
+            "offset": (page - 1) * page_size,
+        },
+    )
+    return int(total[0].total), [
+        {
+            "id": row.id,
+            "shard": row.shard,
+            "cursor": row.cursor,
+            "status": row.status,
+            "provider_record": row.provider_record,
+            "result": row.result,
+            "error": row.error,
+            "attempt": row.attempt,
+            "next_retry_at": isoformat(row.next_retry_at),
+            "last_error_code": row.last_error_code,
+            "ai_processed_at": isoformat(row.ai_processed_at),
+            "ai_enriched_at": isoformat(row.ai_enriched_at),
+            "started_at": isoformat(row.started_at),
+            "finished_at": isoformat(row.finished_at),
+            "updated_at": isoformat(row.updated_at),
+        }
+        for row in rows
+    ]
