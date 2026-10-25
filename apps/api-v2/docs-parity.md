@@ -73,6 +73,7 @@ uv run python -m scripts.state_parity --old ... --new ... \
 | 2026-10-25 | `GET /api/v1/users/me/profile/stats/` — two years and zones, one unknown zone | 3 | **OK** — the aggregates and the calendar agree, and the unknown zone is the same 400 |
 | 2026-10-25 | `GET /api/v1/users/me/library/entries/` — default and filtered | 2 | **OK** — the entry, its entity summary and its release states |
 | 2026-10-25 | `GET /api/v1/users/me/library/entries/{id}/` | 1 | **OK** — the same row the list returns |
+| 2026-10-25 | `PATCH /api/v1/users/me/library/entries/{id}/` — bad status, bad rating, inverted watch dates | 3 | **2 OK, 1 deliberate difference** |
 | 2026-10-25 | `PUT /api/v1/community/me/notifications/read-state/` | 1 | **OK** — both report two updated and leave zero unread (compared by state, because each call mutates) |
 | 2026-10-25 | `GET`/`PATCH /api/v1/users/me/settings/` — read, empty, bad choice, bad colour, adult without confirmation, valid choices, adult with confirmation | 7 | **OK** — the confirmation timestamp is per-request and compared with it ignored |
 
@@ -145,6 +146,11 @@ Two divergences were found by this comparison and fixed or recorded:
    name; tokens carry it under the name the service already issues. A token minted
    here is accepted by Django (`GET /api/v1/users/me/profile/` returns 200), which
    is the check that matters.
-17. **`value` type.** The OpenAPI snapshot says string, the Django response sends
+17. **Inverted watch dates crash Django.** `PATCH` with `watch_end_date` before
+   `watch_start_date` answers **500** from the Django service and **400** with the
+   field error from this one. The check exists in Django and is written before the
+   save, so the crash is in the old service, not in the rule. Matching a 500 was
+   not considered correct; the difference is recorded rather than reproduced.
+18. **`value` type.** The OpenAPI snapshot says string, the Django response sends
    a number. Parity copies the response; the disagreement is recorded in
    `contexts/signal/domain.py` for a deliberate fix on both sides.
