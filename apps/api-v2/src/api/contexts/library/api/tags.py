@@ -13,7 +13,7 @@ from api.shared.problems import ProblemError
 
 router = APIRouter(prefix="/api/v1/users", tags=["library"])
 
-BLANK = "Tag name can not be blank."
+BLANK = "This field may not be blank."
 TOO_LONG = "Ensure this field has no more than 64 characters."
 
 
