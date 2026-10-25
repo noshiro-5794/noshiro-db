@@ -69,9 +69,9 @@ async def _release_for(session: AsyncSession, entry: Any, release_id: str) -> An
     cluster = await cluster_ids(session, root)
     rows = await fetch(
         session,
-        "SELECT release.id FROM release"
-        " JOIN release_work ON release_work.release_id = release.id"
-        " WHERE release.id = CAST(:release_id AS uuid)"
+        "SELECT release.entity_id FROM release"
+        " JOIN release_work ON release_work.release_id = release.entity_id"
+        " WHERE release.entity_id = CAST(:release_id AS uuid)"
         " AND release_work.work_id = ANY(CAST(:ids AS uuid[])) LIMIT 1",
         {"release_id": release_id, "ids": [str(value) for value in cluster]},
     )
