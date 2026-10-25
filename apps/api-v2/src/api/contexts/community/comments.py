@@ -229,3 +229,89 @@ async def create_comment(
     return await comment_payload(
         await _comment_row(session, viewer_id=user_id, comment_id=comment_id)
     )
+
+
+async def _mine(session: AsyncSession, user_id: int, comment_id: int) -> Any:
+    rows = await fetch(
+        session,
+        "SELECT id, is_locked, is_hidden FROM community_comment"
+        " WHERE id = :id AND author_id = :author",
+        {"id": comment_id, "author": user_id},
+    )
+    if not rows:
+        raise LookupError(comment_id)
+    return rows[0]
+
+
+async def update_comment(
+    session: AsyncSession, *, user_id: int, comment_id: int, body: dict[str, Any]
+) -> dict[str, Any]:
+    row = await _mine(session, user_id, comment_id)
+    if row.is_locked or row.is_hidden:
+        raise PermissionError(comment_id)
+    errors: dict[str, list[str]] = {}
+    sets: list[str] = []
+    params: dict[str, Any] = {"id": comment_id}
+    if "content" in body:
+        content = body["content"]
+        if not isinstance(content, str):
+            errors["content"] = ["Not a valid string."]
+        elif not content.strip():
+            errors["content"] = ["Comment content can not be blank."]
+        else:
+            sets.append("content = :content")
+            params["content"] = content
+    if "visibility" in body:
+        visibility = body["visibility"]
+        if visibility not in VISIBILITIES:
+            errors["visibility"] = [f'"{visibility}" is not a valid choice.']
+        else:
+            sets.append("visibility = :visibility")
+            params["visibility"] = visibility
+    if "is_spoiler" in body:
+        sets.append("is_spoiler = :spoiler")
+        params["spoiler"] = bool(body["is_spoiler"])
+    if errors:
+        raise ValueError(errors)
+    if not sets:
+        raise KeyError("no fields")
+    await fetch(
+        session,
+        "UPDATE community_comment SET " + ", ".join(sets) + ", updated_at = now()"
+        " WHERE id = :id RETURNING id",
+        params,
+    )
+    await session.commit()
+    return await comment_payload(
+        await _comment_row(session, viewer_id=user_id, comment_id=comment_id)
+    )
+
+
+async def delete_comment(session: AsyncSession, *, user_id: int, comment_id: int) -> None:
+    row = await _mine(session, user_id, comment_id)
+    if row.is_locked or row.is_hidden:
+        raise PermissionError(comment_id)
+    replies = await fetch(
+        session,
+        "SELECT 1 FROM community_comment WHERE parent_id = :id LIMIT 1",
+        {"id": comment_id},
+    )
+    if replies:
+        await fetch(
+            session,
+            "UPDATE community_comment SET content = '', is_hidden = true,"
+            " is_spoiler = false, updated_at = now() WHERE id = :id RETURNING id",
+            {"id": comment_id},
+        )
+    else:
+        await fetch(
+            session,
+            "DELETE FROM community_activity WHERE comment_id = :id RETURNING id",
+            {"id": comment_id},
+        )
+        await fetch(
+            session,
+            "DELETE FROM community_comment WHERE id = :id RETURNING id",
+            {"id": comment_id},
+        )
+    await session.commit()

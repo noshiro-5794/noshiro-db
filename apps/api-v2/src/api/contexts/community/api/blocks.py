@@ -9,7 +9,12 @@ from api.contexts.community.bookmarks import (
     remove_bookmark,
     set_bookmark,
 )
-from api.contexts.community.comments import create_comment, list_comments
+from api.contexts.community.comments import (
+    create_comment,
+    delete_comment,
+    list_comments,
+    update_comment,
+)
 from api.contexts.community.posts import (
     create_post,
     delete_post,
@@ -618,3 +623,50 @@ async def add_post_comment(
             status_code=400, detail="Request validation failed.", errors=error.args[0]
         ) from error
     return JSONResponse(data, status_code=201)
+
+
+@router.patch("/comments/{comment_id}/")
+async def patch_comment(
+    comment_id: int,
+    body: dict[str, Any],
+    session: SessionDep,
+    user: Annotated[Any, Depends(current_user)],
+) -> dict[str, Any]:
+    try:
+        return await update_comment(session, user_id=user.id, comment_id=comment_id, body=body)
+    except LookupError as error:
+        raise ProblemError(status_code=404, detail="Comment not found.") from error
+    except PermissionError as error:
+        raise ProblemError(
+            status_code=409,
+            detail="The community target is locked.",
+            code="community.target_locked",
+        ) from error
+    except KeyError as error:
+        raise ProblemError(
+            status_code=400,
+            detail="Request validation failed.",
+            errors={"non_field_errors": ["No fields to update."]},
+        ) from error
+    except ValueError as error:
+        raise ProblemError(
+            status_code=400, detail="Request validation failed.", errors=error.args[0]
+        ) from error
+
+
+@router.delete("/comments/{comment_id}/", status_code=204)
+async def remove_comment(
+    comment_id: int,
+    session: SessionDep,
+    user: Annotated[Any, Depends(current_user)],
+) -> None:
+    try:
+        await delete_comment(session, user_id=user.id, comment_id=comment_id)
+    except LookupError as error:
+        raise ProblemError(status_code=404, detail="Comment not found.") from error
+    except PermissionError as error:
+        raise ProblemError(
+            status_code=409,
+            detail="The community target is locked.",
+            code="community.target_locked",
+        ) from error
