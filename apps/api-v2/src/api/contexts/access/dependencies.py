@@ -23,13 +23,13 @@ MISSING = "Authentication credentials were not provided."
 INVALID = "Given token not valid for any token type"
 
 
-async def _user_for(session: AsyncSession, user_id: str) -> Any:
+async def _user_for(session: AsyncSession, user_id: int) -> Any:
     from api.contexts.presentation.fragments import fetch
 
     rows = await fetch(
         session,
         "SELECT id, email, password, is_staff, is_superuser, is_active"
-        ' FROM "user" WHERE id = CAST(:id AS bigint)',
+        ' FROM "user" WHERE id = :id',
         {"id": user_id},
     )
     return rows[0] if rows else None
@@ -48,7 +48,7 @@ async def current_user(
         raise ProblemError(status_code=401, detail=INVALID, code="token_not_valid") from error
     if claims.get("token_type") != ACCESS or not claims.get("user_id"):
         raise ProblemError(status_code=401, detail=INVALID, code="token_not_valid")
-    user = await _user_for(session, str(claims["user_id"]))
+    user = await _user_for(session, int(claims["user_id"]))
     if (
         user is None
         or not user.is_active
