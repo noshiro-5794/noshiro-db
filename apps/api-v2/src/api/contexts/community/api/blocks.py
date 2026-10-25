@@ -6,9 +6,11 @@ from fastapi.responses import JSONResponse
 from api.contexts.access.dependencies import current_user
 from api.contexts.community.relationships import (
     block_user,
+    follow_user,
     list_blocks,
     list_mutes,
     unblock_user,
+    unfollow_user,
 )
 from api.db import SessionDep
 from api.shared.pagination import ensure_page, page_params, page_payload
@@ -76,6 +78,44 @@ async def unblock(
 ) -> Response:
     try:
         await unblock_user(session, user_id=user.id, target_user_id=target_user_id)
+    except LookupError as error:
+        raise ProblemError(status_code=404, detail="User not found.") from error
+    return Response(status_code=204)
+
+
+@router.put("/me/following/{target_user_id}/")
+async def follow(
+    target_user_id: int,
+    session: SessionDep,
+    user: Annotated[Any, Depends(current_user)],
+) -> JSONResponse:
+    try:
+        data, created = await follow_user(
+            session, follower_id=user.id, target_user_id=target_user_id
+        )
+    except LookupError as error:
+        raise ProblemError(status_code=404, detail="User not found.") from error
+    except PermissionError as error:
+        code = str(error)
+        raise ProblemError(
+            status_code=400,
+            detail={
+                "community.cannot_follow_self": "can not follow yourself",
+                "community.cannot_follow_blocked_user": "can not follow blocked user",
+            }[code],
+            code=code,
+        ) from error
+    return JSONResponse(data, status_code=201 if created else 200)
+
+
+@router.delete("/me/following/{target_user_id}/", status_code=204)
+async def unfollow(
+    target_user_id: int,
+    session: SessionDep,
+    user: Annotated[Any, Depends(current_user)],
+) -> Response:
+    try:
+        await unfollow_user(session, follower_id=user.id, target_user_id=target_user_id)
     except LookupError as error:
         raise ProblemError(status_code=404, detail="User not found.") from error
     return Response(status_code=204)
