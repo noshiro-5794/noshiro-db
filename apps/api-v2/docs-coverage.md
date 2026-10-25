@@ -105,3 +105,21 @@ Paths omit the shared `/api/v1` prefix. `S` is a single query and a small payloa
    providers; both are better done once the community patterns exist.
 3. **sync** — staff-only, depends on Celery and on the AI gateway; it moves with
    the ingestion pipeline, not before.
+
+## Notes for the timeline block
+
+The community timelines (`activities`, `me/activities`, `me/feed`, `me/notifications`)
+use DRF's `CursorPagination` with `ordering = ("-created_at", "-id")` and a page
+size of 16 (max 64):
+
+- the envelope is `{next, previous, results}` — **no `count`**, unlike the
+  paginated catalogue;
+- DRF encodes the cursor as base64 of `"{offset}:{reverse}"`, so it is offset
+  pagination behind a cursor: the port has to reproduce the same encoding, not
+  invent a keyset cursor, or `next` links from the old service would not resume
+  here;
+- the link carries both `cursor` and `page_size`.
+
+A port that treats the cursor as a keyset would answer correctly for the first
+page and diverge on the second, which is exactly the kind of difference the
+shadow runs are for.
