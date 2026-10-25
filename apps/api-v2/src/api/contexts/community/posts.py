@@ -223,3 +223,20 @@ async def post_by_id(session: AsyncSession, *, viewer_id: int, post_id: int) -> 
     if not rows:
         raise LookupError(post_id)
     return await post_payload(session, rows[0])
+
+
+async def public_post(session: AsyncSession, *, viewer_id: int, post_id: int) -> dict[str, Any]:
+    rows = await fetch(
+        session,
+        f"SELECT {POST_COLUMNS}, {VIEWER} FROM community_post AS post {JOINS}"
+        " WHERE post.id = :id AND post.visibility = 'public'"
+        " AND post.feed_policy <> 'hidden'"
+        " AND post.author_id NOT IN ("
+        "   SELECT blocked_user_id FROM community_user_block WHERE user_id = :viewer)"
+        " AND post.author_id NOT IN ("
+        "   SELECT user_id FROM community_user_block WHERE blocked_user_id = :viewer)",
+        {"id": post_id, "viewer": viewer_id},
+    )
+    if not rows:
+        raise LookupError(post_id)
+    return await post_payload(session, rows[0])
