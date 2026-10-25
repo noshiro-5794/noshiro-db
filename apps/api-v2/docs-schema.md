@@ -29,6 +29,18 @@ While both services run:
 
 After the cutover the Django app is deleted and only this history remains.
 
+## Revisions
+
+| Revision | What | Verified |
+|---|---|---|
+| `0001_baseline` | the schema Django built, no operations | `stamp` on production |
+| `0002_display_profile` | `entity_display_profile` | applied, downgraded, re-applied on production |
+
+`0002` was checked three ways on the production database: the table has the
+expected 21 columns and 5 indexes; `downgrade -1` removes it and `upgrade head`
+restores it; and a second `active` row for the same entity and language is
+rejected by `uq_display_profile_active`.
+
 ## Commands
 
 ```bash
