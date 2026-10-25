@@ -7,7 +7,11 @@ from api.contexts.identity.resolution import cluster_ids, is_active, is_public, 
 from api.contexts.presentation.characters import character_page
 from api.contexts.presentation.credits import entity_credits
 from api.contexts.presentation.detail import entity_detail
-from api.contexts.presentation.pagination import page_params, page_payload
+from api.contexts.presentation.pagination import (
+    ensure_page,
+    page_params,
+    page_payload,
+)
 from api.contexts.presentation.relations import entity_relations
 from api.contexts.presentation.releases import entity_releases
 from api.db import SessionDep
@@ -109,4 +113,5 @@ async def characters(
         page=page,
         page_size=page_size,
     )
+    ensure_page(page, page_size, total)
     return page_payload(request, count=total, results=results, page=page, page_size=page_size)

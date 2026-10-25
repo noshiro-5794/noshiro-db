@@ -11,6 +11,8 @@ from typing import Any
 
 from fastapi import Request
 
+from api.shared.problems import ProblemError
+
 DEFAULT_PAGE_SIZE = 16
 MAX_PAGE_SIZE = 64
 
@@ -41,3 +43,10 @@ def page_payload(
         "previous": link(page - 1) if page > 1 else None,
         "results": results,
     }
+
+
+def ensure_page(page: int, page_size: int, count: int) -> None:
+    """A page past the last one is a 404, as DRF's paginator decides."""
+    pages = max(1, (count + page_size - 1) // page_size)
+    if page > pages:
+        raise ProblemError(status_code=404, detail="Invalid page.")
