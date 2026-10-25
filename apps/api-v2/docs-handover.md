@@ -41,6 +41,17 @@ ok   liveness (200) … ok   read entry 1143 (200)
 ```
 
 so the image, the shared network, the env file and the readiness probe are all proven.
+
+The shadow comparison was then run **against that container**, not against a development
+process:
+
+```
+223/223 comparisons matched (25 entities, 11 list paths, 12 signed-in paths)
+```
+
+That is the evidence that matters for a switch: the artifact that would be deployed
+answers exactly like the service it replaces, signed-in paths included.
+
 What has not been run is a container created by the compose file itself — the manual
 `docker run` above used the same image, network and env file.
 
