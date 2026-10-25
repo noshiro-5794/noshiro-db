@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import urllib.error
 import urllib.request
@@ -34,9 +35,11 @@ def fetch(
 ) -> tuple[int, Any]:
     """Return the status code and the decoded body; 4xx/5xx are comparable too."""
     data = body.encode("utf-8") if body is not None else None
-    request = urllib.request.Request(
-        base_url.rstrip("/") + path, data=data, headers=headers, method=method
-    )
+    url = base_url.rstrip("/") + path
+    if os.environ.get("PARITY_DEBUG"):
+        print(f"{method} {url}", file=sys.stderr)
+    request = urllib.request.Request(url, data=data, headers=headers, method=method)
+
     def _decode(body: bytes) -> Any:
         # A 500 page is HTML; keeping the text makes the difference readable
         # instead of raising inside the comparison.
