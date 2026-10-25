@@ -1,6 +1,7 @@
 # Coverage
 
-What the Django app answers that this service does not yet. Counts come from
+What the Django app answers that this service does not yet (the community block,
+mute and notification endpoints are already served and no longer listed). Counts come from
 `apps/api/tests/snapshots/openapi.json` (126 operations on 92 paths) cross-checked
 against the routers; the index app is fully ported, so it has no rows.
 
@@ -51,10 +52,6 @@ Paths omit the shared `/api/v1` prefix. `S` is a single query and a small payloa
 
 | path | methods | size |
 |---|---|---|
-| `/community/me/blocks/` | GET | S |
-| `/community/me/mutes/` | GET | S |
-| `/community/me/notifications/read-state/` | PUT | S |
-| `/community/me/notifications/unread-count/` | GET | S |
 | `/community/me/notifications/{notification_id}/read-state/` | PUT | S |
 | `/community/me/reports/` | GET | S |
 | `/community/activities/` | GET | M |

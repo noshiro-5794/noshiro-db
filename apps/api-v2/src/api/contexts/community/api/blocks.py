@@ -1,11 +1,17 @@
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import JSONResponse
 
 from api.contexts.access.dependencies import current_user
-from api.contexts.community.relationships import block_user, unblock_user
+from api.contexts.community.relationships import (
+    block_user,
+    list_blocks,
+    list_mutes,
+    unblock_user,
+)
 from api.db import SessionDep
+from api.shared.pagination import ensure_page, page_params, page_payload
 from api.shared.problems import ProblemError
 
 router = APIRouter(prefix="/api/v1/community", tags=["community"])
@@ -13,6 +19,30 @@ router = APIRouter(prefix="/api/v1/community", tags=["community"])
 
 def _payload(data: Any) -> dict[str, Any]:
     return data if isinstance(data, dict) else {}
+
+
+@router.get("/me/blocks/")
+async def blocks(
+    session: SessionDep,
+    request: Request,
+    user: Annotated[Any, Depends(current_user)],
+) -> dict[str, Any]:
+    page, page_size = page_params(request)
+    total, results = await list_blocks(session, user_id=user.id, page=page, page_size=page_size)
+    ensure_page(page, page_size, total)
+    return page_payload(request, count=total, results=results, page=page, page_size=page_size)
+
+
+@router.get("/me/mutes/")
+async def mutes(
+    session: SessionDep,
+    request: Request,
+    user: Annotated[Any, Depends(current_user)],
+) -> dict[str, Any]:
+    page, page_size = page_params(request)
+    total, results = await list_mutes(session, user_id=user.id, page=page, page_size=page_size)
+    ensure_page(page, page_size, total)
+    return page_payload(request, count=total, results=results, page=page, page_size=page_size)
 
 
 @router.put("/me/blocks/{target_user_id}/")
