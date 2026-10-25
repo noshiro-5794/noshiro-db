@@ -124,6 +124,17 @@ async def entity_summary(
         ),
         {"ids": scope},
     )
+    active = await fetch(
+        session,
+        """
+        SELECT title_text
+        FROM entity_display_profile
+        WHERE entity_id = CAST(:root AS uuid)
+          AND language = :language
+          AND state = 'active'
+        """,
+        {"root": str(root), "language": language},
+    )
     content_allowed = audience != "adult"
     spoiler_allowed = all(row.spoiler_level <= 0 for row in members)
     media = await _media(session, scope) if content_allowed and spoiler_allowed else []
@@ -133,7 +144,7 @@ async def entity_summary(
         "lifecycle": root_row.lifecycle,
         "audience": audience,
         "work_type": works[0].work_type if works else None,
-        "display_name": choose_name(names, language),
+        "display_name": active[0].title_text if active else choose_name(names, language),
         "collections": sorted({row.slug for row in memberships}),
         "media": media,
     }
