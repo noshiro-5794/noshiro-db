@@ -14,6 +14,8 @@ is `scripts/parity.py`; it compares status codes, then the document structurally
 | 2026-10-25 | `GET /api/v1/index/entities/{id}/` | 6 (three works, a contributor, a character, a merge cluster) | **OK** |
 | 2026-10-25 | `GET /api/v1/index/entities/{id}/relations/` | 5 (two ordinary, the three with the most relations) | **OK** |
 | 2026-10-25 | `GET /api/v1/index/entities/{id}/credits/` | 4 (the three with the most credits, plus a merge cluster) | **OK** |
+| 2026-10-25 | `GET /api/v1/index/entities/{id}/releases/` | 4 (the three with the most release links, plus a merge cluster) | **OK** |
+| 2026-10-25 | regression: collections, detail, metrics, relations, credits, releases, 404 | one entity each | **7/7 OK** |
 
 Reproduce against the two services sharing a database:
 
