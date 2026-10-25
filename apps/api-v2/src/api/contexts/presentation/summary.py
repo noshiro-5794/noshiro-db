@@ -84,6 +84,10 @@ async def entity_summary(
     """
     members = await cluster_entities(session, cluster_ids)
     root_row = next(row for row in members if row.id == root)
+    if not cluster_scope:
+        # The batched summary keys members by id, so its "cluster" is the root
+        # alone: audience and the spoiler gate follow the root, not the sources.
+        members = [root_row]
     audience = "adult" if any(row.audience == "adult" for row in members) else root_row.audience
     works = await fetch(
         session,
