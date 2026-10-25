@@ -24,6 +24,19 @@ What a new session needs to know that the code does not say.
 - Docs live next to the code: `docs-parity.md` (evidence), `docs-display.md`,
   `docs-schema.md`, `docs-transition.md`, `docs-coverage.md`.
 
+## Running the tools
+
+`parity.py` and `shadow.py` import each other, and `shadow.py` samples entities from
+the database, so both need two things from the worktree:
+
+```sh
+PYTHONPATH=. DATABASE_URL=postgresql://… uv run python scripts/shadow.py \
+  --old http://127.0.0.1:8008 --new http://127.0.0.1:8010 --count 60
+```
+
+`shadow.py` has no `--ignore`: `trace_id` is already dropped inside it. `parity.py`
+does, and `PARITY_DEBUG=1` prints the URL each side is asked for.
+
 ## Traps this port has already hit
 
 | Trap | What happens |
@@ -51,6 +64,19 @@ What a new session needs to know that the code does not say.
 The visibility module is the one that mattered most: "the target exists" and
 "the caller may see it" are different questions, and Django answers the second
 with the same 404 as the first so a private target cannot be probed.
+
+## Running the tools
+
+`parity.py` and `shadow.py` import each other, and `shadow.py` samples entities from
+the database, so both need two things from the worktree:
+
+```sh
+PYTHONPATH=. DATABASE_URL=postgresql://… uv run python scripts/shadow.py \
+  --old http://127.0.0.1:8008 --new http://127.0.0.1:8010 --count 60
+```
+
+`shadow.py` has no `--ignore`: `trace_id` is already dropped inside it. `parity.py`
+does, and `PARITY_DEBUG=1` prints the URL each side is asked for.
 
 ## Traps this port has already hit
 

@@ -10,7 +10,7 @@ rather than from optimism. The answer today is **no-go**, for four concrete reas
 | Payload parity | 137 operations compared, most field by field; `docs-parity.md` has every record |
 | Writes | response bodies and the rows behind them, compared with resets in between |
 | Schema | Alembic owns it; four revisions, applied and reverted on production |
-| Regression | a randomised shadow run over 75 list paths |
+| Regression | 491 of 491 comparisons matched on the latest build: 60 sampled entities across 11 list paths |
 | Tests | 54, none needing a database |
 | Auth | password and code sign-in, registration, reset, JWT the other service accepts |
 
