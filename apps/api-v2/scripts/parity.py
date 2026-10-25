@@ -77,6 +77,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--path", action="append", required=True)
     parser.add_argument("--header", action="append", default=[], metavar="KEY: VALUE")
     parser.add_argument(
+        "--timeout",
+        type=float,
+        default=30.0,
+        help="per-request timeout in seconds; some Django endpoints take a minute",
+    )
+    parser.add_argument(
         "--ignore",
         action="append",
         default=[],
