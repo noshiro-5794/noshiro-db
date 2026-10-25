@@ -18,6 +18,14 @@ from api.shared.problems import ProblemError
 router = APIRouter(prefix="/api/v1/operations", tags=["operations"])
 
 
+@router.get("/sync/summary/")
+async def sync_summary(
+    session: SessionDep,
+    user: Annotated[Any, Depends(staff_user)],
+) -> dict[str, Any]:
+    return await summary(session)
+
+
 @router.get("/import-jobs/{job_id}/")
 async def import_job_detail(
     job_id: str,
@@ -69,11 +77,3 @@ async def sync_campaign_items(
         raise ProblemError(status_code=404, detail="Sync campaign not found.") from error
     ensure_page(page, page_size, total)
     return page_payload(request, count=total, results=results, page=page, page_size=page_size)
-
-
-@router.get("/sync/summary/")
-async def sync_summary(
-    session: SessionDep,
-    user: Annotated[Any, Depends(staff_user)],
-) -> dict[str, Any]:
-    return await summary(session)

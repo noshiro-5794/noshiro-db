@@ -153,6 +153,7 @@ async def summary(session: AsyncSession) -> dict[str, Any]:
     by_status = await fetch(
         session,
         "SELECT status, count(*) AS count FROM sync_campaign GROUP BY status",
+        {},
     )
     by_provider = await fetch(
         session,
@@ -169,6 +170,7 @@ async def summary(session: AsyncSession) -> dict[str, Any]:
         "SELECT count(*) FILTER (WHERE status = 'queued') AS queued,"
         " count(*) FILTER (WHERE status = 'failed') AS failed"
         " FROM sync_work_item",
+        {},
     )
     claims = await fetch(
         session,
@@ -176,6 +178,7 @@ async def summary(session: AsyncSession) -> dict[str, Any]:
         " JOIN agent_step AS step ON step.id = claim.step_id"
         " JOIN sync_campaign AS campaign ON campaign.agent_run_id = step.run_id"
         " WHERE claim.status = 'proposed'",
+        {},
     )
     return {
         "campaigns_by_status": {row.status: int(row.count) for row in by_status},
