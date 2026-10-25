@@ -10,6 +10,7 @@ from .contexts.community.api.blocks import router as community_blocks_router
 from .contexts.community.api.notifications import (
     router as community_notifications_router,
 )
+from .contexts.access.api.social import router as social_router
 from .contexts.library.api.collections import router as collections_router
 from .contexts.library.api.entries import router as library_entries_router
 from .contexts.library.api.stats import router as library_stats_router
@@ -29,6 +30,7 @@ def create_app() -> FastAPI:
     app.include_router(social_router)
     app.include_router(session_router)
     app.include_router(profile_router)
+    app.include_router(social_router)
     app.include_router(collections_router)
     app.include_router(profiles_router)
     app.include_router(library_tags_router)
