@@ -308,3 +308,56 @@ async def delete_post(session: AsyncSession, *, user_id: int, post_id: int) -> N
     )
     await fetch(session, "DELETE FROM community_post WHERE id = :id RETURNING id", {"id": post_id})
     await session.commit()
+
+
+ACTIONS = ("hide", "lock")
+
+
+async def moderate_post(
+    session: AsyncSession, *, moderator_id: int, post_id: int, body: dict[str, Any]
+) -> dict[str, Any]:
+    action = body.get("action_type")
+    if action not in ACTIONS:
+        raise ValueError({"action_type": [f'"{action}" is not a valid choice.']})
+    rows = await fetch(
+        session,
+        "SELECT id, author_id FROM community_post WHERE id = :id",
+        {"id": post_id},
+    )
+    if not rows:
+        raise LookupError(post_id)
+    if action == "hide":
+        await fetch(
+            session,
+            "UPDATE community_post SET feed_policy = 'hidden', updated_at = now()"
+            " WHERE id = :id RETURNING id",
+            {"id": post_id},
+        )
+        await fetch(
+            session,
+            "UPDATE community_activity SET feed_policy = 'hidden' WHERE post_id = :id RETURNING id",
+            {"id": post_id},
+        )
+    else:
+        await fetch(
+            session,
+            "UPDATE community_post SET is_locked = true, updated_at = now()"
+            " WHERE id = :id RETURNING id",
+            {"id": post_id},
+        )
+    await fetch(
+        session,
+        "INSERT INTO community_moderation_action (moderator_id, target_user_id,"
+        " post_id, action_type, reason, metadata, created_at)"
+        " VALUES (:moderator, :target_user, :post, :action, :reason,"
+        " '{}'::jsonb, now()) RETURNING id",
+        {
+            "moderator": moderator_id,
+            "target_user": rows[0].author_id,
+            "post": post_id,
+            "action": action,
+            "reason": body.get("reason", "") or "",
+        },
+    )
+    await session.commit()
+    return await post_by_id(session, viewer_id=moderator_id, post_id=post_id)
