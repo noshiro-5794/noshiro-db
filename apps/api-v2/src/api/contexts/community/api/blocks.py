@@ -39,6 +39,7 @@ from api.contexts.community.reports import (
     create_report,
     list_my_reports,
     list_reports,
+    resolve_report,
 )
 from api.contexts.community.timeline import list_activities
 from api.contexts.community.visibility import visible
@@ -724,6 +725,25 @@ async def moderate_a_comment(
             detail="Community comment not found.",
             code="community.comment_not_found",
         ) from error
+    except ValueError as error:
+        raise ProblemError(
+            status_code=400, detail="Request validation failed.", errors=error.args[0]
+        ) from error
+
+
+@router.patch("/moderation/reports/{report_id}/")
+async def resolve(
+    report_id: int,
+    body: dict[str, Any],
+    session: SessionDep,
+    user: Annotated[Any, Depends(staff_user)],
+) -> dict[str, Any]:
+    try:
+        return await resolve_report(session, moderator_id=user.id, report_id=report_id, body=body)
+    except LookupError as error:
+        raise ProblemError(status_code=404, detail="Report not found.") from error
+    except RuntimeError as error:
+        raise ProblemError(status_code=409, detail="The report is already resolved.") from error
     except ValueError as error:
         raise ProblemError(
             status_code=400, detail="Request validation failed.", errors=error.args[0]

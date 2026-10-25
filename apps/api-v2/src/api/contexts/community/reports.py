@@ -222,3 +222,122 @@ async def create_report(
     )
     await session.commit()
     return await report_payload(session, rows[0].id)
+
+
+STATUSES = ("pending", "accepted", "rejected")
+
+
+async def resolve_report(
+    session: AsyncSession, *, moderator_id: int, report_id: int, body: dict[str, Any]
+) -> dict[str, Any]:
+    status = body.get("status")
+    if status not in STATUSES:
+        raise ValueError({"status": [f'"{status}" is not a valid choice.']})
+    action = body.get("action_type")
+    if action is not None and action not in ("hide", "lock"):
+        raise ValueError({"action_type": [f'"{action}" is not a valid choice.']})
+    rows = await fetch(
+        session,
+        "SELECT id, status, post_id, comment_id, activity_id, review_id,"
+        " collection_id FROM community_report WHERE id = :id",
+        {"id": report_id},
+    )
+    if not rows:
+        raise LookupError(report_id)
+    report = rows[0]
+    if report.status != "pending":
+        raise RuntimeError("resolved")
+    await fetch(
+        session,
+        "UPDATE community_report SET status = :status, resolved_by_id = :moderator,"
+        " resolved_at = now() WHERE id = :id RETURNING id",
+        {"status": status, "moderator": moderator_id, "id": report_id},
+    )
+    if action is not None:
+        await _apply_action(session, moderator_id, report, action, body)
+    await session.commit()
+    return await report_payload(session, report_id)
+
+
+async def _apply_action(
+    session: AsyncSession, moderator_id: int, report: Any, action: str, body: Any
+) -> None:
+    reason = body.get("moderation_reason", "") or ""
+    target_id = None
+    target_user = None
+    column = ""
+    if report.post_id is not None:
+        column = "post_id"
+        target_id = report.post_id
+        rows = await fetch(
+            session,
+            "SELECT author_id FROM community_post WHERE id = :id",
+            {"id": target_id},
+        )
+        target_user = rows[0].author_id if rows else None
+        sets = "feed_policy = 'hidden'" if action == "hide" else "is_locked = true"
+        await fetch(
+            session,
+            f"UPDATE community_post SET {sets}, updated_at = now() WHERE id = :id RETURNING id",
+            {"id": target_id},
+        )
+        if action == "hide":
+            await fetch(
+                session,
+                "UPDATE community_activity SET feed_policy = 'hidden'"
+                " WHERE post_id = :id RETURNING id",
+                {"id": target_id},
+            )
+    elif report.comment_id is not None:
+        column = "comment_id"
+        target_id = report.comment_id
+        rows = await fetch(
+            session,
+            "SELECT author_id FROM community_comment WHERE id = :id",
+            {"id": target_id},
+        )
+        target_user = rows[0].author_id if rows else None
+        sets = "is_hidden = true" if action == "hide" else "is_locked = true"
+        await fetch(
+            session,
+            f"UPDATE community_comment SET {sets}, updated_at = now() WHERE id = :id RETURNING id",
+            {"id": target_id},
+        )
+        if action == "hide":
+            await fetch(
+                session,
+                "UPDATE community_activity SET feed_policy = 'hidden'"
+                " WHERE comment_id = :id RETURNING id",
+                {"id": target_id},
+            )
+    elif report.activity_id is not None:
+        column = "activity_id"
+        target_id = report.activity_id
+        rows = await fetch(
+            session,
+            "SELECT user_id FROM community_activity WHERE id = :id",
+            {"id": target_id},
+        )
+        target_user = rows[0].user_id if rows else None
+        if action == "hide":
+            await fetch(
+                session,
+                "UPDATE community_activity SET feed_policy = 'hidden' WHERE id = :id RETURNING id",
+                {"id": target_id},
+            )
+    if column:
+        await fetch(
+            session,
+            "INSERT INTO community_moderation_action (moderator_id, target_user_id,"
+            f" {column}, report_id, action_type, reason, metadata, created_at)"
+            " VALUES (:moderator, :target_user, :target, :report, :action, :reason,"
+            " '{}'::jsonb, now()) RETURNING id",
+            {
+                "moderator": moderator_id,
+                "target_user": target_user,
+                "target": target_id,
+                "report": report.id,
+                "action": action,
+                "reason": reason,
+            },
+        )
