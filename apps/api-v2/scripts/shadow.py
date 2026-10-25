@@ -34,6 +34,17 @@ ENDPOINTS: tuple[tuple[str, bool], ...] = (
     ("/evidence/", False),
 )
 
+# Paths with no entity id: the catalogue, its filters and the collections.
+LIST_PATHS: tuple[tuple[str, bool], ...] = (
+    ("/api/v1/index/collections/", False),
+    ("/api/v1/index/entities/?page_size=5", True),
+    ("/api/v1/index/entities/?page_size=5&page=2", True),
+    ("/api/v1/index/entities/?page_size=5&ordering=popular", True),
+    ("/api/v1/index/entities/?page_size=5&scope=all", True),
+    ("/api/v1/index/collections/anime/entities/?page_size=5", True),
+    ("/api/v1/index/collections/galgame/entities/?page_size=5", True),
+)
+
 IGNORE = frozenset({"trace_id", "next", "previous"})
 
 
@@ -61,9 +72,8 @@ def unordered_paths(ordered: bool) -> frozenset[str]:
 
 
 async def compare(
-    *, old: str, new: str, entity_id: str, suffix: str, ordered: bool, timeout: float
+    *, old: str, new: str, path: str, ordered: bool, timeout: float
 ) -> tuple[bool, str]:
-    path = f"/api/v1/index/entities/{entity_id}{suffix}"
     try:
         old_status, expected = await asyncio.to_thread(fetch, old, path, DEFAULT_HEADERS, timeout)
         new_status, actual = await asyncio.to_thread(fetch, new, path, DEFAULT_HEADERS, timeout)
@@ -92,23 +102,29 @@ async def run(*, old: str, new: str, count: int, timeout: float) -> int:
     ids = await sample_ids(dsn, count)
     random.shuffle(ids)
     passed = failed = 0
-    for entity_id in ids:
-        for suffix, ordered in ENDPOINTS:
-            ok, message = await compare(
-                old=old,
-                new=new,
-                entity_id=entity_id,
-                suffix=suffix,
-                ordered=ordered,
-                timeout=timeout,
-            )
-            if ok:
-                passed += 1
-            else:
-                failed += 1
-                print(message)
+    paths = [
+        (f"/api/v1/index/entities/{entity_id}{suffix}", ordered)
+        for entity_id in ids
+        for suffix, ordered in ENDPOINTS
+    ] + list(LIST_PATHS)
+    for path, ordered in paths:
+        ok, message = await compare(
+            old=old,
+            new=new,
+            path=path,
+            ordered=ordered,
+            timeout=timeout,
+        )
+        if ok:
+            passed += 1
+        else:
+            failed += 1
+            print(message)
     total = passed + failed
-    print(f"\n{passed}/{total} comparisons matched ({len(ids)} entities)")
+    print(
+        f"\n{passed}/{total} comparisons matched "
+        f"({len(ids)} entities, {len(LIST_PATHS)} list paths)"
+    )
     return 1 if failed else 0
 
 
