@@ -9,6 +9,7 @@ from api.contexts.community.bookmarks import (
     remove_bookmark,
     set_bookmark,
 )
+from api.contexts.community.comments import list_comments
 from api.contexts.community.posts import (
     create_post,
     delete_post,
@@ -33,6 +34,7 @@ from api.contexts.community.reports import (
     list_reports,
 )
 from api.contexts.community.timeline import list_activities
+from api.contexts.community.visibility import visible
 from api.contexts.presentation.fragments import fetch
 from api.db import SessionDep
 from api.shared.cursor import decode, encode
@@ -564,3 +566,29 @@ async def remove_post(
             detail="Community post not found.",
             code="community.post_not_found",
         ) from error
+
+
+@router.get("/posts/{post_id}/comments/")
+async def post_comments(
+    post_id: int,
+    session: SessionDep,
+    request: Request,
+    viewer: Annotated[Any | None, Depends(optional_user)],
+) -> dict[str, Any]:
+    page, page_size = page_params(request)
+    if not await visible(session, "post", post_id):
+        raise ProblemError(
+            status_code=404,
+            detail="Community target not found.",
+            code="community.target_not_found",
+        )
+    total, results = await list_comments(
+        session,
+        viewer_id=viewer.id if viewer else 0,
+        target_type="post",
+        target_id=post_id,
+        page=page,
+        page_size=page_size,
+    )
+    ensure_page(page, page_size, total)
+    return page_payload(request, count=total, results=results, page=page, page_size=page_size)
