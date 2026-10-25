@@ -422,3 +422,35 @@ async def user_activities(
         "previous": None,
         "results": results,
     }
+
+
+@router.get("/me/feed/")
+async def feed(
+    session: SessionDep,
+    request: Request,
+    user: Annotated[Any, Depends(current_user)],
+    cursor: str = "",
+    page_size: int = 16,
+    include_self: str = "",
+) -> dict[str, Any]:
+    parsed = decode(cursor or None)
+    size = min(max(page_size, 1), 64)
+    results, next_cursor = await list_activities(
+        session,
+        viewer_id=user.id,
+        owner_id=None,
+        cursor=parsed,
+        page_size=size,
+        public_only=True,
+        feed=True,
+        include_self=include_self.lower() in {"1", "true", "yes"},
+    )
+    return {
+        "next": (
+            str(request.url.include_query_params(cursor=encode(next_cursor)))
+            if next_cursor is not None
+            else None
+        ),
+        "previous": None,
+        "results": results,
+    }

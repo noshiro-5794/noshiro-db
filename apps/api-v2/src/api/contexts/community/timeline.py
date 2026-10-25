@@ -217,6 +217,8 @@ async def list_activities(
     cursor: Cursor,
     page_size: int,
     public_only: bool = False,
+    feed: bool = False,
+    include_self: bool = False,
 ) -> tuple[list[dict[str, Any]], Cursor | None]:
     clauses = []
     params: dict[str, Any] = {
@@ -229,6 +231,12 @@ async def list_activities(
         params["owner"] = owner_id
     if public_only:
         clauses.append(PUBLIC)
+    if feed:
+        following = "SELECT following_id FROM community_user_follow WHERE follower_id = :viewer"
+        if include_self:
+            clauses.append(f"(activity.user_id IN ({following}) OR activity.user_id = :viewer)")
+        else:
+            clauses.append(f"activity.user_id IN ({following})")
     if cursor.position is not None:
         clauses.append("activity.created_at < CAST(:position AS timestamptz)")
         params["position"] = cursor.position
@@ -242,10 +250,10 @@ async def list_activities(
         params,
     )
     page = rows[:page_size]
-    following = rows[page_size] if len(rows) > page_size else None
+    extra = rows[page_size] if len(rows) > page_size else None
     next_cursor = (
         Cursor(offset=0, reverse=False, position=position_of(page[-1]))
-        if following is not None and page
+        if extra is not None and page
         else None
     )
     return [await activity_payload(session, row) for row in page], next_cursor
