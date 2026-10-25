@@ -189,3 +189,90 @@ async def summary(session: AsyncSession) -> dict[str, Any]:
         "failed_items": int(items[0].failed),
         "pending_ai_claims": int(claims[0].count),
     }
+
+
+async def campaign_claims(
+    session: AsyncSession,
+    *,
+    campaign_id: str,
+    status: str,
+    page: int,
+    page_size: int,
+) -> dict[str, Any]:
+    rows = await fetch(
+        session,
+        "SELECT agent_run_id FROM sync_campaign WHERE id = CAST(:id AS uuid)",
+        {"id": campaign_id},
+    )
+    if not rows:
+        raise LookupError(campaign_id)
+    run_id = rows[0].agent_run_id
+    if run_id is None:
+        return {"count": 0, "results": []}
+    where = "step.run_id = :run"
+    params: dict[str, Any] = {"run": run_id}
+    if status:
+        where += " AND claim.status = :status"
+        params["status"] = status
+    total = await fetch(
+        session,
+        "SELECT count(*) AS total FROM ai_claim AS claim"
+        f" JOIN agent_step AS step ON step.id = claim.step_id WHERE {where}",
+        params,
+    )
+    claims = await fetch(
+        session,
+        "SELECT claim.id, claim.claim_type, claim.predicate_slug, claim.proposed_value,"
+        " claim.model_confidence, claim.evidence_strength, claim.calibrated_confidence,"
+        " claim.status, claim.policy_decision, claim.policy_reason, claim.created_at,"
+        " claim.decided_at FROM ai_claim AS claim"
+        f" JOIN agent_step AS step ON step.id = claim.step_id WHERE {where}"
+        " ORDER BY claim.created_at DESC LIMIT :limit OFFSET :offset",
+        {**params, "limit": page_size, "offset": (page - 1) * page_size},
+    )
+    ids = [row.id for row in claims]
+    evidence: dict[Any, list[dict[str, Any]]] = {claim_id: [] for claim_id in ids}
+    if ids:
+        links = await fetch(
+            session,
+            "SELECT link.claim_id, link.locator, link.excerpt, link.excerpt_hash,"
+            " link.relevance, link.observation_id, artifact.source_url"
+            " FROM claim_evidence AS link"
+            " LEFT JOIN source_artifact AS artifact ON artifact.id = link.artifact_id"
+            " WHERE link.claim_id = ANY(:ids) ORDER BY link.id",
+            {"ids": ids},
+        )
+        for link in links:
+            evidence[link.claim_id].append(
+                {
+                    "locator": link.locator,
+                    "excerpt": link.excerpt,
+                    "excerpt_hash": link.excerpt_hash,
+                    "relevance": link.relevance,
+                    "source_url": link.source_url,
+                    "observation": str(link.observation_id)
+                    if link.observation_id is not None
+                    else None,
+                }
+            )
+    return {
+        "count": int(total[0].total),
+        "results": [
+            {
+                "id": claim.id,
+                "claim_type": claim.claim_type,
+                "predicate_slug": claim.predicate_slug,
+                "proposed_value": claim.proposed_value,
+                "model_confidence": claim.model_confidence,
+                "evidence_strength": claim.evidence_strength,
+                "calibrated_confidence": claim.calibrated_confidence,
+                "status": claim.status,
+                "policy_decision": claim.policy_decision,
+                "policy_reason": claim.policy_reason,
+                "created_at": isoformat(claim.created_at),
+                "decided_at": isoformat(claim.decided_at),
+                "evidence": evidence.get(claim.id, []),
+            }
+            for claim in claims
+        ],
+    }
