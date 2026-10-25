@@ -36,9 +36,7 @@ async def send_code(
     if purpose not in PURPOSES:
         errors["purpose"] = [f'"{purpose}" is not a valid choice.']
     if errors:
-        raise ProblemError(
-            status_code=400, detail="Request validation failed.", errors=errors
-        )
+        raise ProblemError(status_code=400, detail="Request validation failed.", errors=errors)
     code = f"{secrets.randbelow(1_000_000):06d}"
     await _insert(
         session,
@@ -75,8 +73,7 @@ async def _verify(session: Any, *, email: str, purpose: str, code: str) -> Any:
     if not secrets.compare_digest(str(row.code), code):
         await fetch(
             session,
-            "UPDATE email_verification SET attempts = attempts + 1"
-            " WHERE id = :id RETURNING id",
+            "UPDATE email_verification SET attempts = attempts + 1 WHERE id = :id RETURNING id",
             {"id": row.id},
         )
         await session.commit()
@@ -96,19 +93,14 @@ async def register(body: dict[str, Any], session: SessionDep) -> JSONResponse:
     if not EMAIL_RE.match(email):
         errors["email"] = ["Enter a valid email address."]
     if not isinstance(password, str) or len(password) < 8:
-        errors["password"] = [
-            "This password is too short. It must contain at least 8 characters."
-        ]
+        errors["password"] = ["This password is too short. It must contain at least 8 characters."]
     if not isinstance(code, str) or not CODE_RE.match(code):
         errors["code"] = ["This value does not match the required pattern."]
-    if not isinstance(nickname, str) or not 2 <= len(nickname) <= 32:
-        errors["nickname"] = [
-            "Ensure this field has between 2 and 32 characters."
-        ]
+    nickname_text = nickname if isinstance(nickname, str) else ""
+    if not 2 <= len(nickname_text) <= 32:
+        errors["nickname"] = ["Ensure this field has between 2 and 32 characters."]
     if errors:
-        raise ProblemError(
-            status_code=400, detail="Request validation failed.", errors=errors
-        )
+        raise ProblemError(status_code=400, detail="Request validation failed.", errors=errors)
     existing = await fetch(
         session, 'SELECT 1 FROM "user" WHERE lower(email) = :email', {"email": email}
     )
@@ -117,7 +109,7 @@ async def register(body: dict[str, Any], session: SessionDep) -> JSONResponse:
     taken = await fetch(
         session,
         "SELECT 1 FROM user_profile WHERE lower(nickname) = :nickname",
-        {"nickname": nickname.strip().lower()},
+        {"nickname": nickname_text.strip().lower()},
     )
     if taken:
         raise ProblemError(
@@ -142,7 +134,7 @@ async def register(body: dict[str, Any], session: SessionDep) -> JSONResponse:
         " appearance, show_adult_content, user_id)"
         " VALUES (:nickname, '', '', '#7F6FB0', 'auto', 'auto', false, :user_id)"
         " RETURNING id",
-        {"nickname": nickname, "user_id": user_id},
+        {"nickname": nickname_text, "user_id": user_id},
     )
     await fetch(
         session,
