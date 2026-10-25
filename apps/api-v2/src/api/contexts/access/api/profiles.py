@@ -2,11 +2,13 @@
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from api.contexts.access.dependencies import optional_user
+from api.contexts.library.collections import list_public_collections
 from api.contexts.presentation.fragments import fetch
 from api.db import SessionDep
+from api.shared.pagination import ensure_page, page_params, page_payload
 from api.shared.problems import ProblemError
 
 router = APIRouter(prefix="/api/v1/users", tags=["profile"])
@@ -74,3 +76,26 @@ async def public_profile(
         },
         "is_following": bool(row.is_following),
     }
+
+
+@router.get("/{user_id}/collections/")
+async def public_collections(
+    user_id: int,
+    session: SessionDep,
+    request: Request,
+    viewer: Annotated[Any | None, Depends(optional_user)],
+    keyword: str = "",
+    ordering: str = "id",
+) -> dict[str, Any]:
+    page, page_size = page_params(request)
+    total, results = await list_public_collections(
+        session,
+        viewer_id=viewer.id if viewer else 0,
+        user_id=user_id,
+        keyword=keyword.strip(),
+        ordering=ordering,
+        page=page,
+        page_size=page_size,
+    )
+    ensure_page(page, page_size, total)
+    return page_payload(request, count=total, results=results, page=page, page_size=page_size)
