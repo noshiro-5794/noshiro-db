@@ -122,7 +122,7 @@ async def entity_summary(
     )
     content_allowed = audience != "adult"
     spoiler_allowed = all(row.spoiler_level <= 0 for row in members)
-    media = await _media(session, cluster_ids) if content_allowed and spoiler_allowed else []
+    media = await _media(session, scope) if content_allowed and spoiler_allowed else []
     return {
         "id": str(root),
         "entity_type": root_row.kind,
