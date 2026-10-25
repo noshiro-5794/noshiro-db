@@ -220,10 +220,11 @@ Two divergences were found by this comparison and fixed or recorded:
    not decrement `reaction_count`, so the number drifts upward over time. The port
    does the same: the counter is part of the old contract, and the drift is a bug
    to fix once, on both sides, not something one side should quietly correct.
-22. **The verification mail is delivered, but its copy is shorter.** The port sends
-   through the same provider and key the old service uses, inline instead of Celery;
-   a provider failure is logged and never turns a written code into a failed request.
-   The branded template is not reproduced — subject and code match, the body does not.
+22. **The verification mail: text identical, HTML simpler.** The port sends through the
+   same provider and key the old service uses, inline instead of Celery; a provider
+   failure is logged and never turns a written code into a failed request. Subject,
+   copy and the plain-text body match the old service byte for byte — the baseline was
+   captured by running Django's own builder. The HTML keeps a shorter template.
 23. **A job type without a provider is a 404, not a body.** `subject_bangumi` is a real
    `sync_job` row, but Django maps the type to a registered import provider and answers
    `Import job not found.` when there is none. Read the diff direction carefully: the
