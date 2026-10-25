@@ -416,7 +416,7 @@ async def replace_tags(
                 {"user_id": user_id, "name": name},
             )
         if all(tag["id"] != rows[0].id for tag in tags):
-            tags.append({"id": rows[0].id, "name": rows[0].name})
+            tags.append({"id": rows[0].id, "name": name})
     await fetch(
         session,
         "DELETE FROM user_library_entry_tag WHERE user_subject_id = :entry_id RETURNING id",
