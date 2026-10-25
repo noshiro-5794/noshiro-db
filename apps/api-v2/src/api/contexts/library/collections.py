@@ -341,7 +341,8 @@ async def add_item(
     if existing:
         rows = await fetch(
             session,
-            "SELECT id, user_subject_id, order, relation FROM user_collection_item WHERE id = :id",
+            'SELECT id, user_subject_id, "order", relation FROM user_collection_item'
+            " WHERE id = :id",
             {"id": existing[0].id},
         )
         row = rows[0]
@@ -357,7 +358,7 @@ async def add_item(
         )
     created = await fetch(
         session,
-        "INSERT INTO user_collection_item (\"order\", relation, collection_id,"
+        'INSERT INTO user_collection_item ("order", relation, collection_id,'
         " user_subject_id) VALUES (:order, :relation, :collection, :entry)"
         " RETURNING id",
         {
