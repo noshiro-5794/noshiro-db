@@ -72,6 +72,7 @@ uv run python -m scripts.state_parity --old ... --new ... \
 | 2026-10-25 | `PATCH` / `DELETE /api/v1/users/me/tags/{id}/` | 3 | **OK** — same rename body, 404 for an unknown id, 204 for the delete |
 | 2026-10-25 | `GET /api/v1/users/me/profile/stats/` — two years and zones, one unknown zone | 3 | **OK** — the aggregates and the calendar agree, and the unknown zone is the same 400 |
 | 2026-10-25 | `GET /api/v1/users/me/library/entries/` — default and filtered | 2 | **OK** — the entry, its entity summary and its release states |
+| 2026-10-25 | `GET /api/v1/users/me/library/entries/{id}/` | 1 | **OK** — the same row the list returns |
 | 2026-10-25 | `PUT /api/v1/community/me/notifications/read-state/` | 1 | **OK** — both report two updated and leave zero unread (compared by state, because each call mutates) |
 | 2026-10-25 | `GET`/`PATCH /api/v1/users/me/settings/` — read, empty, bad choice, bad colour, adult without confirmation, valid choices, adult with confirmation | 7 | **OK** — the confirmation timestamp is per-request and compared with it ignored |
 
