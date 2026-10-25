@@ -81,7 +81,7 @@ async def block_user(
     )
     await fetch(
         session,
-        "DELETE FROM community_user_mute WHERE user_id = :user_id AND muted_user_id = :target",
+        "DELETE FROM community_user_mute WHERE user_id = :user_id AND muted_user_id = :target RETURNING id",
         {"user_id": user_id, "target": target_user_id},
     )
     rows = await fetch(
