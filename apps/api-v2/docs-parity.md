@@ -115,6 +115,7 @@ uv run python -m scripts.state_parity --old ... --new ... \
 | 2026-10-25 | `GET /api/v1/operations/sync/summary/` | 1 | **OK** — all six counters |
 | 2026-10-25 | `GET /api/v1/operations/sync/{id}/claims/` | 1 | **OK** — the claims and their evidence links |
 | 2026-10-25 | `GET /api/v1/operations/sync/` — the whole list | 1 | **OK** once `eta_seconds` and the throughput are ignored: both are derived from the moment the request is served |
+| 2026-10-25 | `GET /api/v1/operations/matching/candidates/` — by status | 2 | **OK** — the evidence count and the latest proposal |
 | 2026-10-25 | `PUT /api/v1/community/me/notifications/read-state/` | 1 | **OK** — both report two updated and leave zero unread (compared by state, because each call mutates) |
 | 2026-10-25 | `GET`/`PATCH /api/v1/users/me/settings/` — read, empty, bad choice, bad colour, adult without confirmation, valid choices, adult with confirmation | 7 | **OK** — the confirmation timestamp is per-request and compared with it ignored |
 
@@ -218,6 +219,10 @@ Two divergences were found by this comparison and fixed or recorded:
    `sync_job` row, but Django maps the type to a registered import provider and answers
    `Import job not found.` when there is none. Read the diff direction carefully: the
    404 was the old service's, not a tool error.
-24. **`value` type.** The OpenAPI snapshot says string, the Django response sends
+24. **Candidate ties have no stable order.** The old queryset sorts by score alone, so
+   equal scores come back in whatever order the database gives and a page boundary can
+   include a different set on each call. The port keeps the same ordering; comparisons
+   use a single page with a status filter, or ignore the order entirely.
+25. **`value` type.** The OpenAPI snapshot says string, the Django response sends
    a number. Parity copies the response; the disagreement is recorded in
    `contexts/signal/domain.py` for a deliberate fix on both sides.
