@@ -5,6 +5,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends
 
 from api.contexts.access.dependencies import staff_user
+from api.contexts.community.campaigns import campaign
 from api.contexts.community.import_jobs import import_job
 from api.db import SessionDep
 from api.shared.problems import ProblemError
@@ -28,3 +29,15 @@ async def import_job_detail(
             detail="Synchronization job not found.",
             code="sync.job_not_found",
         ) from error
+
+
+@router.get("/sync/{campaign_id}/")
+async def sync_campaign(
+    campaign_id: str,
+    session: SessionDep,
+    user: Annotated[Any, Depends(staff_user)],
+) -> dict[str, Any]:
+    try:
+        return await campaign(session, campaign_id=campaign_id)
+    except LookupError as error:
+        raise ProblemError(status_code=404, detail="Sync campaign not found.") from error
