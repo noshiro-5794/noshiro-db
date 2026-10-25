@@ -44,3 +44,26 @@ async def create_tag(
         )
     await session.commit()
     return {"id": rows[0].id, "name": rows[0].name}, created
+
+
+async def rename_tag(
+    session: AsyncSession, *, user_id: int, tag_id: int, name: str
+) -> dict[str, Any] | None:
+    rows = await fetch(
+        session,
+        "UPDATE user_tag SET name = :name WHERE id = :tag_id AND user_id = :user_id"
+        " RETURNING id, name",
+        {"name": name, "tag_id": tag_id, "user_id": user_id},
+    )
+    await session.commit()
+    return {"id": rows[0].id, "name": rows[0].name} if rows else None
+
+
+async def delete_tag(session: AsyncSession, *, user_id: int, tag_id: int) -> bool:
+    rows = await fetch(
+        session,
+        "DELETE FROM user_tag WHERE id = :tag_id AND user_id = :user_id RETURNING id",
+        {"tag_id": tag_id, "user_id": user_id},
+    )
+    await session.commit()
+    return bool(rows)
