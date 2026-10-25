@@ -32,9 +32,10 @@ campaigns publish the same way now, with their own task name and a test.
 the nonce in the shared cache; the callback verifies both. A port that signs
 differently breaks the round trip.
 
-Start is ported with its own signer and is verified on the unconfigured branch; the
-callback is not, and it needs a real GitHub round trip to verify at all. The rule the
-cutover must hold: a sign-in that starts on one service has to finish on the same one.
+Both endpoints are ported with their own signer. The rejected-state path is verified
+(four tests on the state, plus a redirect comparison); the exchange with GitHub needs
+real credentials and a real code, so it has never run. The rule the cutover must hold:
+a sign-in that starts on one service has to finish on the same one.
 
 ### 3. The candidate decision drives the resolution engine
 
