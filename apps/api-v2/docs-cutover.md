@@ -22,9 +22,13 @@ Import jobs now publish to the same task name the Django worker listens on
 (`apps.sync.tasks.vndb.import_vndb_work_task`) through the same broker, and the job row
 keeps the task id. Three tests pin the name, the arguments and the no-broker path.
 
-What is **not** done: the broker is unreachable in this environment — the old service
-answers 503 here for the same reason — so the round trip has never been observed. Sync
-campaigns publish the same way now, with their own task name and a test.
+A fourth test runs the real Celery app against the memory broker, sends a task, reads
+the envelope back and checks the name in the header and the arguments in the body — so
+the protocol itself is exercised, not just our arguments.
+
+What is **not** done: no live broker is reachable in this environment, which is also
+why the old service answers 503 here. No worker has ever consumed one of these
+messages.
 
 ### 2. GitHub sign-in still needs Django's signer and its cache
 

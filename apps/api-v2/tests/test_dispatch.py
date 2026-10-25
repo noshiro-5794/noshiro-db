@@ -55,3 +55,32 @@ def test_a_campaign_publishes_with_its_id() -> None:
     assert app.calls == [
         ("apps.sync.tasks.campaign.run_sync_campaign_task", {"campaign_id": "c-1"})
     ]
+
+
+def test_the_message_reaches_a_queue(monkeypatch) -> None:
+    """The real Celery app, a memory broker, and the envelope read back."""
+    from celery import Celery
+
+    monkeypatch.setenv("CELERY_BROKER_URL", "memory://")
+    app = Celery(broker="memory://", backend="cache+memory://")
+    app.conf.task_default_queue = "celery"
+    app.conf.task_always_eager = False
+
+    dispatch.publish(
+        "apps.sync.tasks.campaign.run_sync_campaign_task",
+        {"campaign_id": "c-9"},
+        sender=app,
+    )
+
+    with app.connection_for_read() as connection:
+        queue = connection.SimpleQueue("celery")
+        message = queue.get(block=True, timeout=5)
+        try:
+            # Protocol v2: the name rides in the header, the arguments in the body.
+            assert message.headers["task"] == "apps.sync.tasks.campaign.run_sync_campaign_task"
+            args, kwargs, _ = message.payload
+            assert args == []
+            assert kwargs == {"campaign_id": "c-9"}
+        finally:
+            message.ack()
+            queue.close()
