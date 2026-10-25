@@ -26,7 +26,11 @@ from scripts.parity import DEFAULT_HEADERS, diff, fetch, normalize
 async def _sql(dsn: str, statement: str) -> list[dict[str, Any]]:
     connection = await asyncpg.connect(dsn)
     try:
-        rows = await connection.fetch(statement)
+        # A seed often needs more than one statement; asyncpg prepares one at a
+        # time, so they are split here.
+        rows = []
+        for part in [item.strip() for item in statement.split(";") if item.strip()]:
+            rows = await connection.fetch(part)
     finally:
         await connection.close()
     return [dict(row) for row in rows]
