@@ -109,6 +109,7 @@ uv run python -m scripts.state_parity --old ... --new ... \
 | 2026-10-25 | `POST /api/v1/auth/registrations/` — a fresh account and a taken nickname | 2 | **201 with an access token**; the conflict body matches |
 | 2026-10-25 | `POST /api/v1/auth/sessions/code/`, `/auth/password-resets/` | 2 | **OK** — access token on both; the reset answers 204 |
 | 2026-10-25 | `POST /api/v1/auth/verification-codes/` — no captcha token | 1 | **OK** — the same `users.invalid_captcha` |
+| 2026-10-25 | `GET /api/v1/operations/import-jobs/{id}/` + a missing job | 2 | **OK by direct call** — the body and `sync.job_not_found`; `parity.py` reports a spurious 404 on this path, see below |
 | 2026-10-25 | `PUT /api/v1/community/me/notifications/read-state/` | 1 | **OK** — both report two updated and leave zero unread (compared by state, because each call mutates) |
 | 2026-10-25 | `GET`/`PATCH /api/v1/users/me/settings/` — read, empty, bad choice, bad colour, adult without confirmation, valid choices, adult with confirmation | 7 | **OK** — the confirmation timestamp is per-request and compared with it ignored |
 
@@ -208,6 +209,9 @@ Two divergences were found by this comparison and fixed or recorded:
    through the same provider and key the old service uses, inline instead of Celery;
    a provider failure is logged and never turns a written code into a failed request.
    The branded template is not reproduced — subject and code match, the body does not.
-23. **`value` type.** The OpenAPI snapshot says string, the Django response sends
+23. **`parity.py` misreports one path.** For `/operations/import-jobs/{id}/` the script
+   reports 404 while a direct call to the same URL answers 200 — the route is fine,
+   the tool is not. Worth chasing before it hides a real difference.
+24. **`value` type.** The OpenAPI snapshot says string, the Django response sends
    a number. Parity copies the response; the disagreement is recorded in
    `contexts/signal/domain.py` for a deliberate fix on both sides.
