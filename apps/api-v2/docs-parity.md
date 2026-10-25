@@ -120,6 +120,7 @@ uv run python -m scripts.state_parity --old ... --new ... \
 | 2026-10-25 | `POST /api/v1/operations/import-jobs/` — a bad external id | 1 | **OK** — the same field error |
 | 2026-10-25 | `POST /api/v1/operations/import-jobs/` — a valid one | 1 | **deliberate gap**: the port writes the row and answers 202 but does not dispatch; the old service answers 503 here because its worker is unreachable, so its success path cannot be compared in this environment |
 | 2026-10-25 | `POST /api/v1/operations/sync/` — an unsupported provider | 1 | **OK** — `Unsupported sync provider.`; a valid body answers 202 with a queued campaign, which the old service also cannot dispatch here |
+| 2026-10-25 | `GET /api/v1/auth/social/github/start/` — no client configured | 1 | **OK** — the same 503 and code; the configured branch is not reachable in this environment |
 | 2026-10-25 | `PUT /api/v1/community/me/notifications/read-state/` | 1 | **OK** — both report two updated and leave zero unread (compared by state, because each call mutates) |
 | 2026-10-25 | `GET`/`PATCH /api/v1/users/me/settings/` — read, empty, bad choice, bad colour, adult without confirmation, valid choices, adult with confirmation | 7 | **OK** — the confirmation timestamp is per-request and compared with it ignored |
 
@@ -227,6 +228,10 @@ Two divergences were found by this comparison and fixed or recorded:
    equal scores come back in whatever order the database gives and a page boundary can
    include a different set on each call. The port keeps the same ordering; comparisons
    use a single page with a status filter, or ignore the order entirely.
-25. **`value` type.** The OpenAPI snapshot says string, the Django response sends
+25. **The GitHub state is signed differently.** Django signs it with its own signer and
+   a cache nonce; this service signs its own state and verifies it itself. One host
+   routes to one service, so this only breaks a round trip that starts on one and
+   finishes on the other — which the cutover must avoid, not the port fix.
+26. **`value` type.** The OpenAPI snapshot says string, the Django response sends
    a number. Parity copies the response; the disagreement is recorded in
    `contexts/signal/domain.py` for a deliberate fix on both sides.
