@@ -60,7 +60,9 @@ This is the engine, not the API. It stays until the engine moves.
 
 ### 4. Two smaller ones
 
-- The verification mail body is shorter than the branded template (subject and code match).
+- The verification mail's HTML body is shorter than the branded template. Subject, copy
+  and the plain-text body are identical, and a test asserts that against a baseline
+  captured from Django's own builder.
 - `parity.py` has `PARITY_DEBUG` now, but its output format still reads `old != new`,
   which cost a round when it was read backwards.
 
