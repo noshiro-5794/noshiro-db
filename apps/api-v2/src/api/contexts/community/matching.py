@@ -88,3 +88,27 @@ async def list_candidates(
         }
         for row in rows
     ]
+
+
+async def candidate_by_id(
+    session: AsyncSession, *, viewer_id: int, candidate_id: Any
+) -> dict[str, Any]:
+    """The payload for one candidate, shaped exactly like a list row."""
+    rows = await fetch(session, QUERY + " WHERE candidate.id = :id", {"id": candidate_id})
+    if not rows:
+        raise LookupError(candidate_id)
+    row = rows[0]
+    return {
+        "id": row.id,
+        "left_entity": str(row.left_entity_id),
+        "right_entity": str(row.right_entity_id),
+        "policy_version": row.policy_version,
+        "score": row.score,
+        "runner_up_margin": row.runner_up_margin,
+        "status": row.status,
+        "hard_conflicts": row.hard_conflicts,
+        "evidence_count": int(row.evidence_count),
+        "latest_proposal": _proposal(row),
+        "created_at": isoformat(row.created_at),
+        "updated_at": isoformat(row.updated_at),
+    }

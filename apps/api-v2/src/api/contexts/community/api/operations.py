@@ -204,3 +204,35 @@ async def create_sync_campaign(
             status_code=400, detail="Request validation failed.", errors=error.args[0]
         ) from error
     return JSONResponse(data, status_code=202)
+
+
+@router.post("/matching/candidates/{candidate_id}/decide/")
+async def decide_candidate(
+    candidate_id: str,
+    body: dict[str, Any],
+    session: SessionDep,
+    user: Annotated[Any, Depends(staff_user)],
+) -> JSONResponse:
+    from api.contexts.community.matching import candidate_by_id
+    from api.contexts.index import resolution
+
+    outcome = body.get("outcome")
+    if outcome not in {"bind", "group", "reject", "abstain"}:
+        raise ProblemError(
+            status_code=400,
+            detail="Request validation failed.",
+            errors={"outcome": [f'"{outcome}" is not a valid choice.']},
+        )
+    try:
+        await resolution.decide(
+            session,
+            candidate_id=candidate_id,
+            outcome=str(outcome),
+            reason=str(body.get("reason") or ""),
+        )
+        payload = await candidate_by_id(session, viewer_id=user.id, candidate_id=candidate_id)
+    except resolution.CandidateNotFound as error:
+        raise ProblemError(status_code=404, detail="Match candidate not found.") from error
+    except resolution.ResolutionError as error:
+        raise ProblemError(status_code=409, detail=str(error)) from error
+    return JSONResponse(payload)
