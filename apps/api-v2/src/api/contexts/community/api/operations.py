@@ -213,9 +213,19 @@ async def decide_candidate(
     session: SessionDep,
     user: Annotated[Any, Depends(staff_user)],
 ) -> JSONResponse:
+    """Record the decision and answer with the candidate as it was read.
+
+    The old service serialises the object it loaded before deciding, so a successful
+    decide answers `pending`. That is a bug, but it is the contract clients see, and
+    the port reproduces it rather than quietly changing the shape.
+    """
     from api.contexts.community.matching import candidate_by_id
     from api.contexts.index import resolution
 
+    try:
+        payload = await candidate_by_id(session, viewer_id=user.id, candidate_id=candidate_id)
+    except LookupError as error:
+        raise ProblemError(status_code=404, detail="Match candidate not found.") from error
     outcome = body.get("outcome")
     if outcome not in {"bind", "group", "reject", "abstain"}:
         raise ProblemError(
@@ -223,14 +233,30 @@ async def decide_candidate(
             detail="Request validation failed.",
             errors={"outcome": [f'"{outcome}" is not a valid choice.']},
         )
+    reason = str(body.get("reason") or "")
     try:
         await resolution.decide(
             session,
             candidate_id=candidate_id,
             outcome=str(outcome),
-            reason=str(body.get("reason") or ""),
+            reason=reason,
         )
-        payload = await candidate_by_id(session, viewer_id=user.id, candidate_id=candidate_id)
+        if outcome == "group":
+            candidate = await resolution.candidate_entities(session, candidate_id)
+            await resolution.ensure_pair_group(
+                session,
+                left_id=candidate.left_entity_id,
+                right_id=candidate.right_entity_id,
+                reason=reason or "admin-group",
+            )
+        await resolution.settle_proposal(
+            session,
+            candidate_id=candidate_id,
+            accepted=outcome in {"bind", "group"},
+            reason=reason,
+            grouped=outcome == "group",
+        )
+        await session.commit()
     except resolution.CandidateNotFound as error:
         raise ProblemError(status_code=404, detail="Match candidate not found.") from error
     except resolution.ResolutionError as error:
