@@ -1,11 +1,27 @@
 # Status
 
+**Since 2026-11-10 the replacement serves production.** `api.noshiro.moe` proxies to
+`127.0.0.1:8010`; Django's web container stays up only because one endpoint is still
+routed to it (the candidate decision, which needs the resolution engine), and the Django
+workers and beat stay because the replacement publishes to them rather than replacing
+them.
+
+Verified after the switch, from outside the host:
+
+| Check | Result |
+|---|---|
+| public smoke through the proxy | 7 ok, 0 failures |
+| read paths | 200 in 0.1–2.9 s |
+| write cycle (create, read, delete, read) | created → 200 → 204 → 404 |
+| dispatch from the live container | job went queued → failed with VNDB's own error |
+| staff paths without a token | 401 (routed, not 404) |
+
 A snapshot of the replacement service after the long porting run. It is not a plan; the plan is in
 `docs-display.md`, `docs-schema.md` and `docs-parity.md`.
 
 ## Covered endpoints
 
-One hundred and thirty-seven operations compared with the Django response. The table below is the
+One hundred and forty-two operations compared with the Django response. The table below is the
 shape of the coverage; `docs-parity.md` has every recorded comparison.
 
 | Area | Endpoints | Evidence |
