@@ -19,9 +19,10 @@ RUN uv sync --no-dev --frozen --no-install-project
 COPY src ./src
 COPY alembic.ini ./
 COPY migrations ./migrations
-RUN uv sync --no-dev --frozen
+RUN uv sync --no-dev --frozen --no-editable
 
-ENV PATH="/app/.venv/bin:$PATH"
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONPATH=/app/src
 
 RUN useradd --create-home --uid 10001 app && chown -R app:app /app
 USER app

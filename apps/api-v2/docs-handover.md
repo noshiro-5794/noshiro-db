@@ -76,7 +76,39 @@ Expect `… comparisons matched` with no `FAIL` lines. The last run at this size
 
 If either step fails, stop here. Nothing is routed to the new service yet.
 
-## Phase 2 — switch
+## Phase 2 — switch  ✅ done 2026-11-10
+
+The live site `api.noshiro.moe` now proxies to the replacement:
+
+- upstream changed `127.0.0.1:8008` → `127.0.0.1:8010` in
+  `/opt/1panel/www/sites/api.noshiro.moe/proxy/root.conf`
+  (backup kept beside it as `root.conf.bak-8008`),
+- `nginx -t` passed, `nginx -s reload` inside the `openresty` container,
+- public verification: `/health/live/`, `/health/ready/`, `/api/v1/community/posts/`,
+  `/api/v1/index/entities/?page_size=5`, `/api/v1/auth/social/providers/` all 200,
+  and the smoke script against `https://api.noshiro.moe` reports 7 ok, 0 failures.
+
+Rollback is one command plus a reload:
+
+```sh
+CONF=/opt/1panel/www/sites/api.noshiro.moe/proxy/root.conf
+sudo sed -i 's#127.0.0.1:8010#127.0.0.1:8008#' "$CONF"
+docker exec openresty nginx -s reload
+```
+
+Two things surfaced while doing this, both now fixed in the image:
+
+1. `depends_on` cannot cross compose files, so the project failed to parse before
+   starting anything.
+2. The image installed the project as an editable link; uvicorn then could not import
+   `api.main`. `uv sync --no-dev --frozen --no-editable` fixes it, with `PYTHONPATH`
+   as a fallback.
+
+And one operational note: port 8010 was held by a development `uvicorn` started fifteen
+days earlier in `/tmp`, which the cleanup never removed. A `ss -ltnp` check before
+starting the container is worth the ten seconds.
+
+## Phase 2 (original instructions)
 
 Change the upstream for the site from `127.0.0.1:8008` to `127.0.0.1:8010` in the
 proxy (1Panel → OpenResty → the site's reverse-proxy record), or with whatever the
