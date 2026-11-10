@@ -88,6 +88,15 @@ The live site `api.noshiro.moe` now proxies to the replacement:
   `/api/v1/index/entities/?page_size=5`, `/api/v1/auth/social/providers/` all 200,
   and the smoke script against `https://api.noshiro.moe` reports 7 ok, 0 failures.
 
+One endpoint still lives on Django and is routed there by a single nginx location:
+`POST /api/v1/operations/matching/candidates/{id}/decide/` — the candidate decision needs
+the resolution engine (`docs-transition.md`). The proxy therefore has a regex location for
+that path pointing at 8008, with everything else on 8010. Verified after the switch: that
+path answers 401 (Django, needs auth) rather than 404, and the rest answers 200.
+
+Note on the location types: the generated site uses `location ^~ /`, which suppresses
+regex matching, so it had to become a plain `location /` for the split to take effect.
+
 Rollback is one command plus a reload:
 
 ```sh
