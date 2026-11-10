@@ -61,6 +61,15 @@ belongs with the engine's move, which is a separate, larger piece of work.
 
 Everything else in `/operations/` reads or writes rows the API owns; this one does not.
 
-**As of the 2026-11-10 cutover** the live site proxies to the replacement, with one
-exception routed back to Django by an nginx location: this endpoint. When the engine
-moves, that location goes away and the Django web service can stop.
+**The engine moved on 2026-11-10.** This endpoint is now served by the replacement
+(`contexts/index/resolution.py`), ported from `resolution.py` and `fact_resolution.py`
+including the fact rebuild. The nginx exception that routed it back to Django is gone.
+
+It was verified on throwaway entities before the switch: two equivalent pairs, one
+decided by each service, producing identical database effects and identical response
+bodies — including the quirk that a successful decide answers `pending`, because the old
+service serialised the object it had read before deciding. The port reproduces that
+rather than quietly changing the shape.
+
+**Django's web container is stopped.** The sync, AI and realtime workers and beat still
+run: the replacement publishes to them and depends on them.
