@@ -24,7 +24,8 @@ RUN uv sync --no-dev --frozen --no-editable
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONPATH=/app/src
 
-RUN useradd --create-home --uid 10001 app && chown -R app:app /app
+RUN useradd --create-home --uid 10001 app && chown -R app:app /app \
+    && chmod -R a+rX /app
 USER app
 
 EXPOSE 8010
