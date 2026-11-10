@@ -12,13 +12,16 @@ RUN pip install --no-cache-dir uv
 
 WORKDIR /app
 
+# Permissions are set at COPY time: the build context on the deployment host can
+# carry mode 000 on files, and inheriting that makes the app unreadable to itself.
+
 # Dependencies first: they change less often than the source.
-COPY pyproject.toml uv.lock ./
+COPY --chmod=644 pyproject.toml uv.lock ./
 RUN uv sync --no-dev --frozen --no-install-project
 
-COPY src ./src
-COPY alembic.ini ./
-COPY migrations ./migrations
+COPY --chmod=755 src ./src
+COPY --chmod=644 alembic.ini ./
+COPY --chmod=755 migrations ./migrations
 RUN uv sync --no-dev --frozen --no-editable
 
 ENV PATH="/app/.venv/bin:$PATH" \
