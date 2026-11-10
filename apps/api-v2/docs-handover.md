@@ -88,6 +88,10 @@ The live site `api.noshiro.moe` now proxies to the replacement:
   `/api/v1/index/entities/?page_size=5`, `/api/v1/auth/social/providers/` all 200,
   and the smoke script against `https://api.noshiro.moe` reports 7 ok, 0 failures.
 
+**Update 2026-11-10, later the same day:** the resolution engine was ported, so nothing
+is routed to Django any more and the Django web container is stopped. The paragraph
+below is kept because it explains the sequence that was followed.
+
 One endpoint still lives on Django and is routed there by a single nginx location:
 `POST /api/v1/operations/matching/candidates/{id}/decide/` — the candidate decision needs
 the resolution engine (`docs-transition.md`). The proxy therefore has a regex location for
