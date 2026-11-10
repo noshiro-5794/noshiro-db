@@ -60,3 +60,7 @@ the fact layer stale — worse than leaving the endpoint where it works. The dec
 belongs with the engine's move, which is a separate, larger piece of work.
 
 Everything else in `/operations/` reads or writes rows the API owns; this one does not.
+
+**As of the 2026-11-10 cutover** the live site proxies to the replacement, with one
+exception routed back to Django by an nginx location: this endpoint. When the engine
+moves, that location goes away and the Django web service can stop.
