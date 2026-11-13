@@ -69,7 +69,12 @@ async def _rank(session: AsyncSession, *, work_type: str, source: str, metric: s
     )
 
 
-async def refresh(session: AsyncSession, *, now: datetime) -> int:
+async def score_map(session: AsyncSession) -> dict[Any, Decimal]:
+    """The computed standing per canonical entity, before anything is written.
+
+    Exposed so a shadow run can diff this against the Django implementation
+    without either side persisting a row.
+    """
     redirects = await _redirect_map(session)
     latest: dict[Any, Decimal] = {}
     for work_type, source, metric in PRIMARY_SIGNALS:
@@ -78,6 +83,11 @@ async def refresh(session: AsyncSession, *, now: datetime) -> int:
             current = latest.get(root)
             if current is None or Decimal(str(row.value)) > current:
                 latest[root] = Decimal(str(row.value))
+    return latest
+
+
+async def refresh(session: AsyncSession, *, now: datetime) -> int:
+    latest = await score_map(session)
     if not latest:
         return 0
     return await _persist(session, latest, now=now)
