@@ -116,10 +116,10 @@ async def record_observation(
                 session,
                 """
                 INSERT INTO provider_observation
-                  (provider_record_id, mapping_run_id, origin, schema_name,
+                  (id, provider_record_id, mapping_run_id, origin, schema_name,
                    schema_version, normalized_data, normalized_hash, observed_at,
                    created_at, updated_at)
-                VALUES (:record, NULL, :origin, :schema, :version,
+                VALUES (gen_random_uuid(), :record, NULL, :origin, :schema, :version,
                         CAST(:data AS jsonb), :hash, :at, now(), now())
                 RETURNING id
                 """,
@@ -178,8 +178,10 @@ async def record_observation(
         session,
         """
         INSERT INTO mapping_run
-          (revision_id, mapper, mapper_version, status, started_at, created_at, updated_at)
-        VALUES (:revision, :mapper, :mapper_version, 'running', now(), now(), now())
+          (id, revision_id, mapper, mapper_version, status, error, started_at,
+           created_at, updated_at)
+        VALUES (gen_random_uuid(), :revision, :mapper, :mapper_version, 'running',
+                '', now(), now(), now())
         RETURNING id
         """,
         {
@@ -193,10 +195,10 @@ async def record_observation(
         session,
         """
         INSERT INTO provider_observation
-          (provider_record_id, mapping_run_id, origin, schema_name, schema_version,
+          (id, provider_record_id, mapping_run_id, origin, schema_name, schema_version,
            normalized_data, normalized_hash, observed_at, created_at, updated_at)
-        VALUES (:record, :run, :origin, :schema, :version, CAST(:data AS jsonb),
-                :hash, :at, now(), now())
+        VALUES (gen_random_uuid(), :record, :run, :origin, :schema, :version,
+                CAST(:data AS jsonb), :hash, :at, now(), now())
         RETURNING id
         """,
         {

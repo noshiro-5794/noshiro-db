@@ -133,10 +133,11 @@ async def record_payload(
         session,
         """
         INSERT INTO provider_record
-          (namespace_id, external_id, canonical_url, status, origin, raw_state,
+          (id, namespace_id, external_id, canonical_url, status, origin, raw_state,
+           latest_payload_hash, latest_revision_id,
            first_seen_at, last_seen_at, created_at, updated_at)
-        VALUES (:namespace, :external_id, :url, 'active', :origin, :raw_state,
-                :at, :at, now(), now())
+        VALUES (gen_random_uuid(), :namespace, :external_id, :url, 'active', :origin,
+                :raw_state, '', NULL, :at, :at, now(), now())
         ON CONFLICT (namespace_id, external_id) DO NOTHING
         RETURNING id
         """,
@@ -166,10 +167,10 @@ async def record_payload(
             session,
             """
             INSERT INTO provider_revision
-              (record_id, payload, payload_hash, schema_version, response_metadata,
+              (id, record_id, payload, payload_hash, schema_version, response_metadata,
                upstream_updated_at, fetched_at)
-            VALUES (:record, CAST(:payload AS jsonb), :hash, :schema_version,
-                    '{}'::jsonb, NULL, :at)
+            VALUES (gen_random_uuid(), :record, CAST(:payload AS jsonb), :hash,
+                    :schema_version, '{}'::jsonb, NULL, :at)
             ON CONFLICT DO NOTHING
             RETURNING id
             """,
