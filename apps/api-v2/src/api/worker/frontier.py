@@ -144,13 +144,10 @@ async def read_frontier(
 ) -> Frontier:
     rows = await sql_fetch(
         session,
-        "SELECT end_id, current_id FROM sync_state WHERE task_name = :task"
-        " AND shard = :shard",
+        "SELECT end_id, current_id FROM sync_state WHERE task_name = :task AND shard = :shard",
         {
             "task": FRONTIER_TASK_NAME,
-            "shard": frontier_shard(
-                provider_slug=provider_slug, namespace_slug=namespace_slug
-            ),
+            "shard": frontier_shard(provider_slug=provider_slug, namespace_slug=namespace_slug),
         },
     )
     if not rows:
@@ -177,13 +174,16 @@ async def probe_frontier(
     start = await read_frontier(
         session, provider_slug=provider_slug, namespace_slug=namespace_slug, seed=seed
     )
-    result = await asyncio.to_thread(
-        walk, fetch, start=start, window=window, max_misses=max_misses
-    )
-    if persist and result.probed and (
-        result.highest_existing_id,
-        result.probed_to,
-    ) != (start.highest_existing_id, start.ceiling):
+    result = await asyncio.to_thread(walk, fetch, start=start, window=window, max_misses=max_misses)
+    if (
+        persist
+        and result.probed
+        and (
+            result.highest_existing_id,
+            result.probed_to,
+        )
+        != (start.highest_existing_id, start.ceiling)
+    ):
         await sql_fetch(
             session,
             """
@@ -199,9 +199,7 @@ async def probe_frontier(
             """,
             {
                 "task": FRONTIER_TASK_NAME,
-                "shard": frontier_shard(
-                    provider_slug=provider_slug, namespace_slug=namespace_slug
-                ),
+                "shard": frontier_shard(provider_slug=provider_slug, namespace_slug=namespace_slug),
                 "current": result.probed_to,
                 "end": result.highest_existing_id,
             },
