@@ -93,7 +93,14 @@ async def refresh(session: AsyncSession, *, now: datetime) -> int:
     return await _persist(session, latest, now=now)
 
 
-async def _persist(session: AsyncSession, latest: dict[Any, Decimal], *, now: datetime) -> int:
+def standings(latest: dict[Any, Decimal]) -> dict[Any, Decimal]:
+    """Turn raw reach into a 0-100 percentile standing inside one series.
+
+    Kept separate from persistence so a shadow run can diff it against the
+    Django implementation without either side writing a row.
+    """
+    if not latest:
+        return {}
     ordered = sorted(latest.items(), key=lambda item: (item[1], str(item[0])))
     denominator = len(ordered) - 1
     scores: dict[Any, Decimal] = {}
@@ -109,7 +116,15 @@ async def _persist(session: AsyncSession, latest: dict[Any, Decimal], *, now: da
         else:
             rank = Decimal(index) / Decimal(denominator)
         previous_value, previous_rank = value, rank
-        scores[entity_id] = (rank * SCORE_SCALE).quantize(Decimal("0.000001"))
+        scores[entity_id] = rank * SCORE_SCALE
+    return scores
+
+
+async def _persist(session: AsyncSession, latest: dict[Any, Decimal], *, now: datetime) -> int:
+    scores = {
+        entity_id: score.quantize(Decimal("0.000001"))
+        for entity_id, score in standings(latest).items()
+    }
     scorable = await fetch(
         session,
         "SELECT id FROM entity WHERE id = ANY(:ids)"
