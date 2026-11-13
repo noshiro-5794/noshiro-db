@@ -154,7 +154,8 @@ async def _premieres_conflict(session: AsyncSession, left: Any, right: Any) -> b
     )
     if len(rows) < 2:
         return False
-    return abs(rows[0].premiered_on.year - rows[1].premiered_on.year) > 1
+    gap: int = abs(rows[0].premiered_on.year - rows[1].premiered_on.year)
+    return gap > 1
 
 
 async def _outcome(session: AsyncSession, left: Any, right: Any) -> str:
@@ -223,9 +224,7 @@ async def bind(
 
     result = await discover(session, limit=limit)
     summary = dict(result.summary())
-    summary.update(
-        {"candidates_created": 0, "candidates_existing": 0, "bound": 0, "abstained": 0}
-    )
+    summary.update({"candidates_created": 0, "candidates_existing": 0, "bound": 0, "abstained": 0})
     for left, right, mal_id in result.pairs:
         if left == right:
             continue
@@ -271,9 +270,9 @@ __all__ = [
     "ANILIST_ID_MAL_PREDICATE",
     "Discovery",
     "anilist_entities_for_mal_id",
+    "bind",
     "discover",
     "mal_representations",
-    "bind",
     "redirect_map",
     "resolve_with",
 ]
