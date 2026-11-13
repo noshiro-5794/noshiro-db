@@ -53,7 +53,7 @@ services:
     env_file:
       - *env-file
     command: >
-      celery -A api.worker.app worker -l info -Q ${API_V2_WORKER_QUEUES:-realtime}
+      celery -A api.worker.app worker -l info -Q ${API_V2_WORKER_QUEUES:-realtime,sync}
       --concurrency ${API_V2_WORKER_CONCURRENCY:-2}
     networks:
       - noshiro_net
