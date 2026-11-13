@@ -33,6 +33,13 @@ the media type (`TV`), the port was storing `tv`. Nothing else differed.
 
 Reproduce it with `scripts/shadow_import.sh` (fixture in `scripts/fixtures/mal_anime.json`).
 
+## How far along
+
+`python scripts/task_coverage.py` prints the number: **5 of 23 tasks**, counting only the
+names the replacement actually registers under a Django task name. Refresh it from the
+tool rather than from memory — the first estimates in this ledger were made by counting
+decorator lines and overstated the total.
+
 ## Not done
 
 Counted from the task modules' own imports:
