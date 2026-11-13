@@ -64,25 +64,30 @@ specifics, plus the matching engine for the last two groups.
 2. A moved task ships with a comparison against the old implementation, not just a test.
 3. Anything unverified is written down as unverified rather than omitted.
 
-## Which task is actually next
+## Which task is actually next — and why the tables below are a warning
 
-Measured, not guessed — lines of service layer each task pulls in:
+Two measurements were taken and they **contradict each other**, which is the useful result:
 
-| Lines | Task | Note |
-|---:|---|---|
-| 110 | `check_season_rollover_task` | smallest by a wide margin |
-| 145 | `refresh_bangumi_subjects_task` | needs the Bangumi client first |
-| 157 | `sync_subject_by_uuid_task` | same |
-| 208 | `run_season_pipeline_task` | |
-| 410 | `apply_match_proposals_task` | starts touching matching |
-| 439–489 | `recall_mal_links_task`, `run_airing_daily_task`, `sync_calendar_task`, `run_incremental_sync_task`, `run_mal_season_pipeline_task` | |
-| 748–806 | frontier probe, candidate sweep, Bangumi linking | |
-| 853 | `import_anilist_media_task` | new client and mapper |
-| 1043–2485 | campaign, VNDB incremental | the two heaviest |
-| ~1,278 | the three AI tasks | `ai/services` package, deepest coupling |
+| Task | Direct file | Transitive closure |
+|---|---:|---:|
+| `check_season_rollover_task` | 110 lines | **9,824 lines / 47 files** |
+| `sweep_match_candidates_task` | 774 lines | 96 lines / 2 files |
+| `import_mal_media_task` (done) | 361 lines | 2,538 lines / 17 files |
+| `run_vndb_incremental_task` | 2,485 lines | 9,153 lines / 37 files |
 
-For reference, `import_mal_media_task` — the one finished end to end — took 361 lines
-behind it plus a client. That is the unit of work this table measures.
+Neither number is trustworthy on its own:
+
+* The direct-file size misses orchestration. `check_season_rollover` is 110 lines of code
+  that calls four services (season pipeline, MAL schedule, AniList season, calendar sync) —
+  by transitive size it is the **largest** remaining task, not the smallest.
+* The static-import closure misses indirection. `sweep_match_candidates` shows 96 lines
+  because it imports `apps.index.services`, a re-export package rather than the modules
+  that do the work.
+
+**Do not schedule from either table.** The only dependable size signal here is the one
+finished task: `import_mal_media_task` needed ~2,500 lines of closure behind it, a client,
+a fixture, a real-database run and a shadow comparison. Assume the remaining tasks are of
+that order and pick by *reading what the task calls*, not by a line count.
 
 ## Starting the next task
 
