@@ -69,21 +69,50 @@ async def _rank(session: AsyncSession, *, work_type: str, source: str, metric: s
     )
 
 
-async def refresh(session: AsyncSession, *, now: datetime) -> int:
-    redirects = await _redirect_map(session)
+async def _series(
+    session: AsyncSession, redirects: dict[Any, Any], signal: tuple[str, str, str]
+) -> dict[Any, Decimal]:
+    """Raw reach per canonical entity, inside one signal's own population."""
+    work_type, source, metric = signal
     latest: dict[Any, Decimal] = {}
-    for work_type, source, metric in PRIMARY_SIGNALS:
-        for row in await _rank(session, work_type=work_type, source=source, metric=metric):
-            root = _resolve(redirects, row.entity_id)
-            current = latest.get(root)
-            if current is None or Decimal(str(row.value)) > current:
-                latest[root] = Decimal(str(row.value))
-    if not latest:
+    for row in await _rank(session, work_type=work_type, source=source, metric=metric):
+        root = _resolve(redirects, row.entity_id)
+        current = latest.get(root)
+        if current is None or Decimal(str(row.value)) > current:
+            latest[root] = Decimal(str(row.value))
+    return latest
+
+
+async def score_map(session: AsyncSession) -> dict[Any, Decimal]:
+    """The standing per canonical entity, before anything is written.
+
+    Each signal ranks inside its own population: a percentile computed across
+    anime and galgame together would compare numbers that count different
+    things. Exposed so a shadow run can diff this against the Django
+    implementation without either side persisting a row.
+    """
+    redirects = await _redirect_map(session)
+    scores: dict[Any, Decimal] = {}
+    for signal in PRIMARY_SIGNALS:
+        scores.update(standings(await _series(session, redirects, signal)))
+    return scores
+
+
+async def refresh(session: AsyncSession, *, now: datetime) -> int:
+    scores = await score_map(session)
+    if not scores:
         return 0
-    return await _persist(session, latest, now=now)
+    return await _persist(session, scores, now=now)
 
 
-async def _persist(session: AsyncSession, latest: dict[Any, Decimal], *, now: datetime) -> int:
+def standings(latest: dict[Any, Decimal]) -> dict[Any, Decimal]:
+    """Turn raw reach into a 0-100 percentile standing inside one series.
+
+    Kept separate from persistence so a shadow run can diff it against the
+    Django implementation without either side writing a row.
+    """
+    if not latest:
+        return {}
     ordered = sorted(latest.items(), key=lambda item: (item[1], str(item[0])))
     denominator = len(ordered) - 1
     scores: dict[Any, Decimal] = {}
@@ -99,7 +128,16 @@ async def _persist(session: AsyncSession, latest: dict[Any, Decimal], *, now: da
         else:
             rank = Decimal(index) / Decimal(denominator)
         previous_value, previous_rank = value, rank
-        scores[entity_id] = (rank * SCORE_SCALE).quantize(Decimal("0.000001"))
+        scores[entity_id] = rank * SCORE_SCALE
+    return scores
+
+
+async def _persist(
+    session: AsyncSession, standings_map: dict[Any, Decimal], *, now: datetime
+) -> int:
+    scores = {
+        entity_id: score.quantize(Decimal("0.000001")) for entity_id, score in standings_map.items()
+    }
     scorable = await fetch(
         session,
         "SELECT id FROM entity WHERE id = ANY(:ids)"
