@@ -180,6 +180,10 @@ async def _reconcile_official_mal_links(limit: int | None) -> dict[str, int]:
 )
 def reconcile_official_mal_links_task(limit: int | None = None) -> dict[str, int]:
     """Bind MAL works to their AniList twin through the official id."""
-    batch = limit if limit is not None else int(os.environ.get("MAL_IDENTITY_RECONCILE_BATCH_SIZE", "2000"))
+    batch = (
+        limit
+        if limit is not None
+        else int(os.environ.get("MAL_IDENTITY_RECONCILE_BATCH_SIZE", "2000"))
+    )
     result: dict[str, int] = run(_reconcile_official_mal_links(max(1, batch)))
     return result
