@@ -1,0 +1,193 @@
+# The production deployment, described as it actually runs.
+#
+# Written by reading the running containers, not by trusting the older compose files:
+# PostgreSQL is 18 (the infra file still says 15) and mounts /var/lib/postgresql rather
+# than /var/lib/postgresql/data, because the 18 image keeps PGDATA one level deeper.
+#
+# Nothing here starts on its own. This file is the reference an operator runs against:
+#
+#   ENV_FILE=/vol1/1000/projects/noshiro-db/app/apps/api/.env.production \
+#     docker compose -p noshiro-db -f deploy/compose.prod.yml config
+#
+# The Django web service is deliberately absent: it was retired when the FastAPI
+# replacement took the proxy. The Django image is still here because its Celery
+# workers run the sync, AI and scheduled jobs.
+name: noshiro-db
+
+x-env-file: &env-file ${ENV_FILE:-../../app/apps/api/.env.production}
+x-app-image: &app-image "${APP_IMAGE:-noshiro-db/api}:${APP_IMAGE_TAG:-prod}"
+x-api-v2-image: &api-v2-image "${API_V2_IMAGE:-noshiro-db/api-v2}:${API_V2_TAG:-local}"
+
+services:
+  api-v2:
+    image: *api-v2-image
+    restart: unless-stopped
+    init: true
+    env_file:
+      - *env-file
+    ports:
+      - "127.0.0.1:${API_V2_PORT:-8010}:8010"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:8010/health/ready/', timeout=3)
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - noshiro_net
+
+  worker-realtime:
+    image: *app-image
+    restart: unless-stopped
+    init: true
+    env_file:
+      - *env-file
+    healthcheck:
+      test: ["CMD", "/app/docker/celery_healthcheck.sh"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    command: >
+      celery --workdir /app/src -A config.celery:app worker -l info
+      -Q realtime
+      --concurrency ${CELERY_REALTIME_CONCURRENCY:-2}
+    networks:
+      - noshiro_net
+
+  worker-ai:
+    image: *app-image
+    restart: unless-stopped
+    init: true
+    env_file:
+      - *env-file
+    healthcheck:
+      test: ["CMD", "/app/docker/celery_healthcheck.sh"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    command: >
+      celery --workdir /app/src -A config.celery:app worker -l info
+      -Q ai
+      --concurrency ${CELERY_AI_CONCURRENCY:-8}
+    networks:
+      - noshiro_net
+
+  worker-sync:
+    image: *app-image
+    restart: unless-stopped
+    init: true
+    env_file:
+      - *env-file
+    healthcheck:
+      test: ["CMD", "/app/docker/celery_healthcheck.sh"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    command: >
+      celery --workdir /app/src -A config.celery:app worker -l info
+      -Q sync
+      --concurrency ${CELERY_SYNC_CONCURRENCY:-1}
+    networks:
+      - noshiro_net
+
+  beat:
+    image: *app-image
+    restart: unless-stopped
+    init: true
+    env_file:
+      - *env-file
+    healthcheck:
+      test: ["CMD", "/app/docker/beat_healthcheck.sh"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    command: celery --workdir /app/src -A config.celery:app beat -l info
+    networks:
+      - noshiro_net
+
+  postgres:
+    image: postgres:18-bookworm
+    restart: unless-stopped
+    shm_size: ${POSTGRES_SHM_SIZE:-512mb}
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-noshiro_db}
+      POSTGRES_USER: ${POSTGRES_USER:-noshiro}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      TZ: ${TZ:-Asia/Shanghai}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-noshiro} -d ${POSTGRES_DB:-noshiro_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    volumes:
+      # 18 keeps PGDATA under /var/lib/postgresql/18/docker, so the mount is the parent.
+      - ${NOSHIRO_DATA_ROOT:-/vol1/1000/services/noshiro-db/data}/postgres18:/var/lib/postgresql
+    networks:
+      - noshiro_net
+
+  redis-broker:
+    image: redis:7.4.10-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:${REDIS_BROKER_PORT:-6380}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    volumes:
+      - ${NOSHIRO_DATA_ROOT:-/vol1/1000/services/noshiro-db/data}/redis-broker:/data
+    networks:
+      - noshiro_net
+
+  redis-cache:
+    image: redis:7.4.10-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "no"]
+    ports:
+      - "127.0.0.1:${REDIS_CACHE_PORT:-6381}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    volumes:
+      - ${NOSHIRO_DATA_ROOT:-/vol1/1000/services/noshiro-db/data}/redis-cache:/data
+    networks:
+      - noshiro_net
+
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
+      TZ: ${TZ:-Asia/Shanghai}
+    command: server /data --console-address ":9001"
+    ports:
+      - "127.0.0.1:${MINIO_PORT:-9000}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - ${NOSHIRO_DATA_ROOT:-/vol1/1000/services/noshiro-db/data}/minio:/data
+    networks:
+      - noshiro_net
+
+networks:
+  noshiro_net:
+    name: noshiro_net
