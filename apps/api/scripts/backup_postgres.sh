@@ -4,14 +4,14 @@
 # Environment:
 #   POSTGRES_CONTAINER             container running PostgreSQL (noshiro-db-postgres-1)
 #   POSTGRES_USER / POSTGRES_DB    credentials used by pg_dump (noshiro / noshiro_db)
-#   NOSHIRO_BACKUP_ROOT            destination root (/vol1/1000/noshiro-backup)
+#   NOSHIRO_BACKUP_ROOT            destination root (/vol1/1000/backups/noshiro-db/legacy-user)
 #   POSTGRES_BACKUP_RETENTION_DAYS keep this many days of dumps (14)
 set -euo pipefail
 
 container="${POSTGRES_CONTAINER:-noshiro-db-postgres-1}"
 user_name="${POSTGRES_USER:-noshiro}"
 db_name="${POSTGRES_DB:-noshiro_db}"
-backup_root="${NOSHIRO_BACKUP_ROOT:-/vol1/1000/noshiro-backup}"
+backup_root="${NOSHIRO_BACKUP_ROOT:-/vol1/1000/backups/noshiro-db/legacy-user}"
 retention_days="${POSTGRES_BACKUP_RETENTION_DAYS:-14}"
 
 if [[ ! -d "${backup_root}" ]]; then

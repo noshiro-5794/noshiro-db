@@ -2,13 +2,13 @@
 # Phase 0 and 1 of docs-handover.md: start the replacement beside Django and prove
 # it before anything is routed to it. This script never touches the proxy.
 #
-#   REPO=/vol1/1000/noshiro/app SMOKE_EMAIL=... SMOKE_PASSWORD=... \
+#   REPO=/vol1/1000/projects/noshiro-db/app SMOKE_EMAIL=... SMOKE_PASSWORD=... \
 #     bash apps/api-v2/scripts/cutover.sh
 #
 # Exit codes: 0 ready and proven, 1 not ready, 2 smoke failed.
 set -euo pipefail
 
-REPO=${REPO:-/vol1/1000/noshiro/app}
+REPO=${REPO:-/vol1/1000/projects/noshiro-db/app}
 APP="$REPO/apps/api-v2"
 BASE=${BASE:-http://127.0.0.1:8010}
 ENV_FILE=${ENV_FILE:-../api/.env.production}

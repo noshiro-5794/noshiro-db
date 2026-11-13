@@ -34,9 +34,9 @@ Infrastructure images are pinned to avoid surprise minor-version drift:
 - MinIO `RELEASE.2025-09-07T16-13-09Z`
 
 Persistent data is rooted at `NOSHIRO_DATA_ROOT`, for example
-`/vol1/1000/noshiro-data`, with `postgres`, `redis-broker`, `redis-cache`, and `minio`
+`/vol1/1000/services/noshiro-db/data`, with `postgres`, `redis-broker`, `redis-cache`, and `minio`
 subdirectories. Backups use `NOSHIRO_BACKUP_ROOT`, for example
-`/vol1/1000/noshiro-backup`.
+`/vol1/1000/backups/noshiro-db/legacy-user`.
 
 ## Operations Scripts
 

@@ -6,8 +6,8 @@
 # point-in-time copy) before relying on it for recovery.
 set -euo pipefail
 
-data_root="${NOSHIRO_DATA_ROOT:-/vol1/1000/noshiro-data}"
-backup_root="${NOSHIRO_BACKUP_ROOT:-/vol1/1000/noshiro-backup}"
+data_root="${NOSHIRO_DATA_ROOT:-/vol1/1000/services/noshiro-db/data}"
+backup_root="${NOSHIRO_BACKUP_ROOT:-/vol1/1000/backups/noshiro-db/legacy-user}"
 source_dir="${data_root}/minio"
 stamp="$(date +%Y%m%d-%H%M%S)"
 target_dir="${backup_root}/minio/${stamp}"

@@ -8,7 +8,7 @@
 set -euo pipefail
 
 archive="${1:-}"
-target_dir="${2:-${NOSHIRO_DATA_ROOT:-/vol1/1000/noshiro-data}/minio}"
+target_dir="${2:-${NOSHIRO_DATA_ROOT:-/vol1/1000/services/noshiro-db/data}/minio}"
 
 if [[ -z "${archive}" || ! -f "${archive}" ]]; then
   echo "usage: restore_minio.sh <archive.tar> [target-directory]" >&2
