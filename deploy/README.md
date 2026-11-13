@@ -45,9 +45,11 @@ interchangeable in either direction.
 why the older api-v2 compose file's `../api/.env.production` default never worked there.
 
 **`NOSHIRO_DATA_ROOT` may already be set in that env file.** When it is, it wins over the
-default in this compose file — today it points at `/vol1/1000/noshiro-data`, the
-compatibility symlink to `services/noshiro-db/data`. The symlink must be updated or the
-env file changed before the link is removed.
+default in this compose file. On 2026-11-13 the env file, the backup scripts and the
+checkout-relative defaults were all moved to `/vol1/1000/services/noshiro-db/data`, the
+compatibility symlinks (`/vol1/1000/noshiro*`, `/vol1/noshiro-backup`) were removed, and
+the containers were recreated against the real paths — verified by starting the data tier
+and the API once, then stopping them again.
 
 ## Not in this file yet
 

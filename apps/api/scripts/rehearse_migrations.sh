@@ -9,7 +9,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${repo_root}"
 
 env_file="${ENV_FILE:-.env.production}"
-backup_root="${NOSHIRO_BACKUP_ROOT:-/vol1/1000/noshiro-backup}"
+backup_root="${NOSHIRO_BACKUP_ROOT:-/vol1/1000/backups/noshiro-db/legacy-user}"
 db_name="${POSTGRES_DB:-noshiro_db}"
 user_name="${POSTGRES_USER:-noshiro}"
 image="${APP_IMAGE:-noshiro-db/backend}:${APP_IMAGE_TAG:-local}"
