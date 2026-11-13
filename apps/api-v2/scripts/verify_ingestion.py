@@ -16,7 +16,7 @@ import sys
 import uuid
 
 from api.contexts.presentation.fragments import fetch
-from api.worker import entities, ingestion, records
+from api.worker import entities, ingestion, presentation, records
 from api.worker.session import _sessions
 
 PROVIDER = "vndb"
@@ -148,6 +148,94 @@ async def main() -> int:
                 f"entity={seen_map.entities} work={seen_map.works} "
                 f"representation={seen_map.representations}"
             )
+            names = await presentation.replace_names(
+                session,
+                entity_id=mapped.entity_id,
+                provider_record_id=written.record_id,
+                observation_id=observation_id,
+                original="Ingest Probe",
+                localized="ingest probe cn",
+            )
+            names_again = await presentation.replace_names(
+                session,
+                entity_id=mapped.entity_id,
+                provider_record_id=written.record_id,
+                observation_id=observation_id,
+                original="Ingest Probe",
+                localized="ingest probe cn",
+            )
+            described = await presentation.upsert_description(
+                session,
+                entity_id=mapped.entity_id,
+                provider_record_id=written.record_id,
+                observation_id=observation_id,
+                text="probe description",
+            )
+            media = await presentation.upsert_media(
+                session,
+                entity_id=mapped.entity_id,
+                provider_record_id=written.record_id,
+                observation_id=observation_id,
+                original="https://example.invalid/poster.jpg",
+                thumbnail="https://example.invalid/poster-thumb.jpg",
+            )
+            media_again = await presentation.upsert_media(
+                session,
+                entity_id=mapped.entity_id,
+                provider_record_id=written.record_id,
+                observation_id=observation_id,
+                original="https://example.invalid/poster.jpg",
+                thumbnail="https://example.invalid/poster-thumb.jpg",
+            )
+            listed = await presentation.ensure_membership(
+                session, entity_id=mapped.entity_id, work_type="anime"
+            )
+            print(
+                f"presentation: names={names} again={names_again} "
+                f"description={described} media={media} again={media_again} "
+                f"membership={listed}"
+            )
+            if names != 2:
+                failures.append(
+                    "the first write should record both the original and the translated name"
+                )
+            if names_again != 0:
+                failures.append("a repeat import must not add names")
+            if not described:
+                failures.append("a non-empty description must be recorded")
+            if media != 2 or media_again != 0:
+                failures.append("media should be recorded once and then reused")
+            if not listed:
+                failures.append("an anime work must be listed in its collection")
+
+            present = await fetch(
+                session,
+                """
+                SELECT
+                  (SELECT count(*) FROM entity_name
+                    WHERE entity_id = :entity) AS names,
+                  (SELECT count(*) FROM entity_description
+                    WHERE entity_id = :entity) AS descriptions,
+                  (SELECT count(*) FROM entity_media WHERE entity_id = :entity) AS media,
+                  (SELECT count(*) FROM curated_membership
+                    WHERE entity_id = :entity) AS memberships
+                """,
+                {"entity": mapped.entity_id},
+            )
+            seen_present = present[0]
+            print(
+                f"names={seen_present.names} descriptions={seen_present.descriptions} "
+                f"media={seen_present.media} memberships={seen_present.memberships}"
+            )
+            for label, value, expected in (
+                ("names", seen_present.names, 2),
+                ("descriptions", seen_present.descriptions, 1),
+                ("media", seen_present.media, 2),
+                ("memberships", seen_present.memberships, 1),
+            ):
+                if value != expected:
+                    failures.append(f"{label} should be {expected}, saw {value}")
+
             for label, value in (
                 ("entity row", seen_map.entities),
                 ("work row", seen_map.works),
