@@ -11,6 +11,7 @@ discovery half matches, because a mismatch there would silently merge the wrong 
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -126,12 +127,153 @@ async def discover(session: AsyncSession, *, limit: int | None = None) -> Discov
     return result
 
 
+OFFICIAL_POLICY = "official-mal-anilist-id-v1"
+BIND = "bind"
+ABSTAIN = "abstain"
+
+
+async def _work_types(session: AsyncSession, ids: list[Any]) -> set[str]:
+    rows = await fetch(
+        session,
+        "SELECT DISTINCT work_type FROM work WHERE entity_id = ANY(:ids)",
+        {"ids": ids},
+    )
+    return {row.work_type for row in rows}
+
+
+async def _premieres_conflict(session: AsyncSession, left: Any, right: Any) -> bool:
+    """A remake is not a duplicate: the same title a generation apart is a new work."""
+    rows = await fetch(
+        session,
+        """
+        SELECT premiered_on FROM anime_profile
+        WHERE work_id = ANY(:ids) AND premiered_on IS NOT NULL
+        ORDER BY premiered_on
+        """,
+        {"ids": [left, right]},
+    )
+    if len(rows) < 2:
+        return False
+    return abs(rows[0].premiered_on.year - rows[1].premiered_on.year) > 1
+
+
+async def _outcome(session: AsyncSession, left: Any, right: Any) -> str:
+    types = await _work_types(session, [left, right])
+    if types - {"anime"}:
+        return ABSTAIN
+    if await _premieres_conflict(session, left, right):
+        return ABSTAIN
+    return BIND
+
+
+async def _ensure_candidate(
+    session: AsyncSession, *, left: Any, right: Any, mal_id: int, create: bool
+) -> tuple[Any, bool]:
+    a, b = sorted((left, right), key=str)
+    rows = await fetch(
+        session,
+        "SELECT id, status FROM match_candidate WHERE left_entity_id = :a"
+        " AND right_entity_id = :b AND policy_version = :policy",
+        {"a": a, "b": b, "policy": OFFICIAL_POLICY},
+    )
+    if rows:
+        return rows[0], False
+    if not create:
+        return None, False
+    created = await fetch(
+        session,
+        """
+        INSERT INTO match_candidate
+          (id, left_entity_id, right_entity_id, score, runner_up_margin,
+           policy_version, status, hard_conflicts, created_at, updated_at)
+        VALUES (gen_random_uuid(), :a, :b, 1.0000, 1.0000, :policy, 'pending',
+                '[]'::jsonb, now(), now())
+        RETURNING id, status
+        """,
+        {"a": a, "b": b, "policy": OFFICIAL_POLICY},
+    )
+    candidate = created[0]
+    await fetch(
+        session,
+        """
+        INSERT INTO match_evidence
+          (candidate_id, evidence_type, value, weight, created_at, updated_at)
+        VALUES (:candidate, 'official_external_id', CAST(:value AS jsonb), 1.0000,
+                now(), now())
+        RETURNING id
+        """,
+        {
+            "candidate": candidate.id,
+            "value": json.dumps({"provider_pair": "mal:anilist", "external_id": mal_id}),
+        },
+    )
+    return candidate, True
+
+
+async def bind(
+    session: AsyncSession,
+    *,
+    create: bool = True,
+    apply: bool = True,
+    limit: int | None = None,
+    decided_by: str = "official_mal_id",
+) -> dict[str, int]:
+    """The binding half. Callers decide whether to commit: the verification path does not."""
+    from api.contexts.index import resolution
+
+    result = await discover(session, limit=limit)
+    summary = dict(result.summary())
+    summary.update(
+        {"candidates_created": 0, "candidates_existing": 0, "bound": 0, "abstained": 0}
+    )
+    for left, right, mal_id in result.pairs:
+        if left == right:
+            continue
+        candidate, created = await _ensure_candidate(
+            session, left=left, right=right, mal_id=mal_id, create=create
+        )
+        if candidate is None:
+            continue
+        summary["candidates_created" if created else "candidates_existing"] += 1
+        if not apply:
+            continue
+        if candidate.status != "pending":
+            continue
+        outcome = await _outcome(session, left, right)
+        reason = (
+            f"AniList explicitly references MAL {mal_id} for the same anime."
+            if outcome == BIND
+            else "Official MAL id conflicts with entity granularity."
+        )
+        try:
+            await resolution.decide(
+                session,
+                candidate_id=candidate.id,
+                outcome=outcome,
+                reason=reason,
+                decided_by=decided_by,
+            )
+        except resolution.ResolutionError:
+            await resolution.decide(
+                session,
+                candidate_id=candidate.id,
+                outcome="abstain",
+                reason="Official MAL id could not be bound safely.",
+                decided_by=decided_by,
+            )
+            summary["abstained"] += 1
+            continue
+        summary["bound" if outcome == BIND else "abstained"] += 1
+    return summary
+
+
 __all__ = [
     "ANILIST_ID_MAL_PREDICATE",
     "Discovery",
     "anilist_entities_for_mal_id",
     "discover",
     "mal_representations",
+    "bind",
     "redirect_map",
     "resolve_with",
 ]
