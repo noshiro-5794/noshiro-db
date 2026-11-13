@@ -165,3 +165,25 @@ def import_mal_media_task(mal_id: int, *, job_id: str | None = None) -> dict[str
     lease_owner = f"celery:{current_task.request.id}"
     result: dict[str, Any] = run(_import_mal_media(mal_id, job_id, lease_owner))
     return result
+
+
+async def _reconcile_official_mal_links(limit: int | None) -> dict[str, int]:
+    from api.worker import mal_identity
+
+    async with session_scope() as session:
+        result = await mal_identity.bind(session, create=True, apply=True, limit=limit)
+    return result
+
+
+@shared_task(  # type: ignore[untyped-decorator]
+    name="apps.sync.tasks.season.reconcile_official_mal_links_task", queue="sync"
+)
+def reconcile_official_mal_links_task(limit: int | None = None) -> dict[str, int]:
+    """Bind MAL works to their AniList twin through the official id."""
+    batch = (
+        limit
+        if limit is not None
+        else int(os.environ.get("MAL_IDENTITY_RECONCILE_BATCH_SIZE", "2000"))
+    )
+    result: dict[str, int] = run(_reconcile_official_mal_links(max(1, batch)))
+    return result
