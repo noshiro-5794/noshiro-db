@@ -107,6 +107,22 @@ finished task: `import_mal_media_task` needed ~2,500 lines of closure behind it,
 a fixture, a real-database run and a shadow comparison. Assume the remaining tasks are of
 that order and pick by *reading what the task calls*, not by a line count.
 
+## The task to take next
+
+`reconcile_official_mal_links_task` — 271 lines in `apps/index/services/mal_identity.py`,
+and the reasons are specific rather than size-based:
+
+* it is **database-only**: it reads AniList records for an official MAL id, finds the MAL
+  record for that id, and binds the pair. No HTTP client, no new provider surface.
+* the hard part it depends on — `entity_resolution_service.merge`, with the redirect,
+  the lifecycle change and the fact rebuild — is **already ported and verified** in
+  `contexts/index/resolution.py`, including the shadow run against Django.
+* its output is inspectable: a count of pairs bound, and the rows in `entity_redirect`
+  and `entity_merge_event` can be diffed against a Django run on the same sample.
+
+Everything after it needs either a new provider client (AniList, Bangumi) or the matching
+engine (candidate sweep, season pipeline, AI), which is why those stay untouched for now.
+
 ## Starting the next task
 
 The MAL path is the template. Copying it is the cheapest way to add a provider:
