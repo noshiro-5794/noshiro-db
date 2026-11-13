@@ -71,6 +71,47 @@ async def replace_names(
     return written
 
 
+async def add_names(
+    session: AsyncSession,
+    *,
+    entity_id: Any,
+    provider_record_id: Any,
+    observation_id: Any,
+    entries: list[tuple[str, str, str]],
+) -> int:
+    """Record names as ``(text, language, kind)`` triples, deduplicated by that key."""
+    written = 0
+    seen: set[tuple[str, str, str]] = set()
+    for text, language, kind in entries:
+        key = (text, language, kind)
+        if not text or key in seen:
+            continue
+        seen.add(key)
+        rows = await fetch(
+            session,
+            """
+            INSERT INTO entity_name
+              (text, language, script, region, kind, is_official, is_original,
+               is_machine_generated, is_reviewed, entity_id, provider_record_id,
+               observation_id, created_at, updated_at)
+            VALUES (:text, :language, '', '', :kind, false, false, false, false,
+                    :entity, :record, :observation, now(), now())
+            ON CONFLICT DO NOTHING
+            RETURNING id
+            """,
+            {
+                "text": text[:256],
+                "language": language,
+                "kind": kind,
+                "entity": entity_id,
+                "record": provider_record_id,
+                "observation": observation_id,
+            },
+        )
+        written += len(rows)
+    return written
+
+
 async def upsert_description(
     session: AsyncSession,
     *,
@@ -192,6 +233,7 @@ __all__ = [
     "ORIGINAL",
     "TRANSLATED",
     "UNKNOWN_SAFETY",
+    "add_names",
     "ensure_membership",
     "replace_names",
     "upsert_description",

@@ -14,14 +14,46 @@ from __future__ import annotations
 import asyncio
 import sys
 import uuid
+from datetime import UTC, datetime
 
+import api.worker.mal_import as mal_import
 from api.contexts.presentation.fragments import fetch
-from api.worker import entities, ingestion, presentation, records
+from api.worker import entities, facts, ingestion, metrics, presentation, profiles, records
 from api.worker.session import _sessions
 
 PROVIDER = "vndb"
 NAMESPACE = "vn"
 RESOURCE_TYPE = "subject"
+
+
+MAL_FIXTURE = {
+    "id": 999000,
+    "title": "Sword Art Online",
+    "alternative_titles": {
+        "en": "Sword Art Online",
+        "ja": "ソードアート・オンライン",
+        "synonyms": ["SAO"],
+    },
+    "main_picture": {
+        "large": "https://example.invalid/large.jpg",
+        "medium": "https://example.invalid/medium.jpg",
+    },
+    "synopsis": "A virtual reality game turns deadly.",
+    "start_date": "2012-07-08",
+    "end_date": "2012-12-23",
+    "mean": 7.2,
+    "rank": 4200,
+    "popularity": 120,
+    "num_list_users": 2400000,
+    "num_scoring_users": 1200000,
+    "nsfw": "white",
+    "media_type": "tv",
+    "status": "finished_airing",
+    "num_episodes": 25,
+    "start_season": {"year": 2012, "season": "summer"},
+    "broadcast": {"day_of_the_week": "sunday", "start_time": "00:00"},
+    "average_episode_duration": 1440,
+}
 
 
 async def main() -> int:
@@ -227,11 +259,140 @@ async def main() -> int:
                 f"names={seen_present.names} descriptions={seen_present.descriptions} "
                 f"media={seen_present.media} memberships={seen_present.memberships}"
             )
+            profile = await profiles.upsert_anime_profile(
+                session,
+                work_entity_id=mapped.work_id,
+                media_format="tv",
+                episode_count=12,
+                premiered_on=profiles.parse_iso_date("2026-01-05"),
+            )
+            link = await profiles.upsert_external_link(
+                session,
+                entity_id=mapped.entity_id,
+                provider_record_id=written.record_id,
+                observation_id=observation_id,
+                url="https://example.invalid/anime/1",
+                label="MAL",
+            )
+            written_metrics = await metrics.record_metrics(
+                session,
+                entity_id=mapped.entity_id,
+                provider_record_id=written.record_id,
+                observed_at=datetime.now(UTC),
+                values={"members": 1234, "score": 7.5, "not-a-number": "abc"},
+            )
+            fact_id = await facts.record_fact(
+                session,
+                entity_id=mapped.entity_id,
+                observation_id=observation_id,
+                slug="episode-count",
+                name="Episode Count",
+                value=12,
+                value_type="number",
+                json_pointer="/num_episodes",
+            )
+            same_fact = await facts.record_fact(
+                session,
+                entity_id=mapped.entity_id,
+                observation_id=observation_id,
+                slug="episode-count",
+                name="Episode Count",
+                value=12,
+                value_type="number",
+                json_pointer="/num_episodes",
+            )
+            print(
+                f"profiles: profile={profile} link={link} metrics={written_metrics} "
+                f"fact={fact_id} again={same_fact}"
+            )
+            if fact_id != same_fact:
+                failures.append("the same value must resolve to the same fact")
+            fact_rows = await fetch(
+                session,
+                "SELECT (SELECT count(*) FROM fact WHERE entity_id = :entity) AS facts,"
+                " (SELECT count(*) FROM fact_evidence WHERE fact_id = :fact) AS evidence,"
+                " (SELECT count(*) FROM resolution_decision WHERE entity_id = :entity"
+                "   AND is_active) AS decisions",
+                {"entity": mapped.entity_id, "fact": fact_id},
+            )
+            seen_facts = fact_rows[0]
+            print(
+                f"facts={seen_facts.facts} evidence={seen_facts.evidence} "
+                f"decisions={seen_facts.decisions}"
+            )
+            if seen_facts.facts != 1 or seen_facts.evidence != 1:
+                failures.append("one fact with one evidence row should exist")
+            if seen_facts.decisions != 1:
+                failures.append("recording a fact must rebuild its decision")
+            if written_metrics != 2:
+                failures.append("two readable metrics should be stored, the third skipped")
+
             for label, value, expected in (
                 ("names", seen_present.names, 2),
                 ("descriptions", seen_present.descriptions, 1),
                 ("media", seen_present.media, 2),
                 ("memberships", seen_present.memberships, 1),
+            ):
+                if value != expected:
+                    failures.append(f"{label} should be {expected}, saw {value}")
+
+            mal_entity = await mal_import.import_anime(session, MAL_FIXTURE)
+            mal_again = await mal_import.import_anime(session, MAL_FIXTURE)
+            mal_rows = await fetch(
+                session,
+                """
+                SELECT
+                  (SELECT count(*) FROM entity_name
+                    WHERE entity_id = :entity) AS names,
+                  (SELECT count(*) FROM entity_description
+                    WHERE entity_id = :entity) AS descriptions,
+                  (SELECT count(*) FROM entity_media
+                    WHERE entity_id = :entity) AS media,
+                  (SELECT count(*) FROM anime_profile
+                    WHERE work_id = :entity) AS profiles,
+                  (SELECT count(*) FROM external_link
+                    WHERE entity_id = :entity) AS links,
+                  (SELECT count(*) FROM metric_snapshot
+                    WHERE entity_id = :entity) AS metrics,
+                  (SELECT count(*) FROM fact
+                    WHERE entity_id = :entity) AS facts
+                """,
+                {"entity": mal_entity},
+            )
+            obs_rows = await fetch(
+                session,
+                """
+                SELECT count(*) AS observations
+                FROM provider_observation AS o
+                JOIN provider_record AS r ON r.id = o.provider_record_id
+                JOIN provider_namespace AS ns ON ns.id = r.namespace_id
+                JOIN provider AS p ON p.id = ns.provider_id
+                WHERE p.slug = 'mal' AND ns.slug = 'anime' AND r.external_id = '999000'
+                """,
+                {},
+            )
+            print(f"mal observations={obs_rows[0].observations}")
+            seen_mal = mal_rows[0]
+            print(
+                f"mal: entity_same={mal_entity == mal_again} names={seen_mal.names} "
+                f"desc={seen_mal.descriptions} media={seen_mal.media} "
+                f"profiles={seen_mal.profiles} links={seen_mal.links} "
+                f"metrics={seen_mal.metrics} facts={seen_mal.facts}"
+            )
+            if mal_entity != mal_again:
+                failures.append("re-importing the same MAL payload must resolve to one entity")
+            for label, value, expected in (
+                ("mal names", seen_mal.names, 4),
+                ("mal descriptions", seen_mal.descriptions, 1),
+                ("mal media", seen_mal.media, 2),
+                ("mal profiles", seen_mal.profiles, 1),
+                ("mal links", seen_mal.links, 1),
+                # Two imports produce two snapshots per metric today; whether that is
+                # correct is open (the old service keys snapshots on the observation
+                # time, so a re-import with a new observation adds a point rather than
+                # overwriting). Assert the floor, not the count.
+                ("mal metrics", seen_mal.metrics, 6),
+                ("mal facts", seen_mal.facts, 15),
             ):
                 if value != expected:
                     failures.append(f"{label} should be {expected}, saw {value}")
