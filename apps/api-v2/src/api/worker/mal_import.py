@@ -175,7 +175,7 @@ async def import_anime(session: AsyncSession, item: dict[str, Any]) -> Any:
         session,
         entity_id=mapped.entity_id,
         provider_record_id=written.record_id,
-        observed_at=__import__("datetime").datetime.now(__import__("datetime").timezone.utc),
+        observed_at=await ingestion_module.observed_at(session, observation_id),
         values={
             "members": item.get("num_list_users"),
             "scoring-users": item.get("num_scoring_users"),

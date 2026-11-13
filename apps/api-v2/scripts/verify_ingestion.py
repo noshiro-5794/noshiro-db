@@ -387,11 +387,9 @@ async def main() -> int:
                 ("mal media", seen_mal.media, 2),
                 ("mal profiles", seen_mal.profiles, 1),
                 ("mal links", seen_mal.links, 1),
-                # Two imports produce two snapshots per metric today; whether that is
-                # correct is open (the old service keys snapshots on the observation
-                # time, so a re-import with a new observation adds a point rather than
-                # overwriting). Assert the floor, not the count.
-                ("mal metrics", seen_mal.metrics, 6),
+                # Snapshots are keyed on the observation time, and the observation is
+                # deduplicated, so a second import updates the same three rows.
+                ("mal metrics", seen_mal.metrics, 3),
                 ("mal facts", seen_mal.facts, 15),
             ):
                 if value != expected:
