@@ -335,6 +335,13 @@ async def _rebuild(session: AsyncSession, *, root: Any, predicate_id: Any, langu
         )
 
 
+async def rebuild_fact(
+    session: AsyncSession, *, entity_id: Any, predicate_id: Any, language: str
+) -> None:
+    root = await resolve(session, entity_id)
+    await _rebuild(session, root=root, predicate_id=predicate_id, language=language)
+
+
 async def rebuild_entity(session: AsyncSession, entity_id: Any) -> int:
     root = await resolve(session, entity_id)
     ids = await cluster_ids(session, root)
