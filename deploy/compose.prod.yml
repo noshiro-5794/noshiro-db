@@ -55,6 +55,16 @@ services:
     command: >
       celery -A api.worker.app worker -l info -Q ${API_V2_WORKER_QUEUES:-realtime,sync}
       --concurrency ${API_V2_WORKER_CONCURRENCY:-2}
+    # A worker whose broker connection dropped still runs; it just never receives
+    # anything. Asking the worker itself is the only check that notices.
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - celery -A api.worker.app inspect ping --timeout 10 -d celery@$$HOSTNAME || exit 1
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 30s
     networks:
       - noshiro_net
 
