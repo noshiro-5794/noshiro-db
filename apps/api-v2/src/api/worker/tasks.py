@@ -6,9 +6,11 @@ picks up the same messages, so moving one is a container flip, not a release.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from datetime import UTC, datetime
+from typing import Any
 
 from celery import shared_task
 
@@ -107,4 +109,59 @@ async def _refresh_popularity() -> dict[str, int]:
 )
 def refresh_popularity_task() -> dict[str, int]:
     result: dict[str, int] = run(_refresh_popularity())
+    return result
+
+
+async def _import_mal_media(mal_id: int, job_id: str | None, lease_owner: str) -> dict[str, Any]:
+    from api.worker import mal_import
+    from api.worker.providers.mal import MALClient
+
+    async with session_scope() as session:
+        if job_id and not await jobs.claim(
+            session, job_id=job_id, lease_owner=lease_owner, lease_seconds=960
+        ):
+            return {"skipped": True, "reason": "job already claimed"}
+        await jobs.mark_running(
+            session,
+            job_id=job_id,
+            total_count=1,
+            current_label=f"Importing MAL {mal_id}",
+            lease_owner=lease_owner,
+        )
+        try:
+            payload = await asyncio.to_thread(MALClient().fetch_anime, mal_id)
+            entity_id = await mal_import.import_anime(session, payload)
+            result = {
+                "entity_id": str(entity_id),
+                "provider": "mal",
+                "external_id": mal_id,
+            }
+            await jobs.advance(
+                session,
+                job_id=job_id,
+                processed=1,
+                synced=1,
+                current_label=f"Imported MAL {mal_id}",
+                lease_owner=lease_owner,
+            )
+            await jobs.mark_succeeded(
+                session, job_id=job_id, result=result, lease_owner=lease_owner
+            )
+            return result
+        except Exception as error:
+            await jobs.mark_failed(session, job_id=job_id, error=error, lease_owner=lease_owner)
+            raise
+
+
+@shared_task(  # type: ignore[untyped-decorator]
+    name="apps.sync.tasks.mal.import_mal_media_task",
+    queue="sync",
+    soft_time_limit=900,
+    time_limit=960,
+)
+def import_mal_media_task(mal_id: int, *, job_id: str | None = None) -> dict[str, Any]:
+    from celery import current_task
+
+    lease_owner = f"celery:{current_task.request.id}"
+    result: dict[str, Any] = run(_import_mal_media(mal_id, job_id, lease_owner))
     return result

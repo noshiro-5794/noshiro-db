@@ -156,7 +156,7 @@ async def import_anime(session: AsyncSession, item: dict[str, Any]) -> Any:
     await profiles.upsert_anime_profile(
         session,
         work_entity_id=mapped.work_id,
-        media_format=str(item.get("media_type") or ""),
+        media_format=str(item.get("media_type") or "").upper(),
         episode_count=item.get("num_episodes")
         if isinstance(item.get("num_episodes"), int)
         else None,
