@@ -21,6 +21,7 @@ result.
 | Facts + evidence + decision rebuild | `worker/facts.py` | real DB run: same value → same fact, one decision |
 | MAL importer | `worker/mal_import.py` | real DB run + **shadow comparison** below |
 | Mal import task | `worker/tasks.py` | same name, queue and lifecycle as the Django task |
+| Official MAL id reconciliation | `worker/mal_identity.py` | read-only parity with Django at 200 and 5,000 records; synthetic pending pair merged and rolled back (1 redirect, 1 merge event, source `merged`, 1 decision) |
 
 ## Runtime, verified in containers
 
@@ -53,7 +54,7 @@ Reproduce it with `scripts/shadow_import.sh` (fixture in `scripts/fixtures/mal_a
 
 ## How far along
 
-`python scripts/task_coverage.py` prints the number: **5 of 23 tasks**, counting only the
+`python scripts/task_coverage.py` prints the number: **6 of 23 tasks**, counting only the
 names the replacement actually registers under a Django task name. Refresh it from the
 tool rather than from memory — the first estimates in this ledger were made by counting
 decorator lines and overstated the total.
