@@ -16,7 +16,7 @@ import sys
 import uuid
 
 from api.contexts.presentation.fragments import fetch
-from api.worker import ingestion, records
+from api.worker import entities, ingestion, records
 from api.worker.session import _sessions
 
 PROVIDER = "vndb"
@@ -109,6 +109,53 @@ async def main() -> int:
                 f"observation={seen.observations} mapping_run={seen.runs} "
                 f"current={seen.current} mapped+hash={seen.shaped}"
             )
+            mapped = await entities.map_work(
+                session,
+                provider_record_id=written.record_id,
+                mapped_data={"subject_type": "anime", "nsfw": False},
+            )
+            again_mapped = await entities.map_work(
+                session,
+                provider_record_id=written.record_id,
+                mapped_data={"subject_type": "anime", "nsfw": False},
+            )
+            print(
+                f"map_work: entity={mapped.entity_id} work={mapped.work_id} "
+                f"created={mapped.created} then created={again_mapped.created}"
+            )
+            if mapped.created is not True:
+                failures.append("the first mapping must create an entity")
+            if again_mapped.created:
+                failures.append("a second mapping of the same record must reuse the entity")
+            if again_mapped.entity_id != mapped.entity_id:
+                failures.append("the same record must resolve to the same entity")
+
+            mapped_rows = await fetch(
+                session,
+                """
+                SELECT
+                  (SELECT count(*) FROM entity WHERE id = :entity) AS entities,
+                  (SELECT count(*) FROM work WHERE entity_id = :entity
+                     AND work_type = 'anime') AS works,
+                  (SELECT count(*) FROM entity_representation
+                    WHERE provider_record_id = :record AND entity_id = :entity
+                      AND is_active) AS representations
+                """,
+                {"entity": mapped.entity_id, "record": written.record_id},
+            )
+            seen_map = mapped_rows[0]
+            print(
+                f"entity={seen_map.entities} work={seen_map.works} "
+                f"representation={seen_map.representations}"
+            )
+            for label, value in (
+                ("entity row", seen_map.entities),
+                ("work row", seen_map.works),
+                ("representation row", seen_map.representations),
+            ):
+                if value != 1:
+                    failures.append(f"{label} should be exactly 1, saw {value}")
+
             for label, value in (
                 ("observation row", seen.observations),
                 ("mapping run", seen.runs),
