@@ -124,6 +124,29 @@ and the reasons are specific rather than size-based:
 Everything after it needs either a new provider client (AniList, Bangumi) or the matching
 engine (candidate sweep, season pipeline, AI), which is why those stay untouched for now.
 
+## Calendar write contract (found, not guessed)
+
+The parse layer is done (`worker/calendar.py`). What the write layer must respect, read
+from the live schema:
+
+**`airing_board`** — `season_key`, `status`, `item_count`, `metadata` (jsonb),
+`effective_from`, `effective_until`, `observation_id`. There is a **partial unique index on
+`status = 'active'`**, so only one active board can exist: replacing the board means
+flipping the old row before inserting the new one, inside one transaction.
+
+**`airing_event`** — `work_id` and `collection_doing` are required; `starts_at`,
+`episode_entity_id` and `weekday` are nullable; `timezone`, `region`, `precision` and
+`raw_value` are required. Its uniqueness includes **`observation_id`**, so the same event
+recorded under two observations is two rows — history is preserved on purpose, and
+"current" is decided by the board's observation rather than by deleting old rows.
+
+Two consequences worth stating before writing code:
+
+* a board swap cannot be two independent inserts — the partial unique index rejects the
+  second active row;
+* the diff against the previous calendar is a *report*, not a delete: previous rows stay,
+  and `previous_calendar_item_ids` reads them back through the last calendar observation.
+
 ## Starting the next task
 
 The MAL path is the template. Copying it is the cheapest way to add a provider:
