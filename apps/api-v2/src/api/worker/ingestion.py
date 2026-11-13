@@ -79,6 +79,18 @@ async def _select_current(
     )
 
 
+async def observed_at(session: AsyncSession, observation_id: Any) -> Any:
+    """The observation's own timestamp, which is the key its metrics are stored under."""
+    rows = await fetch(
+        session,
+        "SELECT observed_at FROM provider_observation WHERE id = :id",
+        {"id": observation_id},
+    )
+    if not rows:
+        raise LookupError(f"observation {observation_id} does not exist")
+    return rows[0].observed_at
+
+
 async def record_observation(
     session: AsyncSession,
     *,
@@ -229,4 +241,10 @@ async def record_observation(
     return observation_id
 
 
-__all__ = ["LEGACY_ORIGIN", "MAPPED_ORIGIN", "normalized_hash", "record_observation"]
+__all__ = [
+    "LEGACY_ORIGIN",
+    "MAPPED_ORIGIN",
+    "normalized_hash",
+    "observed_at",
+    "record_observation",
+]
