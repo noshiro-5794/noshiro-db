@@ -22,6 +22,24 @@ result.
 | MAL importer | `worker/mal_import.py` | real DB run + **shadow comparison** below |
 | Mal import task | `worker/tasks.py` | same name, queue and lifecycle as the Django task |
 
+## Runtime, verified in containers
+
+The worker was started from the production compose against the rebuilt image and consumed
+a real message from the `sync` queue:
+
+```
+Task apps.sync.tasks.maintenance.scan_stale_sync_jobs received
+Task apps.sync.tasks.maintenance.scan_stale_sync_jobs succeeded in 0.06s: {'stale_jobs': 0}
+sync queue: 0
+```
+
+Two failures surfaced only here, both silent in every other kind of check:
+
+* the engine was created once per process, so the **second** task died with
+  `attached to a different loop` — each Celery task gets a fresh event loop;
+* the worker listened on `realtime` while routing published to `sync`, so the message sat
+  unread. Both are now covered by checks in `scripts/` that run in CI.
+
 ## The shadow comparison that has been run
 
 Same fixture payload through the Django importer and through the port, one transaction per

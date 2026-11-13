@@ -51,6 +51,29 @@ compatibility symlinks (`/vol1/1000/noshiro*`, `/vol1/noshiro-backup`) were remo
 the containers were recreated against the real paths — verified by starting the data tier
 and the API once, then stopping them again.
 
+## Moving a queue from the Django worker to this one
+
+The replacement registers the same task names on the same queues, so a queue moves by
+changing who is listening — not by a code change.
+
+```sh
+# 1. stop the Django worker that owns the queue
+docker stop noshiro-db-worker-sync-1
+
+# 2. point the replacement worker at that queue and start it
+API_V2_WORKER_QUEUES=realtime,sync docker compose -p noshiro-db \
+  -f deploy/compose.prod.yml --env-file "$ENV_FILE" up -d worker-api-v2
+
+# 3. confirm it is consuming rather than idling
+docker logs --tail 20 noshiro-db-worker-api-v2-1
+```
+
+Roll back by starting the Django worker again and stopping `worker-api-v2`: whichever
+worker is up consumes the message, and running both only splits them.
+
+When a queue moves, remove it from the migration set in `scripts/queue_check.py` in the
+same change, or the gate will keep reporting it as routed but unconsumed.
+
 ## Not in this file yet
 
 - **MCP**: the older app compose has an `mcp` profile that publishes container port 8010
