@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 
 from celery import shared_task
 
+from api.contexts.presentation.fragments import fetch
 from api.worker import jobs
 from api.worker.runtime import run
 from api.worker.session import session_scope
@@ -57,3 +58,53 @@ def worker_heartbeat() -> dict[str, str | bool]:
         return {"heartbeat_at": now.isoformat(), "published": False}
     Redis.from_url(url).set("noshiro:beat:heartbeat", now.isoformat(), ex=180)
     return {"heartbeat_at": now.isoformat(), "published": True}
+
+
+async def _scan_stale_sync_states(threshold_seconds: int) -> dict[str, int]:
+    from datetime import timedelta
+
+    cutoff = datetime.now(UTC) - timedelta(seconds=max(60, threshold_seconds))
+    async with session_scope() as session:
+        stale = await fetch(
+            session,
+            "SELECT DISTINCT task_name FROM sync_state WHERE shard = 'main'"
+            " AND status = 'running' AND updated_at < :cutoff",
+            {"cutoff": cutoff},
+        )
+        for row in stale:
+            await fetch(
+                session,
+                "UPDATE sync_state SET status = 'failed', fail_count = fail_count + 1,"
+                " updated_at = now() WHERE task_name = :name AND shard = 'main'"
+                " AND status = 'running' RETURNING id",
+                {"name": row.task_name},
+            )
+            logger.warning("Stale incremental sync state unlocked: %s", row.task_name)
+    return {"stale_states": len(stale)}
+
+
+@shared_task(  # type: ignore[untyped-decorator]
+    name="apps.sync.tasks.maintenance.scan_stale_sync_states", queue="realtime"
+)
+def scan_stale_sync_states() -> dict[str, int]:
+    import os
+
+    threshold = int(os.environ.get("SYNC_STALE_STATE_SECONDS", "5400"))
+    result: dict[str, int] = run(_scan_stale_sync_states(threshold))
+    return result
+
+
+async def _refresh_popularity() -> dict[str, int]:
+    from api.worker import catalogue
+
+    async with session_scope() as session:
+        scored = await catalogue.refresh(session, now=datetime.now(UTC))
+    return {"scored": scored}
+
+
+@shared_task(  # type: ignore[untyped-decorator]
+    name="apps.index.tasks.popularity.refresh_popularity_task", queue="realtime"
+)
+def refresh_popularity_task() -> dict[str, int]:
+    result: dict[str, int] = run(_refresh_popularity())
+    return result

@@ -7,6 +7,8 @@ from api.worker.app import app
 DJANGO_NAMES = {
     "apps.sync.tasks.maintenance.scan_stale_sync_jobs",
     "apps.sync.tasks.maintenance.worker_heartbeat",
+    "apps.sync.tasks.maintenance.scan_stale_sync_states",
+    "apps.index.tasks.popularity.refresh_popularity_task",
 }
 
 
