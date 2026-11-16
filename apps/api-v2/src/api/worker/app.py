@@ -11,7 +11,14 @@ import os
 
 from celery import Celery
 
-from api.worker import ai_tasks, frontier_tasks, match_application, matching_tasks, tasks  # noqa: F401  registers the tasks
+from api.worker import (  # noqa: F401  registers the tasks
+    ai_tasks,
+    frontier_tasks,
+    match_application,
+    matching_tasks,
+    tasks,
+    vndb_tasks,
+)
 
 app = Celery("noshiro-worker", broker=os.environ.get("CELERY_BROKER_URL", ""))
 
