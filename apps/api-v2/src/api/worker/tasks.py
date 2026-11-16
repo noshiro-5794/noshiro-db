@@ -356,13 +356,11 @@ async def _run_airing_daily(
     anilist = AniListClient()
     bangumi = BangumiClient()
 
+    async def fetch_anime(external_id: int) -> dict[str, Any]:
+        return await asyncio.to_thread(mal.fetch_anime, external_id)
+
     async def fetch_media(external_id: int) -> dict[str, Any]:
-        # The caller knows which provider the target belongs to only by the importer it
-        # ends up in, so this resolves against whichever client answers.
-        try:
-            return await asyncio.to_thread(mal.fetch_anime, external_id)
-        except Exception:
-            return await asyncio.to_thread(anilist.fetch_media, external_id)
+        return await asyncio.to_thread(anilist.fetch_media, external_id)
 
     async def fetch_subject(external_id: int) -> dict[str, Any]:
         return await asyncio.to_thread(bangumi.fetch_subject, external_id)
@@ -393,6 +391,7 @@ async def _run_airing_daily(
                 session,
                 now=datetime.now(UTC),
                 batch_size=batch_size or int(os.environ.get("AIRING_DAILY_BATCH_SIZE", "100")),
+                fetch_anime=fetch_anime,
                 fetch_media=fetch_media,
                 fetch_subject=fetch_subject,
                 import_anime=import_anime,

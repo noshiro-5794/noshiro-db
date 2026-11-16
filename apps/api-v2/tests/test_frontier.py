@@ -14,7 +14,7 @@ START = Frontier(highest_existing_id=100, probed_to=100, seed=100)
 def exists_up_to(highest: int):
     def fetch(value: int) -> dict[str, int]:
         if value > highest:
-            raise ProviderError("not found", is_not_found=True)
+            raise ProviderError("not found", status_code=404)
         return {"id": value}
 
     return fetch
@@ -38,7 +38,7 @@ def test_a_window_ends_the_walk_before_the_frontier() -> None:
 def test_a_provider_error_is_not_a_miss() -> None:
     def fetch(value: int) -> dict[str, int]:
         if value == 103:
-            raise ProviderError("rate limited", is_not_found=False)
+            raise ProviderError("rate limited", status_code=429)
         return {"id": value}
 
     result = walk(fetch, start=START, window=50, max_misses=3)
@@ -71,9 +71,9 @@ def test_a_missing_run_stops_at_the_first_miss_limit() -> None:
 def test_gaps_inside_the_space_do_not_look_like_the_end() -> None:
     def fetch(value: int) -> dict[str, int]:
         if value in (102, 104):
-            raise ProviderError("not found", is_not_found=True)
+            raise ProviderError("not found", status_code=404)
         if value > 106:
-            raise ProviderError("not found", is_not_found=True)
+            raise ProviderError("not found", status_code=404)
         return {"id": value}
 
     result = walk(fetch, start=START, window=50, max_misses=2)
@@ -84,7 +84,7 @@ def test_gaps_inside_the_space_do_not_look_like_the_end() -> None:
 def test_a_failure_on_the_last_allowed_probe_keeps_its_reason() -> None:
     def fetch(value: int) -> dict[str, int]:
         if value == 102:
-            raise ProviderError("rate limited", is_not_found=False)
+            raise ProviderError("rate limited", status_code=429)
         return {"id": value}
 
     result = walk(fetch, start=START, window=2, max_misses=3)

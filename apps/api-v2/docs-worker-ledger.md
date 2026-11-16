@@ -212,3 +212,25 @@ The MAL path is the template. Copying it is the cheapest way to add a provider:
   `ON CONFLICT` target must carry the same predicate.
 - `work` has no `id`; its key is `entity_id`.
 - DATE parameters must be `date` objects, not strings.
+
+
+## 2026-11-16 continuation
+
+Worker registration coverage is 11/30. `frontier_tasks.py` now registers the provider
+frontier task and preserves the MAL/anime and Bangumi/subject seed rules, leases,
+limits and job lifecycle. Frontier walking uses the HTTP clients' shared `ProviderError`
+so an actual 404 contributes to the missing-record run. The former local exception
+class could not catch errors raised by those clients.
+
+Daily airing refresh now fetches MAL and AniList separately by the target's provider.
+It no longer tries a MAL id before fetching an AniList record. A completed daily window
+also skips its final target on subsequent invocations.
+
+Validation: lint, format, strict typing and 198 offline tests passed. Tests cover provider
+dispatch, completed windows, retry cursor, frontier seed configuration, lease rejection
+and registration on the Celery application. The new frontier task has not yet been run
+against a real database or broker. Registration coverage is not runtime verification.
+
+The local changes from the earlier `feat/worker-records` checkout are preserved in the
+Git stash named `preserve pre-refactor local worker changes 2026-11-16`. Work continues
+on `codex/complete-api-migration`, based on `0864f3c` from origin/main.

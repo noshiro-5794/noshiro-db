@@ -131,7 +131,9 @@ async def start_window(
         status = rows[0].status
     if status == RUNNING:
         return None
-    start = min(current_id, total_count - 1)
+    if status == FINISHED or current_id >= total_count:
+        return total_count, total_count - 1
+    start = max(0, current_id)
     end = min(start + max(1, batch_size) - 1, total_count - 1)
     await fetch(
         session,
@@ -173,6 +175,7 @@ async def sync_day(
     *,
     now: Any,
     batch_size: int,
+    fetch_anime: Any,
     fetch_media: Any,
     fetch_subject: Any,
     import_anime: Any,
@@ -183,9 +186,8 @@ async def sync_day(
 
     The importers are passed in rather than constructed here so the whole flow can be
     driven without a network, and so this module never grows a second copy of the mapping
-    rules. A target that fails is counted and the window continues: one broken subject must
-    not stop the day, and the next window retries it because ``current_id`` only advances
-    past what succeeded.
+    rules. A failed target stops the window so a later invocation retries it. The cursor
+    advances only after a successful import.
     """
     targets, season_key = await board_targets(session)
     shard = shard_for(now, season_key=season_key)
@@ -204,7 +206,7 @@ async def sync_day(
         for index in range(start, end + 1):
             target = targets[index]
             if target.provider_slug == "mal":
-                media = await fetch_media(int(target.external_id))
+                media = await fetch_anime(int(target.external_id))
                 await import_anime(session, media)
             elif target.provider_slug == "anilist":
                 media = await fetch_media(int(target.external_id))
