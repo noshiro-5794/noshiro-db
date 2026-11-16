@@ -26,6 +26,12 @@ REGISTERED = re.compile(r'(?<![\w.])name="([\w.]+)"')
 # stay strict.
 IGNORED_NAMES: set[str] = set()
 
+# A registration that disappears is invisible: the task simply stops existing, and the
+# only symptom is that the old worker keeps running it. That already happened once — a
+# branch rebuilt from a stale checkout deleted 171 lines of registrations. The floor makes
+# any drop a failing check; raise it whenever a task is added, never lower it silently.
+MIN_REGISTERED = 9
+
 
 def django_tasks() -> dict[str, str]:
     """Task function name -> the module path it lives in."""
@@ -86,6 +92,12 @@ def main() -> int:
     print("missing:")
     for name in result["missing"]:
         print(f"  - {name}")
+    if result["taken"] < MIN_REGISTERED:
+        print(
+            f"REGRESSION: {result['taken']} registered tasks, floor is {MIN_REGISTERED}"
+            " — a registration was probably removed"
+        )
+        return 1
     if result["unknown"]:
         print("registered but unknown to Django (typo?):")
         for name in result["unknown"]:
