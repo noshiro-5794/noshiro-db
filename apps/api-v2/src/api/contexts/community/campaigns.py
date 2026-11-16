@@ -308,9 +308,6 @@ AI_MODES = ("off", "shadow", "assisted", "required")
 
 
 async def create_campaign(session: AsyncSession, *, body: dict[str, Any]) -> dict[str, Any]:
-    import json
-    import uuid
-
     errors: dict[str, list[str]] = {}
     provider = body.get("provider")
     if provider not in PROVIDERS:
@@ -335,25 +332,23 @@ async def create_campaign(session: AsyncSession, *, body: dict[str, Any]) -> dic
             {"provider": provider, "campaign_type": campaign_type, "key": key},
         )
         if existing:
-            return await campaign(session, campaign_id=str(existing[0].id))
-    rows = await fetch(
+            campaign_id = str(existing[0].id)
+            data = await campaign(session, campaign_id=campaign_id)
+            if data["status"] == "queued":
+                await session.commit()
+                publish(SYNC_TASK, sync_kwargs(campaign_id=campaign_id))
+            return data
+    from api.contexts.synchronization.campaigns import create_campaign as create_record
+
+    identifier = await create_record(
         session,
-        "INSERT INTO sync_campaign (id, provider_slug, campaign_type, status, ai_mode,"
-        " parameters, total_items, processed_items, synced_items, skipped_items,"
-        " failed_items, error, created_at, updated_at, idempotency_key, lease_owner)"
-        " VALUES (:id, :provider, :campaign_type, 'queued', :ai_mode,"
-        " CAST(:parameters AS jsonb), 0, 0, 0, 0, 0, '', now(), now(), :key, '')"
-        " RETURNING id",
-        {
-            "id": str(uuid.uuid4()),
-            "provider": provider,
-            "campaign_type": campaign_type,
-            "ai_mode": ai_mode,
-            "parameters": json.dumps(parameters),
-            "key": key,
-        },
+        provider=str(provider),
+        campaign_type=str(campaign_type),
+        ai_mode=str(ai_mode),
+        parameters=parameters,
+        idempotency_key=key,
     )
-    campaign_id = str(rows[0].id)
-    publish(SYNC_TASK, sync_kwargs(campaign_id=campaign_id))
+    campaign_id = str(identifier)
     await session.commit()
+    publish(SYNC_TASK, sync_kwargs(campaign_id=campaign_id))
     return await campaign(session, campaign_id=campaign_id)

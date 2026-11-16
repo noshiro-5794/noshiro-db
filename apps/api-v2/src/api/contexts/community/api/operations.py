@@ -262,3 +262,26 @@ async def decide_candidate(
     except resolution.ResolutionError as error:
         raise ProblemError(status_code=409, detail=str(error)) from error
     return JSONResponse(payload)
+
+
+@router.post("/sync/{campaign_id}/{action}/")
+async def control_campaign(
+    campaign_id: str,
+    action: str,
+    session: SessionDep,
+    user: Annotated[Any, Depends(staff_user)],
+) -> dict[str, Any]:
+    from api.contexts.synchronization.campaigns import control
+    from api.contexts.synchronization.domain import UnsupportedAction
+    from api.shared.dispatch import SYNC_TASK, publish, sync_kwargs
+
+    try:
+        updated = await control(session, campaign_id, action)
+    except UnsupportedAction as error:
+        raise ProblemError(status_code=404, detail="Unsupported campaign action.") from error
+    except LookupError as error:
+        raise ProblemError(status_code=404, detail="Sync campaign not found.") from error
+    await session.commit()
+    if action == "resume" and updated.status not in {"paused", "cancelled"}:
+        publish(SYNC_TASK, sync_kwargs(campaign_id=str(updated.id)))
+    return await campaign(session, campaign_id=str(updated.id))
