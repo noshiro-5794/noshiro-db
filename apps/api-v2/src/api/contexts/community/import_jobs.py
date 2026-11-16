@@ -20,7 +20,11 @@ QUERY = """
 """
 
 
-PROVIDERS = {"vndb_import": "vndb", "anilist_import": "anilist"}
+class ImportDispatchError(RuntimeError):
+    """An import request was persisted but could not be handed to the task broker."""
+
+
+PROVIDERS = {"vndb_import": "vndb", "anilist_import": "anilist", "mal_import": "mal"}
 
 
 def _provider(job_type: str | None) -> str | None:
@@ -64,7 +68,7 @@ async def import_job(session: AsyncSession, *, job_id: str) -> dict[str, Any]:
     }
 
 
-JOB_TYPES = {"vndb": "vndb_import", "anilist": "anilist_import"}
+JOB_TYPES = {"vndb": "vndb_import", "anilist": "anilist_import", "mal": "mal_import"}
 
 
 async def list_import_jobs(
@@ -132,7 +136,7 @@ def _job(row: Any) -> dict[str, Any]:
     }
 
 
-PATTERNS = {"vndb": r"^v[1-9][0-9]*$", "anilist": r"^[1-9][0-9]*$"}
+PATTERNS = {"vndb": r"^v[1-9][0-9]*$", "anilist": r"^[1-9][0-9]*$", "mal": r"^[1-9][0-9]*$"}
 
 
 async def create_import_job(
@@ -173,15 +177,28 @@ async def create_import_job(
             ),
         },
     )
-    task_id = publish(
-        task_for_import(str(provider)) or "",
-        import_kwargs(
-            provider=str(provider),
-            external_id=str(external_id),
-            include_related=include_related,
-            job_id=str(rows[0].id),
-        ),
-    )
+    await session.commit()
+    try:
+        task_id = publish(
+            task_for_import(str(provider)) or "",
+            import_kwargs(
+                provider=str(provider),
+                external_id=str(external_id),
+                include_related=include_related,
+                job_id=str(rows[0].id),
+            ),
+        )
+        if task_id is None:
+            raise RuntimeError("Task broker is not configured.")
+    except Exception as error:
+        await fetch(
+            session,
+            "UPDATE sync_job SET status='failed', error=:error, current_label='Failed',"
+            " finished_at=now(), updated_at=now() WHERE id=:id AND status='queued' RETURNING id",
+            {"id": rows[0].id, "error": str(error)[:4000]},
+        )
+        await session.commit()
+        raise ImportDispatchError("The synchronization task could not be dispatched.") from error
     if task_id:
         await fetch(
             session,

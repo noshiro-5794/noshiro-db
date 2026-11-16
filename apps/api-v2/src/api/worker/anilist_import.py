@@ -1,190 +1,297 @@
-"""Import one AniList media through the write primitives.
+"""Atomic AniList media projection, including source metadata and related graph."""
 
-The fact that matters most here is ``anilist-id-mal``: it is AniList's own statement that
-this work is MAL id *N*, and it is what the official-id reconciliation reads to bind the two
-providers together. Without it that task can only abstain.
-
-Not ported yet, named rather than skipped: characters, staff, studios, relations and the
-per-provider metrics.
-"""
-
-from __future__ import annotations
-
+from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.worker import entities, facts, ingestion, presentation, profiles, records
+from api.contexts.identity.names import SourceName
+from api.contexts.index import resolution
+from api.contexts.presentation.fragments import fetch
+from api.shared.text import slugify
+from api.worker import entities, facts, ingestion, metrics, presentation, profiles, records
 
 PROVIDER = "anilist"
 NAMESPACE = "anime"
 RESOURCE_TYPE = "subject"
-MAPPER = "anilist.anime"
-MAPPER_VERSION = "anilist-importer-v1"
-SCHEMA_VERSION = "anilist-graphql-v1"
+MAPPER = "anilist.media"
+MAPPER_VERSION = "anilist-media-v2"
+SCHEMA_VERSION = "anilist-graphql"
 
-ROMANIZED = "romanized"
-OFFICIAL = "official"
-ORIGINAL = "original"
+FACT_POINTERS = {
+    "anilist-status": "/status",
+    "anilist-season": "/season",
+    "anilist-season-year": "/seasonYear",
+    "episode-count": "/episodes",
+    "duration-minutes": "/duration",
+    "anilist-source": "/source",
+    "release-date": "/startDate",
+    "end-date": "/endDate",
+    "anilist-id-mal": "/idMal",
+    "anilist-average-score": "/averageScore",
+    "anilist-popularity": "/popularity",
+    "anilist-favourites": "/favourites",
+    "anilist-trending": "/trending",
+}
 
 
-def _title_block(media: dict[str, Any]) -> dict[str, Any]:
-    title = media.get("title")
-    return title if isinstance(title, dict) else {}
-
-
-def name_entries(media: dict[str, Any]) -> list[tuple[str, str, str]]:
-    title = _title_block(media)
-    entries: list[tuple[str, str, str]] = []
-    for key, language, kind in (
-        ("romaji", "", ROMANIZED),
-        ("english", "en", OFFICIAL),
-        ("native", "ja", ORIGINAL),
-    ):
-        value = title.get(key)
-        if isinstance(value, str) and value.strip():
-            entries.append((value.strip()[:256], language, kind))
-    return entries
+def as_int(value: Any) -> int | None:
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    if isinstance(value, str) and value.isdigit():
+        return int(value)
+    return None
 
 
 def _fuzzy_date(block: Any) -> str | None:
-    """AniList dates arrive as ``{year, month, day}`` with any part possibly null."""
     if not isinstance(block, dict):
         return None
     year, month, day = block.get("year"), block.get("month"), block.get("day")
     if not isinstance(year, int) or not isinstance(month, int):
         return None
-    if not isinstance(day, int) or not 1 <= month <= 12 or not 1 <= day <= 31:
+    if not isinstance(day, int):
+        day = 1
+    try:
+        return datetime(year, month, day, tzinfo=UTC).date().isoformat()
+    except ValueError:
         return None
-    return f"{year:04d}-{month:02d}-{day:02d}"
+
+
+def name_entries(media: dict[str, Any]) -> list[SourceName]:
+    title = media.get("title") or {}
+    entries = []
+    for key, kind in (
+        ("romaji", "romanized"),
+        ("english", "official"),
+        ("native", "original"),
+        ("userPreferred", "official"),
+    ):
+        value = title.get(key)
+        if isinstance(value, str) and value:
+            entries.append(
+                SourceName(
+                    value[:256],
+                    "ja" if key in {"native", "romaji"} else "en",
+                    kind,
+                    is_official=True,
+                    script="Jpan" if key == "native" else "Latn",
+                )
+            )
+    entries.extend(
+        SourceName(value[:256], "", "alias")
+        for value in media.get("synonyms") or []
+        if isinstance(value, str) and value
+    )
+    return entries
 
 
 def fact_candidates(media: dict[str, Any]) -> dict[str, tuple[Any, str]]:
-    out: dict[str, tuple[Any, str]] = {}
-    id_mal = media.get("idMal")
-    if isinstance(id_mal, int) and not isinstance(id_mal, bool):
-        out["anilist-id-mal"] = (id_mal, "number")
-    raw: dict[str, Any] = {
-        "anilist-format": media.get("format"),
+    values = {
         "anilist-status": media.get("status"),
         "anilist-season": media.get("season"),
         "anilist-season-year": media.get("seasonYear"),
-        "anilist-score": media.get("averageScore"),
+        "episode-count": as_int(media.get("episodes")),
+        "duration-minutes": as_int(media.get("duration")),
+        "anilist-source": media.get("source"),
+        "release-date": _fuzzy_date(media.get("startDate")),
+        "end-date": _fuzzy_date(media.get("endDate")),
+        "anilist-id-mal": as_int(media.get("idMal")),
+        "anilist-average-score": media.get("averageScore"),
         "anilist-popularity": media.get("popularity"),
-        "episode-count": media.get("episodes"),
-        "duration-minutes": media.get("duration"),
+        "anilist-favourites": media.get("favourites"),
+        "anilist-trending": media.get("trending"),
     }
-    for slug, value in raw.items():
+    result = {}
+    for slug, value in values.items():
         if value is None or value == "":
             continue
-        out[slug] = (value, "number" if isinstance(value, int) else "string")
-    started = _fuzzy_date(media.get("startDate"))
-    if started:
-        out["release-date"] = (started, "date")
-    ended = _fuzzy_date(media.get("endDate"))
-    if ended:
-        out["end-date"] = (ended, "date")
-    return out
+        value_type = "date" if slug in {"release-date", "end-date"} else "string"
+        if isinstance(value, bool):
+            value_type = "boolean"
+        elif isinstance(value, int | Decimal):
+            value_type = "number"
+        result[slug] = (value, value_type)
+    return result
 
 
-def _cover(media: dict[str, Any]) -> tuple[str, str]:
-    cover = media.get("coverImage")
-    if not isinstance(cover, dict):
-        return "", ""
-    large = cover.get("large")
-    medium = cover.get("medium")
-    return (
-        large if isinstance(large, str) else "",
-        medium if isinstance(medium, str) else "",
+async def import_saved_media(session: AsyncSession, anilist_id: int) -> Any:
+    rows = await fetch(
+        session,
+        """
+        SELECT revision.payload FROM provider_record AS r
+        JOIN provider_namespace AS n ON n.id=r.namespace_id
+        JOIN provider AS p ON p.id=n.provider_id
+        JOIN provider_revision AS revision ON revision.id=r.latest_revision_id
+        WHERE p.slug='anilist' AND n.slug='season-item' AND r.external_id=:id AND r.status='active'
+        """,
+        {"id": str(anilist_id)},
     )
+    if not rows:
+        raise ValueError(f"AniList media {anilist_id} has no persisted seasonal payload.")
+    payload = rows[0].payload
+    if not isinstance(payload, dict) or payload.get("id") != anilist_id:
+        raise ValueError(f"AniList media {anilist_id} payload is inconsistent.")
+    return await import_media(session, payload)
+
+
+async def _retire_partial_mapper(session: AsyncSession, record_id: Any) -> None:
+    fields = await fetch(
+        session,
+        """
+        SELECT DISTINCT f.entity_id, f.predicate_id, f.language
+        FROM provider_current_observation AS c
+        JOIN fact_evidence AS e ON e.observation_id=c.observation_id
+        JOIN fact AS f ON f.id=e.fact_id
+        WHERE c.provider_record_id=:record AND c.mapper='anilist.anime'
+          AND c.schema_name='index.work'
+        """,
+        {"record": record_id},
+    )
+    await fetch(
+        session,
+        "DELETE FROM provider_current_observation WHERE provider_record_id=:record"
+        " AND mapper='anilist.anime' AND schema_name='index.work' RETURNING id",
+        {"record": record_id},
+    )
+    for field in fields:
+        await resolution.rebuild_fact(
+            session,
+            entity_id=field.entity_id,
+            predicate_id=field.predicate_id,
+            language=field.language,
+        )
 
 
 async def import_media(session: AsyncSession, media: dict[str, Any]) -> Any:
-    """Write one AniList media, returning the canonical entity id."""
-    external_id = str(media["id"])
-    written = await records.record_payload(
-        session,
-        provider_slug=PROVIDER,
-        namespace_slug=NAMESPACE,
-        resource_type=RESOURCE_TYPE,
-        external_id=external_id,
-        payload=media,
-        schema_version=SCHEMA_VERSION,
-        canonical_url=f"https://anilist.co/anime/{external_id}",
-    )
-    observation_id = await ingestion.record_observation(
-        session,
-        provider_record_id=written.record_id,
-        mapper=MAPPER,
-        mapper_version=MAPPER_VERSION,
-        normalized_data=media,
-        schema_name="index.work",
-        schema_version="1",
-    )
-    adult = (
-        isinstance(media.get("description"), str)
-        and "hentai" in str(media.get("genres") or []).lower()
-    )
-    entity = await entities.map_work(
-        session,
-        provider_record_id=written.record_id,
-        mapped_data={"subject_type": "anime", "nsfw": adult},
-    )
-    entries = name_entries(media)
-    if entries:
-        await presentation.add_names(
+    from api.worker import anilist_airing, anilist_graph
+
+    async with session.begin_nested():
+        external_id = str(media["id"])
+        upstream = media.get("updatedAt")
+        written = await records.record_payload(
+            session,
+            provider_slug=PROVIDER,
+            namespace_slug=NAMESPACE,
+            resource_type=RESOURCE_TYPE,
+            external_id=external_id,
+            payload=media,
+            schema_version=SCHEMA_VERSION,
+            canonical_url=media.get("siteUrl") or f"https://anilist.co/anime/{external_id}",
+            upstream_updated_at=datetime.fromtimestamp(upstream, tz=UTC)
+            if isinstance(upstream, int) and upstream > 0
+            else None,
+        )
+        observation_id = await ingestion.record_observation(
+            session,
+            provider_record_id=written.record_id,
+            mapper=MAPPER,
+            mapper_version=MAPPER_VERSION,
+            normalized_data=media,
+            schema_name="index.work",
+            schema_version="1",
+        )
+        await _retire_partial_mapper(session, written.record_id)
+        entity = await entities.map_work(
+            session,
+            provider_record_id=written.record_id,
+            mapped_data={"subject_type": "anime", "nsfw": media.get("isAdult") is True},
+        )
+        await presentation.record_names(
             session,
             entity_id=entity.entity_id,
             provider_record_id=written.record_id,
             observation_id=observation_id,
-            entries=entries,
+            entries=name_entries(media),
         )
-    description = media.get("description")
-    if isinstance(description, str) and description.strip():
-        await presentation.upsert_description(
-            session,
-            entity_id=entity.entity_id,
-            provider_record_id=written.record_id,
-            observation_id=observation_id,
-            text=description,
-        )
-    large, medium = _cover(media)
-    if large or medium:
+        description = media.get("description")
+        if isinstance(description, str) and description.strip():
+            await presentation.upsert_description(
+                session,
+                entity_id=entity.entity_id,
+                provider_record_id=written.record_id,
+                observation_id=observation_id,
+                text=description,
+            )
+        cover = media.get("coverImage") or {}
         await presentation.upsert_media(
             session,
             entity_id=entity.entity_id,
             provider_record_id=written.record_id,
             observation_id=observation_id,
-            original=large,
-            thumbnail=medium,
+            original=cover.get("large") or "",
+            thumbnail=cover.get("medium") or "",
         )
-    await profiles.upsert_anime_profile(
-        session,
-        work_entity_id=entity.work_id,
-        media_format=str(media.get("format") or "").upper(),
-        episode_count=media.get("episodes") if isinstance(media.get("episodes"), int) else None,
-        premiered_on=profiles.parse_iso_date(_fuzzy_date(media.get("startDate"))),
-        ended_on=profiles.parse_iso_date(_fuzzy_date(media.get("endDate"))),
-    )
-    for slug, (value, value_type) in fact_candidates(media).items():
-        await facts.record_fact(
+        banner = media.get("bannerImage")
+        if isinstance(banner, str) and banner:
+            await presentation.upsert_media(
+                session,
+                entity_id=entity.entity_id,
+                provider_record_id=written.record_id,
+                observation_id=observation_id,
+                original=banner,
+            )
+        await profiles.upsert_anime_profile(
+            session,
+            work_entity_id=entity.work_id,
+            media_format=media.get("format") or "",
+            episode_count=as_int(media.get("episodes")),
+            source_material=media.get("source") or "",
+            premiered_on=profiles.parse_iso_date(_fuzzy_date(media.get("startDate"))),
+            ended_on=profiles.parse_iso_date(_fuzzy_date(media.get("endDate"))),
+            replace_metadata=True,
+        )
+        links = [
+            {"url": media.get("siteUrl"), "site": "AniList"},
+            *(media.get("externalLinks") or []),
+        ]
+        for item in links:
+            if isinstance(item, dict):
+                url = item.get("url")
+                label = item.get("site") or ""
+            else:
+                url = item
+                label = ""
+            if not isinstance(url, str) or not url:
+                continue
+            await profiles.upsert_external_link(
+                session,
+                entity_id=entity.entity_id,
+                provider_record_id=written.record_id,
+                observation_id=observation_id,
+                url=url,
+                label=label[:128],
+                link_type=slugify(label)[:64],
+            )
+        for slug, (value, value_type) in fact_candidates(media).items():
+            await facts.record_fact(
+                session,
+                entity_id=entity.entity_id,
+                observation_id=observation_id,
+                slug=slug,
+                name=slug.replace("-", " ").title(),
+                value=value,
+                value_type=value_type,
+                json_pointer=FACT_POINTERS[slug],
+            )
+        await metrics.record_metrics(
             session,
             entity_id=entity.entity_id,
-            observation_id=observation_id,
-            slug=slug,
-            name=slug.replace("-", " ").title(),
-            value=value,
-            value_type=value_type,
-            json_pointer=f"/{slug}",
+            provider_record_id=written.record_id,
+            observed_at=await ingestion.observed_at(session, observation_id),
+            values={
+                "popularity": media.get("popularity"),
+                "favourites": media.get("favourites"),
+                "trending": media.get("trending"),
+                "score": media.get("averageScore"),
+            },
         )
-    await presentation.ensure_membership(session, entity_id=entity.entity_id, work_type="anime")
-    return entity.entity_id
-
-
-__all__ = [
-    "MAPPER",
-    "MAPPER_VERSION",
-    "fact_candidates",
-    "import_media",
-    "name_entries",
-]
+        await presentation.ensure_membership(
+            session,
+            entity_id=entity.entity_id,
+            work_type="anime",
+            inclusion_reason="AniList anime",
+        )
+        await anilist_graph.import_graph(session, entity.entity_id, observation_id, media)
+        await anilist_airing.import_schedule(session, entity.entity_id, media)
+        return await resolution.resolve(session, entity.entity_id)

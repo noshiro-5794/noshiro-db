@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from api.contexts.identity.names import SourceName
 from api.worker.anilist_import import _fuzzy_date, fact_candidates, name_entries
 
 MEDIA = {
@@ -23,14 +24,14 @@ MEDIA = {
 
 def test_names_keep_the_provider_kinds() -> None:
     assert name_entries(MEDIA) == [
-        ("Romaji", "", "romanized"),
-        ("English", "en", "official"),
-        ("日本語", "ja", "original"),
+        SourceName("Romaji", "ja", "romanized", is_official=True, script="Latn"),
+        SourceName("English", "en", "official", is_official=True, script="Latn"),
+        SourceName("日本語", "ja", "original", is_official=True, script="Jpan"),
     ]
 
 
-def test_a_partial_date_is_no_date() -> None:
-    assert _fuzzy_date({"year": 2020, "month": 6, "day": None}) is None
+def test_an_unknown_day_defaults_to_the_first_of_a_known_month() -> None:
+    assert _fuzzy_date({"year": 2020, "month": 6, "day": None}) == "2020-06-01"
     assert _fuzzy_date({"year": 2020, "month": 4, "day": 5}) == "2020-04-05"
     assert _fuzzy_date({}) is None
 
@@ -43,7 +44,8 @@ def test_the_official_mal_id_becomes_a_fact() -> None:
 def test_facts_keep_numbers_as_numbers() -> None:
     facts = fact_candidates(MEDIA)
     assert facts["episode-count"] == (12, "number")
-    assert facts["anilist-format"] == ("TV", "string")
+    assert "anilist-format" not in facts
+    assert facts["anilist-average-score"] == (81, "number")
     assert facts["release-date"] == ("2020-04-05", "date")
 
 

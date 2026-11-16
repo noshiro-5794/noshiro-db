@@ -100,3 +100,78 @@ def test_a_forbidden_storage_policy_blocks_the_request() -> None:
     client.forbid_storage()
     with pytest.raises(ProviderError, match="forbids"):
         client.fetch_media(1)
+
+
+def test_media_fetch_collects_all_character_staff_and_airing_pages():
+    import json
+
+    requests = []
+
+    def handler(request):
+        body = json.loads(request.content)
+        requests.append(body)
+        if len(requests) == 1:
+            media = {
+                "id": 1,
+                **{
+                    key: {"pageInfo": {"hasNextPage": True}, field: [{"id": 1}]}
+                    for key, field in (
+                        ("characters", "edges"),
+                        ("staff", "edges"),
+                        ("airingSchedule", "nodes"),
+                    )
+                },
+            }
+        else:
+            key = next(
+                key
+                for key in ("characters", "staff", "airingSchedule")
+                if f"{key}(" in body["query"]
+            )
+            field = "nodes" if key == "airingSchedule" else "edges"
+            media = {"id": 1, key: {"pageInfo": {"hasNextPage": False}, field: [{"id": 2}]}}
+        return httpx.Response(200, json={"data": {"Media": media}})
+
+    client = anilist(handler)
+    try:
+        media = client.fetch_media(1)
+    finally:
+        client.close()
+    assert len(requests) == 4
+    for key, field in (("characters", "edges"), ("staff", "edges"), ("airingSchedule", "nodes")):
+        assert media[key][field] == [{"id": 1}, {"id": 2}]
+        assert media[key]["pageInfo"] == {"hasNextPage": False}
+    assert [body["variables"] for body in requests[1:]] == [
+        {"id": 1, "page": 2, "perPage": 25},
+        {"id": 1, "page": 2, "perPage": 25},
+        {"id": 1, "page": 2, "perPage": 50},
+    ]
+
+
+def test_empty_nonterminal_character_page_fails_instead_of_looping():
+    calls = []
+
+    def handler(request):
+        calls.append(request)
+        return httpx.Response(
+            200,
+            json={
+                "data": {
+                    "Media": {
+                        "id": 1,
+                        "characters": {
+                            "pageInfo": {"hasNextPage": True},
+                            "edges": [{"id": 1}] if len(calls) == 1 else [],
+                        },
+                    }
+                }
+            },
+        )
+
+    client = anilist(handler)
+    try:
+        with pytest.raises(ProviderError, match="empty nonterminal"):
+            client.fetch_media(1)
+    finally:
+        client.close()
+    assert len(calls) == 2

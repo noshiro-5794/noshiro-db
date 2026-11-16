@@ -54,6 +54,7 @@ async def ensure_entity(
     provider_record_id: Any,
     kind: str,
     audience: str,
+    preserve_existing: bool = False,
 ) -> tuple[Any, bool]:
     """The entity this record represents, creating one when no mapping exists."""
     rows = await fetch(
@@ -69,6 +70,12 @@ async def ensure_entity(
     )
     if rows:
         entity = rows[0]
+        if preserve_existing:
+            if entity.kind != kind:
+                raise ValueError(
+                    f"Provider record {provider_record_id} already represents {entity.kind}."
+                )
+            return entity.id, False
         if entity.kind != kind or entity.audience != audience:
             await fetch(
                 session,

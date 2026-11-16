@@ -2,8 +2,8 @@ from datetime import date
 
 import pytest
 
+from api.contexts.identity.names import SourceName
 from api.worker.vndb_mapping import (
-    Name,
     character_facts,
     partial_date,
     positive_int,
@@ -40,11 +40,11 @@ def test_work_names_preserve_official_original_and_romanized_flags():
         }
     )
     assert names == [
-        Name("原題", "ja", "original", True, True),
-        Name("Gendai", "ja", "romanized"),
-        Name("Alias", "", "alias"),
-        Name("Title", "ja", "official", False, True),
-        Name("原題", "ja", "original", True, False),
+        SourceName("原題", "ja", "original", True, True),
+        SourceName("Gendai", "ja", "romanized"),
+        SourceName("Alias", "", "alias"),
+        SourceName("Title", "ja", "official", False, True),
+        SourceName("原題", "ja", "original", True, False),
     ]
 
 

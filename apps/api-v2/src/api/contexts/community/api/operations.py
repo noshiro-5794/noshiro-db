@@ -15,6 +15,7 @@ from api.contexts.community.campaigns import (
     summary,
 )
 from api.contexts.community.import_jobs import (
+    ImportDispatchError,
     create_import_job,
     import_job,
     list_import_jobs,
@@ -187,6 +188,10 @@ async def create_job(
     except ValueError as error:
         raise ProblemError(
             status_code=400, detail="Request validation failed.", errors=error.args[0]
+        ) from error
+    except ImportDispatchError as error:
+        raise ProblemError(
+            status_code=503, detail=str(error), code="sync.task_dispatch_failed"
         ) from error
     return JSONResponse(data, status_code=202)
 
