@@ -76,5 +76,10 @@ class BangumiClient:
             raise ProviderError(f"Bangumi subject {subject_id} was not an object.")
         return data
 
+    def close(self) -> None:
+        if self._http is not None:
+            self._http.close()
+            self._http = None
+
 
 __all__ = ["BangumiClient"]

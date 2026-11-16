@@ -50,7 +50,8 @@ async def claim_items(
         """
         UPDATE sync_work_item SET status = 'queued', lease_owner = '', lease_expires_at = NULL,
           error = 'Worker lease expired before completion.', updated_at = now()
-        WHERE campaign_id = :campaign AND status = 'running' AND lease_expires_at < now()
+        WHERE campaign_id = :campaign AND status = 'running'
+          AND lease_expires_at < clock_timestamp()
         RETURNING id
     """,
         {"campaign": campaign_id},
@@ -60,11 +61,11 @@ async def claim_items(
         """
         WITH available AS (
           SELECT id FROM sync_work_item WHERE campaign_id = :campaign AND status = 'queued'
-            AND (next_retry_at IS NULL OR next_retry_at <= now())
+            AND (next_retry_at IS NULL OR next_retry_at <= clock_timestamp())
           ORDER BY shard, id FOR UPDATE SKIP LOCKED LIMIT :limit
         ) UPDATE sync_work_item item SET status = 'running', attempt = item.attempt + 1,
           started_at = now(), lease_owner = :owner,
-          lease_expires_at = now() + make_interval(secs => :seconds), updated_at = now()
+          lease_expires_at = clock_timestamp() + make_interval(secs => :seconds), updated_at = now()
         FROM available WHERE item.id = available.id RETURNING item.*
     """,
         {
@@ -92,7 +93,7 @@ async def owned_item(session: AsyncSession, item_id: UUID, owner: str) -> Any:
         session,
         """
         SELECT * FROM sync_work_item WHERE id = :id AND status = 'running'
-          AND lease_owner = :owner AND lease_expires_at > now() FOR UPDATE
+          AND lease_owner = :owner AND lease_expires_at > clock_timestamp() FOR UPDATE
     """,
         {"id": item_id, "owner": owner},
     )

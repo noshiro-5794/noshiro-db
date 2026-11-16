@@ -163,3 +163,23 @@ async def test_campaign_creation_commits_before_dispatch_and_retry_republishes(
     second = await api_campaigns.create_campaign(session, body=body)
     assert first["id"] == second["id"]
     assert events == ["committed", "published", "committed", "published"]
+
+
+@pytest.mark.asyncio
+async def test_lease_expiry_uses_current_clock_inside_long_transaction(integration_session):
+    from sqlalchemy import text
+
+    session = integration_session
+    identifier = await discovering(session)
+    await work_items.enqueue_page(session, identifier, 1, ["1"])
+    await campaigns.transition(session, identifier, "discovering", "fetching")
+    item = (await work_items.claim_items(session, identifier, "worker"))[0]
+    await fetch(
+        session,
+        "UPDATE sync_work_item SET lease_expires_at=clock_timestamp() "
+        "+ interval '20 milliseconds' WHERE id=:id RETURNING id",
+        {"id": item.id},
+    )
+    await session.execute(text("SELECT pg_sleep(0.05)"))
+    with pytest.raises(LeaseLost):
+        await work_items.succeed(session, item.id, "worker", {})
