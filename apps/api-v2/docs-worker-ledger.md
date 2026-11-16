@@ -354,3 +354,29 @@ Verified locally on PostgreSQL 18:
 
 A PostgreSQL 18 schema job was added to CI to repeat the fresh install and revision
 round trip. It has not yet run on GitHub. Production databases were not changed.
+
+### Schedule completion
+
+`contexts/scheduling` replaces the Django schedule-completion service. The configured
+Tavily search uses the shared async HTTP/proxy setup; retrieved evidence is retained as
+SourceArtifact, AgentStep, AIClaim and ClaimEvidence records. Only curated board entries
+are updated. Provider-owned airing facts remain outside this write path.
+
+A confidence-qualified application locks the entry and its board, checks that the board
+is still active and the slot still has no start time, and re-reads source references
+before appending the claim link. Existing filled slots are preserved; low confidence
+and `apply=False` retain proposed claims without changing the slot. Per-entry writes are
+atomic, while artifacts and top-level run status survive later failures.
+
+Intentional validation improvements: accepted times must be valid HH:MM values, timezone
+names must exist, confidence must be finite and numeric, and supplied durations must be
+positive integers. Invalid zones no longer silently compute Tokyo times while storing
+a different zone name. Schedule JSON confidence remains numeric, matching the old
+payload. The `searched` counter now counts searches; the old implementation left it zero.
+
+The task retains its two-retry and 600/700-second limits. Registration coverage is
+17/30. Lint, formatting, strict typing and 282 offline tests passed. Real PostgreSQL 18
+fixture runs verified artifact → step → claim → evidence → board application, as well as
+filled-slot preservation, low-confidence abstention from application and `apply=False`.
+Search and model answers were fixed test responses; real Tavily/model and queue runs
+remain pending. No production services or data were changed.
