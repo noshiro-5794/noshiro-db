@@ -234,3 +234,28 @@ against a real database or broker. Registration coverage is not runtime verifica
 The local changes from the earlier `feat/worker-records` checkout are preserved in the
 Git stash named `preserve pre-refactor local worker changes 2026-11-16`. Work continues
 on `codex/complete-api-migration`, based on `0864f3c` from origin/main.
+
+### Candidate generator continuation
+
+`worker/candidates.py` ports all three title-similarity-v2 legs to async SQLAlchemy,
+including multilingual name recall, per-target maximum score, runner-up margin,
+structured attributes and hard conflicts. Candidate/evidence writes share a savepoint,
+the unique policy key prevents duplicates, and a transaction advisory lock serializes
+writers for the same sweep shard. Evaluation messages are published after commit.
+
+Two cursor corrections are intentional: a window fully removed by the decided filter
+still advances, and dry runs never reset an exhausted cursor. The next writing run
+resets an exhausted pass as before.
+
+`worker/matching_tasks.py` registers the sweep on `sync`. Registration coverage is
+12/30, with the floor raised accordingly. This is implementation coverage, not a claim
+that all twelve tasks have production verification.
+
+Validation: lint, format, strict typing and 207 offline tests passed. Seven generator
+cases cover ranking/margin, the evaluation floor, cursor behavior and year conflicts;
+two task cases cover the three-leg allocation, commit-before-publish and registration.
+An independent seeded comparison of `_compare` against the legacy function matched
+on 1,000 inputs. Real database candidate-set/score comparison remains pending: local
+Docker is unavailable and the configured SSH host timed out. Neither production traffic
+nor the paused server stack was changed. A broker interruption after candidate commit
+still requires the pending-evaluation recovery sweep, which remains to be ported.
