@@ -259,3 +259,32 @@ on 1,000 inputs. Real database candidate-set/score comparison remains pending: l
 Docker is unavailable and the configured SSH host timed out. Neither production traffic
 nor the paused server stack was changed. A broker interruption after candidate commit
 still requires the pending-evaluation recovery sweep, which remains to be ported.
+
+### AI matching continuation
+
+`contexts/matching` now owns the preserved entity-match-v2 prompt, a Pydantic v2
+proposal model, left/right evidence orientation, run/proposal persistence and conservative
+binding policy. Policy creation defaults to shadow mode. Enabled non-shadow policies
+still require a passed calibration with enough precision, matching policy version,
+confidence/score/margin/evidence thresholds, compatible work families, no hard conflicts
+and no conflicting user library entries before calling the resolution engine.
+
+`worker/ai_tasks.py` registers matching evaluation and pending-candidate recovery on
+`ai`. Coverage is 14/30, with the floor updated. The recovery query selects pending
+candidates with no proposal, including ones committed before a broker publication failed.
+The provider client classifies account failures as terminal and transient transport,
+429 and 5xx errors as retryable. Account failures set a Redis cooldown when cache is
+configured. AI and catalogue HTTP clients now share outbound proxy selection. Pydantic
+and Redis are explicit direct dependencies, using the already locked versions.
+
+The candidate row lock spans model evaluation. A separately committed inference run
+survives candidate-transaction rollback, and failure status is recorded independently.
+This holds a database connection during the bounded model request; concurrency and
+real-schema execution still require integration verification.
+
+Validation: lint, formatting, strict typing and 235 offline tests passed. New coverage
+exercises output rejection, work-family/conflict gates, shadow behavior, durable failure
+ordering, successful run/proposal flow, cooldown/retry classification, pending recovery
+and Celery task registration. Queue checking still explicitly reports the migrating AI
+queue because classification, evidence extraction and schedule completion are not yet
+ported. Real model, PostgreSQL, Redis and broker integration remains unverified.
