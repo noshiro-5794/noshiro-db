@@ -22,6 +22,10 @@ result.
 | MAL importer | `worker/mal_import.py` | real DB run + **shadow comparison** below |
 | Mal import task | `worker/tasks.py` | same name, queue and lifecycle as the Django task |
 | Official MAL id reconciliation | `worker/mal_identity.py` | read-only parity with Django at 200 and 5,000 records; synthetic pending pair merged and rolled back (1 redirect, 1 merge event, source `merged`, 1 decision) |
+| Calendar board replacement | `worker/calendar.py`, `calendar_write.py`, `calendar_lookup.py`, `calendar_sync.py` | driven end to end by the stored Bangumi payload: 112 items → 108 events, one board archived and one created, rolled back; the previous-calendar lookup matches Django at 112 ids |
+
+The denominator moved from 23 to 30 when the coverage tool learned to read multi-line
+decorators — the earlier figure was an undercount, so the percentage was too generous.
 
 ## Runtime, verified in containers
 
@@ -54,7 +58,7 @@ Reproduce it with `scripts/shadow_import.sh` (fixture in `scripts/fixtures/mal_a
 
 ## How far along
 
-`python scripts/task_coverage.py` prints the number: **6 of 23 tasks**, counting only the
+`python scripts/task_coverage.py` prints the number: **7 of 30 tasks**, counting only the
 names the replacement actually registers under a Django task name. Refresh it from the
 tool rather than from memory — the first estimates in this ledger were made by counting
 decorator lines and overstated the total.
