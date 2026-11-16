@@ -35,7 +35,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "diff-cover>=10,<11",
+    "diff-cover>=10,<12",
     "django-stubs>=5.2,<7",
     "djangorestframework-stubs>=3.16,<4",
     "httpx2>=2.13,<3",
