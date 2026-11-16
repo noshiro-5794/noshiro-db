@@ -337,3 +337,89 @@ def import_anilist_media_task(anilist_id: int, *, job_id: str | None = None) -> 
     lease_owner = f"celery:{current_task.request.id}"
     result: dict[str, Any] = run(_import_anilist_media(anilist_id, job_id, lease_owner))
     return result
+
+
+async def _run_airing_daily(
+    batch_size: int | None, job_id: str | None, lease_owner: str
+) -> dict[str, Any]:
+    from datetime import UTC, datetime
+
+    import api.worker.airing_daily as airing_daily
+    import api.worker.anilist_import as anilist_import
+    import api.worker.mal_import as mal_import
+    import api.worker.subject_import as subject_import
+    from api.worker.providers.anilist import AniListClient
+    from api.worker.providers.bangumi import BangumiClient
+    from api.worker.providers.mal import MALClient
+
+    mal = MALClient()
+    anilist = AniListClient()
+    bangumi = BangumiClient()
+
+    async def fetch_media(external_id: int) -> dict[str, Any]:
+        # The caller knows which provider the target belongs to only by the importer it
+        # ends up in, so this resolves against whichever client answers.
+        try:
+            return await asyncio.to_thread(mal.fetch_anime, external_id)
+        except Exception:
+            return await asyncio.to_thread(anilist.fetch_media, external_id)
+
+    async def fetch_subject(external_id: int) -> dict[str, Any]:
+        return await asyncio.to_thread(bangumi.fetch_subject, external_id)
+
+    async def import_anime(session: Any, media: dict[str, Any]) -> None:
+        await mal_import.import_anime(session, media)
+
+    async def import_media(session: Any, media: dict[str, Any]) -> None:
+        await anilist_import.import_media(session, media)
+
+    async def import_subject(session: Any, subject: dict[str, Any]) -> None:
+        await subject_import.import_subject(session, subject)
+
+    async with session_scope() as session:
+        if job_id and not await jobs.claim(
+            session, job_id=job_id, lease_owner=lease_owner, lease_seconds=2100
+        ):
+            return {"skipped": True, "reason": "job already claimed"}
+        await jobs.mark_running(
+            session,
+            job_id=job_id,
+            total_count=0,
+            current_label="Refreshing the airing board",
+            lease_owner=lease_owner,
+        )
+        try:
+            result = await airing_daily.sync_day(
+                session,
+                now=datetime.now(UTC),
+                batch_size=batch_size or int(os.environ.get("AIRING_DAILY_BATCH_SIZE", "100")),
+                fetch_media=fetch_media,
+                fetch_subject=fetch_subject,
+                import_anime=import_anime,
+                import_media=import_media,
+                import_subject=import_subject,
+            )
+            await jobs.mark_succeeded(
+                session, job_id=job_id, result=result, lease_owner=lease_owner
+            )
+            return result
+        except Exception as error:
+            await jobs.mark_failed(session, job_id=job_id, error=error, lease_owner=lease_owner)
+            raise
+
+
+@shared_task(  # type: ignore[untyped-decorator]
+    name="apps.sync.tasks.airing.run_airing_daily_task",
+    queue="sync",
+    soft_time_limit=1800,
+    time_limit=2100,
+)
+def run_airing_daily_task(
+    batch_size: int | None = None, job_id: str | None = None
+) -> dict[str, Any]:
+    """Refresh one window of the airing board, oldest state first."""
+    from celery import current_task
+
+    lease_owner = f"celery:{current_task.request.id}"
+    result: dict[str, Any] = run(_run_airing_daily(batch_size, job_id, lease_owner))
+    return result
