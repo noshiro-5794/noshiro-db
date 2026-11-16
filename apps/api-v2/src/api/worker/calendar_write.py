@@ -68,6 +68,14 @@ async def create_board(
     return rows[0].id
 
 
+def _starts_at(value: Any) -> str | None:
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, str) and value.strip():
+        return value
+    return None
+
+
 async def add_events(
     session: AsyncSession,
     *,
@@ -92,9 +100,7 @@ async def add_events(
                 "weekday": event.get("weekday"),
                 "precision": event.get("precision") or "unknown",
                 "raw_value": event.get("raw_value") or "",
-                "starts_at": event.get("starts_at").isoformat()
-                if isinstance(event.get("starts_at"), datetime)
-                else event.get("starts_at"),
+                "starts_at": _starts_at(event.get("starts_at")),
                 "episode_entity_id": str(event["episode_entity_id"])
                 if event.get("episode_entity_id")
                 else None,
