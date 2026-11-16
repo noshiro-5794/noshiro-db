@@ -1,10 +1,8 @@
 """Alembic environment.
 
-The schema this service owns starts as the one Django built. Revision 0001 is a
-baseline with no operations: it records that moment, so every later revision can
-be applied in order without replaying Django's history. Until the cutover the
-Django service still runs migrations of its own; from then on, this is the only
-place DDL is written.
+Revision 0001 bootstraps a fresh PostgreSQL database from the checked-in SQL baseline.
+Existing installations stamped at 0001 keep their schema and apply only later revisions.
+Alembic owns all subsequent DDL.
 """
 
 from __future__ import annotations

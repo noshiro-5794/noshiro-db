@@ -1,18 +1,18 @@
 # Schema ownership
 
-Revision `0001_baseline` records the schema Django built. It has no operations:
-the tables already exist. What it changes is who writes DDL from now on.
+Revision `0001_baseline` creates the pre-cutover PostgreSQL schema from
+`migrations/baseline.sql`. The schema-only SQL was captured from the repository's
+Django migration history applied to an isolated PostgreSQL 18 database. It contains
+no user, provider or fixture rows. Fresh installations need only this service and
+`alembic upgrade head`.
 
-```
-$ alembic history
-<base> -> 0001_baseline (head), Baseline: the schema Django built.
+Existing databases already stamped at 0001 apply only the subsequent revisions.
+An unversioned existing database is rejected by the bootstrap; validate it against
+the baseline and explicitly `alembic stamp 0001_baseline` before upgrading.
 
-$ alembic current
-0001_baseline (head)
-```
-
-The production database is stamped at that revision (`alembic_version`), so every
-later revision applies on top of the schema as it exists today.
+The baseline is irreversible because dropping it would delete all core tables.
+Restore a backup to undo a bootstrap. Later revisions retain their own downgrade
+operations; the tested round trip is head → 0001_baseline → head.
 
 ## Transition rule
 
@@ -33,7 +33,7 @@ After the cutover the Django app is deleted and only this history remains.
 
 | Revision | What | Verified |
 |---|---|---|
-| `0001_baseline` | the schema Django built, no operations | `stamp` on production |
+| `0001_baseline` | schema-only bootstrap for fresh PostgreSQL 18 databases | fresh online and offline installs verified locally; existing stamped installations skip it |
 | `0002_display_profile` | `entity_display_profile` | applied, downgraded, re-applied on production |
 | `0003_metric_tables` | `metric_current`, `metric_daily` + backfill from `metric_snapshot` | applied, downgraded, re-applied; counts reproduce exactly |
 | `0004_metric_view` | `entity_metric_current` | applied; 551,018 rows, one per (entity, metric) |
@@ -64,4 +64,5 @@ uv run alembic downgrade -1  # one step back
 ```
 
 Every revision must be reversible or explicitly documented as not being so; the
-check that applies it in CI runs `upgrade head` then `downgrade base` on a copy.
+schema CI job runs `upgrade head`, `downgrade 0001_baseline`, then `upgrade head`
+on a fresh PostgreSQL 18 service.
