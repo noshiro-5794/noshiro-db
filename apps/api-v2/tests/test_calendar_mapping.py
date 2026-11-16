@@ -16,6 +16,7 @@ from api.worker.calendar import (
     weekday_number,
     weekday_raw_value,
 )
+from api.worker.calendar_lookup import ids_from_payload
 
 GROUPED = [
     {"weekday": {"id": 1, "en": "Mon"}, "items": [{"id": 10}, {"id": 11}]},
@@ -133,3 +134,22 @@ def test_the_metadata_counts_by_weekday_and_records_the_diff() -> None:
         "added_ids": [9],
         "removed_ids": [4],
     }
+
+
+def test_a_wrapped_payload_is_unwrapped() -> None:
+    payload = {"groups": [{"items": [{"id": 5}, {"id": 6}]}]}
+    assert ids_from_payload(payload) == {5, 6}
+
+
+def test_a_bare_list_payload_is_accepted_too() -> None:
+    assert ids_from_payload([{"items": [{"id": 7}]}]) == {7}
+
+
+def test_a_json_string_payload_is_parsed() -> None:
+    assert ids_from_payload('{"groups": [{"items": [{"id": 8}]}]}') == {8}
+
+
+def test_a_payload_without_items_yields_nothing_rather_than_raising() -> None:
+    assert ids_from_payload({}) == set()
+    assert ids_from_payload(None) == set()
+    assert ids_from_payload({"groups": "nope"}) == set()
