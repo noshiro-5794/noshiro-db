@@ -254,3 +254,28 @@ def sync_calendar_task(
     lease_owner = f"celery:{current_task.request.id}"
     result: dict[str, Any] = run(_sync_calendar(job_id, lease_owner))
     return result
+
+
+async def _refresh_bangumi_subjects(limit: int) -> dict[str, Any]:
+    from api.worker import subject_refresh
+    from api.worker.providers.bangumi import BangumiClient
+
+    async with session_scope() as session:
+        return await subject_refresh.refresh(session, BangumiClient(), limit=limit)
+
+
+@shared_task(  # type: ignore[untyped-decorator]
+    name="apps.sync.tasks.refresh.refresh_bangumi_subjects_task",
+    queue="sync",
+    soft_time_limit=5400,
+    time_limit=5700,
+)
+def refresh_bangumi_subjects_task(limit: int | None = None) -> dict[str, Any]:
+    """Re-fetch known Bangumi subjects, legacy rows first."""
+    batch = (
+        limit
+        if limit is not None
+        else int(os.environ.get("BANGUMI_SUBJECT_REFRESH_BATCH_SIZE", "500"))
+    )
+    result: dict[str, Any] = run(_refresh_bangumi_subjects(max(1, batch)))
+    return result
