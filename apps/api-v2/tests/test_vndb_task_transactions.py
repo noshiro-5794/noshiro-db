@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 
 from api.contexts.presentation.fragments import fetch
-from api.worker import jobs, vndb_tasks
+from api.worker import importing, jobs, vndb_tasks
 from api.worker.providers.errors import ProviderError
 from api.worker.providers.vndb import VNDBImportBatch
 
@@ -22,7 +22,7 @@ async def task_runtime(vndb_session, monkeypatch):
             await session.rollback()
             raise
 
-    monkeypatch.setattr(vndb_tasks, "session_scope", scope)
+    monkeypatch.setattr(importing, "session_scope", scope)
     client = Mock()
     client.fetch_import_batch.return_value = VNDBImportBatch(work={"id": "v1", "title": "VN"})
     monkeypatch.setattr(vndb_tasks, "VNDBClient", Mock(return_value=client))

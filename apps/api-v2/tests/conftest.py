@@ -34,20 +34,34 @@ async def integration_session():
 
 
 @pytest_asyncio.fixture
-async def vndb_session(integration_session):
+async def register_provider(integration_session):
     from api.contexts.presentation.fragments import fetch
 
-    await fetch(
-        integration_session,
-        """
-        INSERT INTO provider
-          (slug, name, base_url, terms_url, attribution_url, license_name,
-           storage_policy, redistribution_policy, commercial_use_policy,
-           ai_usage_policy, is_enabled, created_at, updated_at)
-        VALUES ('vndb', 'VNDB', '', '', '', '', 'allowed', 'unknown', 'unknown',
-                'unknown', true, now(), now())
-        ON CONFLICT (slug) DO NOTHING RETURNING id
-        """,
-        {},
-    )
+    async def register(slug, name):
+        await fetch(
+            integration_session,
+            """
+            INSERT INTO provider
+              (slug, name, base_url, terms_url, attribution_url, license_name,
+               storage_policy, redistribution_policy, commercial_use_policy,
+               ai_usage_policy, is_enabled, created_at, updated_at)
+            VALUES (:slug, :name, '', '', '', '', 'allowed', 'unknown', 'unknown',
+                    'unknown', true, now(), now())
+            ON CONFLICT (slug) DO NOTHING RETURNING id
+            """,
+            {"slug": slug, "name": name},
+        )
+
+    return register
+
+
+@pytest_asyncio.fixture
+async def vndb_session(integration_session, register_provider):
+    await register_provider("vndb", "VNDB")
+    return integration_session
+
+
+@pytest_asyncio.fixture
+async def mal_session(integration_session, register_provider):
+    await register_provider("mal", "MyAnimeList")
     return integration_session

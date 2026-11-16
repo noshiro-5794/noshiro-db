@@ -194,7 +194,13 @@ async def upsert_media(
     return written
 
 
-async def ensure_membership(session: AsyncSession, *, entity_id: Any, work_type: str) -> bool:
+async def ensure_membership(
+    session: AsyncSession,
+    *,
+    entity_id: Any,
+    work_type: str,
+    inclusion_reason: str = "mapped work type",
+) -> bool:
     """List anime and galgame works in their catalogue collection."""
     if work_type not in {"anime", "galgame"}:
         return False
@@ -203,7 +209,7 @@ async def ensure_membership(session: AsyncSession, *, entity_id: Any, work_type:
         """
         INSERT INTO curated_collection (slug, name, is_enabled, created_at, updated_at)
         VALUES (:slug, :name, true, now(), now())
-        ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
+        ON CONFLICT (slug) DO UPDATE SET slug = EXCLUDED.slug
         RETURNING id
         """,
         {"slug": work_type, "name": work_type.capitalize()},
@@ -214,13 +220,15 @@ async def ensure_membership(session: AsyncSession, *, entity_id: Any, work_type:
         INSERT INTO curated_membership
           (listing_state, inclusion_reason, collection_id, entity_id,
            created_at, updated_at)
-        VALUES (:state, 'mapped work type', :collection, :entity, now(), now())
+        VALUES (:state, :reason, :collection, :entity, now(), now())
         ON CONFLICT (collection_id, entity_id) DO UPDATE
-          SET listing_state = EXCLUDED.listing_state, updated_at = now()
+          SET listing_state = EXCLUDED.listing_state,
+              inclusion_reason = EXCLUDED.inclusion_reason, updated_at = now()
         RETURNING id
         """,
         {
             "state": LISTED,
+            "reason": inclusion_reason,
             "collection": collection[0].id,
             "entity": entity_id,
         },
