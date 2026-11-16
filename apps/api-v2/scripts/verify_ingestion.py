@@ -19,7 +19,7 @@ from datetime import UTC, datetime
 import api.worker.mal_import as mal_import
 from api.contexts.presentation.fragments import fetch
 from api.worker import entities, facts, ingestion, metrics, presentation, profiles, records
-from api.worker.session import _sessions
+from api.worker.session import session_scope
 
 PROVIDER = "vndb"
 NAMESPACE = "vn"
@@ -61,7 +61,7 @@ async def main() -> int:
     payload = {"id": external_id, "title": "ingest probe", "probe": True}
     failures: list[str] = []
 
-    async with _sessions() as session:
+    async with session_scope() as session:
         try:
             written = await records.record_payload(
                 session,
