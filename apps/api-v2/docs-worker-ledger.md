@@ -1,3 +1,4 @@
+   1d345c9..65a85fd  main       -> origin/main
 # Worker migration: what is done, and where the evidence is
 
 This is the running ledger for moving the Celery tier off Django. Each entry names the code
@@ -23,6 +24,14 @@ result.
 | Mal import task | `worker/tasks.py` | same name, queue and lifecycle as the Django task |
 | Official MAL id reconciliation | `worker/mal_identity.py` | read-only parity with Django at 200 and 5,000 records; synthetic pending pair merged and rolled back (1 redirect, 1 merge event, source `merged`, 1 decision) |
 | Calendar board replacement | `worker/calendar.py`, `calendar_write.py`, `calendar_lookup.py`, `calendar_sync.py` | driven end to end by the stored Bangumi payload: 112 items → 108 events, one board archived and one created, rolled back; the previous-calendar lookup matches Django at 112 ids |
+| Bangumi subject import | `worker/subject_mapping.py`, `subject_import.py` | real payload re-imported: every delta zero (dedupe parity); synthetic subject creates 1 entity, 1 work, 2 names, 1 description, 2 images, 1 profile, 7 facts |
+| Bangumi subject refresh | `worker/subject_refresh.py` | target selection identical to Django at `limit=50`, including order and legacy-first |
+| AniList import | `worker/anilist_import.py` | names, description, artwork, profile and 11 facts including `anilist-id-mal`, all rolled back |
+
+A registration floor (`MIN_REGISTERED`) now fails the build when the count drops: a deleted
+registration has no other symptom. It was added after a stale-checkout rebase silently
+removed 171 lines of task registrations, taking the count from 8 to 5 without any failing
+check.
 
 The denominator moved from 23 to 30 when the coverage tool learned to read multi-line
 decorators — the earlier figure was an undercount, so the percentage was too generous.
@@ -58,7 +67,7 @@ Reproduce it with `scripts/shadow_import.sh` (fixture in `scripts/fixtures/mal_a
 
 ## How far along
 
-`python scripts/task_coverage.py` prints the number: **7 of 30 tasks**, counting only the
+`python scripts/task_coverage.py` prints the number: **9 of 30 tasks**, counting only the
 names the replacement actually registers under a Django task name. Refresh it from the
 tool rather than from memory — the first estimates in this ledger were made by counting
 decorator lines and overstated the total.
