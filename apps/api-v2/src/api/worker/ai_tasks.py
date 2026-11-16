@@ -12,6 +12,7 @@ from api.config import settings
 from api.contexts.knowledge.service import classify_entity, extract_evidence
 from api.contexts.matching.service import evaluate
 from api.contexts.presentation.fragments import fetch
+from api.contexts.scheduling.service import run as complete_schedule
 from api.shared.ai import AIError
 from api.shared.ai_availability import provider_available
 from api.shared.dispatch import publish
@@ -71,11 +72,11 @@ def evaluate_pending_candidates_task(limit: int | None = None) -> dict[str, Any]
     return result
 
 
-def retry_provider(task: Any, error: AIError) -> NoReturn:
+def retry_provider(task: Any, error: AIError, *, max_retries: int = 3) -> NoReturn:
     if not error.retryable:
         raise Ignore() from error
     raise task.retry(
-        exc=error, countdown=min(300, 30 * 2**task.request.retries), max_retries=3
+        exc=error, countdown=min(300, 30 * 2**task.request.retries), max_retries=max_retries
     ) from error
 
 
@@ -109,3 +110,21 @@ def extract_observation_evidence_task(self: Any, observation_id: str, entity_id:
         return result
     except AIError as error:
         retry_provider(self, error)
+
+
+@shared_task(  # type: ignore[untyped-decorator]
+    name="apps.ai.tasks.complete_missing_schedule_slots_task",
+    queue="ai",
+    bind=True,
+    max_retries=2,
+    soft_time_limit=600,
+    time_limit=700,
+)
+def complete_missing_schedule_slots_task(
+    self: Any, *, limit: int | None = None, apply: bool = True
+) -> dict[str, Any]:
+    try:
+        result: dict[str, Any] = run(complete_schedule(limit=limit, apply=apply))
+        return result
+    except AIError as error:
+        retry_provider(self, error, max_retries=2)
