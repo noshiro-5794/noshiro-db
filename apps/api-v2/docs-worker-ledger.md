@@ -112,6 +112,19 @@ finished task: `import_mal_media_task` needed ~2,500 lines of closure behind it,
 a fixture, a real-database run and a shadow comparison. Assume the remaining tasks are of
 that order and pick by *reading what the task calls*, not by a line count.
 
+## What the next unlock actually is
+
+Three remaining tasks share one missing dependency, and it is not the matching engine:
+
+`sync_calendar_task` with `sync_subject_details=True`, `run_airing_daily_task`, and
+`refresh_bangumi_subjects_task` all need **Bangumi subject import**
+(`apps/sync/services/subject.py::upsert_subject`, 243 lines) — the step that turns a
+Bangumi subject into a work entity with its names, description and profile.
+
+So the order is not "airing daily next because it is adjacent": it is **subject import
+first**, and the other three follow from it. That module is also what the calendar board
+currently works around by skipping subjects the catalogue does not hold.
+
 ## The task to take next
 
 `reconcile_official_mal_links_task` — 271 lines in `apps/index/services/mal_identity.py`,
