@@ -87,4 +87,97 @@ async def board_targets(session: AsyncSession) -> tuple[list[AiringTarget], str 
     return targets, board.season_key
 
 
-__all__ = ["SUPPORTED_PROVIDER_SLUGS", "AiringTarget", "board_targets"]
+TASK_NAME = "airing_daily"
+DEFAULT_SHARD = "airing"
+IDLE = "idle"
+RUNNING = "running"
+FINISHED = "finished"
+FAILED = "failed"
+
+
+def shard_for(now: Any, *, season_key: str | None = None) -> str:
+    """The state row for one day of one season: ``airing_daily:<date>:<season>``.
+
+    A new date starts a new shard, and a season rollover changes the suffix, which is what
+    makes the window restart without anyone clearing anything.
+    """
+    date_part = now.date().isoformat() if hasattr(now, "date") else str(now)[:10]
+    suffix = (season_key or "").strip() or DEFAULT_SHARD
+    return f"{TASK_NAME}:{date_part}:{suffix}"
+
+
+async def start_window(
+    session: AsyncSession, *, shard: str, total_count: int, batch_size: int
+) -> tuple[int, int] | None:
+    """Claim the next batch, or None when a window is already running."""
+    rows = await fetch(
+        session,
+        "SELECT id, current_id, status FROM sync_state"
+        " WHERE task_name = :task AND shard = :shard FOR UPDATE",
+        {"task": TASK_NAME, "shard": shard},
+    )
+    if not rows:
+        await fetch(
+            session,
+            "INSERT INTO sync_state (task_name, shard, current_id, end_id, status,"
+            " fail_count, updated_at) VALUES (:task, :shard, 0, 0, :idle, 0, now())"
+            " RETURNING id",
+            {"task": TASK_NAME, "shard": shard, "idle": IDLE},
+        )
+        current_id = 0
+        status = IDLE
+    else:
+        current_id = rows[0].current_id
+        status = rows[0].status
+    if status == RUNNING:
+        return None
+    start = min(current_id, total_count - 1)
+    end = min(start + max(1, batch_size) - 1, total_count - 1)
+    await fetch(
+        session,
+        "UPDATE sync_state SET end_id = :end, status = :running, updated_at = now()"
+        " WHERE task_name = :task AND shard = :shard RETURNING id",
+        {"end": end, "running": RUNNING, "task": TASK_NAME, "shard": shard},
+    )
+    return start, end
+
+
+async def finish_window(
+    session: AsyncSession, *, shard: str, current_id: int, finished: bool
+) -> None:
+    await fetch(
+        session,
+        "UPDATE sync_state SET current_id = :current, status = :status,"
+        " updated_at = now() WHERE task_name = :task AND shard = :shard RETURNING id",
+        {
+            "current": current_id,
+            "status": FINISHED if finished else IDLE,
+            "task": TASK_NAME,
+            "shard": shard,
+        },
+    )
+
+
+async def fail_window(session: AsyncSession, *, shard: str, current_id: int) -> None:
+    await fetch(
+        session,
+        "UPDATE sync_state SET current_id = :current, status = :failed,"
+        " fail_count = fail_count + 1, updated_at = now()"
+        " WHERE task_name = :task AND shard = :shard RETURNING id",
+        {"current": current_id, "failed": FAILED, "task": TASK_NAME, "shard": shard},
+    )
+
+
+__all__ = [
+    "DEFAULT_SHARD",
+    "FINISHED",
+    "IDLE",
+    "RUNNING",
+    "SUPPORTED_PROVIDER_SLUGS",
+    "AiringTarget",
+    "board_targets",
+    "fail_window",
+    "finish_window",
+    "shard_for",
+    "start_window",
+]
