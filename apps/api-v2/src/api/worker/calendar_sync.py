@@ -38,13 +38,28 @@ async def apply_calendar(
     data: list[Any],
     *,
     now: datetime | None = None,
+    subject_importer: Any = None,
 ) -> dict[str, Any]:
-    """Swap the board for this payload, without fetching it."""
+    """Swap the board for this payload, without fetching it.
+
+    ``subject_importer`` is called once per calendar item when the caller asked for
+    subject details. Its failures are counted, not raised: one broken subject must not
+    cost the whole board.
+    """
     moment = now or datetime.now(UTC)
     item_count = calendar_read.count_calendar_items(data)
     if item_count == 0:
         raise CalendarError("Bangumi calendar response did not contain any valid subjects.")
     subject_ids = sorted(calendar_read.ids_from_groups(data))
+    imported = 0
+    import_failures = 0
+    if subject_importer is not None:
+        for subject_id in subject_ids:
+            try:
+                await subject_importer(subject_id)
+                imported += 1
+            except Exception:
+                import_failures += 1
     works = await calendar_lookup.work_entities_for_subjects(session, subject_ids)
     events: list[dict[str, Any]] = []
     for group in data:
@@ -87,6 +102,8 @@ async def apply_calendar(
         "added": len(added),
         "removed": len(removed),
         "observation_id": str(observation_id),
+        "subjects_imported": imported,
+        "subject_import_failures": import_failures,
     }
 
 
@@ -123,13 +140,17 @@ async def _record_calendar(session: AsyncSession, data: list[Any], moment: datet
 
 
 async def sync_calendar(
-    session: AsyncSession, client: Any, *, now: datetime | None = None
+    session: AsyncSession,
+    client: Any,
+    *,
+    now: datetime | None = None,
+    subject_importer: Any = None,
 ) -> dict[str, Any]:
     """Fetch the weekly board and apply it."""
     data = client.fetch_calendar()
     if not isinstance(data, list):
         raise CalendarError("Bangumi calendar response must be a list.")
-    return await apply_calendar(session, data, now=now)
+    return await apply_calendar(session, data, now=now, subject_importer=subject_importer)
 
 
 __all__ = [
