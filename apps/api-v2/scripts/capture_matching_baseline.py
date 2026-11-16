@@ -77,9 +77,9 @@ def main() -> int:
     if args.out:
         with open(args.out, "w", encoding="utf-8") as handle:
             handle.write(text)
-        print(
-            f"wrote {args.out}: {result['sample_size']} sampled, digest {result['sample_digest'][:16]}"
-        )
+        size = result["sample_size"]
+        digest = str(result["sample_digest"])[:16]
+        print(f"wrote {args.out}: {size} rows, digest {digest}")
     else:
         print(text)
     return 0
