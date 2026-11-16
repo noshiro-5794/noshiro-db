@@ -18,7 +18,7 @@ REPO = Path(__file__).resolve().parents[3]
 DJANGO_TASKS = REPO / "apps/api/src/apps"
 WORKER = REPO / "apps/api-v2/src/api/worker"
 
-TASK_DEF = re.compile(r"@shared_task[^\n]*\n(?:@[^\n]*\n)*def\s+(\w+)\s*\(")
+TASK_DEF = re.compile(r"@shared_task\b[\s\S]{0,400}?def\s+(\w+)\s*\(")
 REGISTERED = re.compile(r'(?<![\w.])name="([\w.]+)"')
 
 # Names the worker registers that are deliberately not Django task names (a probe or a
