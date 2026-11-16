@@ -149,4 +149,37 @@ __all__ = [
     "subject_date",
     "subject_type",
     "tag_names",
+    "work_facts",
 ]
+
+
+def work_facts(mapped: dict[str, Any]) -> dict[str, tuple[Any, str]]:
+    """The facts a mapped subject contributes, as ``slug -> (value, value_type)``.
+
+    Booleans and numbers keep their type; a string is a date only for ``release-date``,
+    because a date stored as text would sort with the strings instead of the dates.
+    """
+    release = mapped.get("date")
+    candidates: dict[str, Any] = {
+        "release-date": release.isoformat() if release else None,
+        "platform": mapped.get("platform") or None,
+        "series": mapped.get("series"),
+        "volumes": mapped.get("volumes"),
+        "episode-count": mapped.get("total_episodes") or mapped.get("eps"),
+        "provider-infobox": mapped.get("infobox") or None,
+        "provider-tags": mapped.get("tags") or None,
+    }
+    out: dict[str, tuple[Any, str]] = {}
+    for slug, value in candidates.items():
+        if value is None:
+            continue
+        if isinstance(value, bool):
+            value_type = "boolean"
+        elif isinstance(value, int | float):
+            value_type = "number"
+        elif isinstance(value, str):
+            value_type = "date" if slug == "release-date" else "string"
+        else:
+            value_type = "json"
+        out[slug] = (value, value_type)
+    return out
