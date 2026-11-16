@@ -1,3 +1,4 @@
+   815ed15..49eb233  main       -> origin/main
    1d345c9..65a85fd  main       -> origin/main
 # Worker migration: what is done, and where the evidence is
 
@@ -27,6 +28,8 @@ result.
 | Bangumi subject import | `worker/subject_mapping.py`, `subject_import.py` | real payload re-imported: every delta zero (dedupe parity); synthetic subject creates 1 entity, 1 work, 2 names, 1 description, 2 images, 1 profile, 7 facts |
 | Bangumi subject refresh | `worker/subject_refresh.py` | target selection identical to Django at `limit=50`, including order and legacy-first |
 | AniList import | `worker/anilist_import.py` | names, description, artwork, profile and 11 facts including `anilist-id-mal`, all rolled back |
+| Airing daily refresh | `worker/airing_daily.py` | target selection identical to Django (282 targets, same order); window transitions exercised on the real state table: running refuses a second claim, finish idles, failure counts |
+| Matching baseline | `scripts/capture_matching_baseline.py` | read-only snapshot of what the old matcher produced: totals by policy and status, 200-row sample, digest `885601929d9d109a` |
 
 A registration floor (`MIN_REGISTERED`) now fails the build when the count drops: a deleted
 registration has no other symptom. It was added after a stale-checkout rebase silently
@@ -67,7 +70,7 @@ Reproduce it with `scripts/shadow_import.sh` (fixture in `scripts/fixtures/mal_a
 
 ## How far along
 
-`python scripts/task_coverage.py` prints the number: **9 of 30 tasks**, counting only the
+`python scripts/task_coverage.py` prints the number: **10 of 30 tasks**, counting only the
 names the replacement actually registers under a Django task name. Refresh it from the
 tool rather than from memory — the first estimates in this ledger were made by counting
 decorator lines and overstated the total.
