@@ -7,6 +7,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from api.contexts.identity.work_families import are_bindable
+
 
 class MatchProposal(BaseModel):
     decision: Literal["bind", "group", "reject", "abstain"]
@@ -51,7 +53,6 @@ def bind_allowed(
     right_types: set[str],
     library_conflict: bool,
 ) -> bool:
-    families = {"anime": {"anime"}, "galgame": {"galgame", "game"}, "game": {"galgame", "game"}}
     return all(
         (
             proposal.decision == "bind",
@@ -60,7 +61,7 @@ def bind_allowed(
             candidate.runner_up_margin >= policy.minimum_margin,
             evidence_types >= policy.minimum_evidence_types,
             left_kind == right_kind,
-            any(right in families.get(left, set()) for left in left_types for right in right_types),
+            are_bindable(left_types, right_types),
             not candidate.hard_conflicts,
             not library_conflict,
         )

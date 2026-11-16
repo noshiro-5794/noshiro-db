@@ -380,3 +380,38 @@ fixture runs verified artifact → step → claim → evidence → board applica
 filled-slot preservation, low-confidence abstention from application and `apply=False`.
 Search and model answers were fixed test responses; real Tavily/model and queue runs
 remain pending. No production services or data were changed.
+
+### Conservative proposal application
+
+`contexts/matching/batch.py` replaces the rotating admin/scheduled proposal application
+service. It preserves confidence/score thresholds, hard conflicts, compatible work
+families, premiere-year tolerance and library conflict protection. Deferred proposals
+remain pending for later review; survivor-based cursor advancement and wraparound keep
+them from starving the rest of the ring. A transaction advisory lock serializes batch
+writers and a savepoint isolates each application failure.
+
+`worker/match_application.py` registers the existing scheduled task with its 3600/3900
+limits and `abstain_ineligible=False`. Coverage is 18/30. Common work-family rules now
+live in `contexts/identity/work_families.py` and serve both matching gates and resolution.
+
+Two resolution fixes were needed: decisions now use their own savepoint, so a refused
+merge cannot leave a candidate marked accepted before the caller records an abstention;
+user-library conflicts have a specific exception subtype. Proposal settlement also no
+longer writes a nonexistent `ai_proposal.updated_at` column. A concurrent decision is
+reported as `already_decided` instead of counting it as a new acceptance.
+
+Validation:
+
+- 288 offline tests passed; the database regression skips unless its dedicated test URL
+  is provided. That regression passed separately against PostgreSQL and is wired into
+  the schema CI job after fresh migration.
+- Complete dry-run batch summaries matched the Django implementation on a shared fixture
+  with one eligible and one low-confidence proposal.
+- Real application accepted one, deferred one and advanced the cursor to one. A second
+  run wrapped and preserved the deferred proposal.
+- A real conflicting-library fixture confirmed that a refused bind leaves zero decisions
+  and the candidate pending, then the blocked fallback records exactly one abstention.
+- Latest-proposal settlement executed successfully against the real schema and was rolled
+  back after inspection.
+
+Production execution and the broader data baseline remain unverified.

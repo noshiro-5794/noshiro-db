@@ -17,6 +17,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.contexts.identity.work_families import BINDABLE
 from api.contexts.presentation.fragments import fetch
 
 MAX_REDIRECT_DEPTH = 32
@@ -24,11 +25,6 @@ MAX_CLUSTER_DEPTH = 32
 POLICY_VERSION = "fact-resolution-v1"
 RULE_METHOD = "rule"
 
-BINDABLE = {
-    "anime": {"anime"},
-    "galgame": {"galgame", "game"},
-    "game": {"galgame", "game"},
-}
 RESOLVED_STATUS = {
     "bind": "accepted",
     "group": "grouped",
@@ -40,6 +36,10 @@ VISIBILITY_RANK = {"public": 0, "authenticated": 1, "restricted": 2}
 
 class ResolutionError(RuntimeError):
     """A decision the engine refuses to make; the API answers 409."""
+
+
+class UserLibraryConflict(ResolutionError):
+    """A merge would combine two library entries belonging to the same user."""
 
 
 class CandidateNotFound(LookupError):
@@ -196,7 +196,7 @@ async def merge(
         for row in await _library_entries(session, await cluster_ids(session, target.id))
     }
     if source_users & target_users:
-        raise ResolutionError("The same user holds library entries on both entities.")
+        raise UserLibraryConflict("The same user holds library entries on both entities.")
     snapshot = await _merge_snapshot(session, source, target)
     rows = await fetch(
         session,
@@ -360,66 +360,67 @@ async def decide(
     decided_by: str = "admin_review",
 ) -> None:
     """Record the decision and, for a bind, do the merge it claims to make."""
-    rows = await fetch(
-        session,
-        "SELECT id, status, left_entity_id, right_entity_id, policy_version"
-        " FROM match_candidate WHERE id = :id FOR UPDATE",
-        {"id": candidate_id},
-    )
-    if not rows:
-        raise CandidateNotFound(candidate_id)
-    candidate = rows[0]
-    if candidate.status != "pending":
-        raise ResolutionError("Match candidate has already been decided.")
-    inserted = await fetch(
-        session,
-        "INSERT INTO candidate_decision (candidate_id, outcome, decided_by,"
-        " policy_version, reason, decision_data, created_at, updated_at)"
-        " VALUES (:candidate, :outcome, :by, :policy, :reason, '{}'::jsonb, now(), now())"
-        " RETURNING id",
-        {
-            "candidate": candidate.id,
-            "outcome": outcome,
-            "by": decided_by,
-            "policy": candidate.policy_version,
-            "reason": reason,
-        },
-    )
-    decision_id = inserted[0].id
-    await fetch(
-        session,
-        "UPDATE match_candidate SET status = :status, updated_at = now()"
-        " WHERE id = :id RETURNING id",
-        {"status": RESOLVED_STATUS[outcome], "id": candidate.id},
-    )
-    if outcome == "bind":
-        source, target = await _canonical_pair(
-            session, candidate.left_entity_id, candidate.right_entity_id
-        )
-        event_id = await merge(
+    async with session.begin_nested():
+        rows = await fetch(
             session,
-            source_id=source.id,
-            target_id=target.id,
-            method=RULE_METHOD,
-            reason=reason,
+            "SELECT id, status, left_entity_id, right_entity_id, policy_version"
+            " FROM match_candidate WHERE id = :id FOR UPDATE",
+            {"id": candidate_id},
         )
-        data = json.dumps(
+        if not rows:
+            raise CandidateNotFound(candidate_id)
+        candidate = rows[0]
+        if candidate.status != "pending":
+            raise ResolutionError("Match candidate has already been decided.")
+        inserted = await fetch(
+            session,
+            "INSERT INTO candidate_decision (candidate_id, outcome, decided_by,"
+            " policy_version, reason, decision_data, created_at, updated_at)"
+            " VALUES (:candidate, :outcome, :by, :policy, :reason, '{}'::jsonb, now(), now())"
+            " RETURNING id",
             {
-                "merge_event_id": str(event_id),
-                "source_entity_id": str(source.id),
-                "canonical_entity_id": str(target.id),
-            }
+                "candidate": candidate.id,
+                "outcome": outcome,
+                "by": decided_by,
+                "policy": candidate.policy_version,
+                "reason": reason,
+            },
         )
-    elif outcome == "group":
-        data = json.dumps({"grouped_entities": True, "merged": False})
-    else:
-        return
-    await fetch(
-        session,
-        "UPDATE candidate_decision SET decision_data = CAST(:data AS jsonb),"
-        " updated_at = now() WHERE id = :id RETURNING id",
-        {"data": data, "id": decision_id},
-    )
+        decision_id = inserted[0].id
+        await fetch(
+            session,
+            "UPDATE match_candidate SET status = :status, updated_at = now()"
+            " WHERE id = :id RETURNING id",
+            {"status": RESOLVED_STATUS[outcome], "id": candidate.id},
+        )
+        if outcome == "bind":
+            source, target = await _canonical_pair(
+                session, candidate.left_entity_id, candidate.right_entity_id
+            )
+            event_id = await merge(
+                session,
+                source_id=source.id,
+                target_id=target.id,
+                method=RULE_METHOD,
+                reason=reason,
+            )
+            data = json.dumps(
+                {
+                    "merge_event_id": str(event_id),
+                    "source_entity_id": str(source.id),
+                    "canonical_entity_id": str(target.id),
+                }
+            )
+        elif outcome == "group":
+            data = json.dumps({"grouped_entities": True, "merged": False})
+        else:
+            return
+        await fetch(
+            session,
+            "UPDATE candidate_decision SET decision_data = CAST(:data AS jsonb),"
+            " updated_at = now() WHERE id = :id RETURNING id",
+            {"data": data, "id": decision_id},
+        )
 
 
 GROUP_PREFIX = "season-group-"
@@ -501,7 +502,7 @@ async def settle_proposal(
     await fetch(
         session,
         "UPDATE ai_proposal SET status = :status, policy_reason = :note,"
-        " decided_at = now(), updated_at = now() WHERE id = :id RETURNING id",
+        " decided_at = now() WHERE id = :id RETURNING id",
         {
             "status": "accepted" if accepted else "rejected",
             "note": note,
