@@ -23,29 +23,47 @@ from api.worker.providers.catalog import CatalogPage, DeltaPage
 from api.worker.providers.errors import ProviderError
 from api.worker.providers.http import client as build_client
 
-MEDIA_QUERY = """
-query ($id: Int) {
-  Media(id: $id, type: ANIME) {
-    id
-    idMal
-    title { romaji english native }
-    description
-    startDate { year month day }
-    endDate { year month day }
-    episodes
-    duration
-    format
-    status
-    season
-    seasonYear
-    averageScore
-    popularity
-    coverImage { large medium }
-    genres
-    tags { name rank }
-    studios { edges { node { name } } }
-  }
+CHARACTER_FIELDS = """
+    edges {
+      role
+      node { id name { full native } image { large medium } }
+      voiceActors { id name { full native } languageV2 image { large medium } }
+    }
+"""
+STAFF_FIELDS = """
+    edges { role node { id name { full native } languageV2 image { large medium } } }
+"""
+AIRING_FIELDS = """
+    nodes { id episode airingAt timeUntilAiring }
+"""
+CONNECTION_FIELDS = {
+    "characters": ("edges", CHARACTER_FIELDS, 25),
+    "staff": ("edges", STAFF_FIELDS, 25),
+    "airingSchedule": ("nodes", AIRING_FIELDS, 50),
 }
+
+MEDIA_QUERY = f"""
+query ($id: Int) {{
+  Media(id: $id, type: ANIME) {{
+    id idMal type format status description season seasonYear episodes duration source
+    averageScore popularity favourites trending isAdult genres synonyms
+    bannerImage siteUrl updatedAt
+    coverImage {{ extraLarge large medium color }}
+    title {{ romaji english native userPreferred }}
+    startDate {{ year month day }}
+    endDate {{ year month day }}
+    nextAiringEpisode {{ airingAt timeUntilAiring episode }}
+    externalLinks {{ id url site type }}
+    studios {{ edges {{ isMain node {{ id name }} }} }}
+    relations {{ edges {{
+      relationType node {{ id type format title {{ romaji english native }} }}
+    }} }}
+    tags {{ id name rank category isMediaSpoiler }}
+    characters(page: 1, perPage: 25) {{ pageInfo {{ hasNextPage }} {CHARACTER_FIELDS} }}
+    staff(page: 1, perPage: 25) {{ pageInfo {{ hasNextPage }} {STAFF_FIELDS} }}
+    airingSchedule(page: 1, perPage: 50) {{ pageInfo {{ hasNextPage }} {AIRING_FIELDS} }}
+  }}
+}}
 """
 
 RETRYABLE_CODES = frozenset({"RATE_LIMITED", "INTERNAL_SERVER_ERROR"})
@@ -154,7 +172,41 @@ class AniListClient:
                 error_code="not_found",
             )
         result: dict[str, Any] = media
+        for connection, (items_key, fields, page_size) in CONNECTION_FIELDS.items():
+            self._collect_connection(result, connection, items_key, fields, page_size)
         return result
+
+    def _collect_connection(
+        self, media: dict[str, Any], connection: str, items_key: str, fields: str, page_size: int
+    ) -> None:
+        current = media.get(connection)
+        if not isinstance(current, dict):
+            return
+        page = 1
+        while (current.get("pageInfo") or {}).get("hasNextPage"):
+            page += 1
+            query = f"""
+            query ($id: Int, $page: Int, $perPage: Int) {{
+              Media(id: $id, type: ANIME) {{
+                id
+                {connection}(page: $page, perPage: $perPage) {{
+                  pageInfo {{ hasNextPage }}
+                  {fields}
+                }}
+              }}
+            }}
+            """
+            data = self.query(query, {"id": media["id"], "page": page, "perPage": page_size})
+            next_media = data.get("Media")
+            if not isinstance(next_media, dict) or next_media.get("id") != media["id"]:
+                raise ProviderError("AniList connection response changed media identity.")
+            current = next_media.get(connection)
+            if not isinstance(current, dict) or not isinstance(current.get(items_key), list):
+                raise ProviderError(f"AniList returned an invalid {connection} page.")
+            if not current[items_key] and (current.get("pageInfo") or {}).get("hasNextPage"):
+                raise ProviderError(f"AniList returned an empty nonterminal {connection} page.")
+            media[connection].setdefault(items_key, []).extend(current[items_key])
+            media[connection]["pageInfo"] = current.get("pageInfo") or {}
 
     DELTA_START_WATERMARK = 19400101
 

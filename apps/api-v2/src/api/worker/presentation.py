@@ -17,6 +17,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.contexts.identity.names import SourceName
 from api.contexts.presentation.fragments import fetch
 
 ORIGINAL = "original"
@@ -247,3 +248,38 @@ __all__ = [
     "upsert_description",
     "upsert_media",
 ]
+
+
+async def record_names(
+    session: AsyncSession,
+    *,
+    entity_id: Any,
+    provider_record_id: Any,
+    observation_id: Any,
+    entries: list[SourceName],
+) -> None:
+    """Record complete source names, preserving the first flags for duplicate keys."""
+    for name in entries:
+        await fetch(
+            session,
+            """
+            INSERT INTO entity_name
+              (text, language, script, region, kind, is_original, is_official,
+               is_machine_generated, is_reviewed, entity_id, provider_record_id,
+               observation_id, created_at, updated_at)
+            VALUES (:text, :language, :script, '', :kind, :original, :official,
+                    false, false, :entity, :record, :observation, now(), now())
+            ON CONFLICT DO NOTHING RETURNING id
+            """,
+            {
+                "text": name.text,
+                "language": name.language,
+                "script": name.script,
+                "kind": name.kind,
+                "original": name.is_original,
+                "official": name.is_official,
+                "entity": entity_id,
+                "record": provider_record_id,
+                "observation": observation_id,
+            },
+        )

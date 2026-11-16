@@ -610,3 +610,51 @@ behavior owned by the old entry point. Remaining AniList/Bangumi projections and
 campaign, season, manual-sync and email flows still need completion before the final
 app consolidation and production verification. All source responses used here were
 fixed local fixtures. Production was unchanged.
+
+### AniList complete media projection and import entry points
+
+AniList now projects its full media metadata, official/script-aware multilingual names,
+source material, partial-date fallback, metrics, genres/tags, related works, characters,
+voice actors, staff, studios, episode identities and airing events. Saved season-item
+revisions can be imported locally. The task uses the shared leased import coordinator,
+storage policy and client cleanup. Batch failures roll back the complete graph.
+Shared name and contributor/relation writers now serve AniList and VNDB; existing
+VNDB source-specific mappings remain independent.
+
+The full fetch collects subsequent character, staff and airing pages instead of keeping
+only the first page. Character/staff limits follow the official Media schema:
+https://github.com/AniList/docs/blob/master/docs/reference/object/media.md
+Empty nonterminal pages fail explicitly. Embedded references preserve existing entity
+metadata, including adult audience. Fallback episode identities include their source
+media ID, preventing different works' episode numbers from colliding. Episode links
+use the source media ID. Stable episode payloads omit changing countdown values.
+
+The media mapper is now `anilist.media` version `anilist-media-v2`; fact evidence points
+to source fields. Re-import retires the earlier partial `anilist.anime` cursor and rebuilds
+its selected fields, retaining immutable observations. Revision writing now carries the
+upstream update timestamp. The AniList site's own link receives the correct label/type.
+
+Normal-entry auditing also found an incorrect AniList task name/arguments and missing
+MAL import-provider support. Create/detail/list requests now support the original three
+providers, use each registered task's typed arguments, and commit jobs before publishing.
+Broker failure or absent broker configuration durably marks the queued job failed and
+returns the original `sync.task_dispatch_failed` 503 response. Frontend import types
+now include VNDB/AniList/MAL. Root `make openapi` regenerated the existing snapshot with
+no diff; these changes restore the already-declared contract.
+
+Validation: lint, formatting, strict typing of 164 modules and 325 offline tests passed.
+Forty-seven PostgreSQL integration tests passed. New cases cover full graph replay,
+source metadata, stable episode revisions, next-episode isolation across works,
+reference safety, rollback, saved payloads, partial-mapper retirement, task lifecycle,
+request dispatch, MAL HTTP create/list/detail and durable 503 failures. Fourteen
+serialized AniList graph sections matched the old importer on a fixed payload. The
+VNDB thirteen-section and MAL eight-section comparisons still pass. Deliberate link,
+source-pointer, reference-safety and fallback-ID corrections have separate assertions.
+The schema CI job includes the new database test module. Source transport was mocked.
+
+The frontend gate completed with 234 unit tests, seven browser tests and a production
+build. Browser output exposed a React route lazy-loading compatibility error that the
+existing page-error assertion missed across reloads; a targeted console regression and
+compatibility correction are being verified separately in this goal. Task-name coverage
+remains 19/30. Bangumi projection completion, campaign/season/manual-sync/mail flows,
+full contract audit, app consolidation and production verification remain pending.

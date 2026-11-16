@@ -1,14 +1,14 @@
 """VNDB source projections with observation-scoped names, artwork and facts."""
 
-import re
-import unicodedata
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.contexts.identity.names import SourceName
 from api.contexts.presentation.fragments import fetch
+from api.shared.text import slugify
 from api.worker import entities, facts, ingestion, metrics, presentation, records
 from api.worker import vndb_mapping as mapping
 
@@ -94,31 +94,15 @@ async def record_source(
 
 
 async def write_names(
-    session: AsyncSession, projection: Projection, names: list[mapping.Name]
+    session: AsyncSession, projection: Projection, names: list[SourceName]
 ) -> None:
-    for name in names:
-        await fetch(
-            session,
-            """
-            INSERT INTO entity_name
-              (text, language, script, region, kind, is_original, is_official,
-               is_machine_generated, is_reviewed, entity_id, provider_record_id,
-               observation_id, created_at, updated_at)
-            VALUES (:text, :language, '', '', :kind, :original, :official,
-                    false, false, :entity, :record, :observation, now(), now())
-            ON CONFLICT DO NOTHING RETURNING id
-            """,
-            {
-                "text": name.text,
-                "language": name.language,
-                "kind": name.kind,
-                "original": name.is_original,
-                "official": name.is_official,
-                "entity": projection.entity_id,
-                "record": projection.record_id,
-                "observation": projection.observation_id,
-            },
-        )
+    await presentation.record_names(
+        session,
+        entity_id=projection.entity_id,
+        provider_record_id=projection.record_id,
+        observation_id=projection.observation_id,
+        entries=names,
+    )
 
 
 async def write_media(
@@ -167,8 +151,7 @@ async def write_links(session: AsyncSession, projection: Projection, data: dict[
         if not isinstance(url, str) or not url:
             continue
         label = item.get("label") if isinstance(item.get("label"), str) else ""
-        normalized = unicodedata.normalize("NFKD", label).encode("ascii", "ignore").decode("ascii")
-        slug = re.sub(r"[-\s]+", "-", re.sub(r"[^\w\s-]", "", normalized.lower())).strip("-_")
+        slug = slugify(label)
         await fetch(
             session,
             """

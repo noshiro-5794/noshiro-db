@@ -269,44 +269,29 @@ def refresh_bangumi_subjects_task(limit: int | None = None) -> dict[str, Any]:
 async def _import_anilist_media(
     anilist_id: int, job_id: str | None, lease_owner: str
 ) -> dict[str, Any]:
-    import api.worker.anilist_import as anilist_import
+    from api.worker import anilist_import
+    from api.worker.importing import import_record
     from api.worker.providers.anilist import AniListClient
 
-    async with session_scope() as session:
-        if job_id and not await jobs.claim(
-            session, job_id=job_id, lease_owner=lease_owner, lease_seconds=900
-        ):
-            return {"skipped": True, "reason": "job already claimed"}
-        await jobs.mark_running(
-            session,
-            job_id=job_id,
-            total_count=1,
-            current_label=f"Importing AniList {anilist_id}",
-            lease_owner=lease_owner,
-        )
+    async def fetch_payload(forbidden: bool) -> dict[str, Any]:
+        if not isinstance(anilist_id, int) or isinstance(anilist_id, bool) or anilist_id <= 0:
+            raise ValueError("AniList media IDs must be positive integers.")
+        client = AniListClient()
+        client.forbid_storage(forbidden=forbidden)
         try:
-            media = await asyncio.to_thread(AniListClient().fetch_media, anilist_id)
-            entity_id = await anilist_import.import_media(session, media)
-            result = {
-                "entity_id": str(entity_id),
-                "provider": "anilist",
-                "external_id": anilist_id,
-            }
-            await jobs.advance(
-                session,
-                job_id=job_id,
-                processed=1,
-                synced=1,
-                current_label=f"Imported AniList {anilist_id}",
-                lease_owner=lease_owner,
-            )
-            await jobs.mark_succeeded(
-                session, job_id=job_id, result=result, lease_owner=lease_owner
-            )
-            return result
-        except Exception as error:
-            await jobs.mark_failed(session, job_id=job_id, error=error, lease_owner=lease_owner)
-            raise
+            return await asyncio.to_thread(client.fetch_media, anilist_id)
+        finally:
+            client.close()
+
+    return await import_record(
+        provider="anilist",
+        label="AniList",
+        external_id=anilist_id,
+        job_id=job_id,
+        lease_owner=lease_owner,
+        fetch_payload=fetch_payload,
+        project=anilist_import.import_media,
+    )
 
 
 @shared_task(  # type: ignore[untyped-decorator]

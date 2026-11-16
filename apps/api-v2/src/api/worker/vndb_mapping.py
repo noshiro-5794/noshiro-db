@@ -5,14 +5,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
-
-@dataclass(frozen=True, slots=True)
-class Name:
-    text: str
-    language: str
-    kind: str
-    is_original: bool = False
-    is_official: bool = False
+from api.contexts.identity.names import SourceName
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,7 +18,7 @@ class Fact:
     spoiler_level: int = 0
 
 
-def simple_names(data: dict[str, Any]) -> list[Name]:
+def simple_names(data: dict[str, Any]) -> list[SourceName]:
     names = []
     for key, kind, original in (
         ("title", "official", False),
@@ -36,14 +29,14 @@ def simple_names(data: dict[str, Any]) -> list[Name]:
         value = data.get(key)
         if isinstance(value, str) and value:
             names.append(
-                Name(
+                SourceName(
                     value, data.get("olang") or data.get("lang") or "", kind, original, not original
                 )
             )
     return names
 
 
-def work_names(data: dict[str, Any]) -> list[Name]:
+def work_names(data: dict[str, Any]) -> list[SourceName]:
     names = []
     for item in data.get("titles") or []:
         title = item.get("title")
@@ -52,7 +45,7 @@ def work_names(data: dict[str, Any]) -> list[Name]:
         language = item.get("lang") or ""
         original = language == (data.get("olang") or "")
         names.append(
-            Name(
+            SourceName(
                 title,
                 language,
                 "original" if original else "official",
@@ -62,9 +55,9 @@ def work_names(data: dict[str, Any]) -> list[Name]:
         )
         latin = item.get("latin")
         if isinstance(latin, str) and latin and latin != title:
-            names.append(Name(latin, language, "romanized"))
+            names.append(SourceName(latin, language, "romanized"))
     names.extend(
-        Name(alias, "", "alias")
+        SourceName(alias, "", "alias")
         for alias in data.get("aliases") or []
         if isinstance(alias, str) and alias
     )

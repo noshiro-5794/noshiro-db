@@ -12,7 +12,8 @@ from typing import Any
 
 IMPORT_TASKS = {
     "vndb": "apps.sync.tasks.vndb.import_vndb_work_task",
-    "anilist": "apps.sync.tasks.anilist.import_anilist_work_task",
+    "anilist": "apps.sync.tasks.anilist.import_anilist_media_task",
+    "mal": "apps.sync.tasks.mal.import_mal_media_task",
 }
 SYNC_TASK = "apps.sync.tasks.campaign.run_sync_campaign_task"
 
@@ -21,13 +22,15 @@ def task_for_import(provider: str) -> str | None:
     return IMPORT_TASKS.get(provider)
 
 
-IMPORT_ARG = {"vndb": "vndb_id", "anilist": "anilist_id"}
+IMPORT_ARG = {"vndb": "vndb_id", "anilist": "anilist_id", "mal": "mal_id"}
 
 
 def import_kwargs(
     *, provider: str, external_id: str, include_related: bool, job_id: str
 ) -> dict[str, Any]:
     """The keyword the task expects is named after the provider, not `external_id`."""
+    if provider in {"anilist", "mal"}:
+        return {IMPORT_ARG[provider]: int(external_id), "job_id": job_id}
     return {
         IMPORT_ARG[provider]: external_id,
         "include_related": include_related,

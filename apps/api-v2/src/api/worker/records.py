@@ -166,6 +166,7 @@ async def record_payload(
     canonical_url: str = "",
     origin: str = "api",
     fetched_at: datetime | None = None,
+    upstream_updated_at: datetime | None = None,
 ) -> RecordWrite:
     """Store the payload and return the record, the revision, and whether it changed."""
     if not external_id.strip():
@@ -218,7 +219,7 @@ async def record_payload(
               (id, record_id, payload, payload_hash, schema_version, response_metadata,
                upstream_updated_at, fetched_at)
             VALUES (gen_random_uuid(), :record, CAST(:payload AS jsonb), :hash,
-                    :schema_version, '{}'::jsonb, NULL, :at)
+                    :schema_version, '{}'::jsonb, :upstream_updated_at, :at)
             ON CONFLICT DO NOTHING
             RETURNING id
             """,
@@ -227,6 +228,7 @@ async def record_payload(
                 "payload": json.dumps(payload, ensure_ascii=False),
                 "hash": digest,
                 "schema_version": schema_version,
+                "upstream_updated_at": upstream_updated_at,
                 "at": at,
             },
         )
