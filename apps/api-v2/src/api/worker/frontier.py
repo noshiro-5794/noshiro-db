@@ -24,17 +24,10 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.presentation.fragments import fetch as sql_fetch
+from api.worker.providers.errors import ProviderError
 
 FRONTIER_TASK_NAME = "provider_frontier"
 NUMERIC_ID = r"^[0-9]+$"
-
-
-class ProviderError(Exception):
-    """A provider answered, and the answer says the record does not exist."""
-
-    def __init__(self, message: str, *, is_not_found: bool = False) -> None:
-        super().__init__(message)
-        self.is_not_found = is_not_found
 
 
 @dataclass(frozen=True)
