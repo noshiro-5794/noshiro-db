@@ -93,6 +93,7 @@ async def ensure_namespace(
           (slug, resource_type, description, provider_id, created_at, updated_at)
         SELECT :namespace, :resource_type, '', p.id, now(), now()
         FROM provider AS p WHERE p.slug = :provider
+        ON CONFLICT (provider_id, slug) DO UPDATE SET slug = EXCLUDED.slug
         RETURNING id
         """,
         {
@@ -104,6 +105,53 @@ async def ensure_namespace(
     if not created:
         raise RecordConflict(f"Provider {provider_slug} is not registered.")
     return created[0].id
+
+
+async def ensure_record(
+    session: AsyncSession,
+    *,
+    provider_slug: str,
+    namespace_slug: str,
+    resource_type: str,
+    external_id: str,
+    canonical_url: str = "",
+    origin: str = "api",
+) -> Any:
+    """Refresh an embedded reference without replacing a fetched payload or revision."""
+    identifier = external_id.strip()
+    if not identifier:
+        raise ValueError("Source external_id must not be empty.")
+    namespace_id = await ensure_namespace(
+        session,
+        provider_slug=provider_slug,
+        namespace_slug=namespace_slug,
+        resource_type=resource_type,
+    )
+    rows = await fetch(
+        session,
+        """
+        INSERT INTO provider_record
+          (id, namespace_id, external_id, canonical_url, status, origin, raw_state,
+           latest_payload_hash, latest_revision_id,
+           first_seen_at, last_seen_at, created_at, updated_at)
+        VALUES (gen_random_uuid(), :namespace, :external_id, :url, 'active', :origin,
+                :raw_state, '', NULL, clock_timestamp(), clock_timestamp(), now(), now())
+        ON CONFLICT (namespace_id, external_id) DO UPDATE
+        SET canonical_url = CASE WHEN EXCLUDED.canonical_url = ''
+                                 THEN provider_record.canonical_url ELSE EXCLUDED.canonical_url END,
+            status = 'active', origin = EXCLUDED.origin,
+            last_seen_at = clock_timestamp(), updated_at = now()
+        RETURNING id
+        """,
+        {
+            "namespace": namespace_id,
+            "external_id": identifier,
+            "url": canonical_url,
+            "origin": origin,
+            "raw_state": stub_state_for_namespace(provider_slug=provider_slug),
+        },
+    )
+    return rows[0].id
 
 
 async def record_payload(

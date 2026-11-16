@@ -10,6 +10,7 @@ Two behaviours are carried over from the Django client because both are load-bea
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 import httpx
@@ -20,11 +21,51 @@ from api.worker.providers.http import client as build_client
 from api.worker.providers.http import send
 
 VN_FIELDS = (
-    "id,title,alttitle,titles.title,titles.lang,titles.latin,titles.official,"
-    "released,description,image.url,rating,votecount,length,developers.id,"
-    "developers.name,tags.id,tags.name,tags.rating,tags.spoiler,"
-    "aliases.name,aliases.latin,aliases.ismain,extlinks.url,extlinks.label"
+    "id,title,alttitle,aliases,released,languages,platforms,olang,description,"
+    "length_minutes,length_votes,devstatus,popularity,rating,votecount,titles.lang,"
+    "titles.title,titles.latin,titles.official,titles.main,image.url,image.sexual,"
+    "image.violence,screenshots.url,screenshots.sexual,screenshots.violence,"
+    "screenshots.release.id,developers.id,developers.name,developers.original,"
+    "developers.type,developers.extlinks.url,developers.extlinks.label,tags.id,tags.name,"
+    "tags.rating,tags.spoiler,tags.lie,relations.id,relations.title,relations.alttitle,"
+    "relations.olang,relations.relation,relations.relation_official,staff.id,staff.aid,"
+    "staff.name,staff.original,staff.lang,staff.role,staff.note,va.staff.id,va.staff.aid,"
+    "va.staff.name,va.staff.original,va.staff.lang,va.character.id,va.character.name,"
+    "va.character.original,va.note,extlinks.url,extlinks.label"
 )
+
+
+RELEASE_FIELDS = (
+    "id,title,alttitle,released,languages.lang,languages.title,languages.latin,"
+    "languages.main,languages.mtl,platforms,media.medium,media.qty,resolution,voiced,"
+    "engine,official,patch,freeware,uncensored,minage,vns.id,vns.title,vns.rtype,"
+    "producers.id,producers.name,producers.original,producers.type,producers.developer,"
+    "producers.publisher,producers.extlinks.url,producers.extlinks.label,extlinks.url,"
+    "extlinks.label"
+)
+
+
+CHARACTER_FIELDS = (
+    "id,name,original,aliases,description,image.url,image.sexual,image.violence,sex,"
+    "gender,blood_type,height,weight,bust,waist,hips,cup,birthday,age,vns.id,vns.role,"
+    "vns.spoiler,vns.release.id,traits.id,traits.name,traits.group_id,traits.group_name,"
+    "traits.spoiler,traits.lie"
+)
+
+
+STAFF_FIELDS = (
+    "id,aid,ismain,name,original,lang,description,gender,aliases.aid,aliases.name,"
+    "aliases.latin,aliases.ismain,extlinks.url,extlinks.label"
+)
+
+
+@dataclass(frozen=True, slots=True)
+class VNDBImportBatch:
+    work: dict[str, Any]
+    releases: tuple[dict[str, Any], ...] = ()
+    characters: tuple[dict[str, Any], ...] = ()
+    contributors: tuple[dict[str, Any], ...] = ()
+    related_fetched: bool = False
 
 
 class VNDBClient:
@@ -139,6 +180,74 @@ class VNDBClient:
             watermark=str(highest),
             total_count=data["count"] if isinstance(data.get("count"), int) else None,
         )
+
+    def fetch_related(self, endpoint: str, *, vndb_id: str, fields: str) -> list[dict[str, Any]]:
+        page = 1
+        items: list[dict[str, Any]] = []
+        while True:
+            filters: list[Any] = ["vn", "=", ["id", "=", vndb_id]]
+            data = self.query(endpoint, filters=filters, fields=fields, page=page)
+            items.extend(data["results"])
+            if not data.get("more"):
+                return items
+            page += 1
+
+    def fetch_import_batch(self, vndb_id: str, *, include_related: bool = True) -> VNDBImportBatch:
+        work = self.fetch_vn(vndb_id)
+        if not include_related:
+            return VNDBImportBatch(work=work)
+        staff_ids = self._embedded_staff_ids(work)
+        contributors = self._fetch_staff_details(work) if staff_ids else ()
+        return VNDBImportBatch(
+            work=work,
+            releases=tuple(self.fetch_related("release", vndb_id=vndb_id, fields=RELEASE_FIELDS)),
+            characters=tuple(
+                self.fetch_related("character", vndb_id=vndb_id, fields=CHARACTER_FIELDS)
+            ),
+            contributors=contributors,
+            related_fetched=True,
+        )
+
+    @classmethod
+    def _embedded_staff_ids(cls, work: dict[str, Any]) -> tuple[str, ...]:
+        """Staff ids referenced by a VN payload (staff and voice-actor entries).
+
+        ``/staff`` accepts only scalar ``id`` filters and has no ``vn`` filter,
+        so per-id detail fetches are driven from ids the work already embeds.
+        """
+        entries = list(work.get("staff") or [])
+        entries.extend(
+            entry.get("staff") for entry in work.get("va") or [] if isinstance(entry, dict)
+        )
+        ids: list[str] = []
+        for item in entries:
+            if not isinstance(item, dict):
+                continue
+            identifier = item.get("id")
+            if isinstance(identifier, int) and not isinstance(identifier, bool) and identifier > 0:
+                identifier = f"s{identifier}"
+            if (
+                isinstance(identifier, str)
+                and identifier.startswith("s")
+                and identifier[1:].isascii()
+                and identifier[1:].isdigit()
+                and int(identifier[1:]) > 0
+            ):
+                ids.append(identifier)
+        return tuple(dict.fromkeys(ids))
+
+    def _fetch_staff_details(self, work: dict[str, Any]) -> tuple[dict[str, Any], ...]:
+        details: list[dict[str, Any]] = []
+        for staff_id in self._embedded_staff_ids(work):
+            data = self.query(
+                "staff",
+                filters=["and", ["ismain", "=", 1], ["id", "=", staff_id]],
+                fields=STAFF_FIELDS,
+                results=1,
+            )
+            if data.get("results"):
+                details.append(data["results"][0])
+        return tuple(details)
 
     def close(self) -> None:
         if self._http is not None:

@@ -477,3 +477,24 @@ all three PostgreSQL test modules.
 These adapters and the discovery phase are ready for the pending campaign runner. Full
 related-record imports and campaign AI normalization/enrichment remain dependencies, so
 the campaign task is still unregistered and migration task coverage remains 18/30.
+
+### VNDB batch transport and embedded source records
+
+The VNDB client now fetches the complete work fields, paginated release/character
+payloads, and deduplicated staff details. `include_related=False` performs only the
+work request. Official Kana documentation exposed an inherited bug: staff IDs are
+`s`-prefixed strings, while the old client accepted only integers. The replacement
+accepts canonical IDs and legacy integer inputs, excludes boolean/invalid IDs, and
+uses `ismain=1` when retrieving staff details so alias order cannot select the name.
+Reference: https://api.vndb.org/kana#post-staff
+
+`ensure_record` atomically creates or refreshes embedded references while preserving
+existing payload hashes, revisions and raw-state completeness. Namespace creation now
+uses conflict-safe insertion for simultaneous imports of a new resource type.
+
+Validation: lint, format, strict typing and 310 offline tests passed. Fifteen opt-in
+PostgreSQL tests passed, including stub-to-full promotion, replay without extra
+revisions, URL preservation and refreshing a previously missing full record. Staff
+and related-page requests were tested through HTTPX's mock transport. The schema CI
+job includes the new record transaction test. Full VNDB graph projection remains in
+progress, so its import task remains unregistered and task coverage stays 18/30.
