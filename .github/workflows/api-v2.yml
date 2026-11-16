@@ -61,12 +61,14 @@ jobs:
           --health-retries 12
     env:
       DATABASE_URL: postgresql://postgres:migration-test@127.0.0.1:5432/noshiro_schema_test
+      NOSHIRO_INTEGRATION_DATABASE_URL: postgresql://postgres:migration-test@127.0.0.1:5432/noshiro_schema_test
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with:
           version: "0.13.4"
-      - run: uv sync --locked --no-dev
-      - run: uv run --no-dev alembic upgrade head
-      - run: uv run --no-dev alembic downgrade 0001_baseline
-      - run: uv run --no-dev alembic upgrade head
+      - run: uv sync --locked
+      - run: uv run alembic upgrade head
+      - run: uv run alembic downgrade 0001_baseline
+      - run: uv run alembic upgrade head
+      - run: uv run pytest -q tests/test_matching_transactions.py

@@ -30,7 +30,7 @@ IGNORED_NAMES: set[str] = set()
 # only symptom is that the old worker keeps running it. That already happened once — a
 # branch rebuilt from a stale checkout deleted 171 lines of registrations. The floor makes
 # any drop a failing check; raise it whenever a task is added, never lower it silently.
-MIN_REGISTERED = 17
+MIN_REGISTERED = 18
 
 
 def django_tasks() -> dict[str, str]:
