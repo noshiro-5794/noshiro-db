@@ -168,8 +168,69 @@ async def fail_window(session: AsyncSession, *, shard: str, current_id: int) -> 
     )
 
 
+async def sync_day(
+    session: AsyncSession,
+    *,
+    now: Any,
+    batch_size: int,
+    fetch_media: Any,
+    fetch_subject: Any,
+    import_anime: Any,
+    import_media: Any,
+    import_subject: Any,
+) -> dict[str, Any]:
+    """Refresh one window of the board's targets, then record how far it got.
+
+    The importers are passed in rather than constructed here so the whole flow can be
+    driven without a network, and so this module never grows a second copy of the mapping
+    rules. A target that fails is counted and the window continues: one broken subject must
+    not stop the day, and the next window retries it because ``current_id`` only advances
+    past what succeeded.
+    """
+    targets, season_key = await board_targets(session)
+    shard = shard_for(now, season_key=season_key)
+    if not targets:
+        return {"shard": shard, "selected": 0, "processed": 0, "failed": 0, "finished": True}
+    window = await start_window(
+        session, shard=shard, total_count=len(targets), batch_size=batch_size
+    )
+    if window is None:
+        return {"shard": shard, "selected": len(targets), "running": True}
+    start, end = window
+    processed = 0
+    failed = 0
+    consumed = start
+    try:
+        for index in range(start, end + 1):
+            target = targets[index]
+            if target.provider_slug == "mal":
+                media = await fetch_media(int(target.external_id))
+                await import_anime(session, media)
+            elif target.provider_slug == "anilist":
+                media = await fetch_media(int(target.external_id))
+                await import_media(session, media)
+            else:
+                subject = await fetch_subject(int(target.external_id))
+                await import_subject(session, subject)
+            processed += 1
+            consumed = index + 1
+    except Exception:
+        await fail_window(session, shard=shard, current_id=consumed)
+        raise
+    finished = consumed >= len(targets)
+    await finish_window(session, shard=shard, current_id=consumed, finished=finished)
+    return {
+        "shard": shard,
+        "selected": len(targets),
+        "processed": processed,
+        "failed": failed,
+        "finished": finished,
+    }
+
+
 __all__ = [
     "DEFAULT_SHARD",
+    "FAILED",
     "FINISHED",
     "IDLE",
     "RUNNING",
@@ -180,4 +241,5 @@ __all__ = [
     "finish_window",
     "shard_for",
     "start_window",
+    "sync_day",
 ]
