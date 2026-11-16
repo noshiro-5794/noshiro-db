@@ -104,9 +104,10 @@ async def claim_campaign(
         session,
         """
         UPDATE sync_campaign SET lease_owner = :owner,
-          lease_expires_at = now() + make_interval(secs => :seconds), heartbeat_at = now()
+          lease_expires_at = clock_timestamp() + make_interval(secs => :seconds),
+          heartbeat_at = clock_timestamp()
         WHERE id = :id AND status <> ALL(:terminal)
-          AND (lease_expires_at IS NULL OR lease_expires_at < now()) RETURNING *
+          AND (lease_expires_at IS NULL OR lease_expires_at < clock_timestamp()) RETURNING *
     """,
         {
             "id": campaign_id,
@@ -125,8 +126,9 @@ async def heartbeat(
         session,
         """
         UPDATE sync_campaign SET heartbeat_at = now(),
-          lease_expires_at = now() + make_interval(secs => :seconds)
-        WHERE id = :id AND lease_owner = :owner AND lease_expires_at > now() RETURNING id
+          lease_expires_at = clock_timestamp() + make_interval(secs => :seconds)
+        WHERE id = :id AND lease_owner = :owner AND lease_expires_at > clock_timestamp()
+        RETURNING id
     """,
         {"id": campaign_id, "owner": owner, "seconds": max(1, lease_seconds)},
     )

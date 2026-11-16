@@ -14,6 +14,7 @@ from typing import Any
 
 import httpx
 
+from api.worker.providers.catalog import CatalogPage, DeltaPage
 from api.worker.providers.errors import ProviderError
 from api.worker.providers.http import client as build_client
 from api.worker.providers.http import send
@@ -94,6 +95,60 @@ class VNDBClient:
             )
         record: dict[str, Any] = data["results"][0]
         return record
+
+    def discover_vn_page(self, *, cursor: str | None = None, page_size: int = 100) -> CatalogPage:
+        page = max(1, int(cursor or "1"))
+        data = self.query(
+            "vn", filters=[], fields="id", page=page, results=page_size, count=page == 1, sort="id"
+        )
+        ids = tuple(
+            item["id"]
+            for item in data["results"]
+            if isinstance(item, dict) and isinstance(item.get("id"), str)
+        )
+        return CatalogPage(
+            external_ids=ids,
+            next_cursor=str(page + 1) if data.get("more") else None,
+            total_count=data["count"] if page == 1 and isinstance(data.get("count"), int) else None,
+        )
+
+    def discover_vn_delta_page(
+        self, *, watermark: str, cursor: str | None = None, page_size: int = 100, seed: int = 0
+    ) -> DeltaPage:
+        start = int(watermark) if watermark.isdigit() else 0
+        if start <= 0:
+            start = seed
+        page = max(1, int(cursor or "1"))
+        data = self.query(
+            "vn",
+            filters=["id", ">", f"v{start}"],
+            fields="id",
+            page=page,
+            results=page_size,
+            sort="id",
+        )
+        ids = tuple(
+            item["id"]
+            for item in data["results"]
+            if isinstance(item, dict) and isinstance(item.get("id"), str)
+        )
+        highest = max((vn_number(value) for value in ids), default=start)
+        return DeltaPage(
+            external_ids=ids,
+            next_cursor=str(page + 1) if data.get("more") else None,
+            watermark=str(highest),
+            total_count=data["count"] if isinstance(data.get("count"), int) else None,
+        )
+
+    def close(self) -> None:
+        if self._http is not None:
+            self._http.close()
+            self._http = None
+
+
+def vn_number(external_id: str) -> int:
+    raw = str(external_id).lstrip("vV")
+    return int(raw) if raw.isdigit() else 0
 
 
 __all__ = ["VN_FIELDS", "VNDBClient"]

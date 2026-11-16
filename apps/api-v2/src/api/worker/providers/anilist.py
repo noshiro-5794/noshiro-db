@@ -14,10 +14,12 @@ A ``null`` media means the record is gone, which is a terminal answer, not a fai
 from __future__ import annotations
 
 import time
+from datetime import date, timedelta
 from typing import Any
 
 import httpx
 
+from api.worker.providers.catalog import CatalogPage, DeltaPage
 from api.worker.providers.errors import ProviderError
 from api.worker.providers.http import client as build_client
 
@@ -154,6 +156,126 @@ class AniListClient:
         result: dict[str, Any] = media
         return result
 
+    DELTA_START_WATERMARK = 19400101
+
+    CATALOG_QUERY = """
+    query ($page: Int!, $perPage: Int!) {
+      Page(page: $page, perPage: $perPage) {
+        pageInfo { hasNextPage total }
+        media(type: ANIME, sort: ID) { id }
+      }
+    }
+    """
+
+    DELTA_QUERY = """
+    query ($page: Int!, $perPage: Int!, $startedAfter: FuzzyDateInt!) {
+      Page(page: $page, perPage: $perPage) {
+        pageInfo { hasNextPage }
+        media(type: ANIME, sort: START_DATE, startDate_greater: $startedAfter) {
+          id
+          startDate { year month day }
+        }
+      }
+    }
+    """
+
+    def discover_anime_page(self, *, cursor: str | None = None, page_size: int = 50) -> CatalogPage:
+        """Discover AniList anime IDs using the provider's cursor-like page API."""
+        page = max(1, int(cursor or "1"))
+        data = self.query(self.CATALOG_QUERY, {"page": page, "perPage": min(max(page_size, 1), 50)})
+        page_data = data.get("Page")
+        if not isinstance(page_data, dict):
+            raise ProviderError("AniList returned an invalid catalog page.")
+        external_ids = tuple(
+            str(item["id"])
+            for item in page_data.get("media") or []
+            if isinstance(item, dict) and isinstance(item.get("id"), int)
+        )
+        page_info = page_data.get("pageInfo") or {}
+        return CatalogPage(
+            external_ids=external_ids,
+            next_cursor=str(page + 1) if page_info.get("hasNextPage") else None,
+            total_count=int(page_info["total"])
+            if isinstance(page_info.get("total"), int)
+            else None,
+        )
+
+    def discover_anime_delta_page(
+        self, *, watermark: str, cursor: str | None = None, page_size: int = 50
+    ) -> DeltaPage:
+        """Walk the catalogue by air date.
+
+        AniList has no "updated since" filter and refuses page depths beyond
+        5000 entries, so a crawl partitions the catalogue by ``startDate`` and
+        moves the window forward as it goes. Titles with no air date are not
+        reachable this way; the season and airing syncs cover those.
+        """
+        try:
+            started_after = int(watermark)
+        except (TypeError, ValueError) as exc:
+            raise ProviderError(
+                "AniList delta watermark must be a FuzzyDateInt (YYYYMMDD)."
+            ) from exc
+        if started_after <= 0:
+            started_after = self.DELTA_START_WATERMARK
+        page = max(1, int(cursor or "1"))
+        data = self.query(
+            self.DELTA_QUERY,
+            {"page": page, "perPage": min(max(page_size, 1), 50), "startedAfter": started_after},
+        )
+        page_data = data.get("Page")
+        if not isinstance(page_data, dict):
+            raise ProviderError("AniList returned an invalid delta page.")
+        items = page_data.get("media") or []
+        external_ids = tuple(
+            str(item["id"])
+            for item in items
+            if isinstance(item, dict) and isinstance(item.get("id"), int)
+        )
+        page_watermark = max(
+            (self._fuzzy_date(item.get("startDate")) for item in items if isinstance(item, dict)),
+            default=started_after,
+        )
+        page_info = page_data.get("pageInfo") or {}
+        return DeltaPage(
+            external_ids=external_ids,
+            next_cursor=str(page + 1) if page_info.get("hasNextPage") else None,
+            watermark=str(max(started_after, self._previous_day(page_watermark))),
+        )
+
+    @staticmethod
+    def _fuzzy_date(value: Any) -> int:
+        """Render AniList's ``{year, month, day}`` as a FuzzyDateInt."""
+        if not isinstance(value, dict):
+            return 0
+        year = value.get("year")
+        if not isinstance(year, int) or year <= 0:
+            return 0
+        month_value = value.get("month")
+        day_value = value.get("day")
+        month = month_value if isinstance(month_value, int) else 0
+        day = day_value if isinstance(day_value, int) else 0
+        return year * 10000 + month * 100 + day
+
+    @staticmethod
+    def _previous_day(fuzzy_date: int) -> int:
+        if fuzzy_date <= 0:
+            return 0
+        (year, remainder) = divmod(fuzzy_date, 10000)
+        (month, day) = divmod(remainder, 100)
+        if not month or not day:
+            return fuzzy_date
+        try:
+            previous = date(year, month, day) - timedelta(days=1)
+        except ValueError:
+            return fuzzy_date
+        return previous.year * 10000 + previous.month * 100 + previous.day
+
+    def close(self) -> None:
+        if self._http is not None:
+            self._http.close()
+            self._http = None
+
 
 def _graphql_error(errors: Any) -> tuple[ProviderError, bool]:
     """Translate a GraphQL ``errors`` array into one error and whether to retry it."""
@@ -169,11 +291,14 @@ def _graphql_error(errors: Any) -> tuple[ProviderError, bool]:
             ),
             False,
         )
-    retryable = any(
-        isinstance(error, dict) and error.get("extensions", {}).get("code") in RETRYABLE_CODES
+    codes = {
+        error["extensions"].get("code")
         for error in (errors if isinstance(errors, list) else [errors])
-    )
-    return ProviderError(f"AniList GraphQL error: {detail}"), retryable
+        if isinstance(error, dict) and isinstance(error.get("extensions"), dict)
+    }
+    retryable = bool(codes & RETRYABLE_CODES)
+    status = 429 if "RATE_LIMITED" in codes else (503 if retryable else None)
+    return ProviderError(f"AniList GraphQL error: {detail}", status_code=status), retryable
 
 
 def _retry_after(response: httpx.Response) -> float | None:

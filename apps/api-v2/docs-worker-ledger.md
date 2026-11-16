@@ -444,3 +444,36 @@ including provider discovery adapters, full related-record imports and campaign 
 normalization/enrichment. The old campaign Celery task is therefore not registered here
 and task coverage remains 18/30. General automatic recovery of committed campaigns after
 a broker outage also belongs to the pending runner/scheduler. Production was not changed.
+
+### Provider discovery and page checkpoints
+
+The replacement now exposes provider-neutral CatalogPage/DeltaPage values and discovery
+adapters for all four sources: VNDB page/id-watermark discovery, AniList catalogue and
+air-date windows, frontier-bounded MAL/Bangumi numeric walks, and Bangumi known-record
+reconciliation. Bangumi reconciliation starts at offset zero; the old generic campaign
+cursor of one skipped its first record. Discovery HTTP clients enforce the stored source
+storage policy and close their transports. Exhausted GraphQL rate limits remain
+retryable by the campaign instead of becoming an unclassified terminal provider error.
+
+`discover_step` writes each page's work items and next cursor atomically, committing one
+checkpoint per page. Already completed discovery does not start over on retry. It
+rechecks lease/status and the complete parameter snapshot after provider I/O, so pause,
+lease changes or parameter edits cannot be overwritten by a late response. Bounded date
+windows and max-pages truncation retain their distinct watermark behavior. Numeric/date
+watermarks are not replaced with a generic Unix timestamp.
+
+Lease comparisons and expirations now use PostgreSQL `clock_timestamp()` rather than
+transaction-start `now()`. The regression holds a transaction open across an actual
+expiry and verifies that the stale worker cannot acknowledge its item.
+
+Validation: lint, format, strict typing and 307 offline tests passed. Fourteen opt-in
+PostgreSQL tests passed; database transactions leave the fresh fixture database empty.
+New cases cover replay after page completion, pause during provider I/O, stale parameter
+snapshots, truncation and window promotion. Four complete serialized AniList/VNDB page
+outputs matched the legacy implementations on fixed source fixtures. Provider responses
+were mocked; this does not prove live catalogue completeness. The schema CI job includes
+all three PostgreSQL test modules.
+
+These adapters and the discovery phase are ready for the pending campaign runner. Full
+related-record imports and campaign AI normalization/enrichment remain dependencies, so
+the campaign task is still unregistered and migration task coverage remains 18/30.

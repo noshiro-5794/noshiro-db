@@ -177,6 +177,11 @@ class MALClient:
             str(end + 1) if end < ceiling else None
         )
 
+    def close(self) -> None:
+        if self._http is not None:
+            self._http.close()
+            self._http = None
+
 
 __all__ = [
     "MAL_ANIME_FIELDS",
