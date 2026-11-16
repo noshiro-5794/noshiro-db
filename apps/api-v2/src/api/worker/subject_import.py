@@ -4,8 +4,8 @@ The order mirrors `project_work_from_record`: record the payload, record the obs
 produced, resolve the entity and its work row, then write what a visitor sees. Everything it
 calls has already been exercised against the real schema on its own.
 
-Not ported yet, and deliberately absent rather than silently skipped: the mapped *facts*
-(a subject's infobox becomes entity facts) and the galgame profile row.
+Not ported yet, and deliberately absent rather than silently skipped: the galgame profile
+row and the per-provider metrics.
 """
 
 from __future__ import annotations
@@ -14,8 +14,8 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.worker import entities, ingestion, presentation, profiles, records
-from api.worker.subject_mapping import map_subject
+from api.worker import entities, facts, ingestion, presentation, profiles, records
+from api.worker.subject_mapping import map_subject, work_facts
 
 PROVIDER = "bangumi"
 SUBJECT_NAMESPACE = "subject"
@@ -94,6 +94,17 @@ async def import_subject(session: AsyncSession, data: dict[str, Any]) -> Any:
             media_format="",
             episode_count=mapped["total_episodes"] or mapped["eps"],
             premiered_on=mapped["date"],
+        )
+    for slug, (value, value_type) in work_facts(mapped).items():
+        await facts.record_fact(
+            session,
+            entity_id=entity.entity_id,
+            observation_id=observation_id,
+            slug=slug,
+            name=slug.replace("-", " ").title(),
+            value=value,
+            value_type=value_type,
+            json_pointer=f"/{slug}",
         )
     await presentation.ensure_membership(
         session, entity_id=entity.entity_id, work_type=mapped["subject_type"]

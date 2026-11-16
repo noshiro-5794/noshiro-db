@@ -11,6 +11,7 @@ from api.worker.subject_mapping import (
     subject_date,
     subject_type,
     tag_names,
+    work_facts,
 )
 
 
@@ -93,3 +94,30 @@ def test_wrong_types_become_absent_instead_of_coerced() -> None:
 
 def test_lookup_keys_collapse_case_and_whitespace() -> None:
     assert normalize_key("  Sci   Fi ") == "sci fi"
+
+
+def test_facts_keep_their_declared_types() -> None:
+    facts = work_facts(
+        map_subject(
+            {
+                "type": 2,
+                "date": "2021-04-03",
+                "platform": "TV",
+                "series": True,
+                "total_episodes": 12,
+                "meta_tags": ["SF"],
+            }
+        )
+    )
+    assert facts["release-date"] == ("2021-04-03", "date")
+    assert facts["platform"] == ("TV", "string")
+    assert facts["series"] == (True, "boolean")
+    assert facts["episode-count"] == (12, "number")
+    assert facts["provider-tags"] == (["sf"], "json")
+
+
+def test_absent_values_contribute_no_fact() -> None:
+    facts = work_facts(map_subject({"type": 2}))
+    assert "release-date" not in facts
+    assert "episode-count" not in facts
+    assert "platform" not in facts
