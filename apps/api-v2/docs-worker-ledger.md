@@ -526,3 +526,49 @@ This completes the work's own projection. Related releases, characters, contribu
 credits, voices, relationships and cross-provider reconciliation are still required
 for the full import entry point. Task registration remains 18/30. Live VNDB calls,
 production deployment and final removal of Django are still pending.
+
+### Complete VNDB related graph and task entry point
+
+The VNDB batch importer now projects releases (date precision, official/patch flags,
+ratings, work roles, resolution/facts and producer relationships), characters
+(appearances, trait groups, spoiler/lie evidence and facts), staff details/aliases,
+developer/staff credits, related works and voice performances. Embedded identities
+preserve full source payloads. Voices reuse current supported appearances. Batch
+projection and explicit-ID reconciliation run in savepoints so an error leaves the
+caller's earlier transaction usable and rolls back the complete imported graph.
+
+The official Bangumi-to-VNDB identity policy now creates evidence-backed candidates,
+checks work-family compatibility, records bind/abstain decisions, handles refused
+merges atomically, and returns the resolved canonical entity. Superseded Bangumi
+observations are excluded from reconciliation. Release-work evidence preserves the
+original source array index instead of indexing a filtered list; both changes fix
+inherited provenance behavior and have targeted regression tests.
+
+The registered `apps.sync.tasks.vndb.import_vndb_work_task` retains the original task
+arguments/result. It commits the job claim before provider I/O, checks storage policy,
+closes the client, rechecks the live job lease/status under lock before writes, and
+commits failure reporting after rolling back failed imports. A job cancelled while
+fetching cannot write the catalogue. No related data is fetched when requested, while
+embedded credits/relations/voices remain imported from the work payload as before.
+
+Normal-entry database tests exposed two pre-existing replacement job bugs: creation
+omitted UUID/non-null defaults formerly supplied by Django, and optional-owner filters
+used untyped parameters in `IS NULL`. Job creation now supplies every required default
+and owner filters cast the optional value explicitly for asyncpg.
+
+Validation: all lint/format checks, strict typing of 157 modules, and 321 offline tests
+passed. Twenty-eight PostgreSQL integration tests passed, including eight graph/identity
+cases and four task lifecycle cases. A local Celery eager execution verified the
+registered task's argument and request-ID wiring. A complete fixed VNDB graph fixture
+ran through the old importer and new importer in rollback transactions. All thirteen
+serialized sections matched (credits, releases, release links, ratings, relations,
+relationship evidence, appearances, voices, aliases, terms, facts, records and names).
+The separate original-array-index test verifies the deliberate evidence-path fix.
+The three new PostgreSQL test modules are included in the schema CI job.
+
+Task-name registration is now 19/30. This count is a registration audit, not proof of
+full behavior for previously registered tasks; the older AniList/Bangumi/MAL ports
+still need their remaining projection paths audited. Campaign orchestration/AI phases,
+season pipelines, manual-sync entry points, mail, final app consolidation and production
+verification remain pending. Source transport was mocked; no live VNDB graph was fetched
+or production data changed in this step.

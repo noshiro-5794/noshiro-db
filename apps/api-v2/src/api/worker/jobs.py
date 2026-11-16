@@ -8,6 +8,7 @@ be touched" guards, because the API reads these rows back to the user.
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -28,10 +29,12 @@ async def create_job(
 ) -> Any:
     rows = await fetch(
         session,
-        "INSERT INTO sync_job (job_type, status, parameters, created_at, updated_at)"
-        " VALUES (:job_type, 'queued', CAST(:parameters AS jsonb), now(), now())"
-        " RETURNING id",
-        {"job_type": job_type, "parameters": __import__("json").dumps(parameters or {})},
+        "INSERT INTO sync_job (id, job_type, status, celery_task_id, parameters,"
+        " result, error, current_label, total_count, processed_count, synced_count,"
+        " skipped_count, failed_count, attempt, lease_owner, created_at, updated_at)"
+        " VALUES (gen_random_uuid(), :job_type, 'queued', '', CAST(:parameters AS jsonb),"
+        " '{}'::jsonb, '', '', 0, 0, 0, 0, 0, 0, '', now(), now()) RETURNING id",
+        {"job_type": job_type, "parameters": json.dumps(parameters or {})},
     )
     return rows[0].id
 
@@ -61,7 +64,7 @@ async def mark_running(
         " started_at = COALESCE(started_at, now()), current_label = :label,"
         " total_count = COALESCE(:total, total_count), updated_at = now()"
         " WHERE id = :id AND status = ANY(:open)"
-        " AND (:owner IS NULL OR lease_owner = :owner) RETURNING id",
+        " AND (CAST(:owner AS text) IS NULL OR lease_owner = :owner) RETURNING id",
         {
             "label": current_label,
             "total": None if total_count is None else max(0, int(total_count)),
@@ -108,7 +111,7 @@ async def advance(
         " current_label = CASE WHEN :label = '' THEN current_label ELSE :label END,"
         " updated_at = now()"
         " WHERE id = :id AND status = 'running'"
-        " AND (:owner IS NULL OR lease_owner = :owner) RETURNING id",
+        " AND (CAST(:owner AS text) IS NULL OR lease_owner = :owner) RETURNING id",
         {
             "processed": max(0, int(processed)),
             "synced": max(0, int(synced)),
@@ -136,9 +139,9 @@ async def mark_succeeded(
         "UPDATE sync_job SET status = 'succeeded', result = CAST(:result AS jsonb),"
         " current_label = :label, finished_at = now(), updated_at = now()"
         " WHERE id = :id AND status = ANY(:open)"
-        " AND (:owner IS NULL OR lease_owner = :owner) RETURNING id",
+        " AND (CAST(:owner AS text) IS NULL OR lease_owner = :owner) RETURNING id",
         {
-            "result": __import__("json").dumps(result or {}),
+            "result": json.dumps(result or {}),
             "label": current_label,
             "id": job_id,
             "open": list(OPEN_STATUSES),
@@ -162,7 +165,7 @@ async def mark_failed(
         "UPDATE sync_job SET status = 'failed', error = :error,"
         " current_label = :label, finished_at = now(), updated_at = now()"
         " WHERE id = :id AND status <> 'succeeded'"
-        " AND (:owner IS NULL OR lease_owner = :owner) RETURNING id",
+        " AND (CAST(:owner AS text) IS NULL OR lease_owner = :owner) RETURNING id",
         {
             "error": str(error)[:4000],
             "label": current_label,
