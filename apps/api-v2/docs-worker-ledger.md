@@ -415,3 +415,32 @@ Validation:
   back after inspection.
 
 Production execution and the broader data baseline remain unverified.
+
+### Campaign persistence and HTTP controls
+
+`contexts/synchronization` now owns campaign creation, explicit phase transitions,
+leases, controls and work-item acknowledgement. The existing staff contract
+`POST /api/v1/operations/sync/{campaign_id}/{action}/` is served for pause/resume/cancel.
+Creation and resume publish after committing their database state. Retrying an
+idempotent creation while still queued republishes the same campaign id, recovering a
+previous publication failure without creating a second campaign.
+
+Work-item claims recover expired leases and use row locking. Acknowledgements lock the
+campaign before its items and require a running item, matching owner and unexpired
+lease. Cancellation revokes running leases. Discovery-page replay uses the existing
+(campaign, shard, cursor) unique key. Classified failures preserve terminal 404 handling,
+retry timing and attempt limits. Resuming failed items recomputes progress counters from
+current item states so retry success cannot count one item twice.
+
+Validation: lint, formatting, strict typing and 295 offline tests passed. Eight opt-in
+PostgreSQL tests (seven campaign tests plus the existing matching transaction test)
+passed against the independently bootstrapped database. They cover idempotency,
+lease ownership/reclaim, stale acknowledgements, retries, resume counters, cancellation,
+staff HTTP controls and commit-before-dispatch. The schema CI job now includes both
+database test modules; the default offline gate skips them without an explicit test URL.
+
+This is the persistence/control boundary. The complete campaign runner is still pending,
+including provider discovery adapters, full related-record imports and campaign AI
+normalization/enrichment. The old campaign Celery task is therefore not registered here
+and task coverage remains 18/30. General automatic recovery of committed campaigns after
+a broker outage also belongs to the pending runner/scheduler. Production was not changed.
