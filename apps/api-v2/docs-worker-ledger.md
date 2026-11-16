@@ -572,3 +572,41 @@ still need their remaining projection paths audited. Campaign orchestration/AI p
 season pipelines, manual-sync entry points, mail, final app consolidation and production
 verification remain pending. Source transport was mocked; no live VNDB graph was fetched
 or production data changed in this step.
+
+### MAL metadata and saved-payload parity
+
+Auditing the registered MAL importer found concrete migration gaps. It now accepts
+numeric-string episode counts, normalizes timestamp offsets to UTC dates, restores
+MyAnimeList link labels/types and the MAL membership reason, returns redirected
+canonical identities, and preserves the old profile replacement semantics. Missing
+format/count values clear those fields, while unavailable broadcast dates retain the
+existing dates. Shared profile writing also supports AniList source-material updates
+without changing the defaults existing Bangumi callers use. Collection creation
+preserves curated names. VNDB now reuses the same membership writer.
+
+`import_saved_anime` reads the latest active schedule-item revision, checks its identity,
+and imports it without network I/O. The full MAL projection uses a savepoint, so a late
+failure rolls back records and projections while retaining the caller's earlier work.
+Fact evidence now points to real source JSON fields instead of nonexistent predicate-
+named paths. Mapper version `mal-anime-v3` records that deliberate mapping correction.
+
+MAL and VNDB single-record tasks now share the tested import coordinator. It commits
+claims before provider I/O, applies source storage policy, rechecks the live job under
+lock before writes, and commits failure state after rollback. Source adapters validate
+IDs and close their clients. Existing task signatures and result types are preserved.
+
+Validation: lint, formatting, strict typing of 158 source modules and 323 offline tests
+passed. Thirty-five PostgreSQL tests passed. Seven new MAL database cases cover metadata,
+repeat metrics, saved revisions/mismatches, atomic failure, normal task execution,
+shared-writer defaults, curated names and returning the canonical identity after a real
+merge. A fixed MAL payload matched the old importer across eight serialized sections:
+audience, names, media, links, profile, metrics, membership and fact types/values. Evidence
+paths were checked separately for the intentional source-pointer correction. The VNDB
+thirteen-section legacy comparison still passes after consolidating shared writers.
+The schema CI job includes the MAL database test module.
+
+Task-name coverage stays 19/30. This audit completes the bounded MAL metadata import
+behavior owned by the old entry point. Remaining AniList/Bangumi projections and the
+campaign, season, manual-sync and email flows still need completion before the final
+app consolidation and production verification. All source responses used here were
+fixed local fixtures. Production was unchanged.

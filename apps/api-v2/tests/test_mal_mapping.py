@@ -78,3 +78,23 @@ def test_subject_types_fall_back_to_other() -> None:
     assert work_type_for("galgame") == "galgame"
     assert work_type_for("not-a-type") == "other"
     assert work_type_for(None) == "other"
+
+
+def test_mal_dates_normalize_timestamp_offsets_to_utc():
+    from datetime import date
+
+    from api.worker.mal_import import parse_date
+
+    assert parse_date("2026-01-01T00:30:00+09:00") == date(2025, 12, 31)
+    assert parse_date("2024-02-29") == date(2024, 2, 29)
+    assert parse_date("2023-02-29") is None
+    assert parse_date("2026-01-01junk") is None
+
+
+def test_episode_counts_accept_numeric_strings_and_reject_booleans():
+    from api.worker.mal_import import as_int
+
+    assert as_int("12") == 12
+    assert as_int(0) == 0
+    assert as_int(True) is None
+    assert as_int("unknown") is None

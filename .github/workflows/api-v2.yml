@@ -71,4 +71,4 @@ jobs:
       - run: uv run alembic upgrade head
       - run: uv run alembic downgrade 0001_baseline
       - run: uv run alembic upgrade head
-      - run: uv run pytest -q tests/test_matching_transactions.py tests/test_campaign_transactions.py tests/test_discovery_transactions.py tests/test_record_transactions.py tests/test_vndb_transactions.py tests/test_vndb_graph_transactions.py tests/test_vndb_identity_transactions.py tests/test_vndb_task_transactions.py
+      - run: uv run pytest -q tests/test_matching_transactions.py tests/test_campaign_transactions.py tests/test_discovery_transactions.py tests/test_record_transactions.py tests/test_vndb_transactions.py tests/test_vndb_graph_transactions.py tests/test_vndb_identity_transactions.py tests/test_vndb_task_transactions.py tests/test_mal_transactions.py

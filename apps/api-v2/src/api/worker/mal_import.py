@@ -1,24 +1,23 @@
-"""Import one MAL anime through the write primitives.
-
-The mapper is deliberately thin: it only decides which parts of the payload become names,
-a description, artwork, a profile, facts and metrics. Everything it calls has already been
-verified against the schema on its own.
-"""
+"""Project MAL metadata and cached schedules into canonical anime entities."""
 
 from __future__ import annotations
 
+from datetime import UTC, date, datetime
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import api.worker.ingestion as ingestion_module
+from api.contexts.index import resolution
+from api.contexts.presentation.fragments import fetch
 from api.worker import entities, facts, metrics, presentation, profiles, records
 
 PROVIDER = "mal"
 NAMESPACE = "anime"
 RESOURCE_TYPE = "subject"
 MAPPER = "mal.anime"
-MAPPER_VERSION = "mal-importer-v1"
+MAPPER_VERSION = "mal-anime-v3"
 SCHEMA_VERSION = "mal-api-v2"
 
 ROMANIZED = "romanized"
@@ -82,21 +81,88 @@ def fact_candidates(item: dict[str, Any]) -> dict[str, tuple[Any, str]]:
             continue
         if isinstance(value, bool):
             value_type = "boolean"
-        elif isinstance(value, int | float):
+        elif isinstance(value, int | float | Decimal):
             value_type = "number"
         else:
             value_type = "string"
         out[slug] = (value, value_type)
-    premiered = profiles.parse_iso_date(item.get("start_date"))
+    premiered = parse_date(item.get("start_date"))
     if premiered is not None:
         out["release-date"] = (premiered.isoformat(), "date")
-    ended = profiles.parse_iso_date(item.get("end_date"))
+    ended = parse_date(item.get("end_date"))
     if ended is not None:
         out["end-date"] = (ended.isoformat(), "date")
     return out
 
 
+FACT_POINTERS = {
+    "mal-status": "/status",
+    "mal-type": "/media_type",
+    "mal-season": "/start_season/season",
+    "mal-year": "/start_season/year",
+    "mal-score": "/mean",
+    "mal-rank": "/rank",
+    "mal-popularity": "/popularity",
+    "mal-members": "/num_list_users",
+    "episode-count": "/num_episodes",
+    "duration-minutes": "/average_episode_duration",
+    "broadcast-day": "/broadcast/day_of_the_week",
+    "broadcast-time": "/broadcast/start_time",
+    "broadcast-timezone": "/broadcast",
+    "release-date": "/start_date",
+    "end-date": "/end_date",
+}
+
+
+def as_int(value: Any) -> int | None:
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    if isinstance(value, str) and value.isdigit():
+        return int(value)
+    return None
+
+
+def parse_date(value: Any) -> date | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is not None:
+        parsed = parsed.astimezone(UTC)
+    return parsed.date()
+
+
 async def import_anime(session: AsyncSession, item: dict[str, Any]) -> Any:
+    """Persist an anime atomically and return its resolved canonical identity."""
+    async with session.begin_nested():
+        return await _project_anime(session, item)
+
+
+async def import_saved_anime(session: AsyncSession, mal_id: int) -> Any:
+    """Import the latest active schedule-item revision already held locally."""
+    rows = await fetch(
+        session,
+        """
+        SELECT revision.payload FROM provider_record AS record
+        JOIN provider_namespace AS ns ON ns.id=record.namespace_id
+        JOIN provider AS p ON p.id=ns.provider_id
+        JOIN provider_revision AS revision ON revision.id=record.latest_revision_id
+        WHERE p.slug='mal' AND ns.slug='schedule-item' AND record.external_id=:id
+          AND record.status='active'
+        """,
+        {"id": str(mal_id)},
+    )
+    if not rows:
+        raise ValueError(f"MAL anime {mal_id} has no persisted schedule payload to import.")
+    payload = rows[0].payload
+    if not isinstance(payload, dict) or payload.get("id") != mal_id:
+        raise ValueError(f"MAL anime {mal_id} payload is inconsistent.")
+    return await import_anime(session, payload)
+
+
+async def _project_anime(session: AsyncSession, item: dict[str, Any]) -> Any:
     """Write one MAL anime, returning the canonical entity id."""
     external_id = str(item["id"])
     written = await records.record_payload(
@@ -156,12 +222,11 @@ async def import_anime(session: AsyncSession, item: dict[str, Any]) -> Any:
     await profiles.upsert_anime_profile(
         session,
         work_entity_id=mapped.work_id,
-        media_format=str(item.get("media_type") or "").upper(),
-        episode_count=item.get("num_episodes")
-        if isinstance(item.get("num_episodes"), int)
-        else None,
-        premiered_on=profiles.parse_iso_date(item.get("start_date")),
-        ended_on=profiles.parse_iso_date(item.get("end_date")),
+        media_format=item["media_type"].upper() if isinstance(item.get("media_type"), str) else "",
+        episode_count=as_int(item.get("num_episodes")),
+        replace_metadata=True,
+        premiered_on=parse_date(item.get("start_date")),
+        ended_on=parse_date(item.get("end_date")),
     )
     await profiles.upsert_external_link(
         session,
@@ -169,7 +234,8 @@ async def import_anime(session: AsyncSession, item: dict[str, Any]) -> Any:
         provider_record_id=written.record_id,
         observation_id=observation_id,
         url=f"https://myanimelist.net/anime/{external_id}",
-        label="MAL",
+        label="MyAnimeList",
+        link_type="mal",
     )
     await metrics.record_metrics(
         session,
@@ -191,10 +257,12 @@ async def import_anime(session: AsyncSession, item: dict[str, Any]) -> Any:
             name=slug.replace("-", " ").title(),
             value=value,
             value_type=value_type,
-            json_pointer=f"/{slug}",
+            json_pointer=FACT_POINTERS[slug],
         )
-    await presentation.ensure_membership(session, entity_id=mapped.entity_id, work_type="anime")
-    return mapped.entity_id
+    await presentation.ensure_membership(
+        session, entity_id=mapped.entity_id, work_type="anime", inclusion_reason="MAL anime"
+    )
+    return await resolution.resolve(session, mapped.entity_id)
 
 
 __all__ = [
@@ -202,5 +270,6 @@ __all__ = [
     "MAPPER_VERSION",
     "fact_candidates",
     "import_anime",
+    "import_saved_anime",
     "name_entries",
 ]

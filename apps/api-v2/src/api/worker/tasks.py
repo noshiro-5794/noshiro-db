@@ -114,43 +114,28 @@ def refresh_popularity_task() -> dict[str, int]:
 
 async def _import_mal_media(mal_id: int, job_id: str | None, lease_owner: str) -> dict[str, Any]:
     from api.worker import mal_import
+    from api.worker.importing import import_record
     from api.worker.providers.mal import MALClient
 
-    async with session_scope() as session:
-        if job_id and not await jobs.claim(
-            session, job_id=job_id, lease_owner=lease_owner, lease_seconds=960
-        ):
-            return {"skipped": True, "reason": "job already claimed"}
-        await jobs.mark_running(
-            session,
-            job_id=job_id,
-            total_count=1,
-            current_label=f"Importing MAL {mal_id}",
-            lease_owner=lease_owner,
-        )
+    async def fetch_payload(forbidden: bool) -> dict[str, Any]:
+        if not isinstance(mal_id, int) or isinstance(mal_id, bool) or mal_id <= 0:
+            raise ValueError("MAL anime ids must be positive integers.")
+        client = MALClient()
+        client.forbid_storage(forbidden=forbidden)
         try:
-            payload = await asyncio.to_thread(MALClient().fetch_anime, mal_id)
-            entity_id = await mal_import.import_anime(session, payload)
-            result = {
-                "entity_id": str(entity_id),
-                "provider": "mal",
-                "external_id": mal_id,
-            }
-            await jobs.advance(
-                session,
-                job_id=job_id,
-                processed=1,
-                synced=1,
-                current_label=f"Imported MAL {mal_id}",
-                lease_owner=lease_owner,
-            )
-            await jobs.mark_succeeded(
-                session, job_id=job_id, result=result, lease_owner=lease_owner
-            )
-            return result
-        except Exception as error:
-            await jobs.mark_failed(session, job_id=job_id, error=error, lease_owner=lease_owner)
-            raise
+            return await asyncio.to_thread(client.fetch_anime, mal_id)
+        finally:
+            client.close()
+
+    return await import_record(
+        provider="mal",
+        label="MAL",
+        external_id=mal_id,
+        job_id=job_id,
+        lease_owner=lease_owner,
+        fetch_payload=fetch_payload,
+        project=mal_import.import_anime,
+    )
 
 
 @shared_task(  # type: ignore[untyped-decorator]

@@ -277,27 +277,8 @@ async def project_work(session: AsyncSession, vndb_id: str, data: dict[str, Any]
     )
     await write_facts(session, projection, mapping.work_facts(data))
     await write_tags(session, projection, data)
-    collection = await fetch(
-        session,
-        """
-        INSERT INTO curated_collection (slug, name, is_enabled, created_at, updated_at)
-        VALUES ('galgame', 'Galgame', true, now(), now())
-        ON CONFLICT (slug) DO UPDATE SET slug=EXCLUDED.slug RETURNING id
-        """,
-        {},
-    )
-    await fetch(
-        session,
-        """
-        INSERT INTO curated_membership
-          (collection_id, entity_id, listing_state, inclusion_reason, created_at, updated_at)
-        VALUES (:collection, :entity, 'listed', 'VNDB visual novel', now(), now())
-        ON CONFLICT (collection_id, entity_id) DO UPDATE
-          SET listing_state=EXCLUDED.listing_state, inclusion_reason=EXCLUDED.inclusion_reason,
-              updated_at=now()
-        RETURNING id
-        """,
-        {"collection": collection[0].id, "entity": entity_id},
+    await presentation.ensure_membership(
+        session, entity_id=entity_id, work_type="galgame", inclusion_reason="VNDB visual novel"
     )
     return projection
 

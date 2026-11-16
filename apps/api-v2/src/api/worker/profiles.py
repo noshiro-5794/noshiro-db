@@ -1,13 +1,4 @@
-"""Per-work profile rows and the links back to the provider's own page.
-
-Ported from the MAL importer's profile and external-link steps. Two rules are carried over
-because each protects existing data:
-
-* A profile update never blanks a field the payload did not include. A provider that stops
-  publishing a broadcast date must not erase one another provider supplied.
-* The external link is keyed by ``(entity, url)`` so re-importing the same record marks the
-  same link instead of stacking duplicates.
-"""
+"""Source-specific anime profile updates and provenance-scoped external links."""
 
 from __future__ import annotations
 
@@ -42,20 +33,29 @@ async def upsert_anime_profile(
     episode_count: int | None = None,
     premiered_on: date | None = None,
     ended_on: date | None = None,
+    source_material: str | None = None,
+    replace_metadata: bool = False,
 ) -> None:
-    """Create or update the profile, keeping fields the payload did not supply."""
+    """Write profile metadata and retain unavailable broadcast dates.
+
+    ``replace_metadata`` replaces format and episode count even when empty.
+    An omitted source-material value preserves the existing source material.
+    """
     await fetch(
         session,
         """
         INSERT INTO anime_profile
           (work_id, format, source_material, episode_count, premiered_on, ended_on,
            created_at, updated_at)
-        VALUES (:work, :format, '', :episodes, :premiered, :ended, now(), now())
+        VALUES (:work, :format, COALESCE(:source, ''), :episodes, :premiered, :ended, now(), now())
         ON CONFLICT (work_id) DO UPDATE
-          SET format = CASE WHEN EXCLUDED.format = '' THEN anime_profile.format
+          SET format = CASE WHEN :replace_metadata THEN EXCLUDED.format
+                            WHEN EXCLUDED.format = '' THEN anime_profile.format
                             ELSE EXCLUDED.format END,
-              episode_count = COALESCE(EXCLUDED.episode_count,
-                                       anime_profile.episode_count),
+              episode_count = CASE WHEN :replace_metadata THEN EXCLUDED.episode_count
+                                   ELSE COALESCE(EXCLUDED.episode_count,
+                                                 anime_profile.episode_count) END,
+              source_material = COALESCE(:source, anime_profile.source_material),
               premiered_on = COALESCE(EXCLUDED.premiered_on,
                                       anime_profile.premiered_on),
               ended_on = COALESCE(EXCLUDED.ended_on, anime_profile.ended_on),
@@ -68,6 +68,8 @@ async def upsert_anime_profile(
             "episodes": episode_count,
             "premiered": premiered_on,
             "ended": ended_on,
+            "source": source_material,
+            "replace_metadata": replace_metadata,
         },
     )
 
