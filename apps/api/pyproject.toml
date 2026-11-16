@@ -44,6 +44,7 @@ dev = [
     # Transitive through pip-audit -> cachecontrol; 3.x carries three advisories.
     "filelock>=4.2.1,<5",
     "msgpack>=1.2.3,<2",
+    "opentelemetry-api>=1.45.2,<2",
     "pytest>=8,<10",
     "pytest-cov>=7,<8",
     "pytest-django>=4.10,<5",
