@@ -498,3 +498,31 @@ revisions, URL preservation and refreshing a previously missing full record. Sta
 and related-page requests were tested through HTTPX's mock transport. The schema CI
 job includes the new record transaction test. Full VNDB graph projection remains in
 progress, so its import task remains unregistered and task coverage stays 18/30.
+
+### VNDB work-field projection
+
+Pure source mappings now retain multilingual name kinds/flags, partial-date bounds
+and precision, media safety, development status, release roles, and work/release/
+character fact values with their JSON pointers. Missing optional fields omit facts;
+zero and false values remain meaningful. Character actual-sex/gender facts retain
+their spoiler level. Release resolution uses one stable JSON predicate shape.
+
+The async work projection writes the VNDB source revision/observation, exact work
+identity, galgame profile, names, description, screenshots/poster safety, external
+links, revision-timed metrics, facts, tag mappings and listed collection membership.
+It preserves an existing entity audience, clears absent profile fields as the old
+VNDB importer did, and keeps the first name flags when duplicate provenance keys
+occur. Embedded tags cannot downgrade an existing full source record.
+
+Validation: lint, formatting, strict typing and 320 offline tests passed. Sixteen
+PostgreSQL tests passed, covering repeat imports, revision/metric deduplication,
+name flags, safety, tag relevance/spoilers, fact provenance, collection reason and
+changed-payload profile behavior. A fixed VNDB work fixture ran through the old
+Django importer and the async projection in separate rollback transactions. All
+eight serialized sections matched: audience, names, media, links, profile, metrics,
+tags and facts. The schema CI job includes the new projection transaction test.
+
+This completes the work's own projection. Related releases, characters, contributors,
+credits, voices, relationships and cross-provider reconciliation are still required
+for the full import entry point. Task registration remains 18/30. Live VNDB calls,
+production deployment and final removal of Django are still pending.

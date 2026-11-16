@@ -31,3 +31,23 @@ async def integration_session():
                 await transaction.rollback()
     finally:
         await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def vndb_session(integration_session):
+    from api.contexts.presentation.fragments import fetch
+
+    await fetch(
+        integration_session,
+        """
+        INSERT INTO provider
+          (slug, name, base_url, terms_url, attribution_url, license_name,
+           storage_policy, redistribution_policy, commercial_use_policy,
+           ai_usage_policy, is_enabled, created_at, updated_at)
+        VALUES ('vndb', 'VNDB', '', '', '', '', 'allowed', 'unknown', 'unknown',
+                'unknown', true, now(), now())
+        ON CONFLICT (slug) DO NOTHING RETURNING id
+        """,
+        {},
+    )
+    return integration_session

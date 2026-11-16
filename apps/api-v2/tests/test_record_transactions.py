@@ -7,21 +7,8 @@ from api.worker.records import ensure_record, record_payload
 
 
 @pytest.mark.asyncio
-async def test_embedded_reference_preserves_full_payload_and_promotes_stub(integration_session):
-    session = integration_session
-    await fetch(
-        session,
-        """
-        INSERT INTO provider
-          (slug, name, base_url, terms_url, attribution_url, license_name,
-           storage_policy, redistribution_policy, commercial_use_policy,
-           ai_usage_policy, is_enabled, created_at, updated_at)
-        VALUES ('vndb', 'VNDB', '', '', '', '', 'allowed', 'unknown', 'unknown',
-                'unknown', true, now(), now())
-        ON CONFLICT (slug) DO NOTHING RETURNING id
-        """,
-        {},
-    )
+async def test_embedded_reference_preserves_full_payload_and_promotes_stub(vndb_session):
+    session = vndb_session
     parameters = {
         "provider_slug": "vndb",
         "namespace_slug": "vn",
