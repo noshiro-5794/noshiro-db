@@ -325,3 +325,32 @@ These are bounded fixture checks. Production data parity, the larger recorded ba
 real broker/Redis/model integration and deployment remain pending. The Tailscale peer is
 online; SSH to the existing hostname timed out, while the Tailscale address reached sshd
 but rejected the attempted existing-config user authentication.
+
+### Independent database bootstrap
+
+The replacement can now initialize an empty PostgreSQL 18 database through Alembic
+alone. `migrations/baseline.sql` is a schema-only capture of the Django migrations,
+excluding Django's migration ledger and the four Alembic-owned additions. It contains
+no fixture, provider or user data. Revision 0001 replays that DDL for fresh databases;
+already stamped installations skip it. An unversioned existing catalogue must be
+validated and explicitly stamped rather than silently treated as a fresh database.
+
+The baseline downgrade raises an explicit irreversible-migration error. Later revisions
+remain reversible. This avoids giving `downgrade base` a core-table deletion operation.
+The baseline still includes compatibility tables used during migration; their retirement
+belongs to the final schema cleanup after all callers have moved.
+
+Verified locally on PostgreSQL 18:
+
+- `alembic upgrade head` initialized a new database without executing Django.
+- `downgrade 0001_baseline` and `upgrade head` completed on that database.
+- `alembic upgrade head --sql` produced executable offline SQL; psql applied it to a
+  second empty database.
+- The captured schema and restored schema agree except for PostgreSQL's normalization
+  of equivalent array casts in the airing-board status constraint.
+- Fresh-database ASGI requests to liveness, readiness and catalogue listing returned 200.
+- Lint now includes migrations in both the Makefile and CI; scripts are also included
+  consistently. Existing 261 tests and strict typing passed.
+
+A PostgreSQL 18 schema job was added to CI to repeat the fresh install and revision
+round trip. It has not yet run on GitHub. Production databases were not changed.
