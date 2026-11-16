@@ -288,3 +288,40 @@ ordering, successful run/proposal flow, cooldown/retry classification, pending r
 and Celery task registration. Queue checking still explicitly reports the migrating AI
 queue because classification, evidence extraction and schedule completion are not yet
 ported. Real model, PostgreSQL, Redis and broker integration remains unverified.
+
+### Knowledge proposals and local PostgreSQL verification
+
+`contexts/knowledge` now implements work classification and current-observation evidence
+extraction with typed Pydantic outputs. Classification checks public visibility and AI
+permission across the entire resolved cluster. Extraction checks active representation,
+current-observation identity, provider permission and cluster visibility. Policy refusals
+persist abstained runs and proposals without a provider call. Model outputs remain
+proposals; this workflow does not promote them into canonical facts.
+
+Inference-run creation/failure logging is shared with matching. Input serialization is
+bounded at 100,000 bytes; extraction is bounded at 100 validated claims. Tasks are
+registered on `ai`, bringing implementation coverage to 16/30. Lint, formatting, strict
+typing and 261 offline tests passed. `verify_ingestion.py` was repaired to use the current
+session context; its module import now succeeds.
+
+Local integration environment is available again: Docker Desktop was started and a new
+isolated PostgreSQL 18 container `codex-migration-pg` created. Its dedicated database
+`noshiro_migration_test` was initialized from Django migrations and Alembic through 0004.
+This is a test fixture, not production, and is retained for ongoing migration verification.
+
+Executed against that real schema:
+
+- A three-work fixture (one AniList source, two Bangumi targets) produced two candidate
+  pairs. The new generator's complete dry-run summary exactly matched the legacy
+  generator on the same fixture, including scores, margin and year-conflict count.
+- Candidate creation wrote both candidates and their evidence.
+- Matching evaluation, classification and extraction persisted succeeded inference runs
+  and proposals, using fixed in-process model responses (no external model calls).
+- An injected model failure left a failed inference run after candidate rollback.
+- A calibrated, enabled test policy applied a bind, wrote an accepted decision and one
+  entity redirect through the real resolution engine.
+
+These are bounded fixture checks. Production data parity, the larger recorded baseline,
+real broker/Redis/model integration and deployment remain pending. The Tailscale peer is
+online; SSH to the existing hostname timed out, while the Tailscale address reached sshd
+but rejected the attempted existing-config user authentication.

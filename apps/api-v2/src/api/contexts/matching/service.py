@@ -2,73 +2,22 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
-from decimal import Decimal, InvalidOperation
 from time import monotonic
 from typing import Any
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.config import settings
 from api.contexts.index import resolution
 from api.contexts.matching.domain import MatchProposal, bind_allowed, structured_sides
 from api.contexts.matching.prompt import PROMPT_VERSION, SYSTEM_PROMPT
 from api.contexts.presentation.fragments import fetch
 from api.shared.ai import complete_json
+from api.shared.inference import fail_run, optional_number, start_run
 from api.worker.session import session_scope
 
 USE_CASE = "entity_matching"
-
-
-def optional_number(value: Any, *, integer: bool = False) -> Decimal | int | None:
-    if value is None or isinstance(value, bool):
-        return None
-    try:
-        number = Decimal(str(value))
-        if not number.is_finite() or number < 0:
-            return None
-        return int(number) if integer else number
-    except (ValueError, InvalidOperation, OverflowError):
-        return None
-
-
-async def start_run(payload: dict[str, Any], candidate_id: UUID) -> UUID:
-    digest = hashlib.sha256(
-        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
-    ).hexdigest()
-    async with session_scope() as session:
-        rows = await fetch(
-            session,
-            """
-            INSERT INTO ai_run (id, use_case, provider, model, prompt_version, input_hash,
-              input_metadata, status, error, created_at, started_at)
-            VALUES (gen_random_uuid(), :use_case, 'openai_compatible', :model, :prompt,
-              :hash, CAST(:metadata AS jsonb), 'running', '', now(), now()) RETURNING id
-        """,
-            {
-                "use_case": USE_CASE,
-                "model": settings.ai_model,
-                "prompt": PROMPT_VERSION,
-                "hash": digest,
-                "metadata": json.dumps({"candidate_id": str(candidate_id)}),
-            },
-        )
-        return UUID(str(rows[0].id))
-
-
-async def fail_run(run_id: UUID, error: Exception) -> None:
-    # Failure audit must survive rollback of candidate and proposal writes.
-    async with session_scope() as session:
-        await fetch(
-            session,
-            """
-            UPDATE ai_run SET status = 'failed', error = :error, finished_at = now()
-            WHERE id = :id RETURNING id
-        """,
-            {"id": run_id, "error": f"{type(error).__name__}: {error}"[:4000]},
-        )
 
 
 async def policy_for(session: AsyncSession, version: str) -> Any:
@@ -232,7 +181,12 @@ async def evaluate(candidate_id: str) -> str:
                 "comparison": sides.get("comparison"),
                 "evidence": evidence,
             }
-            run_id = await start_run(payload, candidate.id)
+            run_id = await start_run(
+                payload=payload,
+                use_case=USE_CASE,
+                prompt_version=PROMPT_VERSION,
+                metadata={"candidate_id": str(candidate.id)},
+            )
             started = monotonic()
             raw, usage = await complete_json(system=SYSTEM_PROMPT, payload=payload)
             proposal = MatchProposal.model_validate(raw)
