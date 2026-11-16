@@ -86,11 +86,50 @@ def weekday_counts(events: list[Any]) -> dict[str, int]:
 
 __all__ = [
     "WEEKDAY_BY_NAME",
+    "board_metadata",
+    "build_event",
     "calendar_items",
     "collection_doing",
     "count_calendar_items",
+    "diff_ids",
     "ids_from_groups",
     "weekday_counts",
     "weekday_number",
     "weekday_raw_value",
 ]
+
+
+def build_event(*, work_id: Any, weekday: dict[str, Any], item: dict[str, Any]) -> dict[str, Any]:
+    """One airing event from a calendar item, matching the old construction.
+
+    ``precision`` degrades to ``unknown`` when the weekday cannot be numbered, rather
+    than dropping the show: an entry with an unreadable slot is still airing.
+    """
+    number = weekday_number(weekday)
+    return {
+        "work_id": work_id,
+        "weekday": number,
+        "precision": "weekday" if number is not None else "unknown",
+        "raw_value": weekday_raw_value(weekday),
+        "collection_doing": collection_doing(item),
+    }
+
+
+def diff_ids(fetched: set[int], previous: set[int]) -> tuple[list[int], list[int]]:
+    """What the new board adds and what it drops, sorted for a stable payload."""
+    return sorted(fetched - previous), sorted(previous - fetched)
+
+
+def board_metadata(
+    *,
+    fetched_at: str,
+    events: list[Any],
+    added_ids: list[int],
+    removed_ids: list[int],
+) -> dict[str, Any]:
+    return {
+        "fetched_at": fetched_at,
+        "weekday_counts": weekday_counts(events),
+        "added_ids": added_ids,
+        "removed_ids": removed_ids,
+    }

@@ -5,9 +5,12 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from api.worker.calendar import (
+    board_metadata,
+    build_event,
     calendar_items,
     collection_doing,
     count_calendar_items,
+    diff_ids,
     ids_from_groups,
     weekday_counts,
     weekday_number,
@@ -82,3 +85,51 @@ def test_weekday_counts_are_keyed_by_string_and_skip_unknowns() -> None:
 
 def test_the_flattened_items_keep_their_payload_shape() -> None:
     assert [item["id"] for item in calendar_items(GROUPED)] == [10, 11, 12]
+
+
+def test_an_event_degrades_to_unknown_when_the_weekday_is_missing() -> None:
+    event = build_event(work_id="w", weekday={"en": "Someday"}, item={"id": 1})
+    assert event["weekday"] is None
+    assert event["precision"] == "unknown"
+    assert event["raw_value"] == "Someday"
+
+
+def test_an_event_carries_the_watching_count() -> None:
+    event = build_event(
+        work_id="w",
+        weekday={"id": 3, "en": "Wed"},
+        item={"id": 1, "collection": {"doing": 42}},
+    )
+    assert event == {
+        "work_id": "w",
+        "weekday": 3,
+        "precision": "weekday",
+        "raw_value": "Wed",
+        "collection_doing": 42,
+    }
+
+
+def test_the_diff_reports_both_directions_sorted() -> None:
+    added, removed = diff_ids({3, 1, 2}, {2, 4})
+    assert added == [1, 3]
+    assert removed == [4]
+
+
+def test_identical_sets_diff_to_nothing() -> None:
+    assert diff_ids({1, 2}, {1, 2}) == ([], [])
+
+
+def test_the_metadata_counts_by_weekday_and_records_the_diff() -> None:
+    events = [SimpleNamespace(weekday=1), SimpleNamespace(weekday=None)]
+    metadata = board_metadata(
+        fetched_at="2026-01-01T00:00:00Z",
+        events=events,
+        added_ids=[9],
+        removed_ids=[4],
+    )
+    assert metadata == {
+        "fetched_at": "2026-01-01T00:00:00Z",
+        "weekday_counts": {"1": 1},
+        "added_ids": [9],
+        "removed_ids": [4],
+    }
