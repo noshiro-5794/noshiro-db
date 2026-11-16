@@ -9,30 +9,12 @@ address.
 from __future__ import annotations
 
 import json
-import os
 from typing import Any
 
 import httpx
 
+from api.shared.outbound import proxy_for, should_proxy
 from api.worker.providers.errors import ProviderError, retry_after_seconds
-
-
-def _proxy() -> str | None:
-    url = os.environ.get("OUTBOUND_PROXY_URL", "").strip()
-    return url or None
-
-
-def _no_proxy_hosts() -> set[str]:
-    raw = os.environ.get("OUTBOUND_NO_PROXY_HOSTS", "")
-    return {part.strip().lower() for part in raw.split(",") if part.strip()}
-
-
-def should_proxy(url: str) -> bool:
-    """Whether a request to this URL should go through the outbound proxy."""
-    if not _proxy():
-        return False
-    host = httpx.URL(url).host.lower()
-    return not any(host == blocked or host.endswith("." + blocked) for blocked in _no_proxy_hosts())
 
 
 def client(
@@ -51,8 +33,8 @@ def client(
     }
     if transport is not None:
         kwargs["transport"] = transport
-    elif should_proxy(base_url):
-        kwargs["proxy"] = _proxy()
+    elif proxy := proxy_for(base_url):
+        kwargs["proxy"] = proxy
     return httpx.Client(**kwargs)
 
 
