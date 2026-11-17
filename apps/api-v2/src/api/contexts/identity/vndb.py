@@ -1,7 +1,10 @@
 """Reconcile explicit Bangumi-to-VNDB identifiers through auditable decisions."""
 
 import json
+import re
+from collections.abc import Iterator
 from typing import Any
+from urllib.parse import urlparse
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -124,3 +127,72 @@ async def bind_pair(
             decided_by="official_external_id",
             reason=f"Verified identifier could not be bound safely: {error}",
         )
+
+
+VNDB_ID = re.compile(r"^v[1-9][0-9]*$", re.IGNORECASE)
+
+
+def extract_ids(
+    value: Any, *, pointer: str = "", vndb_context: bool = False
+) -> Iterator[tuple[str, str]]:
+    if isinstance(value, dict):
+        local_context = vndb_context or any(
+            "vndb" in str(value.get(key, "")).lower() for key in ("key", "label", "name")
+        )
+        for key, child in value.items():
+            escaped = str(key).replace("~", "~0").replace("/", "~1")
+            yield from extract_ids(
+                child,
+                pointer=f"{pointer}/{escaped}",
+                vndb_context=local_context or "vndb" in str(key).lower(),
+            )
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            yield from extract_ids(child, pointer=f"{pointer}/{index}", vndb_context=vndb_context)
+    elif isinstance(value, str):
+        text = value.strip()
+        if vndb_context and VNDB_ID.fullmatch(text):
+            yield text.lower(), pointer or "/"
+        elif text.startswith(("http://", "https://")):
+            try:
+                parsed = urlparse(text)
+            except ValueError:
+                return
+            if parsed.hostname not in {"vndb.org", "www.vndb.org"}:
+                return
+            candidate = parsed.path.strip("/").split("/", 1)[0]
+            if VNDB_ID.fullmatch(candidate):
+                yield candidate.lower(), pointer or "/"
+
+
+async def observe_bangumi(
+    session: AsyncSession, entity_id: Any, observation_id: Any, payload: dict[str, Any]
+) -> Any:
+    from api.worker.facts import record_fact
+
+    for external_id, pointer in sorted(set(extract_ids(payload))):
+        await record_fact(
+            session,
+            entity_id=entity_id,
+            observation_id=observation_id,
+            slug="external-id-vndb",
+            name="VNDB identifier",
+            value=external_id,
+            value_type="string",
+            json_pointer=pointer,
+        )
+        matches = await fetch(
+            session,
+            """
+            SELECT r.entity_id FROM entity_representation AS r
+            JOIN provider_record AS p ON p.id=r.provider_record_id
+            JOIN provider_namespace AS ns ON ns.id=p.namespace_id
+            JOIN provider AS source ON source.id=ns.provider_id
+            WHERE source.slug='vndb' AND ns.slug='vn' AND p.external_id=:id
+              AND p.status='active' AND r.is_active ORDER BY r.created_at, r.id LIMIT 1
+            """,
+            {"id": external_id},
+        )
+        if matches:
+            await bind_pair(session, entity_id, matches[0].entity_id, observation_id, external_id)
+    return await resolution.resolve(session, entity_id)

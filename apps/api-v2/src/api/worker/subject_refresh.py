@@ -12,6 +12,7 @@ different slice of the catalogue gets refreshed, every day, forever.
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -102,7 +103,7 @@ async def refresh(
             result["skipped"] += 1
             continue
         try:
-            data = client.fetch_subject(external_id)
+            data = await asyncio.to_thread(client.fetch_subject, external_id)
         except ProviderError as error:
             if error.is_not_found:
                 # A direct 404 is authoritative: the subject is gone.

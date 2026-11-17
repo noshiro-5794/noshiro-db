@@ -114,7 +114,8 @@ async def upsert_representation(
                 true, NULL, now(), now())
         ON CONFLICT (provider_record_id, entity_id, mapping_kind) WHERE is_active
         DO UPDATE
-          SET method = EXCLUDED.method, is_active = true, updated_at = now()
+          SET method = EXCLUDED.method, confidence = EXCLUDED.confidence,
+              is_active = true, updated_at = now()
         RETURNING id
         """,
         {

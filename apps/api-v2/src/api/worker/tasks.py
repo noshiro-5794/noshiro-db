@@ -246,7 +246,15 @@ async def _refresh_bangumi_subjects(limit: int) -> dict[str, Any]:
     from api.worker.providers.bangumi import BangumiClient
 
     async with session_scope() as session:
-        return await subject_refresh.refresh(session, BangumiClient(), limit=limit)
+        policy = await fetch(
+            session, "SELECT storage_policy FROM provider WHERE slug='bangumi'", {}
+        )
+        client = BangumiClient()
+        client.forbid_storage(forbidden=bool(policy and policy[0].storage_policy == "forbidden"))
+        try:
+            return await subject_refresh.refresh(session, client, limit=limit)
+        finally:
+            client.close()
 
 
 @shared_task(  # type: ignore[untyped-decorator]

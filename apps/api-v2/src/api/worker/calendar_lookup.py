@@ -4,8 +4,8 @@ Both are reads, and both are compared against the Django service on the same dat
 before the task is registered:
 
 * ``work_entities_for_subjects`` — which Bangumi subject ids already have a work entity.
-  A calendar item whose subject the catalogue has not imported yet cannot become an
-  airing event, and the old service simply skips it.
+  The current partial writer reads identities already held in the catalogue. The
+  complete task still needs the legacy service's mandatory base-subject import phase.
 * ``previous_calendar_item_ids`` — the subject ids recorded by the last calendar
   observation, which is what the added/removed diff is computed against.
 """
