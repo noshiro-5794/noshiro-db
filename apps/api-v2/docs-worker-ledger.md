@@ -658,3 +658,20 @@ existing page-error assertion missed across reloads; a targeted console regressi
 compatibility correction are being verified separately in this goal. Task-name coverage
 remains 19/30. Bangumi projection completion, campaign/season/manual-sync/mail flows,
 full contract audit, app consolidation and production verification remain pending.
+
+### React route suspension compatibility
+
+The router dependency's lazy component cleared its import promise and stopped calling
+React `use()` after the suspended render completed. The installed React version reports
+that transition as a recoverable render error. A pnpm-managed patch keeps the fulfilled
+thenable stable and calls `use()` consistently, preserving component preload and the
+existing missing-module recovery. The patch covers the package source and both module
+builds. Dependency versions remain unchanged and configuration stays inside apps/web.
+
+The browser regression now records relevant console errors across navigation/reloads;
+checking only the final page's error buffer missed earlier route errors. The focused
+workspace test failed against the original package and passed after patching. A resumed
+full frontend gate then passed formatting, types, lint, 234 unit tests, dead-code checks,
+all seven browser tests and production build using the pinned pnpm 12.14.0. The earlier
+parallel timing failures did not recur in this complete run. The API migration goal
+continues with the remaining Bangumi and orchestration behavior.
