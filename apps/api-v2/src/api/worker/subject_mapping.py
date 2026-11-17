@@ -14,6 +14,8 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
+from api.contexts.synchronization.terms import normalize_key as normalize_key
+
 GALGAME_TAG = "galgame"
 
 
@@ -22,11 +24,6 @@ def clean_string(value: Any, *, max_length: int | None = None) -> str:
         return ""
     cleaned = value.strip()
     return cleaned[:max_length] if max_length is not None else cleaned
-
-
-def normalize_key(value: str) -> str:
-    """The lookup form of a term: trimmed, case-folded, inner whitespace collapsed."""
-    return " ".join(value.strip().casefold().split())
 
 
 def subject_type(data: dict[str, Any]) -> str:
@@ -88,7 +85,7 @@ def infobox_entries(data: dict[str, Any]) -> list[dict[str, Any]]:
         if not isinstance(item, dict):
             continue
         key = item.get("key")
-        normalized_key = normalize_key(key) if isinstance(key, str) else ""
+        normalized_key = key.strip() if isinstance(key, str) else ""
         normalized_value = _infobox_value(item.get("value"))
         if not normalized_key and not normalized_value:
             continue
@@ -109,9 +106,7 @@ def _infobox_value(value: Any) -> list[str]:
 
 
 def tag_names(data: dict[str, Any]) -> list[str]:
-    return [
-        normalized for normalized in (normalize_key(tag) for tag in meta_tags(data)) if normalized
-    ]
+    return meta_tags(data)
 
 
 def map_subject(data: dict[str, Any]) -> dict[str, Any]:

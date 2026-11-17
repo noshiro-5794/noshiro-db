@@ -44,8 +44,8 @@ def test_a_malformed_date_is_absent_rather_than_wrong() -> None:
     assert subject_date({}) is None
 
 
-def test_tags_are_normalised_and_empty_ones_dropped() -> None:
-    assert tag_names({"meta_tags": ["  Sci-Fi ", "", "DRAMA"]}) == ["sci-fi", "drama"]
+def test_tags_preserve_source_text_and_drop_empty_values() -> None:
+    assert tag_names({"meta_tags": ["  Sci-Fi ", "", "DRAMA"]}) == ["Sci-Fi", "DRAMA"]
 
 
 def test_infobox_values_are_flattened_from_both_shapes() -> None:
@@ -113,7 +113,7 @@ def test_facts_keep_their_declared_types() -> None:
     assert facts["platform"] == ("TV", "string")
     assert facts["series"] == (True, "boolean")
     assert facts["episode-count"] == (12, "number")
-    assert facts["provider-tags"] == (["sf"], "json")
+    assert facts["provider-tags"] == (["SF"], "json")
 
 
 def test_absent_values_contribute_no_fact() -> None:

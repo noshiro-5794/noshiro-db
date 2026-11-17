@@ -71,3 +71,9 @@ async def mal_session(integration_session, register_provider):
 async def anilist_session(integration_session, register_provider):
     await register_provider("anilist", "AniList")
     return integration_session
+
+
+@pytest_asyncio.fixture
+async def bangumi_session(integration_session, register_provider):
+    await register_provider("bangumi", "Bangumi")
+    return integration_session

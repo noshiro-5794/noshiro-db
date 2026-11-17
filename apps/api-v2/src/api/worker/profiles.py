@@ -35,6 +35,7 @@ async def upsert_anime_profile(
     ended_on: date | None = None,
     source_material: str | None = None,
     replace_metadata: bool = False,
+    replace_episode_count: bool = False,
 ) -> None:
     """Write profile metadata and retain unavailable broadcast dates.
 
@@ -52,7 +53,8 @@ async def upsert_anime_profile(
           SET format = CASE WHEN :replace_metadata THEN EXCLUDED.format
                             WHEN EXCLUDED.format = '' THEN anime_profile.format
                             ELSE EXCLUDED.format END,
-              episode_count = CASE WHEN :replace_metadata THEN EXCLUDED.episode_count
+              episode_count = CASE WHEN :replace_metadata OR :replace_episode_count
+                                   THEN EXCLUDED.episode_count
                                    ELSE COALESCE(EXCLUDED.episode_count,
                                                  anime_profile.episode_count) END,
               source_material = COALESCE(:source, anime_profile.source_material),
@@ -70,6 +72,7 @@ async def upsert_anime_profile(
             "ended": ended_on,
             "source": source_material,
             "replace_metadata": replace_metadata,
+            "replace_episode_count": replace_episode_count,
         },
     )
 

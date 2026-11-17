@@ -1,9 +1,8 @@
-"""The calendar task, assembled from the pieces that were verified separately.
+"""Partial calendar board projection using the work identities available to the caller.
 
-The flow is the old one, minus subject-detail syncing: take the weekly payload, keep the
-items whose subject the catalogue already holds, turn them into events, and swap the board
-in one transaction. A payload with items but no usable events is refused — replacing a good
-board with an empty one because Bangumi answered oddly is worse than keeping yesterday's.
+The complete task still needs its base-subject import and optional manual-detail phases.
+The existing writer keeps board replacement atomic and refuses a payload that produces
+no usable events.
 """
 
 from __future__ import annotations
@@ -42,9 +41,9 @@ async def apply_calendar(
 ) -> dict[str, Any]:
     """Swap the board for this payload, without fetching it.
 
-    ``subject_importer`` is called once per calendar item when the caller asked for
-    subject details. Its failures are counted, not raised: one broken subject must not
-    cost the whole board.
+    An optional ``subject_importer`` projects base work data before identity lookup.
+    Its failures are counted so usable calendar items can still be applied. The full
+    task's separate relation/episode refresh remains pending.
     """
     moment = now or datetime.now(UTC)
     item_count = calendar_read.count_calendar_items(data)

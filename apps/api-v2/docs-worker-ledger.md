@@ -675,3 +675,44 @@ full frontend gate then passed formatting, types, lint, 234 unit tests, dead-cod
 all seven browser tests and production build using the pinned pnpm 12.14.0. The earlier
 parallel timing failures did not recur in this complete run. The API migration goal
 continues with the remaining Bangumi and orchestration behavior.
+
+### Bangumi work projection, reviewed terms and identity links
+
+Bangumi work projection now restores original/localized name flags and scripts, reviewed
+term aliases, source casing for unmapped tags/infobox keys, anime count replacement,
+galgame profiles, rating history and explicit VNDB-ID reconciliation. Shared profile
+writing can replace the episode count without clearing another source's format/material.
+Provider representations restore the source confidence on replay. Existing galgame
+profile details remain intact when the Bangumi projection creates its own work view.
+
+`preferred_terms` reads reviewed global aliases with the original NFKC/lowercase lookup
+rules. Mapping uses `bangumi-subject-v2` and real source evidence paths. A projection hash
+is included in normalized observation metadata so an alias change produces a new mapping
+observation even when the raw revision is unchanged. Previous observations/facts remain
+historical, and selection follows the latest mapped output. The raw revision stays intact.
+
+Explicit VNDB IDs are extracted from scoped fields or VNDB URLs with escaped JSON
+pointers. Both source arrival orders now use the existing official-ID decision policy.
+Cached/embedded subjects can be provided locally and promoted to fetched records while
+retaining their entity identity. Complete work imports use savepoints for atomic failure.
+The registered refresh entry point now applies source storage policy, performs network
+requests off the event loop and closes its HTTP transport.
+
+Validation: all lint/format checks, strict typing of 165 modules and 332 offline tests
+passed. Fifty-eight PostgreSQL tests passed. Eleven Bangumi database cases cover metadata,
+name flags, rating snapshots, selective profile ownership, galgame details, reviewed and
+unreviewed aliases, cached-record promotion, rollback, both identity arrival orders,
+refresh policy/cleanup and remapping after an alias changes. Seven standalone cases
+cover ID extraction and Unicode alias keys. Eight serialized work-projection sections
+matched the legacy subject service on a fixed source fixture. AniList, VNDB and MAL
+projection comparisons also passed during this work. The schema CI job now selects all
+transaction test modules by their existing naming convention.
+
+The Bangumi character/person/episode and relation workflows are still pending. Calendar
+task parity also remains incomplete: the old service always imports base subjects before
+building events and optionally runs the full manual-detail sync. The current replacement
+still uses its partial existing-identity path. Its docstrings now state that boundary;
+earlier calendar projection checks cover only that partial path. Campaign/season/manual
+sync/mail completion, final app consolidation, complete contract/runtime auditing and
+production verification remain part of the active goal. Source HTTP responses were mocked
+and production was unchanged. Task-name registration remains 19/30.
