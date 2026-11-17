@@ -26,7 +26,12 @@ def optional_number(value: Any, *, integer: bool = False) -> Decimal | int | Non
 
 
 async def start_run(
-    *, payload: dict[str, Any], use_case: str, prompt_version: str, metadata: dict[str, Any]
+    *,
+    payload: dict[str, Any],
+    use_case: str,
+    prompt_version: str,
+    metadata: dict[str, Any],
+    agent_step_id: UUID | None = None,
 ) -> UUID:
     digest = hashlib.sha256(
         json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
@@ -36,9 +41,9 @@ async def start_run(
             session,
             """
             INSERT INTO ai_run (id, use_case, provider, model, prompt_version, input_hash,
-              input_metadata, status, error, created_at, started_at)
+              input_metadata, status, error, created_at, started_at, agent_step_id)
             VALUES (gen_random_uuid(), :use_case, 'openai_compatible', :model, :prompt,
-              :hash, CAST(:metadata AS jsonb), 'running', '', now(), now()) RETURNING id
+              :hash, CAST(:metadata AS jsonb), 'running', '', now(), now(), :step) RETURNING id
         """,
             {
                 "use_case": use_case,
@@ -46,6 +51,7 @@ async def start_run(
                 "prompt": prompt_version,
                 "hash": digest,
                 "metadata": json.dumps(metadata),
+                "step": agent_step_id,
             },
         )
         return UUID(str(rows[0].id))
