@@ -852,3 +852,32 @@ This is a prerequisite module for the campaign normalizing phase. The campaign r
 still unregistered, and the enrichment skill and orchestration integration remain pending.
 Task registration stays 22/30. Full HTTP/runtime auditing, app consolidation, removal of
 old services/code/dependencies/schema and production verification remain required.
+
+### Campaign prerequisite — cached web evidence for enrichment
+
+The knowledge context now captures individual search results as immutable, content-hashed
+artifacts linked to durable tool steps and invocations. Identical recent searches reuse
+the configured cache across agent runs. Search failures return an empty evidence set while
+retaining failed step/invocation audit. Artifact persistence and successful tool completion
+share a transaction, so a later artifact error rolls back partial capture.
+
+The shared agent-step writer now supports tool steps and nullable failed-step output.
+Search invocation keys include their allocated step ID. This retains separate attempt
+history and permits a failed or empty search to be retried for the same entity/run without
+colliding with the original invocation's unique idempotency key. Cache keys still depend on
+the original query parameters and tool version. Artifact claims may later reference cached
+search evidence from a prior run, matching the enrichment service's existing cache behavior.
+
+Validation: application gates passed with strict typing of 179 modules and 353 offline
+cases. All 97 PostgreSQL transaction cases passed. Seven new database cases verify cache
+hits, cross-run reuse, expiry, blank queries, failed/empty retries and atomic rollback after
+partial artifact capture. Three serialized sections for steps, tool invocations and
+artifacts match the old enrichment search/cache flow on fixed inputs. Invocation attempt
+keys are intentionally different as described above. Web search was mocked and no provider
+quota was consumed. A Tailscale SSH attempt also failed host-key verification, so production
+access remains unresolved and no remote changes were made.
+
+The enrichment proposal/application skill and campaign runner integration remain pending.
+These new prerequisite modules do not change the 22/30 registered task count. Final app
+consolidation, legacy code/service/dependency/schema removal and end-to-end verification
+remain part of the active goal.
