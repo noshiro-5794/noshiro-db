@@ -13,6 +13,7 @@ from celery import Celery
 
 from api.worker import (  # noqa: F401  registers the tasks
     ai_tasks,
+    calendar_tasks,
     frontier_tasks,
     manual_sync,
     match_application,

@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock
 import httpx
 import pytest
 
-from api.worker import bangumi_sync, manual_sync
+from api.worker import bangumi_sync, calendar_tasks, manual_sync
 from api.worker.providers.bangumi import BangumiClient
 
 
@@ -59,3 +59,15 @@ async def test_complete_fetch_paginates_episodes_and_deduplicates_person_details
     assert sum("/v0/persons/20" in url for url in requests) == 1
     assert any("offset=100" in url for url in requests)
     progress.assert_awaited_with("Fetched staff 20", 5)
+
+
+def test_calendar_task_passes_detail_option_and_request_identity(monkeypatch):
+    synchronize = AsyncMock(return_value={"item_count": 1})
+    monkeypatch.setattr(calendar_tasks, "synchronize", synchronize)
+    result = calendar_tasks.sync_calendar_task.apply(
+        kwargs={"sync_subject_details": True, "job_id": "job"}
+    )
+    assert result.get() == {"item_count": 1}
+    synchronize.assert_awaited_once_with(
+        sync_subject_details=True, job_id="job", lease_owner=f"celery:{result.id}"
+    )

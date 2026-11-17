@@ -1,20 +1,9 @@
-"""Replacing the weekly board in one transaction.
-
-The live schema constrains this in two ways that shape the code:
-
-* `airing_board` has a **partial unique index on `status = 'active'`**, so the previous
-  board must be archived *before* the new one is inserted — two independent inserts fail.
-* `airing_event` uniqueness includes `observation_id`, so events are history: a new
-  observation adds a new generation rather than overwriting the last one.
-
-Nothing here deletes: the previous board and its events stay readable, which is what lets a
-later run report what changed.
-"""
+"""Atomically refresh calendar events while retaining curated board projections."""
 
 from __future__ import annotations
 
 import json
-from datetime import date, datetime
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,7 +17,7 @@ ARCHIVED = "archived"
 async def archive_active_boards(session: AsyncSession) -> int:
     rows = await fetch(
         session,
-        "UPDATE airing_board SET status = :archived, updated_at = now()"
+        "UPDATE airing_board SET status = :archived, effective_until=now(), updated_at = now()"
         " WHERE status = :active RETURNING id",
         {"archived": ARCHIVED, "active": ACTIVE},
     )
@@ -42,8 +31,8 @@ async def create_board(
     observation_id: Any,
     item_count: int,
     metadata: dict[str, Any] | None = None,
-    effective_from: date | None = None,
-    effective_until: date | None = None,
+    effective_from: datetime | None = None,
+    effective_until: datetime | None = None,
 ) -> Any:
     rows = await fetch(
         session,
@@ -137,19 +126,46 @@ async def replace_board(
     observation_id: Any,
     events: list[dict[str, Any]],
     metadata: dict[str, Any] | None = None,
-    effective_from: date | None = None,
-    effective_until: date | None = None,
+    effective_from: datetime | None = None,
+    effective_until: datetime | None = None,
 ) -> dict[str, Any]:
-    """Archive the active board, create the next one, then record its events."""
-    archived = await archive_active_boards(session)
-    board_id = await create_board(
+    """Refresh this season's board and replace the Bangumi calendar event generation."""
+    # Serialize calendar refreshes even when no board exists to lock yet.
+    await fetch(session, "SELECT pg_advisory_xact_lock(74329401)", {})
+    active = await fetch(
+        session, "SELECT id,season_key FROM airing_board WHERE status='active' FOR UPDATE", {}
+    )
+    archived = 0
+    if active and active[0].season_key.strip() == season_key.strip():
+        board_id = active[0].id
+        await fetch(
+            session,
+            "UPDATE airing_board SET observation_id=:observation,effective_until=NULL,"
+            " updated_at=now() WHERE id=:id RETURNING id",
+            {"id": board_id, "observation": observation_id},
+        )
+    else:
+        archived = await archive_active_boards(session)
+        board_id = await create_board(
+            session,
+            season_key=season_key,
+            observation_id=observation_id,
+            item_count=len(events),
+            metadata=metadata,
+            effective_from=effective_from or datetime.now().astimezone(),
+            effective_until=effective_until,
+        )
+    await fetch(
         session,
-        season_key=season_key,
-        observation_id=observation_id,
-        item_count=len(events),
-        metadata=metadata,
-        effective_from=effective_from,
-        effective_until=effective_until,
+        """
+        DELETE FROM airing_event event USING provider_observation observation,
+          provider_record record,provider_namespace namespace,provider source
+        WHERE event.observation_id=observation.id
+          AND observation.provider_record_id=record.id AND record.namespace_id=namespace.id
+          AND namespace.provider_id=source.id AND source.slug='bangumi'
+          AND namespace.slug='calendar' RETURNING event.id
+        """,
+        {},
     )
     written = await add_events(session, observation_id=observation_id, events=events)
     return {"archived": archived, "events": written, "board_id": board_id}

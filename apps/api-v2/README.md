@@ -55,3 +55,16 @@ uv sync
 uv run uvicorn api.main:app --reload --port 8009
 uv run pytest
 ```
+
+## Calendar object storage
+
+Calendar covers use Boto3 with an S3-compatible endpoint. Configure
+`S3_ENDPOINT_URL`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET` and
+`S3_PUBLIC_URL`. Existing `MINIO_*` deployment settings remain accepted as aliases.
+Endpoint URLs retain their explicit HTTP/HTTPS scheme. Host-only legacy endpoints
+use `MINIO_USE_HTTPS`. The public URL defaults to the endpoint URL.
+
+Cover downloads retain `BANGUMI_IMAGE_ALLOWED_HOSTS` and
+`BANGUMI_IMAGE_MAX_BYTES` and use the shared outbound proxy configuration.
+Calendar quarter boundaries use `DEPLOYMENT_TIME_ZONE`, defaulting to
+`Asia/Shanghai`.
