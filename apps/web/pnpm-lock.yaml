@@ -165,6 +165,9 @@ settings:
 overrides:
   seroval: '>=1.6.3'
 
+patchedDependencies:
+  '@tanstack/react-router@1.170.44': cd8034817700304ccf0dd2b84c35937b5a7dd5e3ca21e54faf6d5eda2f5909e3
+
 importers:
 
   .:
@@ -180,7 +183,7 @@ importers:
         version: 5.104.2(react@19.3.0)
       '@tanstack/react-router':
         specifier: ^1.170.44
-        version: 1.170.44(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: 1.170.44(patch_hash=cd8034817700304ccf0dd2b84c35937b5a7dd5e3ca21e54faf6d5eda2f5909e3)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -3310,7 +3313,7 @@ snapshots:
       '@tanstack/query-core': 5.104.2
       react: 19.3.0
 
-  '@tanstack/react-router@1.170.44(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
+  '@tanstack/react-router@1.170.44(patch_hash=cd8034817700304ccf0dd2b84c35937b5a7dd5e3ca21e54faf6d5eda2f5909e3)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
     dependencies:
       '@tanstack/history': 1.162.5
       '@tanstack/react-store': 0.11.2(react-dom@19.3.0(react@19.3.0))(react@19.3.0)

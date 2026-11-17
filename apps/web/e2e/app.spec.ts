@@ -1,5 +1,7 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
 
+const routeConsoleErrors = new WeakMap<Page, string[]>();
+
 const subjectId = '01980f00-0000-7000-8000-000000000001';
 const subjectTitle = 'Graph smoke subject';
 const publicPostId = 42;
@@ -446,11 +448,17 @@ async function mockActivityProfileApi(page: Page) {
 }
 
 test.beforeEach(async ({ page }) => {
+  const errors: string[] = [];
+  routeConsoleErrors.set(page, errors);
+  page.on('console', (message) => {
+    if (message.text().includes('conditional-use-of-use')) errors.push(message.text());
+  });
   await mockGuestApi(page);
 });
 
 test.afterEach(async ({ page }) => {
   expect(await page.pageErrors()).toEqual([]);
+  expect(routeConsoleErrors.get(page)).toEqual([]);
 });
 
 test('public home opens the catalog and renders API data', async ({ page }) => {
