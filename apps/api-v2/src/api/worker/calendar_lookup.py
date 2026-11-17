@@ -1,14 +1,4 @@
-"""Two lookups the calendar flow needs before it can write anything.
-
-Both are reads, and both are compared against the Django service on the same database
-before the task is registered:
-
-* ``work_entities_for_subjects`` — which Bangumi subject ids already have a work entity.
-  The current partial writer reads identities already held in the catalogue. The
-  complete task still needs the legacy service's mandatory base-subject import phase.
-* ``previous_calendar_item_ids`` — the subject ids recorded by the last calendar
-  observation, which is what the added/removed diff is computed against.
-"""
+"""Look up prepared Bangumi work identities and the preceding calendar payload."""
 
 from __future__ import annotations
 

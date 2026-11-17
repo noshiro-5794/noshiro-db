@@ -746,3 +746,42 @@ No live provider requests or production changes were used for these comparisons.
 Registered legacy task names are now 21/30. Calendar completion, campaign/season/mail flows,
 full API/frontend/runtime auditing, app consolidation and production verification remain
 pending. Calendar still needs mandatory base imports and optional manual detail syncing.
+
+### Calendar orchestration, board continuity and cover storage
+
+The calendar task now imports base subjects before constructing events and can invoke the
+complete manual graph sync for each prepared subject. It preserves individual failure
+counts and sync-error retry history. Job claims and failure results are committed in
+separate scopes, fetching happens outside projection transactions, progress renews leases,
+and ownership is checked before catalogue/board writes. Detail fetching keeps the parent
+calendar's progress totals. The task transport and cover resources close on every exit.
+
+Calendar refresh now reuses the active board within the same season while preserving
+curated metadata/counts and board entries. A season change archives the previous board
+with its effective end. Bangumi calendar events are replaced as in the original service.
+Refreshes serialize through an advisory transaction lock, including first-board creation.
+The projection itself has a savepoint so recording or event failures leave the prior board
+intact. Calendar records now use the original canonical URL/schema/mapper versions and
+quarter boundaries follow the deployment time zone, defaulting to Asia/Shanghai.
+
+Cover caching retains host/content-type/size checks and the original object paths. The
+new storage adapter uses Boto3 1.44.4 and S3-compatible settings, accepting deployed MINIO_*
+setting aliases. It retains automatic bucket initialization and tolerates concurrent
+creation. Boto3's dependency constraints select python-dateutil 2.9.0.post0. Downloads and
+uploads run off the event loop and failed cover uploads remain non-fatal. Static stubs are
+app-local development dependencies. No MinIO SDK dependency was added to the new service.
+
+Validation: application gates passed with strict typing of 174 modules and 350 offline
+cases. All 74 PostgreSQL transaction cases passed. Six new calendar database cases cover
+new-subject import, full detail sync and progress, partial detail failure, policy refusal,
+same-season projection preservation, rollover and base failure preserving the old board.
+Fourteen storage/cover cases check request shape, public URLs, missing/concurrent buckets,
+settings aliases, invalid object paths, content/size limits and non-fatal upload errors.
+The calendar Celery entry also has an argument/owner regression. Sixteen serialized graph
+and calendar sections match the old services on fixed source data. Storage calls were
+validated with botocore request stubs and image HTTP with mock transports. Live S3/MinIO,
+live source requests and production deployment remain unverified in this step.
+
+The nine unregistered tasks, campaign/season orchestration, full endpoint/runtime auditing,
+app consolidation and old-system removal remain pending. Registration coverage stays
+21/30 and represents task names, with behavior verification tracked separately above.
