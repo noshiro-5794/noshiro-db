@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
 import secrets
 from typing import Any
@@ -12,7 +13,7 @@ from fastapi.responses import JSONResponse
 from api.config import settings
 from api.contexts.access.security import create_tokens, hash_password
 from api.db import SessionDep
-from api.shared.mail import send_verification_code
+from api.shared.dispatch import publish
 from api.shared.problems import ProblemError
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
@@ -21,7 +22,6 @@ PURPOSES = ("register", "login", "reset_password")
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 CODE_RE = re.compile(r"^\d{6}$")
 MAX_ATTEMPTS = 5
-CODE_TTL_MINUTES = 10
 
 
 @router.post("/verification-codes/", status_code=202)
@@ -39,16 +39,46 @@ async def send_code(
     if errors:
         raise ProblemError(status_code=400, detail="Request validation failed.", errors=errors)
     await _verify_captcha(str(body.get("hcaptcha_token", "")))
-    code = f"{secrets.randbelow(1_000_000):06d}"
     await _insert(
+        session,
+        "SELECT pg_advisory_xact_lock(hashtextextended(:scope,0))",
+        {"scope": f"email-verification:{email}:{purpose}"},
+    )
+    recent = await _insert(
+        session,
+        "SELECT id FROM email_verification WHERE lower(email)=:email AND purpose=:purpose "
+        "AND created_at>clock_timestamp()-interval '60 seconds' ORDER BY created_at DESC LIMIT 1",
+        {"email": email, "purpose": purpose},
+    )
+    if recent:
+        raise ProblemError(
+            status_code=429,
+            detail="Email was requested too frequently.",
+            code="users.email_send_too_frequent",
+        )
+    code = f"{secrets.randbelow(1_000_000):06d}"
+    rows = await _insert(
         session,
         "INSERT INTO email_verification (email, code, purpose, is_used, attempts,"
         " expire_at, created_at) VALUES (:email, :code, :purpose, false, 0,"
-        " now() + interval '10 minutes', now()) RETURNING id",
+        " clock_timestamp() + interval '5 minutes', clock_timestamp()) RETURNING id",
         {"email": email, "code": code, "purpose": purpose},
     )
     await session.commit()
-    await send_verification_code(email, code, str(purpose))
+    try:
+        task_id = await asyncio.to_thread(
+            publish,
+            "apps.users.tasks.email_tasks.send_verification_email",
+            {"verification_id": rows[0].id},
+        )
+        if task_id is None:
+            raise RuntimeError("The mail task broker is not configured.")
+    except Exception as error:
+        raise ProblemError(
+            status_code=503,
+            detail="Verification email could not be queued.",
+            code="users.email_delivery_unavailable",
+        ) from error
     return {"status": "accepted"}
 
 
@@ -63,16 +93,31 @@ async def _verify(session: Any, *, email: str, purpose: str, code: str) -> Any:
 
     rows = await fetch(
         session,
-        "SELECT id, code, attempts, expire_at FROM email_verification"
+        "SELECT id, code, attempts, expire_at, expire_at<clock_timestamp() AS expired "
+        "FROM email_verification"
         " WHERE lower(email) = :email AND purpose = :purpose AND NOT is_used"
-        " ORDER BY created_at DESC LIMIT 1",
+        " ORDER BY created_at DESC LIMIT 1 FOR UPDATE",
         {"email": email, "purpose": purpose},
     )
     if not rows:
-        raise ProblemError(status_code=400, detail="Invalid verification code.")
+        raise ProblemError(
+            status_code=400,
+            detail="The verification code is invalid.",
+            code="users.invalid_verification_code",
+        )
     row = rows[0]
     if row.attempts >= MAX_ATTEMPTS:
-        raise ProblemError(status_code=400, detail="Invalid verification code.")
+        raise ProblemError(
+            status_code=400,
+            detail="The verification code is invalid.",
+            code="users.invalid_verification_code",
+        )
+    if row.expired:
+        raise ProblemError(
+            status_code=400,
+            detail="The verification code has expired.",
+            code="users.verification_code_expired",
+        )
     if not secrets.compare_digest(str(row.code), code):
         await fetch(
             session,
@@ -80,7 +125,11 @@ async def _verify(session: Any, *, email: str, purpose: str, code: str) -> Any:
             {"id": row.id},
         )
         await session.commit()
-        raise ProblemError(status_code=400, detail="Invalid verification code.")
+        raise ProblemError(
+            status_code=400,
+            detail="The verification code is invalid.",
+            code="users.invalid_verification_code",
+        )
     return row
 
 

@@ -785,3 +785,41 @@ live source requests and production deployment remain unverified in this step.
 The nine unregistered tasks, campaign/season orchestration, full endpoint/runtime auditing,
 app consolidation and old-system removal remain pending. Registration coverage stays
 21/30 and represents task names, with behavior verification tracked separately above.
+
+### Queued verification mail and account-code parity
+
+The verification task is registered on the replacement realtime worker. It reads the
+stored verification and skips missing, used or expired rows before delivery. Provider
+failures retain bounded Celery backoff/retries. The HTML template and sender branding now
+match the original mail builder, including escaping dynamic values and the five-minute
+expiry text. The template is a packaged resource with no dependency on the old source.
+
+The request route now commits a five-minute code before publishing through the shared task
+dispatcher. A case-insensitive email/purpose scope lock and 60-second send interval restore
+the original send behavior. Verification locks the chosen row and checks expiry and the
+five-attempt limit. Incorrect attempts remain committed. The previous replacement accepted
+expired codes and created ten-minute codes without enforcing the send interval. A broker
+failure now returns 503/users.email_delivery_unavailable after the code is committed.
+Duplicate registration/social router inclusions were also removed from the app factory.
+
+The default replacement worker now consumes ai in addition to realtime/sync. All legacy
+AI task names have implementations, so the old queue-check exemption no longer applies.
+The check fails if any routed queue lacks a default consumer. The deployment configuration
+still contains the legacy services pending final consolidation and has not been applied.
+
+Validation: the new service passed lint, format, strict typing of 176 modules and 353
+offline cases. All 81 PostgreSQL transaction cases passed. Seven new database cases exercise
+the HTTP entry, case/purpose throttling, both broker-failure paths, expiry, attempts/used
+codes and retryable delivery. Offline regressions cover HTML escaping, the actual Celery
+entry and unique method/path registration. Sixteen text/HTML comparisons against the old
+builders matched across purposes and escaped values. The built wheel includes the template,
+and the real worker application registers 22 migrated task names. Queue checks pass for
+ai/realtime/sync. Root make openapi completed without snapshot changes. Mail HTTP was mocked
+and no email was sent. Production verification remains pending, with the latest SSH attempt
+to the server's Tailscale address rejected by publickey/password authentication.
+
+Eight task names remain unregistered. Campaign/incremental/season orchestration, complete
+HTTP contract and runtime auditing, professional module layering, final app consolidation
+and old service/code/dependency/schema removal remain in scope. The verification expiry
+and interval gaps are additional evidence that prior HTTP shadow comparisons alone do not
+prove complete behavior parity. The active goal remains unfinished.

@@ -53,7 +53,7 @@ services:
     env_file:
       - *env-file
     command: >
-      celery -A api.worker.app worker -l info -Q ${API_V2_WORKER_QUEUES:-realtime,sync}
+      celery -A api.worker.app worker -l info -Q ${API_V2_WORKER_QUEUES:-realtime,sync,ai}
       --concurrency ${API_V2_WORKER_CONCURRENCY:-2}
     # A worker whose broker connection dropped still runs; it just never receives
     # anything. Asking the worker itself is the only check that notices.

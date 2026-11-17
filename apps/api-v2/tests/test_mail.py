@@ -72,3 +72,39 @@ def test_the_text_body_matches_the_old_service() -> None:
         """
     )
     assert mail.body_text("123456", "login", "https://noshiro.moe") == expected
+
+
+def test_html_preserves_brand_template_and_escapes_dynamic_values():
+    html = mail.body_html("<123&>", "register", "https://example.test/?a=1&b=2")
+    assert "<!doctype html>" in html
+    assert "&lt;123&amp;&gt;" in html
+    assert "https://example.test/?a=1&amp;b=2" in html
+    assert "Create your account" in html
+    assert "5 minutes" in html
+    assert "10 minutes" not in html
+
+
+def test_worker_entry_preserves_queued_verification_id(monkeypatch):
+    from unittest.mock import AsyncMock
+
+    from api.worker import mail_tasks
+
+    deliver = AsyncMock()
+    monkeypatch.setattr(mail_tasks, "deliver", deliver)
+    execution = mail_tasks.send_verification_email.apply(kwargs={"verification_id": 17})
+    assert execution.get() is None
+    deliver.assert_awaited_once_with(17)
+
+
+def test_application_registers_each_method_and_path_once():
+    from fastapi.routing import APIRoute
+
+    from api.main import create_app
+
+    routes = [
+        (method, route.path)
+        for route in create_app().routes
+        if isinstance(route, APIRoute)
+        for method in route.methods
+    ]
+    assert len(routes) == len(set(routes))

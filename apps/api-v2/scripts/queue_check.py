@@ -22,14 +22,6 @@ ROUTE = re.compile(r'"apps\.[\w.*]+"\s*:\s*\{\s*"queue"\s*:\s*"([\w.-]+)"')
 DEFAULT_QUEUE = re.compile(r'task_default_queue\s*=\s*"([\w.-]+)"')
 LISTEN = re.compile(r"-Q\s+\$\{API_V2_WORKER_QUEUES:-([\w,.-]+)\}")
 
-# Queues the replacement routes to but does not consume yet, because the Django worker
-# still owns those tasks. Listing them here is the point: an unlisted queue that nobody
-# listens on is the silent failure this check exists for, so moving a task means moving
-# its queue out of this set in the same change.
-DURING_MIGRATION = {
-    "ai": "the Django ai worker still runs the AI tasks",
-}
-
 
 def routed_queues() -> tuple[set[str], str]:
     text = APP.read_text()
@@ -49,16 +41,13 @@ def main() -> int:
     routed, default = routed_queues()
     listened = listened_queues()
     needed = routed | {default}
-    missing = sorted(needed - listened - set(DURING_MIGRATION))
+    missing = sorted(needed - listened)
     extra = sorted(listened - needed)
     print(f"routing writes to : {', '.join(sorted(needed))}")
     print(f"worker listens on : {', '.join(sorted(listened)) or '(nothing parsed)'}")
     if missing:
         print(f"MISSING: {', '.join(missing)} — a task routed there is never consumed")
         return 1
-    for queue, why in sorted(DURING_MIGRATION.items()):
-        if queue in needed and queue not in listened:
-            print(f"pending: {queue} is routed but not consumed yet — {why}")
     if extra:
         print(f"note: the worker also listens on {', '.join(extra)} (harmless)")
     return 0
