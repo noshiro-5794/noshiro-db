@@ -3,7 +3,7 @@
 import hashlib
 import json
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -52,7 +52,12 @@ async def validate_evidence(session: AsyncSession, context: EvidenceContext) -> 
 
 
 async def create_step(
-    session: AsyncSession, *, run_id: UUID, skill: str, payload: dict[str, Any]
+    session: AsyncSession,
+    *,
+    run_id: UUID,
+    skill: str,
+    payload: dict[str, Any],
+    kind: Literal["skill", "tool"] = "skill",
 ) -> UUID:
     # Serialize sequence allocation for skills sharing the same durable run.
     rows = await fetch(session, "SELECT id FROM agent_run WHERE id=:id FOR UPDATE", {"id": run_id})
@@ -66,12 +71,14 @@ async def create_step(
            error,retry_count,created_at,started_at)
         VALUES (gen_random_uuid(),:run,
           COALESCE((SELECT max(sequence)+1 FROM agent_step WHERE run_id=:run),0),
-          'skill','running',:skill,'1.0.0',:hash,CAST(:input AS jsonb),'',0,now(),now())
+          :kind,'running',:skill,:version,:hash,CAST(:input AS jsonb),'',0,now(),now())
         RETURNING id
         """,
         {
             "run": run_id,
             "skill": skill,
+            "kind": kind,
+            "version": "1.0.0" if kind == "skill" else "",
             "hash": payload_hash(payload),
             "input": json.dumps(payload),
         },
@@ -80,7 +87,7 @@ async def create_step(
 
 
 async def finish_step(
-    session: AsyncSession, step_id: UUID, output: dict[str, Any], *, error: str = ""
+    session: AsyncSession, step_id: UUID, output: dict[str, Any] | None, *, error: str = ""
 ) -> None:
     await fetch(
         session,
@@ -88,7 +95,7 @@ async def finish_step(
         "finished_at=now() WHERE id=:id RETURNING id",
         {
             "id": step_id,
-            "output": json.dumps(output),
+            "output": json.dumps(output) if output is not None else None,
             "status": "failed" if error else "succeeded",
             "error": error[:4000],
         },
