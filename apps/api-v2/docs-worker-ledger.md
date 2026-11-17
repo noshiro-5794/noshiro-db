@@ -716,3 +716,33 @@ earlier calendar projection checks cover only that partial path. Campaign/season
 sync/mail completion, final app consolidation, complete contract/runtime auditing and
 production verification remain part of the active goal. Source HTTP responses were mocked
 and production was unchanged. Task-name registration remains 19/30.
+
+### Complete Bangumi manual subject sync
+
+The manual task entry points now fetch and project work metadata, paginated episodes,
+related works, staff credits, character appearances, voice performances and full
+character/person records. Shared graph primitives retain source observations and original
+collection indices. Episode identities retain the legacy deterministic UUID namespace.
+Replays preserve existing entity identities and adult audience metadata. Reviewed role
+alias changes create new mapping observations while retaining historical edges.
+
+Each manual sync claims and commits its job before network work, heartbeats while fetching,
+closes its transport on failure, and checks live ownership before applying the graph and
+success result together. A cancelled or expired job cannot write the fetched catalogue.
+Projection errors roll back the complete graph and commit a failed job separately. UUID
+entry resolves active Bangumi representations across canonical cluster members. The task
+limits are 900/960 seconds, consistent with the other complete provider imports and longer
+than the old 300/360-second manual limit to accommodate paginated detail fetching.
+
+Validation: application checks passed with strict typing of 170 modules and 335 offline
+tests. All 68 PostgreSQL transaction cases passed. Ten new database cases cover full graph
+projection, immutable evidence pointers, subtype/audience preservation, role remapping,
+atomic failures, complete task results, policy refusal, provider failure and cancellation.
+Three offline cases exercise both Celery entry points and paginated transport requests
+with shared staff/voice IDs. Fourteen serialized projection sections match the old complete
+manual service on the same fixed source payloads in dedicated rollback-only databases.
+No live provider requests or production changes were used for these comparisons.
+
+Registered legacy task names are now 21/30. Calendar completion, campaign/season/mail flows,
+full API/frontend/runtime auditing, app consolidation and production verification remain
+pending. Calendar still needs mandatory base imports and optional manual detail syncing.

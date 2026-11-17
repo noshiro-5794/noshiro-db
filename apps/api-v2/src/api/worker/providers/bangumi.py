@@ -70,11 +70,55 @@ class BangumiClient:
             raise ProviderError("Bangumi /calendar did not return a list.")
         return data
 
-    def fetch_subject(self, subject_id: int) -> dict[str, Any]:
-        data = self._request("GET", f"/v0/subjects/{int(subject_id)}")
+    def _entity(self, namespace: str, identifier: int) -> dict[str, Any]:
+        data = self._request("GET", f"/v0/{namespace}s/{int(identifier)}")
         if not isinstance(data, dict):
-            raise ProviderError(f"Bangumi subject {subject_id} was not an object.")
+            raise ProviderError(f"Bangumi {namespace} {identifier} was not an object.")
+        if data.get("id") != identifier:
+            raise ProviderError(
+                f"Bangumi {namespace} {identifier} response identifier is inconsistent."
+            )
         return data
+
+    def fetch_subject(self, subject_id: int) -> dict[str, Any]:
+        return self._entity("subject", subject_id)
+
+    def fetch_character(self, character_id: int) -> dict[str, Any]:
+        return self._entity("character", character_id)
+
+    def fetch_person(self, person_id: int) -> dict[str, Any]:
+        return self._entity("person", person_id)
+
+    def fetch_subject_episodes(
+        self, *, subject_id: int, limit: int = 100, offset: int = 0
+    ) -> dict[str, Any]:
+        data = self._request(
+            "GET",
+            "/v0/episodes",
+            params={
+                "subject_id": subject_id,
+                "limit": limit,
+                "offset": offset,
+            },
+        )
+        if not isinstance(data, dict) or not isinstance(data.get("data"), list):
+            raise ProviderError("Bangumi episode response is missing data.")
+        return data
+
+    def _relations(self, subject_id: int, endpoint: str) -> list[Any]:
+        data = self._request("GET", f"/v0/subjects/{int(subject_id)}/{endpoint}")
+        if not isinstance(data, list):
+            raise ProviderError(f"Bangumi subject {endpoint} response was not a list.")
+        return data
+
+    def fetch_subject_subjects(self, subject_id: int) -> list[Any]:
+        return self._relations(subject_id, "subjects")
+
+    def fetch_subject_persons(self, subject_id: int) -> list[Any]:
+        return self._relations(subject_id, "persons")
+
+    def fetch_subject_characters(self, subject_id: int) -> list[Any]:
+        return self._relations(subject_id, "characters")
 
     def close(self) -> None:
         if self._http is not None:
