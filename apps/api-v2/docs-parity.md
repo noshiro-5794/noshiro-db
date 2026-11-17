@@ -220,11 +220,12 @@ Two divergences were found by this comparison and fixed or recorded:
    not decrement `reaction_count`, so the number drifts upward over time. The port
    does the same: the counter is part of the old contract, and the drift is a bug
    to fix once, on both sides, not something one side should quietly correct.
-22. **The verification mail: text identical, HTML simpler.** The port sends through the
-   same provider and key the old service uses, inline instead of Celery; a provider
-   failure is logged and never turns a written code into a failed request. Subject,
-   copy and the plain-text body match the old service byte for byte — the baseline was
-   captured by running Django's own builder. The HTML keeps a shorter template.
+22. **Verification delivery now runs on the replacement worker.** The restored Celery
+   task checks stored code usage and expiry before sending. The original text/HTML
+   builders match on fixed inputs. The HTTP route commits a five-minute code before
+   publishing, enforces the original 60-second send interval and rejects expired codes.
+   A broker dispatch failure now returns a structured 503 with
+   `users.email_delivery_unavailable`. Provider delivery failures retry in the worker.
 23. **A job type without a provider is a 404, not a body.** `subject_bangumi` is a real
    `sync_job` row, but Django maps the type to a registered import provider and answers
    `Import job not found.` when there is none. Read the diff direction carefully: the

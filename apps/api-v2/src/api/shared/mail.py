@@ -1,17 +1,12 @@
-"""Verification mail.
-
-The old service hands this to Celery and Resend; there is no queue here, so the
-send happens inline and a failure is logged rather than raised — a code that was
-written to the table must not be reported as a failed request.
-
-The copy is shorter than the branded template the old service sends. That is a
-cosmetic difference, recorded in `docs-parity.md`.
-"""
+"""Verification mail content and Resend HTTP transport."""
 
 from __future__ import annotations
 
 import logging
 import os
+from html import escape
+from importlib.resources import files
+from string import Template
 from typing import Any
 
 import httpx
@@ -21,23 +16,34 @@ logger = logging.getLogger(__name__)
 RESEND_URL = "https://api.resend.com/emails"
 BRAND_NAME = "Noshiro DB"
 CODE_EXPIRE_MINUTES = 5
+BRAND_TAGLINE = "Collect · Preserve · Relive"
+ACCENT_DARK = "#665792"
 PURPOSE_COPY = {
     "register": {
         "subject": "Your Noshiro DB sign-up code",
         "title": "Create your account",
+        "preheader": "Use this code to finish creating your Noshiro DB account.",
+        "intro": "Enter this verification code to finish creating your Noshiro DB account.",
         "intent": "Account registration",
     },
     "login": {
         "subject": "Your Noshiro DB login code",
         "title": "Log in to Noshiro DB",
+        "preheader": "Use this code to continue signing in. It expires in 5 minutes.",
+        "intro": (
+            "Enter this verification code to continue signing in to your Noshiro DB workspace."
+        ),
         "intent": "Email code login",
     },
     "reset_password": {
         "subject": "Reset your Noshiro DB password",
         "title": "Reset your password",
+        "preheader": "Use this code to reset your password. It expires in 5 minutes.",
+        "intro": "Enter this verification code to confirm your password reset request.",
         "intent": "Password reset",
     },
 }
+HTML_TEMPLATE = Template(files("api.shared").joinpath("templates/verification.html").read_text())
 
 
 def body_text(code: str, purpose: str, site_url: str = "") -> str:
@@ -55,17 +61,33 @@ def body_text(code: str, purpose: str, site_url: str = "") -> str:
     )
 
 
+def body_html(code: str, purpose: str, site_url: str = "") -> str:
+    copy = PURPOSE_COPY.get(purpose, PURPOSE_COPY["login"])
+    return HTML_TEMPLATE.substitute(
+        safe_code=escape(code),
+        site_url=escape(site_url),
+        safe_brand=escape(BRAND_NAME),
+        safe_title=escape(copy["title"]),
+        safe_preheader=escape(copy["preheader"]),
+        safe_intro=escape(copy["intro"]),
+        safe_intent=escape(copy["intent"]),
+        BRAND_TAGLINE=BRAND_TAGLINE,
+        ACCENT_DARK=ACCENT_DARK,
+        CODE_EXPIRE_MINUTES=CODE_EXPIRE_MINUTES,
+    )
+
+
 def _payload(email: str, code: str, purpose: str) -> dict[str, Any]:
     copy = PURPOSE_COPY.get(purpose, PURPOSE_COPY["login"])
     subject = copy["subject"]
     sender = os.environ.get("EMAIL_FROM", "noreply@localhost")
     text = body_text(code, purpose, os.environ.get("FRONTEND_SITE_URL", "").rstrip("/"))
     return {
-        "from": sender,
+        "from": f"{BRAND_NAME} <{sender}>",
         "to": [email],
         "subject": subject,
         "text": text,
-        "html": f"<p>{subject}: <strong>{code}</strong></p><p>This code expires in 10 minutes.</p>",
+        "html": body_html(code, purpose, os.environ.get("FRONTEND_SITE_URL", "").rstrip("/")),
     }
 
 

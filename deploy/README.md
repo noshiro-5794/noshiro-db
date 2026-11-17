@@ -61,7 +61,7 @@ changing who is listening — not by a code change.
 docker stop noshiro-db-worker-sync-1
 
 # 2. point the replacement worker at that queue and start it
-API_V2_WORKER_QUEUES=realtime,sync docker compose -p noshiro-db \
+API_V2_WORKER_QUEUES=realtime,sync,ai docker compose -p noshiro-db \
   -f deploy/compose.prod.yml --env-file "$ENV_FILE" up -d worker-api-v2
 
 # 3. confirm it is consuming rather than idling
