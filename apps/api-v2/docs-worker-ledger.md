@@ -823,3 +823,32 @@ HTTP contract and runtime auditing, professional module layering, final app cons
 and old service/code/dependency/schema removal remain in scope. The verification expiry
 and interval gaps are additional evidence that prior HTTP shadow comparisons alone do not
 prove complete behavior parity. The active goal remains unfinished.
+
+### Campaign prerequisite — evidence-backed vocabulary normalization
+
+The knowledge context now contains typed normalization input/output contracts, language
+selection, reviewed vocabulary/namespace/language aliases, model fallback and source-backed
+claims. Missing stable term slugs change map_existing into propose_new as in the old skill.
+Model failures preserve the raw vocabulary and retain a failed inference/step audit. The
+normalizer records proposals without changing taxonomy terms or canonical entity fields.
+
+Durable agent-step allocation locks the run before selecting the next sequence. Shared
+inference creation accepts an optional agent-step link without changing existing callers.
+Observation evidence must still be an active representation of the target, and artifact
+references are checked against their owning run when applicable. Evidence is validated
+before inference and again before claim creation. A source revoked during inference leaves
+a failed completed step and no claim. This avoids leaving a running step behind after a
+claim transaction rolls back. Standalone normalization retains the old no-agent behavior.
+
+Validation: application checks passed with strict typing of 178 modules and 353 offline
+cases. All 90 PostgreSQL transaction cases passed. Nine new database cases exercise model
+and reviewed-alias paths, immutable source links, invalid model fallback, unstable slug
+handling, inactive/revoked sources, standalone calls and artifact evidence. Four serialized
+sections for steps, inferences, claims and evidence match the legacy skill for model and
+alias results on fixed inputs. Model responses were mocked, with no external inference or
+production changes.
+
+This is a prerequisite module for the campaign normalizing phase. The campaign runner is
+still unregistered, and the enrichment skill and orchestration integration remain pending.
+Task registration stays 22/30. Full HTTP/runtime auditing, app consolidation, removal of
+old services/code/dependencies/schema and production verification remain required.
