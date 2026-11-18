@@ -125,40 +125,89 @@ async def record_claim(
         )
         if not step:
             raise ValueError("Claim step does not belong to the current agent run.")
-        rows = await fetch(
+        claim_id = await create_claim(
             session,
-            """
-            INSERT INTO ai_claim
-              (id,step_id,target_entity_id,claim_type,predicate_slug,proposed_value,
-               model_confidence,evidence_strength,status,policy_decision,policy_reason,created_at)
-            VALUES (gen_random_uuid(),:step,:entity,:type,:predicate,CAST(:value AS jsonb),
-                    :confidence,:strength,'proposed','','',now()) RETURNING id
-            """,
-            {
-                "step": step_id,
-                "entity": context.entity_id,
-                "type": claim_type,
-                "predicate": predicate,
-                "value": json.dumps(value),
-                "confidence": confidence,
-                "strength": evidence_strength,
-            },
+            step_id=step_id,
+            entity_id=context.entity_id,
+            claim_type=claim_type,
+            predicate=predicate,
+            value=value,
+            confidence=confidence,
+            evidence_strength=evidence_strength,
         )
-        claim_id = UUID(str(rows[0].id))
-        await fetch(
+        await add_evidence(
             session,
-            """
-            INSERT INTO claim_evidence
-              (claim_id,observation_id,artifact_id,locator,excerpt,excerpt_hash,relevance)
-            VALUES (:claim,:observation,:artifact,:locator,:excerpt,:hash,1) RETURNING id
-            """,
-            {
-                "claim": claim_id,
-                "observation": context.observation_id,
-                "artifact": context.artifact_id,
-                "locator": locator,
-                "excerpt": excerpt[:4000],
-                "hash": excerpt_hash,
-            },
+            claim_id=claim_id,
+            observation_id=context.observation_id,
+            artifact_id=context.artifact_id,
+            locator=locator,
+            excerpt=excerpt,
+            excerpt_hash=excerpt_hash,
         )
         return claim_id
+
+
+async def create_claim(
+    session: AsyncSession,
+    *,
+    step_id: UUID,
+    entity_id: UUID,
+    claim_type: str,
+    predicate: str,
+    value: dict[str, Any],
+    confidence: float,
+    evidence_strength: float,
+    calibrated_confidence: float | None = None,
+) -> UUID:
+    rows = await fetch(
+        session,
+        """
+        INSERT INTO ai_claim
+          (id,step_id,target_entity_id,claim_type,predicate_slug,proposed_value,
+           model_confidence,evidence_strength,calibrated_confidence,status,
+           policy_decision,policy_reason,created_at)
+        VALUES (gen_random_uuid(),:step,:entity,:type,:predicate,CAST(:value AS jsonb),
+                :confidence,:strength,:calibrated,'proposed','','',now()) RETURNING id
+        """,
+        {
+            "step": step_id,
+            "entity": entity_id,
+            "type": claim_type,
+            "predicate": predicate,
+            "value": json.dumps(value),
+            "confidence": confidence,
+            "strength": evidence_strength,
+            "calibrated": calibrated_confidence,
+        },
+    )
+    return UUID(str(rows[0].id))
+
+
+async def add_evidence(
+    session: AsyncSession,
+    *,
+    claim_id: UUID,
+    locator: str,
+    excerpt: str,
+    excerpt_hash: str,
+    observation_id: UUID | None = None,
+    artifact_id: UUID | None = None,
+) -> None:
+    if (observation_id is None) == (artifact_id is None):
+        raise ValueError("Claim evidence requires exactly one source.")
+    await fetch(
+        session,
+        """
+        INSERT INTO claim_evidence
+          (claim_id,observation_id,artifact_id,locator,excerpt,excerpt_hash,relevance)
+        VALUES (:claim,:observation,:artifact,:locator,:excerpt,:hash,1) RETURNING id
+        """,
+        {
+            "claim": claim_id,
+            "observation": observation_id,
+            "artifact": artifact_id,
+            "locator": locator,
+            "excerpt": excerpt[:4000],
+            "hash": excerpt_hash,
+        },
+    )

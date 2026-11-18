@@ -68,3 +68,29 @@ async def fail_run(run_id: UUID, error: Exception) -> None:
         """,
             {"id": run_id, "error": f"{type(error).__name__}: {error}"[:4000]},
         )
+
+
+async def finish_run(
+    run_id: UUID, output: dict[str, Any], usage: dict[str, Any], *, latency_ms: int | None = None
+) -> None:
+    async with session_scope() as session:
+        await fetch(
+            session,
+            """
+            UPDATE ai_run SET status='succeeded',output=CAST(:output AS jsonb),
+              input_tokens=:input,output_tokens=:tokens,cost=:cost,latency_ms=:latency,
+              finished_at=now() WHERE id=:id RETURNING id
+            """,
+            {
+                "id": run_id,
+                "output": json.dumps(output),
+                "input": optional_number(
+                    usage.get("input_tokens", usage.get("prompt_tokens")), integer=True
+                ),
+                "tokens": optional_number(
+                    usage.get("output_tokens", usage.get("completion_tokens")), integer=True
+                ),
+                "cost": optional_number(usage.get("cost")),
+                "latency": latency_ms,
+            },
+        )

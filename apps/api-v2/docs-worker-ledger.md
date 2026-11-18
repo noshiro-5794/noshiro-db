@@ -881,3 +881,35 @@ The enrichment proposal/application skill and campaign runner integration remain
 These new prerequisite modules do not change the 22/30 registered task count. Final app
 consolidation, legacy code/service/dependency/schema removal and end-to-end verification
 remain part of the active goal.
+
+### Campaign prerequisite — multilingual enrichment proposals and title application
+
+The knowledge context now completes missing multilingual fields using the restored web
+evidence cache and typed model contracts. One schema retry is retained. Each attempt links
+its inference audit to the durable skill step, and accepted proposals record calibrated
+confidence and source observation/artifact evidence. Shared claim/evidence and inference
+completion writers are reused by vocabulary normalization and enrichment.
+
+Enrichment defaults to reviewable proposals. Explicit application can add high-confidence
+titles with source provenance and machine-generated flags. Descriptions remain proposals.
+Logical duplicate names are superseded across provenance records, including pre-existing
+multiple-source copies. Entity locking serializes title checks and inserts. Oversized title
+or script values remain full reviewable claims because they cannot fit the name columns.
+The complete proposal/application pass is atomic. Source revocation or a later write failure
+leaves no partial names/claims and completes the step with failed audit. Failed model
+contracts retain a failed step instead of being overwritten by a successful abstention.
+
+Validation after resuming: all application gates passed with strict typing of 181 modules,
+353 offline cases and 109 PostgreSQL transaction cases. Twelve new enrichment database
+cases cover default review mode, calibrated title application, description handling,
+provenance/duplicate behavior, web evidence, schema retries, failed contracts, oversized
+values, filtering, source revocation, partial-write rollback and missing targets. Six
+serialized sections match the old enrichment service for review/application/replay using
+fixed model responses. Fresh entity UUIDs and timestamps are excluded from those stable
+projection comparisons. The existing normalization comparison still matches. No model or
+search-provider calls were made.
+
+The enrichment module is now available for campaign integration. The campaign runner and
+its other unregistered tasks remain pending, with registration still 22/30. Full application
+consolidation, legacy removal, remaining behavior audits and production verification are
+still required before the goal can complete.

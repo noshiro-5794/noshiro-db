@@ -13,7 +13,7 @@ from api.contexts.knowledge.agent_runs import EvidenceContext
 from api.contexts.presentation.fragments import fetch
 from api.contexts.synchronization.terms import normalize_key
 from api.shared.ai import complete_json
-from api.shared.inference import fail_run, optional_number, start_run
+from api.shared.inference import fail_run, finish_run, start_run
 from api.worker.session import session_scope
 
 SYSTEM_PROMPT = """You normalize provider vocabulary for a knowledge base.
@@ -147,27 +147,12 @@ async def model_result(
             }
         )
     if run_id is not None:
-        async with session_scope() as session:
-            await fetch(
-                session,
-                """
-                UPDATE ai_run SET status='succeeded',output=CAST(:output AS jsonb),
-                  input_tokens=:input,output_tokens=:tokens,cost=:cost,latency_ms=:latency,
-                  finished_at=now() WHERE id=:id RETURNING id
-                """,
-                {
-                    "id": run_id,
-                    "output": result.model_dump_json(),
-                    "input": optional_number(
-                        usage.get("input_tokens", usage.get("prompt_tokens")), integer=True
-                    ),
-                    "tokens": optional_number(
-                        usage.get("output_tokens", usage.get("completion_tokens")), integer=True
-                    ),
-                    "cost": optional_number(usage.get("cost")),
-                    "latency": max(0, int((monotonic() - started) * 1000)),
-                },
-            )
+        await finish_run(
+            run_id,
+            result.model_dump(mode="json"),
+            usage,
+            latency_ms=max(0, int((monotonic() - started) * 1000)),
+        )
     return result
 
 
