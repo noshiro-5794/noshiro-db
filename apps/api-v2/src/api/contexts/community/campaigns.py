@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.presentation.fragments import fetch, isoformat
 from api.shared.dispatch import SYNC_TASK, enqueue, sync_kwargs
+from api.shared.pagination import page_offset
 
 QUERY = """
     SELECT campaign.id, campaign.provider_slug, campaign.campaign_type,
@@ -136,7 +137,7 @@ async def campaign_items(
         {
             **params,
             "limit": page_size,
-            "offset": (page - 1) * page_size,
+            "offset": page_offset(page, page_size, int(total[0].total)),
         },
     )
     return int(total[0].total), [
@@ -252,7 +253,7 @@ async def campaign_claims(
         " claim.decided_at FROM ai_claim AS claim"
         f" JOIN agent_step AS step ON step.id = claim.step_id WHERE {where}"
         " ORDER BY claim.created_at DESC LIMIT :limit OFFSET :offset",
-        {**params, "limit": page_size, "offset": (page - 1) * page_size},
+        {**params, "limit": page_size, "offset": page_offset(page, page_size, int(total[0].total))},
     )
     ids = [row.id for row in claims]
     evidence: dict[Any, list[dict[str, Any]]] = {claim_id: [] for claim_id in ids}

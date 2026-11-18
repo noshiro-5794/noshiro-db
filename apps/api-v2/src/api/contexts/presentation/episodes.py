@@ -14,6 +14,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.identity.resolution import cluster_ids, is_active, is_public, resolve
+from api.shared.pagination import page_offset
 
 from .detail import entity_detail
 from .fragments import PROVENANCE, fetch, row_provenance
@@ -161,7 +162,8 @@ async def episode_page(
     facts = await _ordering_facts(session, ids)
     ordered = sorted(ids, key=lambda episode: _order(episode, facts))
     total = len(ordered)
-    window = ordered[(page - 1) * page_size : page * page_size]
+    offset = page_offset(page, page_size, total)
+    window = ordered[offset : offset + page_size]
     results: list[dict[str, Any]] = []
     for episode in window:
         root = await resolve(session, episode)

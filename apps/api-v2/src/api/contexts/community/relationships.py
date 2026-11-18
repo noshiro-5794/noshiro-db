@@ -14,6 +14,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.presentation.fragments import fetch
+from api.shared.pagination import page_offset
 
 BLOCK_COLUMNS = (
     "block.id, block.reason, block.created_at, blocked.id AS user_id,"
@@ -144,7 +145,7 @@ async def _page(
         {
             "user_id": user_id,
             "limit": page_size,
-            "offset": (page - 1) * page_size,
+            "offset": page_offset(page, page_size, int(total[0].total)),
         },
     )
     return int(total[0].total), [block_payload(row) for row in rows]
@@ -338,7 +339,7 @@ async def _follow_page(
         {
             "user_id": user_id,
             "limit": page_size,
-            "offset": (page - 1) * page_size,
+            "offset": page_offset(page, page_size, int(total[0].total)),
         },
     )
     return int(total[0].total), [

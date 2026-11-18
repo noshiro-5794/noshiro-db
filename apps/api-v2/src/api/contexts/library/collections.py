@@ -7,6 +7,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.presentation.fragments import fetch
+from api.shared.pagination import page_offset
 
 ORDERINGS = {
     "id": "collection.id",
@@ -68,7 +69,7 @@ async def list_public_collections(
         {
             **params,
             "limit": page_size,
-            "offset": (page - 1) * page_size,
+            "offset": page_offset(page, page_size, int(total[0].total)),
         },
     )
     return int(total[0].total), [
@@ -286,7 +287,7 @@ async def list_items(
         {
             "id": collection_id,
             "limit": page_size,
-            "offset": (page - 1) * page_size,
+            "offset": page_offset(page, page_size, int(total[0].total)),
         },
     )
     return int(total[0].total), [

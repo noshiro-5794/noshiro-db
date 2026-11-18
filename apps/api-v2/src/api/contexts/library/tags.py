@@ -7,6 +7,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.presentation.fragments import fetch
+from api.shared.pagination import page_offset
 
 
 async def list_tags(
@@ -21,7 +22,11 @@ async def list_tags(
         session,
         "SELECT id, name FROM user_tag WHERE user_id = :user_id"
         " ORDER BY name, id LIMIT :limit OFFSET :offset",
-        {"user_id": user_id, "limit": page_size, "offset": (page - 1) * page_size},
+        {
+            "user_id": user_id,
+            "limit": page_size,
+            "offset": page_offset(page, page_size, int(total[0].total)),
+        },
     )
     return int(total[0].total), [{"id": row.id, "name": row.name} for row in rows]
 

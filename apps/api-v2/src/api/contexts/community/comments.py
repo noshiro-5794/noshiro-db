@@ -8,6 +8,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.presentation.fragments import fetch, isoformat
+from api.shared.pagination import page_offset
 
 from .people import person
 
@@ -99,7 +100,7 @@ async def list_comments(
         {
             **params,
             "limit": page_size,
-            "offset": (page - 1) * page_size,
+            "offset": page_offset(page, page_size, int(total[0].total)),
         },
     )
     return int(total[0].total), [await comment_payload(row) for row in rows]

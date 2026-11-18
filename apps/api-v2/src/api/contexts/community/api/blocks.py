@@ -46,7 +46,7 @@ from api.contexts.community.visibility import visible
 from api.contexts.presentation.fragments import fetch
 from api.db import SessionDep
 from api.shared.cursor import decode
-from api.shared.pagination import cursor_payload, ensure_page, page_params, page_payload
+from api.shared.pagination import PageSize, cursor_payload, ensure_page, page_params, page_payload
 from api.shared.problems import ProblemError
 
 router = APIRouter(prefix="/api/v1/community", tags=["community"])
@@ -360,16 +360,15 @@ async def my_activities(
     request: Request,
     user: Annotated[Any, Depends(current_user)],
     cursor: str = "",
-    page_size: int = 16,
+    page_size: PageSize = 16,
 ) -> dict[str, Any]:
     parsed = decode(cursor or None)
-    size = min(max(page_size, 1), 64)
     results, next_cursor, previous_cursor = await list_activities(
         session,
         viewer_id=user.id,
         owner_id=user.id,
         cursor=parsed,
-        page_size=size,
+        page_size=page_size,
     )
     return cursor_payload(
         request, results=results, next_cursor=next_cursor, previous_cursor=previous_cursor
@@ -382,16 +381,15 @@ async def public_activities(
     request: Request,
     viewer: Annotated[Any | None, Depends(optional_user)],
     cursor: str = "",
-    page_size: int = 16,
+    page_size: PageSize = 16,
 ) -> dict[str, Any]:
     parsed = decode(cursor or None)
-    size = min(max(page_size, 1), 64)
     results, next_cursor, previous_cursor = await list_activities(
         session,
         viewer_id=viewer.id if viewer else 0,
         owner_id=None,
         cursor=parsed,
-        page_size=size,
+        page_size=page_size,
         public_only=True,
     )
     return cursor_payload(
@@ -406,16 +404,15 @@ async def user_activities(
     request: Request,
     viewer: Annotated[Any | None, Depends(optional_user)],
     cursor: str = "",
-    page_size: int = 16,
+    page_size: PageSize = 16,
 ) -> dict[str, Any]:
     parsed = decode(cursor or None)
-    size = min(max(page_size, 1), 64)
     results, next_cursor, previous_cursor = await list_activities(
         session,
         viewer_id=viewer.id if viewer else 0,
         owner_id=user_id,
         cursor=parsed,
-        page_size=size,
+        page_size=page_size,
         public_only=True,
     )
     return cursor_payload(
@@ -429,17 +426,16 @@ async def feed(
     request: Request,
     user: Annotated[Any, Depends(current_user)],
     cursor: str = "",
-    page_size: int = 16,
+    page_size: PageSize = 16,
     include_self: str = "",
 ) -> dict[str, Any]:
     parsed = decode(cursor or None)
-    size = min(max(page_size, 1), 64)
     results, next_cursor, previous_cursor = await list_activities(
         session,
         viewer_id=user.id,
         owner_id=None,
         cursor=parsed,
-        page_size=size,
+        page_size=page_size,
         public_only=True,
         feed=True,
         include_self=include_self.lower() in {"1", "true", "yes"},
