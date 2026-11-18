@@ -1268,3 +1268,23 @@ Validation passed with strict typing of 212 modules and 668 cases with PostgreSQ
 enabled. The temporary Redis container is removed after the exercise. Production MCP transport
 configuration, general request/mutation validation, context/configuration cleanup, app
 consolidation, legacy removal and deployment remain pending under the active goal.
+
+### Periodic scheduling and worker transport configuration
+
+Loaded all 18 existing beat entries into the replacement Celery application. Calendar,
+incremental and matching-sweep cron environment settings use validated application settings.
+The serialized task names and all five expanded cron fields match the old schedule table.
+Maintenance tasks route to realtime before the broader synchronization route, including the
+shared publisher. All three queue exchanges/routing keys are declared explicitly.
+
+The worker retains the existing 7200-second broker visibility timeout and environment override,
+JSON content/serialization settings, 20/30-second default execution limits and retry delay.
+Per-task long-running limits continue to override the defaults. Scheduler tests load the full
+table and publish representative maintenance, sync and AI entries through Celery's in-memory
+broker, then consume each message from its intended queue. Cron override coverage verifies the
+existing environment names. Production beat startup still requires the deployment cutover.
+
+Validation passed with strict typing of 213 modules, 429 offline cases and 242 PostgreSQL
+transaction cases. The dedicated Redis case is skipped in this run because its temporary
+instance was already removed after the preceding live verification. The active goal continues
+with local app consolidation, retained-work reconciliation and deployment/runtime cleanup.

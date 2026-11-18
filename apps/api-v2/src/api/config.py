@@ -47,6 +47,12 @@ class Settings(BaseSettings):
         default=1024, gt=0, validation_alias="AI_AGENT_MAX_OUTPUT_TOKENS"
     )
 
+    sync_calendar_cron_hour: int = Field(default=3, ge=0, le=23)
+    sync_calendar_cron_minute: int = Field(default=30, ge=0, le=59)
+    sync_incremental_cron_hour: int = Field(default=4, ge=0, le=23)
+    sync_incremental_cron_minute: int = Field(default=0, ge=0, le=59)
+    match_candidate_sweep_cron_hours: int = Field(default=4, gt=0)
+
     mcp_host: str = "127.0.0.1"
     mcp_port: int = Field(default=8010, ge=1, le=65535)
     mcp_rate_limit: int = Field(default=60, gt=0)
