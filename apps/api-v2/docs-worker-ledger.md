@@ -966,3 +966,43 @@ Validation passed with 359 offline cases, 140 PostgreSQL transaction cases and s
 of 184 modules. Two database cases cover daily replay, job replay and failed dispatch
 recovery. Registration is now 24/30. Season pipelines/rollover, Bangumi incremental sync and
 two link-recall tasks remain required, along with the broader unfinished migration work.
+
+### Seasonal snapshots, board projection and quarter rollover
+
+Registered the MAL season pipeline, multi-source season pipeline and rollover task. Source
+capture retains pagination, AniList's release-status/horizon filtering, per-item saved
+payloads, MAL broadcast normalization and current-snapshot compaction. Each source finishes
+network retrieval before the snapshot/items transaction. A failed fetch or later item write
+leaves no partial snapshot. Retention preserves referenced observations, including JSON
+source references on curated board entries, and restricts deletion to MAL/AniList season
+namespaces. Its foreign-key inventory is checked against the schema.
+
+Restored saved-media promotion and candidate generation with isolated source legs. Weekly
+projection preserves the prior provider-priority, corroboration, format, premiere and
+weekday-less film/OVA/special rules. Entries and board metadata are replaced atomically
+under the existing calendar advisory lock. The daily refresh can rebuild a previously empty
+board before selecting targets. Candidate evaluation dispatch follows committed persistence.
+
+Rollover fixes two defects in the old orchestration. During the grace period Bangumi
+prefetch now captures an observation without switching the active board. After the switch,
+the result checks the current active board instead of reloading the archived board object.
+This permits the expected successful-switch result and retirement of stale daily shards.
+
+Validation passed with strict typing of 189 modules, 369 offline cases and 158 PostgreSQL
+transaction cases. The complete seasonal records, observations and board-entry comparison
+matches three old serialized sections after accounting for already-established mapper
+version increments and the prior AniList episode canonical-URL correction. Fixed source
+responses were used. Registration is now 27/30, with Bangumi incremental synchronization
+and two link-recall tasks still pending. App consolidation and legacy removal remain open.
+
+The full production archive completed and passed archive/checksum verification. It restored
+successfully into the isolated local noshiro_production_rehearsal database. Upgrade from
+0004 to 0005 succeeded and all three indexes are valid. The five entity-kind counts, 14
+users and 3704656 provider records match the production baseline. The first public HTTP
+shadow pass matched 171/171 comparisons across 20 sampled entities and 11 list endpoints.
+The expanded pass also matched 491/491 comparisons across 60 sampled entities and the same list paths. Indexed queue-stage queries on the three largest campaigns
+(66231, 65500 and 21988 items) completed below 1 ms on this local restored copy. These local
+measurements do not establish production hardware performance. Detailed private backup,
+restore, baseline and query-plan reports remain outside Git. Production application/schema
+changes have not been applied, and only the existing production PostgreSQL service was
+started during backup preparation.

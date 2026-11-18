@@ -175,3 +175,37 @@ def test_empty_nonterminal_character_page_fails_instead_of_looping():
     finally:
         client.close()
     assert len(calls) == 2
+
+
+@pytest.mark.parametrize("mode", ["airing", "season"])
+def test_season_pages_use_bounded_pagination_and_validate_page(mode):
+    import json
+
+    sent = []
+
+    def handler(request):
+        sent.append(json.loads(request.content))
+        return httpx.Response(200, json={"data": {"Page": {"media": []}}})
+
+    client = anilist(handler)
+    try:
+        if mode == "airing":
+            result = client.fetch_airing_page(cursor="2", page_size=500)
+        else:
+            result = client.fetch_season_page(
+                season="fall", season_year=2026, cursor="2", page_size=500
+            )
+        assert result == {"media": []}
+        assert sent[0]["variables"]["page"] == 2
+        assert sent[0]["variables"]["perPage"] == 50
+        if mode == "season":
+            assert sent[0]["variables"]["season"] == "FALL"
+            assert sent[0]["variables"]["seasonYear"] == 2026
+    finally:
+        client.close()
+    invalid = anilist(lambda request: httpx.Response(200, json={"data": {"Page": None}}))
+    try:
+        with pytest.raises(ProviderError, match="invalid"):
+            invalid.fetch_airing_page()
+    finally:
+        invalid.close()

@@ -66,6 +66,70 @@ query ($id: Int) {{
 }}
 """
 
+SEASON_QUERY = """
+    query ($page: Int!, $perPage: Int!, $season: MediaSeason, $seasonYear: Int!) {
+      Page(page: $page, perPage: $perPage) {
+        pageInfo { hasNextPage total }
+        media(
+          type: ANIME
+          season: $season
+          seasonYear: $seasonYear
+          status_in: [RELEASING]
+          sort: [ID]
+        ) {
+          id
+          idMal
+          type
+          format
+          status
+          season
+          seasonYear
+          episodes
+          duration
+          isAdult
+          siteUrl
+          startDate { year month day }
+          endDate { year month day }
+          nextAiringEpisode { airingAt episode }
+          title { romaji english native userPreferred }
+          coverImage { extraLarge large medium color }
+          airingSchedule(notYetAired: true, perPage: 50) {
+            nodes { id episode airingAt timeUntilAiring }
+          }
+        }
+      }
+    }
+    """
+
+AIRING_QUERY = """
+    query ($page: Int!, $perPage: Int!) {
+      Page(page: $page, perPage: $perPage) {
+        pageInfo { hasNextPage total }
+        media(type: ANIME, status_in: [RELEASING, NOT_YET_RELEASED], sort: [ID]) {
+          id
+          idMal
+          type
+          format
+          status
+          season
+          seasonYear
+          episodes
+          duration
+          isAdult
+          siteUrl
+          startDate { year month day }
+          endDate { year month day }
+          nextAiringEpisode { airingAt episode }
+          title { romaji english native userPreferred }
+          coverImage { extraLarge large medium color }
+          airingSchedule(notYetAired: true, perPage: 50) {
+            nodes { id episode airingAt timeUntilAiring }
+          }
+        }
+      }
+    }
+    """
+
 RETRYABLE_CODES = frozenset({"RATE_LIMITED", "INTERNAL_SERVER_ERROR"})
 MAX_ATTEMPTS = 3
 
@@ -230,6 +294,40 @@ class AniListClient:
       }
     }
     """
+
+    def fetch_airing_page(
+        self, *, cursor: str | None = None, page_size: int = 50
+    ) -> dict[str, Any]:
+        data = self.query(
+            AIRING_QUERY,
+            {"page": max(1, int(cursor or "1")), "perPage": min(max(page_size, 1), 50)},
+        )
+        page = data.get("Page")
+        if not isinstance(page, dict):
+            raise ProviderError("AniList returned an invalid airing page.")
+        return page
+
+    def fetch_season_page(
+        self,
+        *,
+        season: str,
+        season_year: int,
+        cursor: str | None = None,
+        page_size: int = 50,
+    ) -> dict[str, Any]:
+        data = self.query(
+            SEASON_QUERY,
+            {
+                "page": max(1, int(cursor or "1")),
+                "perPage": min(max(page_size, 1), 50),
+                "season": season.upper(),
+                "seasonYear": season_year,
+            },
+        )
+        page = data.get("Page")
+        if not isinstance(page, dict):
+            raise ProviderError("AniList returned an invalid season page.")
+        return page
 
     def discover_anime_page(self, *, cursor: str | None = None, page_size: int = 50) -> CatalogPage:
         """Discover AniList anime IDs using the provider's cursor-like page API."""

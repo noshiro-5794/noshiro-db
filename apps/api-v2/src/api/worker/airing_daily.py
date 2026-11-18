@@ -189,6 +189,18 @@ async def sync_day(
     rules. A failed target stops the window so a later invocation retries it. The cursor
     advances only after a successful import.
     """
+    from api.worker import board_projection
+
+    unprojected = await fetch(
+        session,
+        "SELECT b.id FROM airing_board b WHERE b.status='active' "
+        "AND NOT EXISTS (SELECT 1 FROM airing_board_entry e WHERE e.board_id=b.id) "
+        "AND NOT EXISTS (SELECT 1 FROM airing_event e WHERE e.observation_id=b.observation_id) "
+        "LIMIT 1",
+        {},
+    )
+    if unprojected:
+        await board_projection.rebuild(session, now=now)
     targets, season_key = await board_targets(session)
     shard = shard_for(now, season_key=season_key)
     if not targets:
