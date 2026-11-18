@@ -94,12 +94,12 @@ async def import_relations(
     work_id: Any,
     subject_id: str,
     *,
-    subjects: list[Any],
-    staff: list[Any],
-    characters: list[Any],
+    subjects: list[Any] | None,
+    staff: list[Any] | None,
+    characters: list[Any] | None,
 ) -> RelatedIds:
     async with session.begin_nested():
-        identifiers = related_ids(subjects, staff, characters)
+        identifiers = related_ids(subjects or [], staff or [], characters or [])
         works = {
             identifier: await provide_subject(session, identifier)
             for identifier in sorted(identifiers.subjects, key=int)
@@ -114,110 +114,119 @@ async def import_relations(
         }
         values = [
             str(item.get("relation") or "")
-            for item in [*subjects, *staff, *characters]
+            for item in [*(subjects or []), *(staff or []), *(characters or [])]
             if isinstance(item, dict)
         ]
         preferred = await preferred_terms(session, values)
-        observation = await collection(
-            session,
-            subject_id,
-            "subject-relations",
-            "index.work.relations",
-            "relations",
-            subjects,
-            preferred,
-        )
-        for index, item in enumerate(subjects):
-            identifier = source_id(item)
-            if identifier is None:
-                continue
-            target = works.get(identifier)
-            if target is None or target == work_id:
-                continue
-            raw = str(item.get("relation") or "")
-            await graph.relation(
+        if subjects is not None:
+            observation = await collection(
                 session,
-                work_id,
-                target,
-                observation,
-                relation_type=canonical_relation_type(role_for(item, preferred)),
-                json_pointer=f"/items/{index}",
-                raw_relation=raw,
+                subject_id,
+                "subject-relations",
+                "index.work.relations",
+                "relations",
+                subjects,
+                preferred,
             )
-        observation = await collection(
-            session, subject_id, "subject-staff", "index.work.credits", "staff", staff, preferred
-        )
-        for item in staff:
-            identifier = source_id(item)
-            if identifier is None:
-                continue
-            person = people.get(identifier)
-            if person is None:
-                continue
-            await graph.credit(
-                session,
-                work_id,
-                person,
-                observation,
-                role=role_for(item, preferred) or "staff",
-                credited_as=str(item.get("name") or "")[:512],
-            )
-        observation = await collection(
-            session,
-            subject_id,
-            "subject-characters",
-            "index.work.characters",
-            "characters",
-            characters,
-            preferred,
-        )
-        for item in characters:
-            identifier = source_id(item)
-            if identifier is None:
-                continue
-            character = character_map.get(identifier)
-            if character is None:
-                continue
-            appearance = (
-                await fetch(
+            for index, item in enumerate(subjects):
+                identifier = source_id(item)
+                if identifier is None:
+                    continue
+                target = works.get(identifier)
+                if target is None or target == work_id:
+                    continue
+                raw = str(item.get("relation") or "")
+                await graph.relation(
                     session,
-                    """
-                INSERT INTO appearance
-                  (work_id, character_entity_id, role, observation_id, spoiler_level,
-                   created_at, updated_at)
-                VALUES (:work, :character, :role, :observation, 0, now(), now())
-                ON CONFLICT (work_id, character_entity_id, role, observation_id)
-                DO UPDATE SET role=EXCLUDED.role RETURNING id
-            """,
-                    {
-                        "work": work_id,
-                        "character": character,
-                        "role": role_for(item, preferred),
-                        "observation": observation,
-                    },
+                    work_id,
+                    target,
+                    observation,
+                    relation_type=canonical_relation_type(role_for(item, preferred)),
+                    json_pointer=f"/items/{index}",
+                    raw_relation=raw,
                 )
-            )[0]
-            for actor in item.get("actors") or []:
-                actor_id = source_id(actor)
-                if actor_id is None:
+        if staff is not None:
+            observation = await collection(
+                session,
+                subject_id,
+                "subject-staff",
+                "index.work.credits",
+                "staff",
+                staff,
+                preferred,
+            )
+            for item in staff:
+                identifier = source_id(item)
+                if identifier is None:
                     continue
-                contributor = people.get(actor_id)
-                if contributor is None:
+                person = people.get(identifier)
+                if person is None:
                     continue
-                await fetch(
+                await graph.credit(
                     session,
-                    """
-                    INSERT INTO voice_performance
-                      (appearance_id, contributor_id, language, observation_id, credited_as,
+                    work_id,
+                    person,
+                    observation,
+                    role=role_for(item, preferred) or "staff",
+                    credited_as=str(item.get("name") or "")[:512],
+                )
+        if characters is not None:
+            observation = await collection(
+                session,
+                subject_id,
+                "subject-characters",
+                "index.work.characters",
+                "characters",
+                characters,
+                preferred,
+            )
+            for item in characters:
+                identifier = source_id(item)
+                if identifier is None:
+                    continue
+                character = character_map.get(identifier)
+                if character is None:
+                    continue
+                appearance = (
+                    await fetch(
+                        session,
+                        """
+                    INSERT INTO appearance
+                      (work_id, character_entity_id, role, observation_id, spoiler_level,
                        created_at, updated_at)
-                    VALUES (:appearance, :contributor, '', :observation, :name, now(), now())
-                    ON CONFLICT DO NOTHING RETURNING id
+                    VALUES (:work, :character, :role, :observation, 0, now(), now())
+                    ON CONFLICT (work_id, character_entity_id, role, observation_id)
+                    DO UPDATE SET role=EXCLUDED.role RETURNING id
                 """,
-                    {
-                        "appearance": appearance.id,
-                        "contributor": contributor,
-                        "observation": observation,
-                        "name": str(actor.get("name") or "")[:512],
-                    },
-                )
+                        {
+                            "work": work_id,
+                            "character": character,
+                            "role": role_for(item, preferred),
+                            "observation": observation,
+                        },
+                    )
+                )[0]
+                for actor in item.get("actors") or []:
+                    actor_id = source_id(actor)
+                    if actor_id is None:
+                        continue
+                    contributor = people.get(actor_id)
+                    if contributor is None:
+                        continue
+                    await fetch(
+                        session,
+                        """
+                        INSERT INTO voice_performance
+                          (appearance_id, contributor_id, language, observation_id, credited_as,
+                           created_at, updated_at)
+                        VALUES (:appearance, :contributor, '', :observation, :name, now(), now())
+                        ON CONFLICT DO NOTHING RETURNING id
+                    """,
+                        {
+                            "appearance": appearance.id,
+                            "contributor": contributor,
+                            "observation": observation,
+                            "name": str(actor.get("name") or "")[:512],
+                        },
+                    )
         return identifiers

@@ -73,16 +73,19 @@ async def _scan_stale_sync_states(threshold_seconds: int) -> dict[str, int]:
             " AND status = 'running' AND updated_at < :cutoff",
             {"cutoff": cutoff},
         )
+        unlocked = 0
         for row in stale:
-            await fetch(
+            changed = await fetch(
                 session,
                 "UPDATE sync_state SET status = 'failed', fail_count = fail_count + 1,"
                 " updated_at = now() WHERE task_name = :name AND shard = 'main'"
-                " AND status = 'running' RETURNING id",
-                {"name": row.task_name},
+                " AND status = 'running' AND updated_at < :cutoff RETURNING id",
+                {"name": row.task_name, "cutoff": cutoff},
             )
-            logger.warning("Stale incremental sync state unlocked: %s", row.task_name)
-    return {"stale_states": len(stale)}
+            if changed:
+                unlocked += 1
+                logger.warning("Stale incremental sync state unlocked: %s", row.task_name)
+    return {"stale_states": unlocked}
 
 
 @shared_task(  # type: ignore[untyped-decorator]

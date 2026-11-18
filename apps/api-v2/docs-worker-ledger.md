@@ -1026,3 +1026,30 @@ transaction cases. The restored-copy HTTP run now matches 23/23 list/authenticat
 and eight explicit filter variants. Tokens and detailed logs remain local/private.
 Notification cursor tie offsets/reverse paging, along with the broader cursor endpoints,
 still require the final pagination audit. These checks do not complete the whole migration.
+
+### Bangumi incremental synchronization
+
+Registered the incremental task with the eight existing task configurations and their
+subject, episode, relation, character and person handlers. Existing active provider IDs
+initialize cursors, with completed full-sync state as the fallback. Defaults remain 1000
+items, 20 consecutive errors and 50 consecutive skips. Provider 404s and missing required
+subjects remain skipped outcomes. The missing-ID frontier retains the last live ID.
+
+A committed running state reserves each window. Its update timestamp is an optimistic
+ownership version. Every canonical import and cursor/job acknowledgement commits in the
+same short transaction, with version/ownership checks before projection. Replacement of
+that state during source retrieval rejects the late write. Failures preserve the error
+ledger and last successful cursor. The stale-state scanner now rechecks its cutoff in the
+conditional update so it cannot unlock a state that made progress after selection.
+
+Bangumi relation projection accepts omitted collections. Incremental staff/character/work
+relation imports therefore reuse the complete graph writers while preserving the other
+collection observations. Existing complete-subject callers still provide all collections.
+The 14-section complete Bangumi graph comparison continues to match the old implementation.
+
+Validation passed with strict typing of 192 modules, 380 offline cases and 174 PostgreSQL
+transaction cases. Fifteen incremental database cases cover all handler families, cursor
+continuation/legacy initialization, job replay/totals, frontier skips, failure durability,
+state replacement, partial collection isolation and stale-scanner races. No source requests
+were made. Registration is now 28/30. The two AI link-recall tasks, complete pagination/HTTP
+and MCP audits, app consolidation, legacy removal and production deployment remain pending.
