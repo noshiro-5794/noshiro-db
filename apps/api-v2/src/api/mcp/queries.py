@@ -32,7 +32,28 @@ async def get_public_entity(*, entity_id: UUID, language: str = "") -> dict[str,
         )
     except LookupError as error:
         raise ToolError("Public entity not found.") from error
-    return result.entity
+    async with session_scope() as session:
+        root = UUID(result.entity["id"])
+        cluster = list(await resolution.cluster_ids(session, root))
+        memberships = await fetch(
+            session,
+            "SELECT c.slug AS collection,c.name,m.listing_state,m.inclusion_reason "
+            "FROM curated_membership m JOIN curated_collection c ON c.id=m.collection_id "
+            "WHERE m.entity_id=ANY(:ids) AND m.listing_state='listed' ORDER BY c.slug,m.entity_id",
+            {"ids": cluster},
+        )
+        redirects = await fetch(
+            session,
+            "SELECT source_entity_id FROM entity_redirect WHERE target_entity_id=ANY(:ids) "
+            "AND is_active ORDER BY source_entity_id",
+            {"ids": cluster},
+        )
+    return {
+        **result.entity,
+        "memberships": [dict(row._mapping) for row in memberships],
+        "merged_from": [{"entity_id": str(row.source_entity_id)} for row in redirects],
+        "is_merged": bool(redirects) or len(result.entity["sources"]) > 1,
+    }
 
 
 async def get_public_relations(*, entity_id: UUID, language: str = "") -> dict[str, Any]:
