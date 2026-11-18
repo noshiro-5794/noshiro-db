@@ -8,13 +8,33 @@ ignores them and keeps the count and the page window.
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
 
 from fastapi import Request
 
+from api.shared.cursor import Cursor, encode
 from api.shared.problems import ProblemError
 
 DEFAULT_PAGE_SIZE = 16
 MAX_PAGE_SIZE = 64
+
+
+def cursor_payload(
+    request: Request,
+    *,
+    results: list[dict[str, Any]],
+    next_cursor: Cursor | None,
+    previous_cursor: Cursor | None,
+) -> dict[str, Any]:
+    def link(cursor: Cursor | None) -> str | None:
+        if cursor is None:
+            return None
+        parts = urlsplit(str(request.url))
+        query = parse_qs(parts.query, keep_blank_values=True)
+        query["cursor"] = [encode(cursor)]
+        return urlunsplit(parts._replace(query=urlencode(sorted(query.items()), doseq=True)))
+
+    return {"next": link(next_cursor), "previous": link(previous_cursor), "results": results}
 
 
 def page_params(request: Request, *, default: int = DEFAULT_PAGE_SIZE) -> tuple[int, int]:

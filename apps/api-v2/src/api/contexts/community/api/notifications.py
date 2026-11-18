@@ -11,7 +11,8 @@ from api.contexts.community.notifications import (
     unread_count,
 )
 from api.db import SessionDep
-from api.shared.cursor import decode, encode
+from api.shared.cursor import decode
+from api.shared.pagination import cursor_payload
 from api.shared.problems import ProblemError
 
 router = APIRouter(prefix="/api/v1/community", tags=["community"])
@@ -68,19 +69,13 @@ async def notification_list(
                 detail="Request validation failed.",
                 errors={"is_read": ["Must be a valid boolean."]},
             ) from error
-    results, next_cursor = await list_for_user(
+    results, next_cursor, previous_cursor = await list_for_user(
         session,
         user_id=user.id,
         cursor=parsed,
         page_size=size,
         is_read=read_filter,
     )
-    return {
-        "next": (
-            str(request.url.include_query_params(cursor=encode(next_cursor)))
-            if next_cursor is not None
-            else None
-        ),
-        "previous": None,
-        "results": results,
-    }
+    return cursor_payload(
+        request, results=results, next_cursor=next_cursor, previous_cursor=previous_cursor
+    )

@@ -9,7 +9,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.presentation.fragments import fetch, isoformat
-from api.shared.cursor import Cursor, position_of
+from api.shared.cursor import Cursor, paginate, timestamp_position
 from api.shared.dispatch import import_kwargs, publish, task_for_import
 
 QUERY = """
@@ -79,7 +79,7 @@ async def list_import_jobs(
     status: str,
     cursor: Cursor,
     page_size: int,
-) -> tuple[list[dict[str, Any]], Cursor | None]:
+) -> tuple[list[dict[str, Any]], Cursor | None, Cursor | None]:
     job_type = JOB_TYPES.get(provider or "vndb")
     if job_type is None:
         raise ValueError({"provider": [f'"{provider}" is not a valid choice.']})
@@ -89,8 +89,10 @@ async def list_import_jobs(
         clauses.append("status = :status")
         params["status"] = status
     if cursor.position is not None:
-        clauses.append("created_at < CAST(:position AS timestamptz)")
-        params["position"] = cursor.position
+        comparison = ">" if cursor.reverse else "<"
+        clauses.append(f"created_at {comparison} CAST(:position AS timestamptz)")
+        params["position"] = timestamp_position(cursor.position)
+    direction = "ASC" if cursor.reverse else "DESC"
     rows = await fetch(
         session,
         "SELECT id, job_type, parameters, result, error, status, current_label,"
@@ -98,17 +100,11 @@ async def list_import_jobs(
         " created_at, started_at, finished_at, updated_at FROM sync_job"
         " WHERE "
         + " AND ".join(clauses)
-        + " ORDER BY created_at DESC, id DESC LIMIT :limit OFFSET :offset",
+        + f" ORDER BY created_at {direction}, id {direction} LIMIT :limit OFFSET :offset",
         params,
     )
-    page = rows[:page_size]
-    extra = rows[page_size] if len(rows) > page_size else None
-    next_cursor = (
-        Cursor(offset=0, reverse=False, position=position_of(page[-1]))
-        if extra is not None and page
-        else None
-    )
-    return [_job(row) for row in page], next_cursor
+    page, next_cursor, previous_cursor = paginate(rows, cursor, page_size)
+    return [_job(row) for row in page], next_cursor, previous_cursor
 
 
 def _job(row: Any) -> dict[str, Any]:

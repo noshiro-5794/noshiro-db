@@ -45,8 +45,8 @@ from api.contexts.community.timeline import list_activities
 from api.contexts.community.visibility import visible
 from api.contexts.presentation.fragments import fetch
 from api.db import SessionDep
-from api.shared.cursor import decode, encode
-from api.shared.pagination import ensure_page, page_params, page_payload
+from api.shared.cursor import decode
+from api.shared.pagination import cursor_payload, ensure_page, page_params, page_payload
 from api.shared.problems import ProblemError
 
 router = APIRouter(prefix="/api/v1/community", tags=["community"])
@@ -364,22 +364,16 @@ async def my_activities(
 ) -> dict[str, Any]:
     parsed = decode(cursor or None)
     size = min(max(page_size, 1), 64)
-    results, next_cursor = await list_activities(
+    results, next_cursor, previous_cursor = await list_activities(
         session,
         viewer_id=user.id,
         owner_id=user.id,
         cursor=parsed,
         page_size=size,
     )
-    return {
-        "next": (
-            str(request.url.include_query_params(cursor=encode(next_cursor)))
-            if next_cursor is not None
-            else None
-        ),
-        "previous": None,
-        "results": results,
-    }
+    return cursor_payload(
+        request, results=results, next_cursor=next_cursor, previous_cursor=previous_cursor
+    )
 
 
 @router.get("/activities/")
@@ -392,7 +386,7 @@ async def public_activities(
 ) -> dict[str, Any]:
     parsed = decode(cursor or None)
     size = min(max(page_size, 1), 64)
-    results, next_cursor = await list_activities(
+    results, next_cursor, previous_cursor = await list_activities(
         session,
         viewer_id=viewer.id if viewer else 0,
         owner_id=None,
@@ -400,15 +394,9 @@ async def public_activities(
         page_size=size,
         public_only=True,
     )
-    return {
-        "next": (
-            str(request.url.include_query_params(cursor=encode(next_cursor)))
-            if next_cursor is not None
-            else None
-        ),
-        "previous": None,
-        "results": results,
-    }
+    return cursor_payload(
+        request, results=results, next_cursor=next_cursor, previous_cursor=previous_cursor
+    )
 
 
 @router.get("/users/{user_id}/activities/")
@@ -422,7 +410,7 @@ async def user_activities(
 ) -> dict[str, Any]:
     parsed = decode(cursor or None)
     size = min(max(page_size, 1), 64)
-    results, next_cursor = await list_activities(
+    results, next_cursor, previous_cursor = await list_activities(
         session,
         viewer_id=viewer.id if viewer else 0,
         owner_id=user_id,
@@ -430,15 +418,9 @@ async def user_activities(
         page_size=size,
         public_only=True,
     )
-    return {
-        "next": (
-            str(request.url.include_query_params(cursor=encode(next_cursor)))
-            if next_cursor is not None
-            else None
-        ),
-        "previous": None,
-        "results": results,
-    }
+    return cursor_payload(
+        request, results=results, next_cursor=next_cursor, previous_cursor=previous_cursor
+    )
 
 
 @router.get("/me/feed/")
@@ -452,7 +434,7 @@ async def feed(
 ) -> dict[str, Any]:
     parsed = decode(cursor or None)
     size = min(max(page_size, 1), 64)
-    results, next_cursor = await list_activities(
+    results, next_cursor, previous_cursor = await list_activities(
         session,
         viewer_id=user.id,
         owner_id=None,
@@ -462,15 +444,9 @@ async def feed(
         feed=True,
         include_self=include_self.lower() in {"1", "true", "yes"},
     )
-    return {
-        "next": (
-            str(request.url.include_query_params(cursor=encode(next_cursor)))
-            if next_cursor is not None
-            else None
-        ),
-        "previous": None,
-        "results": results,
-    }
+    return cursor_payload(
+        request, results=results, next_cursor=next_cursor, previous_cursor=previous_cursor
+    )
 
 
 @router.get("/posts/")

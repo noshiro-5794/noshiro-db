@@ -30,13 +30,13 @@ async def test_notification_read_filter_selects_both_states_and_read_one_is_idem
             {"user": user_id, "read": read},
         )
     for state in [True, False, None]:
-        page, _ = await notifications.list_for_user(
+        page, _, _ = await notifications.list_for_user(
             session, user_id=user_id, cursor=Cursor(), page_size=16, is_read=state
         )
         assert len(page) == (2 if state is None else 1)
         if state is not None:
             assert all(row["is_read"] == state for row in page)
-    unread, _ = await notifications.list_for_user(
+    unread, _, _ = await notifications.list_for_user(
         session, user_id=user_id, cursor=Cursor(), page_size=16, is_read=False
     )
     first = await notifications.read_one(session, user_id=user_id, notification_id=unread[0]["id"])

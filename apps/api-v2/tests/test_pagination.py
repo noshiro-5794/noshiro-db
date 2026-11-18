@@ -1,7 +1,8 @@
 import pytest
 from starlette.requests import Request
 
-from api.shared.pagination import ensure_page, page_params, page_payload
+from api.shared.cursor import Cursor
+from api.shared.pagination import cursor_payload, ensure_page, page_params, page_payload
 from api.shared.problems import ProblemError
 
 
@@ -55,3 +56,14 @@ def test_a_page_past_the_end_is_a_404() -> None:
         ensure_page(3, 16, 20)
     assert error.value.status_code == 404
     assert error.value.detail == "Invalid page."
+
+
+def test_cursor_links_preserve_repeated_and_blank_filters_with_legacy_query_order():
+    payload = cursor_payload(
+        request("z=first&z=second&cursor=old&a=&page_size=2"),
+        results=[],
+        next_cursor=Cursor(offset=2),
+        previous_cursor=None,
+    )
+    assert payload["next"] == "/api/v1/index/entities/?a=&cursor=bz0y&page_size=2&z=first&z=second"
+    assert payload["previous"] is None
