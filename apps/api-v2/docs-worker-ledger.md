@@ -1117,3 +1117,40 @@ compact MAL fields, storage policy and client cleanup. All source/model response
 mocked. Shared Bangumi linker/search tests continue to pass. The new runtime has not yet
 been connected to MAL recall, and task registration remains 29/30. Consolidation, cleanup,
 complete contract audits and production deployment remain pending under the active goal.
+
+### MAL agent recall and complete task registration
+
+Registered the final MAL recall task on the sync queue with its existing batch setting and
+3600/3900-second execution limits. The active-board sweep resolves canonical anime roots,
+deduplicates entries, skips pending MAL candidates and walks past concluded or controlled
+attempts without consuming the actionable limit. Failed/cancelled attempts retain their
+audit when a new attempt acquires their released idempotency key. Stale running attempts
+resume in place. Paused/waiting attempts preserve their control state, including force runs.
+
+The retrieval loop uses the existing multilingual/season-aware prompt and three typed tools.
+A found ID must occur in a MAL search result or an explicit MAL anime source returned by
+the entity-detail tool. High-confidence candidates remain pending with agent_mal_recall
+evidence. Existing MAL identities are reused. Source import, candidate/evidence creation and
+materialization acknowledgement commit atomically under an owned projection lease.
+Materialization errors retain the successful model decision for retry without another
+inference request. Interrupted projection ownership prevents late imports. Evaluation
+publication happens after commit. The existing pending-candidate evaluation sweep provides
+retry after a broker outage.
+
+Native recovery now also recognizes a completed legacy final step from its matching
+transcript/inference output, retaining the already-saved legacy budget. Recovery closes
+queued legacy steps and unfinished child audit before replaying incomplete work.
+
+Five serialized candidate, evidence, representation, inference and transcript sections match
+the old recall implementation in rollback-only fixtures. Intentional additions include the
+observed-ID check, durable post-model materialization retry and execution-attempt accounting.
+Validation passed with strict typing of 206 modules and 631 cases with PostgreSQL enabled
+(402 offline and 229 transaction cases). Seventeen recall database cases and seven offline
+cases cover the task contract, skips, confidence, unsupported IDs, source/evidence rollback,
+retry, stale/controlled attempts, force and broker failure. Two additional native recovery
+cases cover legacy final steps and queued audit. Source/model responses were mocked.
+
+Static task coverage is 30/30 with no missing or unknown names. This establishes registration
+coverage. Full HTTP pagination/mutation/validation and MCP audits, professional layering and
+configuration cleanup, consolidation into apps/api, legacy service/code/dependency/schema
+removal, production cutover and post-deployment verification remain required.

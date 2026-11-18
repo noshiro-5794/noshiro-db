@@ -259,13 +259,13 @@ async def recover_interrupted(session: AsyncSession, run_id: UUID, error: str) -
         await fetch(
             session,
             f"UPDATE {table} SET status='failed',error=:error,finished_at=now() "
-            f"WHERE status='running' AND {column} IN "
-            "(SELECT id FROM agent_step WHERE run_id=:id AND status='running') RETURNING id",
+            f"WHERE status IN ('queued','running') AND {column} IN "
+            "(SELECT id FROM agent_step WHERE run_id=:id) RETURNING id",
             parameters,
         )
     await fetch(
         session,
         "UPDATE agent_step SET status='failed',error=:error,finished_at=now() "
-        "WHERE run_id=:id AND status='running' RETURNING id",
+        "WHERE run_id=:id AND status IN ('queued','running') RETURNING id",
         parameters,
     )
