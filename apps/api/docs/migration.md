@@ -1314,3 +1314,32 @@ PostgreSQL-enabled backend cases, with the dedicated Redis case skipped after it
 live verification. Web checks passed 234 unit and seven browser cases plus build, lint,
 formatting, types and dead-code checks. Production rollout, remaining request/mutation
 validation and old database/support-service cleanup remain pending under the active goal.
+
+### Access-token and stored-password error handling
+
+Shared access-claim validation now serves HTTP and MCP. Required access claims, token
+expiry, signing-key presence and PostgreSQL-compatible positive user identifiers are
+validated before user lookup. Malformed subjects and oversized integers produce the
+existing 401 token_not_valid response. Optional authentication retains anonymous fallback.
+The active-user and password-revocation checks remain in the HTTP dependency.
+
+Invalid PBKDF2 iteration counts reject cleanly, and non-ASCII stored digests compare as
+bytes without raising. The password format and valid stored-hash behavior are preserved.
+Regression coverage includes malformed claims, missing signing configuration, required
+claims, valid access/password changes and a real HTTP problem response before database
+binding. Stored-hash regression cases cover invalid rounds and digest text. General query,
+body and mutation validation remain part of the active migration goal.
+
+Logout uses the same claim parser with the refresh-token type. Missing/malformed refresh
+claims retain the existing cookie-clearing 204 behavior. A key-share lock on an existing
+user prevents deletion racing the outstanding-token insert. Tokens for deleted users skip
+blacklisting and still end the session. PostgreSQL cases verify malformed subjects,
+idempotent blacklist writes and missing-account logout through the normal HTTP endpoint.
+
+Session issuance rejects an absent signing key with a structured 503 authentication
+configuration response. This prevents a successful login response containing an unusable
+empty-key token. Valid configured token issuance remains unchanged.
+
+Validation passed with strict typing of 214 modules, 455 offline cases and 246
+PostgreSQL transaction cases. The dedicated Redis case remains skipped in this run.
+Production rollout and the remaining general request/mutation contract work are pending.

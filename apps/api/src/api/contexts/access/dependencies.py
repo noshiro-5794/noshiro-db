@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-import jwt
 from fastapi import Depends, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,7 +16,7 @@ from api.config import settings
 from api.db import SessionDep
 from api.shared.problems import ProblemError
 
-from .security import ACCESS, revoke_token
+from .security import revoke_token, session_claims
 
 MISSING = "Authentication credentials were not provided."
 INVALID = "Given token not valid for any token type"
@@ -41,11 +40,8 @@ async def current_user(
     if not authorization or not authorization.lower().startswith("bearer "):
         raise ProblemError(status_code=401, detail=MISSING)
     token = authorization.split(" ", 1)[1]
-    try:
-        claims = jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
-    except jwt.PyJWTError as error:
-        raise ProblemError(status_code=401, detail=INVALID, code="token_not_valid") from error
-    if claims.get("token_type") != ACCESS or not claims.get("user_id"):
+    claims = session_claims(token, settings.jwt_secret)
+    if claims is None:
         raise ProblemError(status_code=401, detail=INVALID, code="token_not_valid")
     user = await _user_for(session, int(claims["user_id"]))
     if (
