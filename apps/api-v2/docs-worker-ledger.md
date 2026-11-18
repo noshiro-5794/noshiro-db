@@ -1089,3 +1089,31 @@ Task registration is now 29/30. MAL agent-based recall and its native tool-calli
 runtime remain required. Complete pagination/HTTP/MCP audits, professional layering and
 configuration cleanup, app consolidation, legacy service/code/dependency/schema removal,
 production cutover and post-deployment verification remain part of the active goal.
+
+### Durable native tool-calling runtime
+
+Added native OpenAI-compatible tool calls, typed knowledge/MAL retrieval tools, ordered
+transcripts, persisted budgets and terminal checkpoints for the remaining MAL recall
+workflow. Model selection preserves the configured fast/reasoning tiers, timeout and JSON
+output cap. Usage records include provider token counts and configured per-model costs.
+Transient model failures retry within the run's execution budget. Each model attempt and
+tool execution consumes a step, including failures, so repeated retrieval failures remain
+bounded.
+
+Run ownership gates transcript and canonical writes. A response received during a pause
+retains its inference audit and charges usage once. Resume reuses that response, completed
+tools and committed final answers. Recovery also completes a parent model step interrupted
+after its last tool reply was committed. Final output, step completion, run status and
+checkpoint commit together. Tool evidence uses the existing content-addressed artifacts,
+scope checks and provider storage policy. Public knowledge tools share catalogue/detail
+projections. Catalogue callers retain the existing count behavior while tool searches can
+skip the count query.
+
+Validation passed with strict typing of 203 modules, 395 offline cases and 210 PostgreSQL
+transaction cases. Eleven native-loop database cases cover tool turns, retries, validation,
+budget enforcement, pause/in-flight responses and crash recovery. Transcript/checkpoint
+tests cover hashes, ordering and rollback. Retrieval tests cover public/private visibility,
+compact MAL fields, storage policy and client cleanup. All source/model responses are
+mocked. Shared Bangumi linker/search tests continue to pass. The new runtime has not yet
+been connected to MAL recall, and task registration remains 29/30. Consolidation, cleanup,
+complete contract audits and production deployment remain pending under the active goal.

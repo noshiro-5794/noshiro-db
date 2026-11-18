@@ -3,7 +3,7 @@
 import asyncio
 import json
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -34,21 +34,32 @@ async def authorize(session: AsyncSession, run_id: UUID, permission: str) -> Non
         raise PermissionError(f"Missing required scope '{permission}'.")
 
 
-async def invoke(
+async def invoke[Output: BaseModel](
     *,
     run_id: UUID,
     tool: str,
     permission: str,
     parameters: dict[str, Any],
-    handler: Callable[[], Awaitable[SearchResult]],
+    handler: Callable[[], Awaitable[Output]],
     before_write: WriteGuard | None = None,
-) -> SearchResult:
+    parent_step_id: UUID | None = None,
+    tool_call_id: str = "",
+    artifact_mode: Literal["search_results", "snapshot"] = "search_results",
+) -> Output:
     async with session_scope() as session:
         await authorize(session, run_id, permission)
         if before_write is not None:
             await before_write(session)
         step = await agent_runs.create_step(
-            session, run_id=run_id, skill="", payload=parameters, kind="tool"
+            session,
+            run_id=run_id,
+            skill="",
+            payload={"tool_name": tool, "parameters": parameters, "tool_call_id": tool_call_id}
+            if parent_step_id is not None
+            else parameters,
+            kind="tool",
+            parent_id=parent_step_id,
+            first_sequence=1 if parent_step_id is not None else 0,
         )
         invocation = (
             await fetch(
@@ -73,24 +84,38 @@ async def invoke(
         )[0].id
     try:
         result = await handler()
+        output = result.model_dump(mode="json")
+        available = output.get("available", True)
         failure_reason = (
-            (result.reason or "Provider search is unavailable.") if not result.available else ""
+            str(output.get("reason") or "Provider search is unavailable.") if not available else ""
         )
         async with session_scope() as session:
             await authorize(session, run_id, permission)
             if before_write is not None:
                 await before_write(session)
-            for item in result.results:
+            if artifact_mode == "snapshot":
                 await artifacts.capture(
                     session,
-                    payload=item,
-                    kind="search_result",
-                    source_url=str(item.get("url") or ""),
+                    payload=output,
+                    kind="internal_snapshot",
                     tool_name=tool,
                     tool_version="1.0.0",
                     invocation_id=invocation,
-                    metadata={"query": parameters.get("keyword") or parameters.get("query") or ""},
                 )
+            else:
+                for item in output.get("results", []):
+                    await artifacts.capture(
+                        session,
+                        payload=item,
+                        kind="search_result",
+                        source_url=str(item.get("url") or ""),
+                        tool_name=tool,
+                        tool_version="1.0.0",
+                        invocation_id=invocation,
+                        metadata={
+                            "query": parameters.get("keyword") or parameters.get("query") or ""
+                        },
+                    )
             await fetch(
                 session,
                 "UPDATE tool_invocation SET status=:status,result=CAST(:output AS jsonb),"
@@ -98,7 +123,7 @@ async def invoke(
                 "finished_at=clock_timestamp() WHERE id=:id RETURNING id",
                 {
                     "id": invocation,
-                    "status": "succeeded" if result.available else "failed",
+                    "status": "succeeded" if available else "failed",
                     "output": result.model_dump_json(),
                     "error": failure_reason[:4000],
                 },
@@ -106,7 +131,7 @@ async def invoke(
             await agent_runs.finish_step(
                 session,
                 step,
-                result.model_dump(),
+                output,
                 error=failure_reason,
             )
         return result
