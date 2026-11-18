@@ -1249,3 +1249,22 @@ identifiers. An unconfigured signing secret rejects authentication. The stdio ca
 the internal server as a separate process and exercises initialization, tool discovery and
 argument validation through the SDK client. Redis-backed limits still require a live Redis
 verification before deployment.
+
+### MCP query parity and live Redis verification
+
+Compared six legacy query/submission sections against rollback-only equivalent fixtures.
+The comparison exposed three raw MCP detail fields omitted from the HTTP-oriented detail
+reader. Public MCP now includes listed memberships, merged-source identifiers and the merge
+flag while preserving the existing HTTP serializer shape. Search, entity detail, relations,
+candidate evidence, inference audit and proposal records match the old implementation.
+Permanent database coverage checks listed memberships and private relation targets.
+
+A dedicated Redis 8 instance verifies the actual Lua increment/expiry path. Forty concurrent
+requests across two limiter instances allow exactly three and refuse thirty-seven at a limit
+of three. The shared counter reaches forty and has a positive bounded expiry. Unique test
+keys are removed after verification. The opt-in test uses NOSHIRO_INTEGRATION_REDIS_URL.
+
+Validation passed with strict typing of 212 modules and 668 cases with PostgreSQL and Redis
+enabled. The temporary Redis container is removed after the exercise. Production MCP transport
+configuration, general request/mutation validation, context/configuration cleanup, app
+consolidation, legacy removal and deployment remain pending under the active goal.

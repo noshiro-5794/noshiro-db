@@ -80,3 +80,5 @@ The verifier checks access-token claims and active database users.
 Redis rate limits use `REDIS_CACHE_URL` or the existing `CACHE_URL`, with
 `CACHE_SOCKET_TIMEOUT` and `CACHE_SOCKET_CONNECT_TIMEOUT` defaulting to five
 seconds. Local runs without a Redis URL use process-local fixed-window counters.
+Set `NOSHIRO_INTEGRATION_REDIS_URL` to a dedicated test Redis instance to run the
+concurrent limiter test alongside the PostgreSQL integration suite.

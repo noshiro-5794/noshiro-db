@@ -95,6 +95,38 @@ async def test_submission_failure_rolls_back_inference_audit(mcp_runtime, monkey
 
 
 @pytest.mark.asyncio
+async def test_public_detail_preserves_memberships_and_relations_hide_private_targets(mcp_runtime):
+    from mcp.server.mcpserver.exceptions import ToolError
+
+    session, identifier, _ = mcp_runtime
+    pair = (await fetch(session, "SELECT * FROM match_candidate WHERE id=:id", {"id": identifier}))[
+        0
+    ]
+    detail = await queries.get_public_entity(entity_id=pair.left_entity_id)
+    assert detail["memberships"] and detail["memberships"][0]["listing_state"] == "listed"
+    assert detail["merged_from"] == [] and detail["is_merged"] is False
+    await fetch(
+        session,
+        "INSERT INTO entity_relation "
+        "(from_entity_id,to_entity_id,relation_type,qualifiers,created_at,updated_at) "
+        "VALUES (:source,:target,'sequel','{}',now(),now()) RETURNING id",
+        {"source": pair.left_entity_id, "target": pair.right_entity_id},
+    )
+    await session.commit()
+    relations = await queries.get_public_relations(entity_id=pair.left_entity_id)
+    assert [row["target"]["id"] for row in relations["results"]] == [str(pair.right_entity_id)]
+    await fetch(
+        session,
+        "UPDATE entity SET visibility='private' WHERE id=:id RETURNING id",
+        {"id": pair.right_entity_id},
+    )
+    await session.commit()
+    assert await queries.get_public_relations(entity_id=pair.left_entity_id) == {"results": []}
+    with pytest.raises(ToolError, match="Public entity not found"):
+        await queries.get_public_entity(entity_id=pair.right_entity_id)
+
+
+@pytest.mark.asyncio
 async def test_missing_candidate_creates_no_proposal_or_inference(mcp_runtime):
     session, _, server = mcp_runtime
     from mcp.server.mcpserver.exceptions import ToolError
