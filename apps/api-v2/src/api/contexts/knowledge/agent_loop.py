@@ -500,13 +500,15 @@ async def recover_pending(execution: Execution, allowed: set[str]) -> None:
 
 async def recover_completion(
     execution: Execution,
+    output_model: type[BaseModel] | None,
 ) -> tuple[UUID, UUID, AgentCompletion] | None:
     """Reuse a saved response when execution stopped before its turn committed."""
     async with session_scope() as session:
         await own(session, execution)
         audits = await fetch(
             session,
-            "SELECT a.*,s.id AS step_id FROM ai_run a "
+            "SELECT a.*,s.id AS step_id,s.output AS step_output,s.status AS step_status "
+            "FROM ai_run a "
             "JOIN agent_step s ON s.id=a.agent_step_id "
             "WHERE s.run_id=:id AND s.kind='model' "
             "ORDER BY s.sequence DESC,a.created_at DESC LIMIT 1",
@@ -518,9 +520,34 @@ async def recover_completion(
         output = audit.output or {}
         metadata = audit.input_metadata or {}
         count = metadata.get("transcript_message_count")
-        if audit.status != "succeeded" or "tool_calls" not in output or count is None:
+        if audit.status != "succeeded":
             return None
         messages = await transcript.messages(session, execution.run_id)
+        if count is None:
+            if (
+                not messages
+                or messages[-1]["role"] != "assistant"
+                or messages[-1].get("tool_calls")
+                or audit.step_status != "succeeded"
+                or audit.step_output != output
+            ):
+                return None
+            try:
+                if final_output(messages[-1]["content"], output_model) != output:
+                    return None
+            except ValueError:
+                return None
+            # Legacy completed steps saved their budget before committing their output.
+            await fetch(
+                session,
+                "UPDATE ai_run SET input_metadata=input_metadata||CAST(:metadata AS jsonb) "
+                "WHERE id=:id RETURNING id",
+                {"id": audit.id, "metadata": json.dumps({"budget_recorded": True})},
+            )
+            output = {"content": messages[-1]["content"], "tool_calls": []}
+            count = len(messages) - 1
+        if "tool_calls" not in output:
+            return None
         completion = AgentCompletion(
             output.get("content") or "",
             audit.model,
@@ -593,7 +620,7 @@ async def run(
         return await read_result(run_id)
     try:
         await initialize(execution, system_prompt, user_prompt)
-        recovered = await recover_completion(execution)
+        recovered = await recover_completion(execution, output_model)
         if recovered is not None:
             await finalize_response(execution, recovered, output_model)
             return await read_result(run_id)
