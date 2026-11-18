@@ -12,7 +12,7 @@ from api.contexts.community.notifications import (
 )
 from api.db import SessionDep
 from api.shared.cursor import decode
-from api.shared.pagination import cursor_payload
+from api.shared.pagination import PageSize, cursor_payload
 from api.shared.problems import ProblemError
 
 router = APIRouter(prefix="/api/v1/community", tags=["community"])
@@ -54,11 +54,10 @@ async def notification_list(
     request: Request,
     user: Annotated[Any, Depends(current_user)],
     cursor: str = "",
-    page_size: int = 16,
+    page_size: PageSize = 16,
     is_read: str | None = None,
 ) -> dict[str, Any]:
     parsed = decode(cursor or None)
-    size = min(max(page_size, 1), 64)
     read_filter = False if is_read is None else None
     if is_read:
         try:
@@ -73,7 +72,7 @@ async def notification_list(
         session,
         user_id=user.id,
         cursor=parsed,
-        page_size=size,
+        page_size=page_size,
         is_read=read_filter,
     )
     return cursor_payload(

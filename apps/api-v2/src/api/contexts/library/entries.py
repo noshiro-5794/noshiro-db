@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.contexts.identity.resolution import cluster_ids, resolve
 from api.contexts.presentation.fragments import fetch, isoformat
 from api.contexts.presentation.summary import entity_summary
+from api.shared.pagination import page_offset
 
 ORDERINGS = frozenset({"created_at", "-created_at", "updated_at", "-updated_at"})
 
@@ -110,7 +111,7 @@ async def list_entries(
             **params,
             "user_id": user_id,
             "limit": page_size,
-            "offset": (page - 1) * page_size,
+            "offset": page_offset(page, page_size, int(total[0].total)),
         },
     )
     releases = await _releases(session, [row.id for row in rows])

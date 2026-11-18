@@ -106,3 +106,5 @@ async def test_http_cursor_pages_keep_ties_and_support_previous_links(cursor_cli
     assert visited == expected and len(visited) == 8
     invalid = await client.get(paths[kind] + "&cursor=" + encode(Cursor(position="invalid-date")))
     assert invalid.status_code == 404 and invalid.json()["detail"] == "Invalid cursor."
+    fallback = await client.get(paths[kind] + "&page_size=invalid")
+    assert fallback.status_code == 200 and len(fallback.json()["results"]) == 8

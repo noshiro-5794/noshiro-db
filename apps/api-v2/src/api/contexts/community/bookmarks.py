@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.contexts.identity.resolution import cluster_ids, resolve
 from api.contexts.presentation.fragments import fetch, isoformat
 from api.contexts.presentation.summary import entity_summary
+from api.shared.pagination import page_offset
 
 from .targets import collection_summary, post_summary, review_summary
 from .visibility import visible
@@ -118,7 +119,7 @@ async def list_bookmarks(
             **params,
             "user_id": user_id,
             "limit": page_size,
-            "offset": (page - 1) * page_size,
+            "offset": page_offset(page, page_size, int(total[0].total)),
         },
     )
     results = [await _payload(session, row) for row in rows]

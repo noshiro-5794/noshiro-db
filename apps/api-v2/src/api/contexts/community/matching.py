@@ -7,6 +7,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.presentation.fragments import fetch, isoformat
+from api.shared.pagination import page_offset
 
 QUERY = """
     SELECT candidate.id, candidate.left_entity_id, candidate.right_entity_id,
@@ -69,7 +70,7 @@ async def list_candidates(
     rows = await fetch(
         session,
         QUERY + f" WHERE {clause} ORDER BY candidate.score DESC LIMIT :limit OFFSET :offset",
-        {**params, "limit": page_size, "offset": (page - 1) * page_size},
+        {**params, "limit": page_size, "offset": page_offset(page, page_size, int(total[0].total))},
     )
     return int(total[0].total), [
         {

@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.contexts.community.people import person as _person
 from api.contexts.community.visibility import visible
 from api.contexts.presentation.fragments import fetch
+from api.shared.pagination import page_offset
 
 TARGETS = ("post", "comment", "review", "collection", "activity")
 REASONS = ("spam", "harassment", "spoiler", "illegal", "other")
@@ -115,7 +116,7 @@ async def list_reports(
         {
             **params,
             "limit": page_size,
-            "offset": (page - 1) * page_size,
+            "offset": page_offset(page, page_size, int(total[0].total)),
         },
     )
     return int(total[0].total), [

@@ -12,6 +12,8 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.shared.pagination import page_offset
+
 from .fragments import CURRENT, fetch
 from .summary import entity_summary
 
@@ -151,6 +153,7 @@ async def entity_page(
             session, f"SELECT count(*) AS total FROM entity WHERE {where}", params
         )
         total = int(total_rows[0].total) if total_rows else 0
+    offset = page_offset(page, page_size, total) if count_total else (page - 1) * page_size
     rows = await fetch(
         session,
         f"""
@@ -161,7 +164,7 @@ async def entity_page(
         ORDER BY {_order(ordering)}
         LIMIT :limit OFFSET :offset
         """,
-        {**params, "limit": page_size, "offset": (page - 1) * page_size},
+        {**params, "limit": page_size, "offset": offset},
     )
     roots = [row.id for row in rows]
     clusters = await _clusters(session, roots)

@@ -1178,3 +1178,27 @@ transaction cases. The wider page-number/validation/mutation contract audit rema
 along with MCP, context/configuration cleanup, app consolidation, legacy removal and
 production deployment. The local replacement HTTP server was restarted against the restored
 copy for these comparisons. Production application services remain stopped.
+
+### Page-number pagination and size validation
+
+Restored last-page selection across the page-number read models using their filtered count.
+Invalid/zero/negative page numbers return the existing 404 response. Page sizes retain the
+legacy fallback for blank, zero, negative and malformed values, including cursor endpoints
+where FastAPI previously rejected them before pagination ran. A Pydantic before-validator
+keeps page-size parameters typed as bounded integers in the generated contract. Last-page
+resolution and range checks happen before SQL offsets, including arbitrarily large page
+numbers. Count-free catalogue tool searches retain their existing numeric window behavior.
+
+Page links preserve original page-size/filter spellings, repeated and blank query values,
+and query-key order. Previous links to the first page remove the page parameter, matching
+the existing contract. A pure comparison matches 1232 legacy requests across empty/nonempty
+collections, both endpoint defaults, last/invalid pages and size variants. Status codes,
+selected windows and complete links match. A separate read-only comparison on the production
+copy matches 88 HTTP responses across seven page-number paths and three cursor paths.
+
+Permanent HTTP database tests cover final-window selection and backward navigation for
+catalogue/tag listings, invalid page values beyond PostgreSQL integer bounds, and malformed
+page-size fallback on all six cursor endpoints. Validation passed with strict typing of 206
+modules, 421 offline cases and 237 PostgreSQL transaction cases. General request validation,
+mutations and MCP remain pending. The MCP service still exists only in the legacy app and
+must be migrated before app consolidation and production deployment.

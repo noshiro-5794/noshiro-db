@@ -6,6 +6,8 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.shared.pagination import page_offset
+
 from .fragments import PROVENANCE, PROVENANCE_JOINS, fetch, row_provenance
 from .summary import public_summary
 
@@ -76,7 +78,7 @@ async def character_page(
         ORDER BY appearance.role, appearance.character_entity_id, appearance.id
         LIMIT :limit OFFSET :offset
         """,
-        {"ids": cluster, "limit": page_size, "offset": (page - 1) * page_size},
+        {"ids": cluster, "limit": page_size, "offset": page_offset(page, page_size, total)},
     )
     results: list[dict[str, Any]] = []
     for row in rows:
