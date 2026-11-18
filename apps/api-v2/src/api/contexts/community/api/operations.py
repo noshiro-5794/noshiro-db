@@ -23,6 +23,7 @@ from api.contexts.community.import_jobs import (
 from api.contexts.community.matching import list_candidates
 from api.db import SessionDep
 from api.shared.cursor import decode, encode
+from api.shared.dispatch import DispatchUnavailable
 from api.shared.pagination import ensure_page, page_params, page_payload
 from api.shared.problems import ProblemError
 
@@ -208,6 +209,10 @@ async def create_sync_campaign(
         raise ProblemError(
             status_code=400, detail="Request validation failed.", errors=error.args[0]
         ) from error
+    except DispatchUnavailable as error:
+        raise ProblemError(
+            status_code=503, detail=str(error), code="sync.task_dispatch_failed"
+        ) from error
     return JSONResponse(data, status_code=202)
 
 
@@ -278,7 +283,7 @@ async def control_campaign(
 ) -> dict[str, Any]:
     from api.contexts.synchronization.campaigns import control
     from api.contexts.synchronization.domain import UnsupportedAction
-    from api.shared.dispatch import SYNC_TASK, publish, sync_kwargs
+    from api.shared.dispatch import SYNC_TASK, enqueue, sync_kwargs
 
     try:
         updated = await control(session, campaign_id, action)
@@ -288,5 +293,10 @@ async def control_campaign(
         raise ProblemError(status_code=404, detail="Sync campaign not found.") from error
     await session.commit()
     if action == "resume" and updated.status not in {"paused", "cancelled"}:
-        publish(SYNC_TASK, sync_kwargs(campaign_id=str(updated.id)))
+        try:
+            await enqueue(SYNC_TASK, sync_kwargs(campaign_id=str(updated.id)))
+        except DispatchUnavailable as error:
+            raise ProblemError(
+                status_code=503, detail=str(error), code="sync.task_dispatch_failed"
+            ) from error
     return await campaign(session, campaign_id=str(updated.id))

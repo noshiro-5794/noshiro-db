@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.knowledge import agent_runs
-from api.contexts.knowledge.agent_runs import EvidenceContext
+from api.contexts.knowledge.agent_runs import EvidenceContext, WriteGuard
 from api.contexts.presentation.fragments import fetch
 from api.contexts.synchronization.terms import normalize_key
 from api.shared.ai import complete_json
@@ -157,7 +157,10 @@ async def model_result(
 
 
 async def normalize(
-    value: NormalizationInput, *, evidence: EvidenceContext | None = None
+    value: NormalizationInput,
+    *,
+    evidence: EvidenceContext | None = None,
+    before_write: WriteGuard | None = None,
 ) -> NormalizationResult:
     key = normalize_key(value.source_text)
     language = value.language or detect_language(value.source_text)
@@ -178,6 +181,8 @@ async def normalize(
         failure = None
         async with session_scope() as session:
             try:
+                if before_write is not None:
+                    await before_write(session)
                 await agent_runs.record_claim(
                     session,
                     context=evidence,

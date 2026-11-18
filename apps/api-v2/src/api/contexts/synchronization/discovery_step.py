@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from time import time
 from typing import Any
 from uuid import UUID
 
@@ -86,12 +87,13 @@ async def discover_step(session: AsyncSession, campaign_id: UUID, owner: str) ->
             discovery["truncated"] = bool(discovery["next_cursor"])
             discovery["next_cursor"] = None
             params.pop("pending_watermark", None)
+        if delta and not discovery["next_cursor"] and not discovery.get("truncated"):
+            params.setdefault("pending_watermark", str(int(time())))
         params["discovery"] = discovery
         await fetch(
             session,
             """
             UPDATE sync_campaign SET parameters = CAST(:params AS jsonb),
-              total_items = (SELECT count(*) FROM sync_work_item WHERE campaign_id = :id),
               heartbeat_at = now(), updated_at = now() WHERE id = :id RETURNING id
         """,
             {"id": campaign_id, "params": json.dumps(params)},
