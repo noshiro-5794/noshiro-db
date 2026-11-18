@@ -1202,3 +1202,22 @@ page-size fallback on all six cursor endpoints. Validation passed with strict ty
 modules, 421 offline cases and 237 PostgreSQL transaction cases. General request validation,
 mutations and MCP remain pending. The MCP service still exists only in the legacy app and
 must be migrated before app consolidation and production deployment.
+
+### Internal MCP data and tool migration
+
+Added the existing MCP 2.3 dependency to the replacement toolchain and introduced an
+async internal server factory with the three existing tool names. Public projection
+queries reuse the migrated catalogue/detail readers. Relation queries retain the
+100-source-row cap, canonical target deduplication and public visibility checks.
+Candidate reads preserve safe summaries and matching evidence fields.
+
+Client-submitted proposals validate through the existing matching output model. The
+candidate lock, successful internal_mcp inference audit and pending proposal commit
+in one transaction. The internal tool retains its structured acknowledgement and
+read/write annotations. Three database cases exercise real SDK tool dispatch, audit
+fields, pending status, missing candidates and rollback after a proposal insert failure.
+
+Validation passed with strict typing of 210 modules, 421 offline cases and 240 PostgreSQL
+transaction cases. The public authenticated HTTP server, rate limiter, stdio/HTTP transport
+tests and full legacy MCP comparisons remain pending. This checkpoint completes the
+internal data/tool path, while the full migration goal remains active.
