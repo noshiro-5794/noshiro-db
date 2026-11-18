@@ -63,6 +63,8 @@ async def create_step(
     skill: str,
     payload: dict[str, Any],
     kind: Literal["skill", "tool", "model"] = "skill",
+    parent_id: UUID | None = None,
+    first_sequence: int = 0,
 ) -> UUID:
     # Serialize sequence allocation for skills sharing the same durable run.
     rows = await fetch(session, "SELECT id FROM agent_run WHERE id=:id FOR UPDATE", {"id": run_id})
@@ -73,14 +75,16 @@ async def create_step(
         """
         INSERT INTO agent_step
           (id,run_id,sequence,kind,status,skill_name,skill_version,input_hash,input,
-           error,retry_count,created_at,started_at)
+           error,retry_count,created_at,started_at,parent_id)
         VALUES (gen_random_uuid(),:run,
-          COALESCE((SELECT max(sequence)+1 FROM agent_step WHERE run_id=:run),0),
-          :kind,'running',:skill,:version,:hash,CAST(:input AS jsonb),'',0,now(),now())
+          COALESCE((SELECT max(sequence)+1 FROM agent_step WHERE run_id=:run),:first),
+          :kind,'running',:skill,:version,:hash,CAST(:input AS jsonb),'',0,now(),now(),:parent)
         RETURNING id
         """,
         {
             "run": run_id,
+            "parent": parent_id,
+            "first": first_sequence,
             "skill": skill,
             "kind": kind,
             "version": "1.0.0" if kind == "skill" else "",
@@ -219,7 +223,13 @@ async def add_evidence(
 
 
 async def create_run(
-    session: AsyncSession, *, title: str, scope: str, key: str, metadata: dict[str, Any]
+    session: AsyncSession,
+    *,
+    title: str,
+    scope: str,
+    key: str,
+    metadata: dict[str, Any],
+    kind: Literal["admin_sync", "admin_enrich", "user_agent", "evaluation"] = "admin_sync",
 ) -> UUID:
     rows = await fetch(
         session,
@@ -227,11 +237,35 @@ async def create_run(
         INSERT INTO agent_run
           (id,kind,status,title,idempotency_scope,idempotency_key,trace_id,metadata,checkpoint,
            budget,error,created_at,updated_at)
-        VALUES (gen_random_uuid(),'admin_sync','queued',:title,:scope,:key,'',
+        VALUES (gen_random_uuid(),:kind,'queued',:title,:scope,:key,'',
                 CAST(:metadata AS jsonb),'{}','{}','',now(),now())
         ON CONFLICT (idempotency_scope,idempotency_key) WHERE idempotency_key<>''
         DO UPDATE SET id=agent_run.id RETURNING id
         """,
-        {"title": title, "scope": scope, "key": key, "metadata": json.dumps(metadata)},
+        {
+            "title": title,
+            "scope": scope,
+            "key": key,
+            "metadata": json.dumps(metadata),
+            "kind": kind,
+        },
     )
     return UUID(str(rows[0].id))
+
+
+async def recover_interrupted(session: AsyncSession, run_id: UUID, error: str) -> None:
+    parameters = {"id": run_id, "error": error}
+    for table, column in [("ai_run", "agent_step_id"), ("tool_invocation", "step_id")]:
+        await fetch(
+            session,
+            f"UPDATE {table} SET status='failed',error=:error,finished_at=now() "
+            f"WHERE status='running' AND {column} IN "
+            "(SELECT id FROM agent_step WHERE run_id=:id AND status='running') RETURNING id",
+            parameters,
+        )
+    await fetch(
+        session,
+        "UPDATE agent_step SET status='failed',error=:error,finished_at=now() "
+        "WHERE run_id=:id AND status='running' RETURNING id",
+        parameters,
+    )

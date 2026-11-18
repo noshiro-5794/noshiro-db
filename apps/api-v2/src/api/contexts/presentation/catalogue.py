@@ -125,6 +125,7 @@ async def entity_page(
     page: int,
     page_size: int,
     cluster_scope: bool = False,
+    count_total: bool = True,
 ) -> tuple[int, list[dict[str, Any]]]:
     use_collection = bool(collection) or scope != "all"
     use_keyword = bool(keyword)
@@ -144,8 +145,12 @@ async def entity_page(
     if subject_type:
         params["subject_type"] = subject_type
 
-    total_rows = await fetch(session, f"SELECT count(*) AS total FROM entity WHERE {where}", params)
-    total = int(total_rows[0].total) if total_rows else 0
+    total = 0
+    if count_total:
+        total_rows = await fetch(
+            session, f"SELECT count(*) AS total FROM entity WHERE {where}", params
+        )
+        total = int(total_rows[0].total) if total_rows else 0
     rows = await fetch(
         session,
         f"""

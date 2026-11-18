@@ -144,7 +144,9 @@ async def prepare(root_id: UUID, *, force: bool) -> Attempt | dict[str, Any]:
                 "attempt_id": str(run_id),
             }
         if row.status == "running":
-            await recover_interrupted(session, run_id)
+            await agent_runs.recover_interrupted(
+                session, run_id, "Bangumi link attempt was interrupted before completion."
+            )
         version = (
             await fetch(
                 session,
@@ -168,24 +170,6 @@ async def prepare(root_id: UUID, *, force: bool) -> Attempt | dict[str, Any]:
                 if len(names) >= 16:
                     break
         return Attempt(root_id, run_id, version, names, mal_ids)
-
-
-async def recover_interrupted(session: AsyncSession, run_id: UUID) -> None:
-    parameters = {"id": run_id, "error": "Bangumi link attempt was interrupted before completion."}
-    for table, column in [("ai_run", "agent_step_id"), ("tool_invocation", "step_id")]:
-        await fetch(
-            session,
-            f"UPDATE {table} SET status='failed',error=:error,finished_at=now() "
-            f"WHERE status='running' AND {column} IN "
-            "(SELECT id FROM agent_step WHERE run_id=:id AND status='running') RETURNING id",
-            parameters,
-        )
-    await fetch(
-        session,
-        "UPDATE agent_step SET status='failed',error=:error,finished_at=now() "
-        "WHERE run_id=:id AND status='running' RETURNING id",
-        parameters,
-    )
 
 
 async def finish(attempt: Attempt, outcome: str, metadata: dict[str, Any]) -> dict[str, Any]:

@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -33,8 +33,18 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("GITHUB_OAUTH_CLIENT_SECRET"),
     )
     ai_model: str = Field(
-        default="deepseek-flash",
+        default="deepseek-ai/DeepSeek-V4-Flash",
         validation_alias=AliasChoices("AI_FAST_MODEL", "AI_MODEL"),
+    )
+    ai_reasoning_model: str = Field(
+        default="deepseek-ai/DeepSeek-V4-Pro", validation_alias="AI_REASONING_MODEL"
+    )
+    ai_model_prices: dict[str, Any] = Field(
+        default_factory=dict, validation_alias="AI_MODEL_PRICES"
+    )
+    ai_timeout_seconds: float = Field(default=30, gt=0, validation_alias="AI_AGENT_TIMEOUT")
+    ai_max_output_tokens: int = Field(
+        default=1024, gt=0, validation_alias="AI_AGENT_MAX_OUTPUT_TOKENS"
     )
 
     @property
