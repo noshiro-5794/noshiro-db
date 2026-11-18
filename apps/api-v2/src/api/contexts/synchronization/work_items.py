@@ -10,7 +10,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.presentation.fragments import fetch
-from api.contexts.synchronization.campaigns import get_campaign, refresh_counts
+from api.contexts.synchronization.campaigns import get_campaign
 from api.contexts.synchronization.domain import LeaseLost, classify_failure
 
 
@@ -30,6 +30,12 @@ async def enqueue_page(
         ON CONFLICT (campaign_id, shard, cursor) DO NOTHING RETURNING id
     """,
         {"campaign": campaign_id, "shard": shard, "ids": external_ids},
+    )
+    await fetch(
+        session,
+        "UPDATE sync_campaign SET total_items=total_items+:added,updated_at=now() "
+        "WHERE id=:id RETURNING id",
+        {"id": campaign_id, "added": len(rows)},
     )
     return len(rows)
 
@@ -114,7 +120,7 @@ async def succeed(session: AsyncSession, item_id: UUID, owner: str, result: dict
     """,
         {"id": item_id, "result": json.dumps(result)},
     )
-    await refresh_counts(session, item.campaign_id)
+    await count_outcome(session, item.campaign_id, "succeeded")
 
 
 async def fail(
@@ -141,5 +147,38 @@ async def fail(
             "retry": failure.next_retry_at,
         },
     )
-    await refresh_counts(session, item.campaign_id)
+    if failure.status != "queued":
+        await count_outcome(session, item.campaign_id, failure.status)
     return failure.status
+
+
+async def heartbeat(
+    session: AsyncSession, item_id: UUID, owner: str, *, lease_seconds: int = 1200
+) -> None:
+    await owned_item(session, item_id, owner)
+    rows = await fetch(
+        session,
+        "UPDATE sync_work_item SET lease_expires_at=clock_timestamp()+"
+        "make_interval(secs=>:seconds),"
+        "updated_at=now() WHERE id=:id AND lease_owner=:owner AND status='running' "
+        "AND lease_expires_at>clock_timestamp() RETURNING id",
+        {"id": item_id, "owner": owner, "seconds": lease_seconds},
+    )
+    if not rows:
+        raise LeaseLost("Work item lease expired before renewal.")
+
+
+async def count_outcome(session: AsyncSession, campaign_id: UUID, status: str) -> None:
+    # The campaign/item locks and running-state guard make each terminal delta exactly once.
+    await fetch(
+        session,
+        "UPDATE sync_campaign SET processed_items=processed_items+1,"
+        "synced_items=synced_items+:synced,skipped_items=skipped_items+:skipped,"
+        "failed_items=failed_items+:failed,updated_at=now() WHERE id=:id RETURNING id",
+        {
+            "id": campaign_id,
+            "synced": int(status == "succeeded"),
+            "skipped": int(status == "skipped"),
+            "failed": int(status == "failed"),
+        },
+    )

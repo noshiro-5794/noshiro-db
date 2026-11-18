@@ -9,7 +9,13 @@ from uuid import UUID, uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.presentation.fragments import fetch
-from api.contexts.synchronization.domain import ACTIVE, TERMINAL, TRANSITIONS, UnsupportedAction
+from api.contexts.synchronization.domain import (
+    ACTIVE,
+    TERMINAL,
+    TRANSITIONS,
+    LeaseLost,
+    UnsupportedAction,
+)
 
 
 async def get_campaign(
@@ -234,16 +240,44 @@ async def refresh_counts(session: AsyncSession, campaign_id: UUID) -> None:
     await fetch(
         session,
         """
-        UPDATE sync_campaign c SET
-          processed_items = (SELECT count(*) FROM sync_work_item WHERE campaign_id = c.id
-                             AND status IN ('succeeded','skipped','failed')),
-          synced_items = (SELECT count(*) FROM sync_work_item
-                          WHERE campaign_id = c.id AND status = 'succeeded'),
-          skipped_items = (SELECT count(*) FROM sync_work_item
-                           WHERE campaign_id = c.id AND status = 'skipped'),
-          failed_items = (SELECT count(*) FROM sync_work_item
-                          WHERE campaign_id = c.id AND status = 'failed'), updated_at = now()
-        WHERE c.id = :id RETURNING id
+        WITH counts AS (
+          SELECT count(*) AS total,
+            count(*) FILTER (WHERE status IN ('succeeded','skipped','failed')) AS processed,
+            count(*) FILTER (WHERE status='succeeded') AS synced,
+            count(*) FILTER (WHERE status='skipped') AS skipped,
+            count(*) FILTER (WHERE status='failed') AS failed
+          FROM sync_work_item WHERE campaign_id=:id
+        )
+        UPDATE sync_campaign c SET total_items=counts.total,processed_items=counts.processed,
+          synced_items=counts.synced,skipped_items=counts.skipped,failed_items=counts.failed,
+          updated_at=now() FROM counts WHERE c.id=:id RETURNING c.id
     """,
         {"id": campaign_id},
     )
+
+
+async def owned(
+    session: AsyncSession,
+    campaign_id: UUID,
+    owner: str,
+    *,
+    phase: str,
+    allow_paused: bool = False,
+) -> Any:
+    rows = await fetch(
+        session,
+        "SELECT * FROM sync_campaign WHERE id=:id AND lease_owner=:owner "
+        "AND lease_expires_at>clock_timestamp() FOR UPDATE",
+        {"id": campaign_id, "owner": owner},
+    )
+    if not rows:
+        raise LeaseLost("Campaign lease expired or changed owner.")
+    row = rows[0]
+    paused_here = (
+        allow_paused
+        and row.status == "paused"
+        and (row.parameters or {}).get("paused_from") == phase
+    )
+    if row.status != phase and not paused_here:
+        raise LeaseLost("Campaign phase or controls changed.")
+    return row

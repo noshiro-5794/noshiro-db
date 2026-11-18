@@ -7,6 +7,7 @@ which is what makes one worker able to serve both services.
 
 from __future__ import annotations
 
+import asyncio
 import os
 from typing import Any
 
@@ -71,3 +72,17 @@ def publish(
 
 def sync_kwargs(*, campaign_id: str) -> dict[str, Any]:
     return {"campaign_id": campaign_id}
+
+
+class DispatchUnavailable(RuntimeError):
+    """A requested background task could not be handed to its worker."""
+
+
+async def enqueue(task: str, kwargs: dict[str, Any]) -> str:
+    try:
+        task_id = await asyncio.to_thread(publish, task, kwargs)
+    except Exception as error:
+        raise DispatchUnavailable("The synchronization task could not be dispatched.") from error
+    if task_id is None:
+        raise DispatchUnavailable("The synchronization task broker is not configured.")
+    return task_id

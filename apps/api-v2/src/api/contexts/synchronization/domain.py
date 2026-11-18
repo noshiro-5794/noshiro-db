@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+PROVIDER_NAMESPACES = {"bangumi": "subject", "anilist": "anime", "mal": "anime", "vndb": "vn"}
+
 PHASES = (
     "discovering",
     "fetching",

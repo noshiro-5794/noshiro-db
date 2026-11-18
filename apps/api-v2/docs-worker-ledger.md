@@ -913,3 +913,42 @@ The enrichment module is now available for campaign integration. The campaign ru
 its other unregistered tasks remain pending, with registration still 22/30. Full application
 consolidation, legacy removal, remaining behavior audits and production verification are
 still required before the goal can complete.
+
+### Resumable campaign runtime and production access
+
+Registered the durable campaign runner across discovery, fetching, normalization,
+enrichment, reconciliation and review. Source projection and work acknowledgement commit
+atomically. Campaign and item ownership gates reject expired, cancelled or replaced leases.
+A pause permits the in-flight unit to finish and then stops progression. Discovery cursors,
+source-backed AI checkpoints, retry deadlines and bounded continuation survive subsequent
+worker invocations. Required AI mode rejects raw fallback. Review, agent-run completion and
+incremental watermark promotion share the terminal transaction.
+
+Continuation publishing has bounded broker-error retries and records a recoverable failed
+campaign when the unleased continuation cannot be sent. API dispatch errors return the
+existing service-unavailable envelope after retaining the queued campaign for retry.
+Full missing-record reconciliation requires an authoritative, complete enumeration and
+preserves records observed after the campaign started.
+
+Production scale inspection exposed the cost of counting the entire queue after every
+acknowledgement. Terminal deltas now update counters exactly once under the item lock.
+Discovery adds inserted-item counts, and recovery/final review recompute aggregates.
+Migration 0005 supplies ordered partial indexes for queued, normalization and enrichment
+work. Its index-path fixture establishes usable access paths with planner settings, while
+production-copy performance verification remains pending. Steps default to a 240-second
+budget and 1200-second leases. The existing phase and item limits remain configurable.
+
+Validation passed with 359 offline cases, 138 PostgreSQL transaction cases and strict typing
+of 184 modules. Eight serialized complete assisted-campaign sections match the old service
+with fixed provider/model responses. Task registration is now 23/30. Remaining tasks cover
+incremental synchronization, season pipelines/rollover and provider-link recall. Full HTTP,
+MCP, deployment and layering audits, app consolidation and legacy removal remain required.
+
+SSH access was restored using the user's supplied login. Production services were stopped
+and deployed source trees contained local changes. Started the existing PostgreSQL container
+to inspect revision 0004 and capture a full backup. Other application services remain stopped.
+The database is approximately 37 GB with 845676 works, 3704656 provider records and 14 users.
+Private source patches, heads, environment and role backups are outside Git on the PSSD.
+The object-storage archive passed listing/checksum validation. The database archive is still
+being captured as of this entry. No production application/schema changes have been applied.
+A complete isolated restore and migration rehearsal must follow archive completion.

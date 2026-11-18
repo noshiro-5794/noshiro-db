@@ -121,7 +121,12 @@ async def test_campaign_controls_work_through_staff_http_routes(integration_sess
     app.dependency_overrides[get_session] = sessions
     app.dependency_overrides[staff_user] = lambda: object()
     calls = []
-    monkeypatch.setattr("api.shared.dispatch.publish", lambda task, kwargs: calls.append(kwargs))
+
+    def publish(task, kwargs):
+        calls.append(kwargs)
+        return "task"
+
+    monkeypatch.setattr("api.shared.dispatch.publish", publish)
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://test"
     ) as client:
@@ -155,9 +160,10 @@ async def test_campaign_creation_commits_before_dispatch_and_retry_republishes(
     def publish(task, kwargs):
         assert events[-1] == "committed"
         events.append("published")
+        return "task"
 
     monkeypatch.setattr(session, "commit", committed)
-    monkeypatch.setattr(api_campaigns, "publish", publish)
+    monkeypatch.setattr("api.shared.dispatch.publish", publish)
     body = {"provider": "bangumi", "ai_mode": "off", "idempotency_key": str(uuid4())}
     first = await api_campaigns.create_campaign(session, body=body)
     second = await api_campaigns.create_campaign(session, body=body)
@@ -183,3 +189,36 @@ async def test_lease_expiry_uses_current_clock_inside_long_transaction(integrati
     await session.execute(text("SELECT pg_sleep(0.05)"))
     with pytest.raises(LeaseLost):
         await work_items.succeed(session, item.id, "worker", {})
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure", [None, RuntimeError("broker unavailable")])
+async def test_campaign_http_reports_dispatch_failure_and_keeps_durable_queued_record(
+    integration_session,
+    monkeypatch,
+    failure,
+):
+    from unittest.mock import Mock
+
+    session = integration_session
+    app = create_app()
+
+    async def sessions():
+        yield session
+
+    app.dependency_overrides[get_session] = sessions
+    app.dependency_overrides[staff_user] = lambda: object()
+    sender = Mock(return_value=None)
+    if failure is not None:
+        sender.side_effect = failure
+    monkeypatch.setattr("api.shared.dispatch.publish", sender)
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.post(
+            "/api/v1/operations/sync/",
+            json={"provider": "bangumi", "ai_mode": "off", "idempotency_key": "dispatch-failure"},
+        )
+    assert response.status_code == 503
+    assert response.json()["code"] == "sync.task_dispatch_failed"
+    assert (await fetch(session, "SELECT status FROM sync_campaign", {}))[0].status == "queued"

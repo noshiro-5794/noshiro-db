@@ -2,13 +2,17 @@
 
 import hashlib
 import json
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any, Literal
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.contexts.index.resolution import cluster_ids
 from api.contexts.presentation.fragments import fetch
+
+type WriteGuard = Callable[[AsyncSession], Awaitable[None]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,12 +34,13 @@ def payload_hash(payload: dict[str, Any]) -> str:
 
 async def validate_evidence(session: AsyncSession, context: EvidenceContext) -> None:
     if context.observation_id is not None:
+        members = await cluster_ids(session, context.entity_id)
         rows = await fetch(
             session,
             "SELECT 1 FROM provider_observation o JOIN entity_representation r "
             "ON r.provider_record_id=o.provider_record_id WHERE o.id=:observation "
-            "AND r.entity_id=:entity AND r.is_active LIMIT 1",
-            {"observation": context.observation_id, "entity": context.entity_id},
+            "AND r.entity_id=ANY(:entities) AND r.is_active LIMIT 1",
+            {"observation": context.observation_id, "entities": list(members)},
         )
         if not rows:
             raise ValueError("Observation is not an active source for the target entity.")
@@ -211,3 +216,22 @@ async def add_evidence(
             "hash": excerpt_hash,
         },
     )
+
+
+async def create_run(
+    session: AsyncSession, *, title: str, scope: str, key: str, metadata: dict[str, Any]
+) -> UUID:
+    rows = await fetch(
+        session,
+        """
+        INSERT INTO agent_run
+          (id,kind,status,title,idempotency_scope,idempotency_key,trace_id,metadata,checkpoint,
+           budget,error,created_at,updated_at)
+        VALUES (gen_random_uuid(),'admin_sync','queued',:title,:scope,:key,'',
+                CAST(:metadata AS jsonb),'{}','{}','',now(),now())
+        ON CONFLICT (idempotency_scope,idempotency_key) WHERE idempotency_key<>''
+        DO UPDATE SET id=agent_run.id RETURNING id
+        """,
+        {"title": title, "scope": scope, "key": key, "metadata": json.dumps(metadata)},
+    )
+    return UUID(str(rows[0].id))

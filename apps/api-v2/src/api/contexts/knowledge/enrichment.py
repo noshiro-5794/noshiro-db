@@ -8,7 +8,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.knowledge import agent_runs, web_evidence
-from api.contexts.knowledge.agent_runs import EvidenceContext
+from api.contexts.knowledge.agent_runs import EvidenceContext, WriteGuard
 from api.contexts.knowledge.enrichment_models import (
     CompletionInput,
     CompletionResult,
@@ -243,6 +243,7 @@ async def complete(
     observation_id: UUID | None = None,
     apply: bool = False,
     min_confidence: float = 0.85,
+    before_write: WriteGuard | None = None,
 ) -> dict[str, Any]:
     entity_id = UUID(value.entity_id)
     context = None
@@ -265,6 +266,8 @@ async def complete(
     try:
         result, failed = await model_result(value, step_id, artifacts)
         async with session_scope() as session:
+            if before_write is not None:
+                await before_write(session)
             entities = await fetch(
                 session, "SELECT id FROM entity WHERE id=:id FOR UPDATE", {"id": entity_id}
             )
