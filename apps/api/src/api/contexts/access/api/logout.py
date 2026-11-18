@@ -7,11 +7,10 @@ cookie is not an error: the session is over either way.
 
 from typing import Any
 
-import jwt
 from fastapi import APIRouter, Request, Response
 
 from api.config import settings
-from api.contexts.access.security import REFRESH
+from api.contexts.access.security import REFRESH, session_claims
 from api.contexts.presentation.fragments import fetch
 from api.db import SessionDep
 
@@ -19,6 +18,13 @@ router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 
 async def _blacklist(session: SessionDep, token: str, claims: dict[str, Any]) -> None:
+    users = await fetch(
+        session,
+        'SELECT id FROM "user" WHERE id=:id FOR KEY SHARE',
+        {"id": int(claims["user_id"])},
+    )
+    if not users:
+        return
     rows = await fetch(
         session,
         """
@@ -60,11 +66,8 @@ async def _blacklist(session: SessionDep, token: str, claims: dict[str, Any]) ->
 async def logout(request: Request, session: SessionDep) -> Response:
     raw = request.cookies.get(settings.refresh_cookie_name)
     if raw:
-        try:
-            claims = jwt.decode(raw, settings.jwt_secret, algorithms=["HS256"])
-        except jwt.PyJWTError:
-            claims = None
-        if claims and claims.get("token_type") == REFRESH and claims.get("user_id"):
+        claims = session_claims(raw, settings.jwt_secret, token_type=REFRESH)
+        if claims is not None:
             await _blacklist(session, raw, claims)
     response = Response(status_code=204)
     response.delete_cookie(

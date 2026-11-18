@@ -3,34 +3,21 @@
 import os
 import time
 
-import jwt
 from mcp.server.auth.provider import AccessToken
 from redis.asyncio import Redis
 
 from api.config import settings
+from api.contexts.access.security import session_claims
 from api.contexts.presentation.fragments import fetch
 from api.worker.session import session_scope
 
 
 class TokenVerifier:
     async def verify_token(self, token: str) -> AccessToken | None:
-        if not settings.jwt_secret:
+        claims = session_claims(token, settings.jwt_secret)
+        if claims is None:
             return None
-        try:
-            claims = jwt.decode(
-                token,
-                settings.jwt_secret,
-                algorithms=["HS256"],
-                options={"require": ["exp", "jti", "token_type", "user_id"]},
-            )
-            raw_id = claims["user_id"]
-            if claims["token_type"] != "access" or isinstance(raw_id, bool):
-                return None
-            user_id = int(str(raw_id))
-            if not 0 < user_id < 2**63:
-                return None
-        except (jwt.PyJWTError, ValueError, TypeError, OverflowError):
-            return None
+        user_id = int(claims["user_id"])
         async with session_scope() as session:
             active = await fetch(
                 session, 'SELECT id FROM "user" WHERE id=:id AND is_active', {"id": user_id}

@@ -13,12 +13,38 @@ import hashlib
 import hmac
 import os
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import jwt
+
+from api.shared.problems import ProblemError
 
 ALGORITHM = "HS256"
 REFRESH = "refresh"
 ACCESS = "access"
+
+
+def session_claims(token: str, secret: str, *, token_type: str = ACCESS) -> dict[str, Any] | None:
+    """Validate session claims before binding a user identifier to PostgreSQL."""
+    if not secret:
+        return None
+    try:
+        claims = jwt.decode(
+            token,
+            secret,
+            algorithms=[ALGORITHM],
+            options={"require": ["exp", "jti", "token_type", "user_id"]},
+        )
+        raw_id = claims["user_id"]
+        if claims["token_type"] != token_type or isinstance(raw_id, bool):
+            return None
+        user_id = int(str(raw_id))
+        if not 0 < user_id < 2**63:
+            return None
+    except (jwt.PyJWTError, ValueError, TypeError, OverflowError):
+        return None
+    claims["user_id"] = str(user_id)
+    return claims
 
 
 def verify_password(encoded: str, password: str) -> bool:
@@ -29,8 +55,11 @@ def verify_password(encoded: str, password: str) -> bool:
         return False
     if algorithm != "pbkdf2_sha256":
         return False
-    computed = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), rounds)
-    return hmac.compare_digest(base64.b64encode(computed).decode(), digest)
+    try:
+        computed = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), rounds)
+    except (ValueError, OverflowError):
+        return False
+    return hmac.compare_digest(base64.b64encode(computed), digest.encode())
 
 
 def revoke_token(password_hash: str) -> str:
@@ -53,6 +82,12 @@ def _token(*, user_id: int, password_hash: str, secret: str, token_type: str, se
 def create_tokens(
     *, user_id: int, password_hash: str, secret: str, access_seconds: int, refresh_seconds: int
 ) -> tuple[str, str]:
+    if not secret:
+        raise ProblemError(
+            status_code=503,
+            detail="Authentication is not configured.",
+            code="users.authentication_unavailable",
+        )
     return (
         _token(
             user_id=user_id,

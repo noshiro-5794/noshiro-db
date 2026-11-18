@@ -1,6 +1,8 @@
 import jwt
+import pytest
 
 from api.contexts.access.security import create_tokens, revoke_token, verify_password
+from api.shared.problems import ProblemError
 
 # Produced by Django's PBKDF2PasswordHasher for "probe-pass-123". The verifier has
 # to accept what the Django service stored, not merely what it writes itself.
@@ -19,6 +21,24 @@ def test_rejects_a_wrong_password() -> None:
 
 def test_rejects_an_unknown_algorithm() -> None:
     assert not verify_password("md5$salt$digest", "probe-pass-123")
+
+
+@pytest.mark.parametrize("rounds", ["0", "-1", str(2**80)])
+def test_unusable_stored_iteration_counts_reject_without_raising(rounds):
+    assert not verify_password(f"pbkdf2_sha256${rounds}$salt$digest", "password")
+
+
+def test_non_ascii_stored_digest_rejects_without_raising():
+    assert not verify_password("pbkdf2_sha256$1$salt$不合法", "password")
+
+
+def test_session_issuance_requires_a_configured_signing_key():
+    with pytest.raises(ProblemError) as caught:
+        create_tokens(
+            user_id=7, password_hash="hash", secret="", access_seconds=60, refresh_seconds=60
+        )
+    assert caught.value.status_code == 503
+    assert caught.value.code == "users.authentication_unavailable"
 
 
 def test_tokens_carry_the_simplejwt_claims() -> None:
