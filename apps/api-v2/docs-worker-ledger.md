@@ -1154,3 +1154,27 @@ Static task coverage is 30/30 with no missing or unknown names. This establishes
 coverage. Full HTTP pagination/mutation/validation and MCP audits, professional layering and
 configuration cleanup, consolidation into apps/api, legacy service/code/dependency/schema
 removal, production cutover and post-deployment verification remain required.
+
+### Cursor pagination contract audit
+
+Replaced the incomplete forward-only cursor boundaries on activity timelines, notifications
+and import-job history. Equal timestamp groups retain their offset, reverse cursors reverse
+both the comparison and SQL ordering, and both navigation links preserve the legacy token
+format. Shared link rendering retains repeated/blank filters and the old query-key ordering.
+Offsets above the existing 1000-row cutoff clamp to that cutoff. Timestamp positions bind
+as datetime values, fixing the asyncpg error caused by binding their string representation.
+Invalid timestamp positions return the existing 404 invalid-cursor response.
+
+A pure comparison covers 5000 legacy cursor states, including timestamp ties, direction
+changes and empty pages. All page windows and both encoded boundaries match. A read-only
+HTTP comparison on the restored production copy matches 60 complete old/new responses,
+including both links and reverse navigation across the six cursor endpoints. Six HTTP
+database cases traverse tied timestamp groups forward and back through public, personal,
+user and feed activity, notifications and import history. Permanent unit cases cover
+offsets, empty pages, timestamp binding and link query preservation.
+
+Validation passed with strict typing of 206 modules, 409 offline cases and 235 PostgreSQL
+transaction cases. The wider page-number/validation/mutation contract audit remains pending,
+along with MCP, context/configuration cleanup, app consolidation, legacy removal and
+production deployment. The local replacement HTTP server was restarted against the restored
+copy for these comparisons. Production application services remain stopped.

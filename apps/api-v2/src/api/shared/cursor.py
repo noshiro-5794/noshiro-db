@@ -12,12 +12,13 @@ from __future__ import annotations
 
 import base64
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import parse_qs, urlencode
 
 from api.shared.problems import ProblemError
 
-# DRF refuses cursors that ask to skip further than this.
+# DRF caps offsets at this boundary.
 OFFSET_CUTOFF = 1000
 INVALID = "Invalid cursor."
 
@@ -38,8 +39,9 @@ def decode(raw: str | None) -> Cursor:
             keep_blank_values=True,
         )
         offset = int(tokens.get("o", ["0"])[0])
-        if offset < 0 or offset > OFFSET_CUTOFF:
+        if offset < 0:
             raise ValueError("offset")
+        offset = min(offset, OFFSET_CUTOFF)
         reverse = bool(int(tokens.get("r", ["0"])[0]))
         position = tokens.get("p", [None])[0]
     except (UnicodeDecodeError, ValueError, TypeError) as error:
@@ -62,3 +64,52 @@ def position_of(row: Any, field: str = "created_at") -> str:
     """DRF's position is `str()` of the ordering field, not a serialised value."""
     value = row[field] if isinstance(row, dict) else getattr(row, field)
     return str(value)
+
+
+def timestamp_position(position: str) -> datetime:
+    """Validate a timeline position and bind the timestamp type asyncpg requires."""
+    try:
+        value = datetime.fromisoformat(position)
+    except ValueError as error:
+        raise ProblemError(status_code=404, detail=INVALID) from error
+    return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+
+
+def paginate[Item](
+    rows: list[Item], cursor: Cursor, page_size: int
+) -> tuple[list[Item], Cursor | None, Cursor | None]:
+    """Build both DRF-compatible boundaries from a directional query and its extra row."""
+    page = rows[:page_size]
+    following = position_of(rows[-1]) if len(rows) > page_size else None
+    if cursor.reverse:
+        page.reverse()
+    has_current = cursor.position is not None or cursor.offset > 0
+    has_next = has_current if cursor.reverse else following is not None
+    has_previous = following is not None if cursor.reverse else has_current
+    next_position = cursor.position if cursor.reverse else following
+    previous_position = following if cursor.reverse else cursor.position
+
+    def boundary(*, reverse: bool) -> Cursor | None:
+        if not (has_previous if reverse else has_next):
+            return None
+        position = previous_position if reverse else next_position
+        compare = position
+        if page and cursor.reverse != reverse and cursor.offset:
+            compare = position_of(page[0] if reverse else page[-1])
+        offset = 0
+        for item in page if reverse else reversed(page):
+            position = position_of(item)
+            if position != compare:
+                break
+            compare = position
+            offset += 1
+        else:
+            if page:
+                if not (has_next if reverse else has_previous):
+                    offset, position = page_size, None
+                else:
+                    offset = cursor.offset + page_size if cursor.reverse == reverse else 0
+                    position = next_position if reverse else previous_position
+        return Cursor(offset, reverse, position)
+
+    return page, boundary(reverse=False), boundary(reverse=True)

@@ -22,9 +22,9 @@ from api.contexts.community.import_jobs import (
 )
 from api.contexts.community.matching import list_candidates
 from api.db import SessionDep
-from api.shared.cursor import decode, encode
+from api.shared.cursor import decode
 from api.shared.dispatch import DispatchUnavailable
-from api.shared.pagination import ensure_page, page_params, page_payload
+from api.shared.pagination import cursor_payload, ensure_page, page_params, page_payload
 from api.shared.problems import ProblemError
 
 router = APIRouter(prefix="/api/v1/operations", tags=["operations"])
@@ -155,7 +155,7 @@ async def import_job_list(
     page_size: int = 16,
 ) -> dict[str, Any]:
     try:
-        results, next_cursor = await list_import_jobs(
+        results, next_cursor, previous_cursor = await list_import_jobs(
             session,
             viewer_id=user.id,
             provider=provider,
@@ -167,15 +167,9 @@ async def import_job_list(
         raise ProblemError(
             status_code=400, detail="Request validation failed.", errors=error.args[0]
         ) from error
-    return {
-        "next": (
-            str(request.url.include_query_params(cursor=encode(next_cursor)))
-            if next_cursor is not None
-            else None
-        ),
-        "previous": None,
-        "results": results,
-    }
+    return cursor_payload(
+        request, results=results, next_cursor=next_cursor, previous_cursor=previous_cursor
+    )
 
 
 @router.post("/import-jobs/")

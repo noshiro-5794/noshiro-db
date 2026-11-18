@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.contexts.identity.resolution import cluster_ids, resolve
 from api.contexts.presentation.fragments import fetch, isoformat
 from api.contexts.presentation.summary import entity_summary
-from api.shared.cursor import Cursor, position_of
+from api.shared.cursor import Cursor, paginate, timestamp_position
 
 from .people import person
 
@@ -219,7 +219,7 @@ async def list_activities(
     public_only: bool = False,
     feed: bool = False,
     include_self: bool = False,
-) -> tuple[list[dict[str, Any]], Cursor | None]:
+) -> tuple[list[dict[str, Any]], Cursor | None, Cursor | None]:
     clauses = []
     params: dict[str, Any] = {
         "viewer": viewer_id,
@@ -238,22 +238,18 @@ async def list_activities(
         else:
             clauses.append(f"activity.user_id IN ({following})")
     if cursor.position is not None:
-        clauses.append("activity.created_at < CAST(:position AS timestamptz)")
-        params["position"] = cursor.position
+        comparison = ">" if cursor.reverse else "<"
+        clauses.append(f"activity.created_at {comparison} CAST(:position AS timestamptz)")
+        params["position"] = timestamp_position(cursor.position)
+    direction = "ASC" if cursor.reverse else "DESC"
     rows = await fetch(
         session,
         ACTIVITY_QUERY
         + " WHERE "
         + " AND ".join(clauses)
-        + " ORDER BY activity.created_at DESC, activity.id DESC"
+        + f" ORDER BY activity.created_at {direction}, activity.id {direction}"
         " LIMIT :limit OFFSET :offset",
         params,
     )
-    page = rows[:page_size]
-    extra = rows[page_size] if len(rows) > page_size else None
-    next_cursor = (
-        Cursor(offset=0, reverse=False, position=position_of(page[-1]))
-        if extra is not None and page
-        else None
-    )
-    return [await activity_payload(session, row) for row in page], next_cursor
+    page, next_cursor, previous_cursor = paginate(rows, cursor, page_size)
+    return [await activity_payload(session, row) for row in page], next_cursor, previous_cursor

@@ -23,7 +23,7 @@ from api.shared.problems import ProblemError
     ],
 )
 async def test_notification_filter_preserves_query_boolean_spellings(monkeypatch, value, expected):
-    listed = AsyncMock(return_value=([], None))
+    listed = AsyncMock(return_value=([], None, None))
     monkeypatch.setattr(notifications, "list_for_user", listed)
     await notifications.notification_list(
         object(),
