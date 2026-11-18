@@ -11,6 +11,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.contexts.community import notification_targets
 from api.contexts.community.people import person
 from api.contexts.community.targets import activity_target
 from api.contexts.presentation.fragments import fetch
@@ -60,10 +61,11 @@ async def mark_all_read(session: AsyncSession, *, user_id: int) -> int:
 
 NOTIFICATION_QUERY = """
     SELECT notification.id, notification.notification_type, notification.metadata,
+           notification.activity_id,notification.post_id,notification.comment_id,
+           notification.review_id,notification.collection_id,
            notification.read_at, notification.created_at,
            actor.id AS actor_id, actor_profile.nickname AS actor_nickname,
            actor_profile.avatar AS actor_avatar,
-           activity.id AS activity_id,
            activity_user.id AS activity_user_id,
            activity_user_profile.nickname AS activity_user_nickname,
            activity_user_profile.avatar AS activity_user_avatar,
@@ -108,7 +110,17 @@ async def read_one(session: AsyncSession, *, user_id: int, notification_id: int)
             {"id": notification_id, "user_id": user_id},
         )
         row = rows[0]
-    return notification_payload(row)
+    return (await payloads(session, [row]))[0]
+
+
+async def payloads(session: AsyncSession, rows: list[Any]) -> list[dict[str, Any]]:
+    targets = await notification_targets.load(session, rows)
+    result = []
+    for row in rows:
+        payload = notification_payload(row)
+        payload["target"] = targets[row.id]
+        result.append(payload)
+    return result
 
 
 async def list_for_user(
@@ -117,7 +129,7 @@ async def list_for_user(
     user_id: int,
     cursor: Cursor,
     page_size: int,
-    unread_only: bool,
+    is_read: bool | None,
 ) -> tuple[list[dict[str, Any]], Cursor | None]:
     clauses = ["notification.recipient_id = :user_id"]
     params: dict[str, Any] = {
@@ -125,8 +137,10 @@ async def list_for_user(
         "limit": page_size + 1,
         "offset": cursor.offset,
     }
-    if unread_only:
-        clauses.append("notification.read_at IS NULL")
+    if is_read is not None:
+        clauses.append(
+            "notification.read_at IS NOT NULL" if is_read else "notification.read_at IS NULL"
+        )
     if cursor.position is not None:
         clauses.append("notification.created_at < CAST(:position AS timestamptz)")
         params["position"] = cursor.position
@@ -148,4 +162,4 @@ async def list_for_user(
         if following is not None and page
         else None
     )
-    return [notification_payload(row) for row in page], next_cursor
+    return await payloads(session, page), next_cursor

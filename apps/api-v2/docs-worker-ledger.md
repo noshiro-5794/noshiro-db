@@ -1006,3 +1006,23 @@ measurements do not establish production hardware performance. Detailed private 
 restore, baseline and query-plan reports remain outside Git. Production application/schema
 changes have not been applied, and only the existing production PostgreSQL service was
 started during backup preparation.
+
+### Restored-copy authenticated HTTP audit and notification parity
+
+The expanded public shadow pass matched 491/491 comparisons. A local-only token for an
+active user on the restored copy exercised twelve authenticated paths in addition to the
+list paths. It exposed notification filtering differences that the empty fixture missed.
+The default query now retains the old unread-only behavior, explicit true selects read
+rows, and explicit empty input selects both states. Accepted boolean spellings and invalid
+input retain the existing validation envelope.
+
+Notification list and read-state responses now batch-load all five target types, with
+nested activity/comment references and content owners. The loader deduplicates targets,
+handles missing references and bounds cycles through the visited reference path. Existing
+pure payload helpers remain compatible. The read-state transaction still updates once.
+
+Validation passed with strict typing of 190 modules, 380 offline cases and 159 PostgreSQL
+transaction cases. The restored-copy HTTP run now matches 23/23 list/authenticated paths
+and eight explicit filter variants. Tokens and detailed logs remain local/private.
+Notification cursor tie offsets/reverse paging, along with the broader cursor endpoints,
+still require the final pagination audit. These checks do not complete the whole migration.

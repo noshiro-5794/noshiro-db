@@ -1,6 +1,7 @@
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Request
+from pydantic import TypeAdapter, ValidationError
 
 from api.contexts.access.dependencies import current_user
 from api.contexts.community.notifications import (
@@ -53,19 +54,26 @@ async def notification_list(
     user: Annotated[Any, Depends(current_user)],
     cursor: str = "",
     page_size: int = 16,
-    is_read: str = "",
+    is_read: str | None = None,
 ) -> dict[str, Any]:
     parsed = decode(cursor or None)
     size = min(max(page_size, 1), 64)
-    unread_only = is_read.lower() == "false"
-    if is_read.lower() == "true":
-        unread_only = False
+    read_filter = False if is_read is None else None
+    if is_read:
+        try:
+            read_filter = TypeAdapter(bool).validate_python(is_read)
+        except ValidationError as error:
+            raise ProblemError(
+                status_code=400,
+                detail="Request validation failed.",
+                errors={"is_read": ["Must be a valid boolean."]},
+            ) from error
     results, next_cursor = await list_for_user(
         session,
         user_id=user.id,
         cursor=parsed,
         page_size=size,
-        unread_only=unread_only,
+        is_read=read_filter,
     )
     return {
         "next": (
