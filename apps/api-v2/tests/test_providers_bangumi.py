@@ -63,3 +63,39 @@ def test_the_api_key_is_sent_only_when_configured() -> None:
     assert seen["auth"] == "Bearer secret"
     bangumi(handler, api_key="").fetch_calendar()
     assert seen["auth"] == ""
+
+
+def test_subject_search_posts_bounded_anime_filter():
+    import json
+
+    seen = []
+
+    def handler(request):
+        seen.append(request)
+        return httpx.Response(200, json={"data": [{"id": 42}], "total": 1})
+
+    client = bangumi(handler)
+    try:
+        assert client.search_subjects(keyword="  Anime  ", limit=500, offset=-1)["total"] == 1
+        request = seen[0]
+        assert request.method == "POST"
+        assert request.url.path == "/v0/search/subjects"
+        assert request.url.params["limit"] == "50" and request.url.params["offset"] == "0"
+        assert json.loads(request.content) == {
+            "keyword": "Anime",
+            "sort": "match",
+            "filter": {"type": [2]},
+        }
+        with pytest.raises(ValueError):
+            client.search_subjects(keyword=" ")
+    finally:
+        client.close()
+
+
+def test_subject_search_rejects_missing_data_list():
+    client = bangumi(lambda request: httpx.Response(200, json={}))
+    try:
+        with pytest.raises(ProviderError, match="data list"):
+            client.search_subjects(keyword="Anime")
+    finally:
+        client.close()

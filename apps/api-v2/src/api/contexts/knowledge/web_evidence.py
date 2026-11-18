@@ -1,25 +1,17 @@
 """Cached, durable search artifacts used by multilingual enrichment."""
 
-import hashlib
 import json
 import os
-from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
 from api.contexts.knowledge import agent_runs
+from api.contexts.knowledge import artifacts as evidence_artifacts
 from api.contexts.presentation.fragments import fetch
 from api.shared.web_search import configured, search
 from api.worker.session import session_scope
 
-
-@dataclass(frozen=True, slots=True)
-class SearchArtifact:
-    id: UUID
-    source_url: str
-    content_hash: str
-    excerpt: str
-    metadata: dict[str, Any]
+SearchArtifact = evidence_artifacts.Artifact
 
 
 async def cached(parameters: dict[str, Any]) -> list[SearchArtifact]:
@@ -90,36 +82,21 @@ async def gather(query: str, *, entity_id: UUID, run_id: UUID) -> list[SearchArt
             for item in results:
                 if not item.get("url"):
                     continue
-                text = json.dumps(item, sort_keys=True, ensure_ascii=False, default=str)
-                encoded = text.encode()
-                rows = await fetch(
-                    session,
-                    """
-                    INSERT INTO source_artifact
-                      (id,tool_invocation_id,kind,source_url,content_hash,mime_type,byte_size,
-                       excerpt,object_key,metadata,license_info,fetched_at,created_at)
-                    VALUES (gen_random_uuid(),:invocation,'search_result',:url,:hash,
-                      'application/json',:size,:excerpt,'',CAST(:metadata AS jsonb),'',
-                      clock_timestamp(),clock_timestamp())
-                    RETURNING id,source_url,content_hash,excerpt,metadata
-                    """,
-                    {
-                        "invocation": invocation_id,
-                        "url": str(item["url"]),
-                        "hash": hashlib.sha256(encoded).hexdigest(),
-                        "size": len(encoded),
-                        "excerpt": text[:8000],
-                        "metadata": json.dumps(
-                            {
-                                "title": str(item.get("title", "")),
-                                "score": item.get("score"),
-                                "tool_name": "web.search",
-                                "tool_version": "1.0.0",
-                            }
-                        ),
-                    },
+                artifacts.append(
+                    await evidence_artifacts.capture(
+                        session,
+                        payload=item,
+                        kind="search_result",
+                        source_url=str(item["url"]),
+                        tool_name="web.search",
+                        tool_version="1.0.0",
+                        invocation_id=invocation_id,
+                        metadata={
+                            "title": str(item.get("title", "")),
+                            "score": item.get("score"),
+                        },
+                    )
                 )
-                artifacts.append(SearchArtifact(**rows[0]._mapping))
             return artifacts
     except Exception as error:
         reason = f"{type(error).__name__}: {error}"[:4000]
