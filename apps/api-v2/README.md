@@ -82,3 +82,13 @@ Redis rate limits use `REDIS_CACHE_URL` or the existing `CACHE_URL`, with
 seconds. Local runs without a Redis URL use process-local fixed-window counters.
 Set `NOSHIRO_INTEGRATION_REDIS_URL` to a dedicated test Redis instance to run the
 concurrent limiter test alongside the PostgreSQL integration suite.
+
+## Scheduled tasks
+
+Start the worker with `uv run celery -A api.worker.app worker -l info` and beat
+with `uv run celery -A api.worker.app beat -l info`. The application declares
+the `realtime`, `sync` and `ai` queues and the existing 18 periodic jobs.
+Calendar and incremental timing retain the `SYNC_CALENDAR_CRON_HOUR`,
+`SYNC_CALENDAR_CRON_MINUTE`, `SYNC_INCREMENTAL_CRON_HOUR` and
+`SYNC_INCREMENTAL_CRON_MINUTE` settings. Matching sweeps retain
+`MATCH_CANDIDATE_SWEEP_CRON_HOURS`. `TZ` controls the scheduler timezone.

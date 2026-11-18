@@ -26,12 +26,27 @@ from api.worker import (  # noqa: F401  registers the tasks
     tasks,
     vndb_tasks,
 )
+from api.worker.schedule import periodic_tasks
 
 app = Celery("noshiro-worker", broker=os.environ.get("CELERY_BROKER_URL", ""))
 
 app.conf.update(
     task_default_queue="realtime",
+    task_queues={
+        name: {"exchange": name, "routing_key": name} for name in ("realtime", "sync", "ai")
+    },
+    beat_schedule=periodic_tasks(),
+    broker_transport_options={
+        "visibility_timeout": int(os.environ.get("CELERY_VISIBILITY_TIMEOUT", "7200"))
+    },
+    accept_content=["json"],
+    task_serializer="json",
+    result_serializer="json",
+    task_time_limit=30,
+    task_soft_time_limit=20,
+    task_default_retry_delay=60,
     task_routes={
+        "apps.sync.tasks.maintenance.*": {"queue": "realtime"},
         "apps.sync.tasks.*": {"queue": "sync"},
         "apps.ai.tasks.*": {"queue": "ai"},
     },

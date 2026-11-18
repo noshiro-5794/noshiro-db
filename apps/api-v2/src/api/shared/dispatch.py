@@ -48,6 +48,8 @@ def _sender() -> Any:
 
 def queue_for(task: str) -> str:
     """The queue the old service's routes put this task on."""
+    if task.startswith("apps.sync.tasks.maintenance."):
+        return "realtime"
     if task.startswith("apps.sync.tasks."):
         return "sync"
     if task.startswith("apps.ai.tasks."):
