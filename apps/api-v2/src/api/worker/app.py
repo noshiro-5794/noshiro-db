@@ -20,6 +20,7 @@ from api.worker import (  # noqa: F401  registers the tasks
     manual_sync,
     match_application,
     matching_tasks,
+    season_tasks,
     tasks,
     vndb_tasks,
 )

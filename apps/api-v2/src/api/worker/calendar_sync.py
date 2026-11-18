@@ -88,7 +88,7 @@ async def apply_calendar(
 
         previous = await calendar_lookup.previous_calendar_item_ids(session)
         added, removed = calendar_read.diff_ids(set(subject_ids), previous)
-        observation_id = await _record_calendar(session, data, moment)
+        observation_id = await record_calendar(session, data, moment)
         metadata = calendar_read.board_metadata(
             fetched_at=moment.isoformat(),
             events=[_Weekday(event) for event in events],
@@ -127,7 +127,7 @@ class _Weekday:
         self.weekday = event.get("weekday")
 
 
-async def _record_calendar(session: AsyncSession, data: list[Any], moment: datetime) -> Any:
+async def record_calendar(session: AsyncSession, data: list[Any], moment: datetime) -> Any:
     written = await records.record_payload(
         session,
         provider_slug=PROVIDER,

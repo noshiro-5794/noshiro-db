@@ -9,6 +9,7 @@ from api.worker import airing_daily
 
 @pytest.mark.asyncio
 async def test_refresh_uses_the_target_provider(monkeypatch):
+    monkeypatch.setattr(airing_daily, "fetch", AsyncMock(return_value=[]))
     providers = ("mal", "anilist", "bangumi")
     targets = [airing_daily.AiringTarget(provider, "42", "work") for provider in providers]
     monkeypatch.setattr(airing_daily, "board_targets", AsyncMock(return_value=(targets, "2026Q4")))
@@ -48,6 +49,7 @@ async def test_completed_window_skips_last_target(monkeypatch, status, current):
 
 @pytest.mark.asyncio
 async def test_failed_provider_preserves_retry_cursor(monkeypatch):
+    monkeypatch.setattr(airing_daily, "fetch", AsyncMock(return_value=[]))
     targets = [airing_daily.AiringTarget("anilist", "42", "work")]
     monkeypatch.setattr(airing_daily, "board_targets", AsyncMock(return_value=(targets, "2026Q4")))
     monkeypatch.setattr(airing_daily, "start_window", AsyncMock(return_value=(0, 0)))
