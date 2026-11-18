@@ -1,83 +1,44 @@
-# Noshiro DB API
+# API
 
-Noshiro DB API is the Django REST backend for a source-neutral anime and galgame
-knowledge base, personal library, and community. Bangumi and VNDB are peer providers;
-canonical knowledge uses stable Entity UUIDs and retains provider evidence.
+FastAPI, SQLAlchemy 2 async, Alembic and Pydantic v2 power the API, workers and MCP services.
+Use `make check` for lint, types and tests, `make migrate` for schema upgrades,
+`make run` for local HTTP serving and `make openapi` for the API contract snapshot.
 
-It lives in the [noshiro-db](https://github.com/noshiro-5794/noshiro-db) monorepo at
-`apps/api`; the web client is `apps/web`, and the repository root documents how to run
-both.
+See `docs/architecture.md` for module ownership and conventions.
 
-## Stack
+## Calendar object storage
 
-- Python 3.13 and uv
-- Django 5.2 and Django REST Framework
-- PostgreSQL
-- Redis, Celery, and Celery Beat
-- MinIO
+Calendar covers use Boto3 with an S3-compatible endpoint. Configure
+`S3_ENDPOINT_URL`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET` and
+`S3_PUBLIC_URL`. Existing `MINIO_*` deployment settings remain accepted as aliases.
+Endpoint URLs retain their explicit HTTP/HTTPS scheme. Host-only legacy endpoints
+use `MINIO_USE_HTTPS`. The public URL defaults to the endpoint URL.
 
-The only public REST root is `/api/v1/`. OpenAPI is served at
-`/api/v1/openapi/` and interactive documentation at `/api/docs/`.
+Cover downloads retain `BANGUMI_IMAGE_ALLOWED_HOSTS` and
+`BANGUMI_IMAGE_MAX_BYTES` and use the shared outbound proxy configuration.
+Calendar quarter boundaries use `DEPLOYMENT_TIME_ZONE`, defaulting to
+`Asia/Shanghai`.
 
-## Repository
+## MCP entry points
 
-```text
-src/
-  apps/          domain applications
-  config/        Django, URL, and Celery configuration
-  integrations/  provider-neutral external adapters
-  shared/        app-neutral framework utilities
-docker/          container entrypoint
-docs/            architecture, development, and deployment guides
-tests/           cross-app contracts and integration tests
-```
+Run the local internal harness with `uv run python -m api.mcp.internal`.
+Run the authenticated public HTTP service with `uv run python -m api.mcp.public`.
+The public endpoint is `/mcp`. Configure `MCP_HOST`, `MCP_PORT`, `MCP_RATE_LIMIT`
+and `MCP_RATE_WINDOW_SECONDS`. Existing access tokens use `DJANGO_SECRET_KEY`.
+The verifier checks access-token claims and active database users.
 
-Every app uses the same API layers:
+Redis rate limits use `REDIS_CACHE_URL` or the existing `CACHE_URL`, with
+`CACHE_SOCKET_TIMEOUT` and `CACHE_SOCKET_CONNECT_TIMEOUT` defaulting to five
+seconds. Local runs without a Redis URL use process-local fixed-window counters.
+Set `NOSHIRO_INTEGRATION_REDIS_URL` to a dedicated test Redis instance to run the
+concurrent limiter test alongside the PostgreSQL integration suite.
 
-```text
-api/urls.py
-api/serializers/
-api/views/
-```
+## Scheduled tasks
 
-Domain complexity may change the number of resource modules, but not their layer
-semantics.
-
-## Local Development
-
-```bash
-uv python install 3.13.14
-uv sync --frozen
-cp .env.example .env
-uv run python src/manage.py bootstrap_database
-uv run python src/manage.py migrate
-uv run python src/manage.py runserver 0.0.0.0:8008
-```
-
-PostgreSQL is required; SQLite is unsupported. `TEST_DATABASE_URL` must point to a
-dedicated PostgreSQL database whose name ends in `_test`.
-
-Run the release gates:
-
-```bash
-uv run ruff check src tests
-uv run ruff format --check src tests
-uv run pytest
-uv run python src/manage.py check
-uv run python src/manage.py makemigrations --check --dry-run
-uv run python src/manage.py spectacular --validate --fail-on-warn
-```
-
-## Documentation
-
-- [Architecture](docs/architecture.md)
-- [Development](docs/development.md)
-- [Production deployment](docs/deployment.md)
-
-The knowledge migration is not approved for production until the backup restore,
-checkpointed backfill, idempotency, and reconciliation gates pass. See the migration
-section of the deployment guide before changing production schema or data.
-
-## License
-
-This project is licensed under the [GNU Affero General Public License v3.0](../../LICENSE).
+Start the worker with `uv run celery -A api.worker.app worker -l info` and beat
+with `uv run celery -A api.worker.app beat -l info`. The application declares
+the `realtime`, `sync` and `ai` queues and the existing 18 periodic jobs.
+Calendar and incremental timing retain the `SYNC_CALENDAR_CRON_HOUR`,
+`SYNC_CALENDAR_CRON_MINUTE`, `SYNC_INCREMENTAL_CRON_HOUR` and
+`SYNC_INCREMENTAL_CRON_MINUTE` settings. Matching sweeps retain
+`MATCH_CANDIDATE_SWEEP_CRON_HOURS`. `TZ` controls the scheduler timezone.

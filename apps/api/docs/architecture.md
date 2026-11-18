@@ -1,62 +1,23 @@
 # Architecture
 
-Noshiro DB is a source-neutral anime and galgame knowledge base, personal library,
-and community backend. It uses Django, Django REST Framework, PostgreSQL, Redis,
-Celery, and MinIO.
+The API uses FastAPI, SQLAlchemy 2 async sessions, Alembic, Pydantic v2,
+PostgreSQL, Redis, Celery and S3-compatible object storage.
 
-## System Boundaries
-
-```text
-frontend
-   |
-   v
-/api/v1/ (Django + DRF)
-   |
-   +-- PostgreSQL  knowledge, evidence, users, community
-   +-- Redis       cache and Celery broker
-   +-- MinIO       user-uploaded media
-   `-- Celery      Bangumi/VNDB imports and AI work
-```
-
-```text
-src/
-  apps/          domain applications
-  config/        Django, URL, and Celery configuration
-  integrations/  reusable external service adapters
-  shared/        framework utilities without domain ownership
-```
-
-| App | Responsibility |
-| --- | --- |
-| `index` | canonical entities, evidence, relations, resolution, projections |
-| `sync` | provider clients, import orchestration, jobs, and Celery tasks |
-| `users` | accounts, profiles, libraries, progress, reviews, collections |
-| `community` | posts, comments, social graph, feeds, moderation |
-| `ai` | AI runs, proposals, policies, evaluation, and audit |
-
-Apps use the same layer meanings: `api` owns HTTP contracts, `selectors` own reads,
-`services` own writes and policy, and `tasks` are thin asynchronous entry points.
-External SDKs and protocols belong in `integrations`; domain apps depend on adapters,
-not vendor clients.
+The `api` package contains application configuration and HTTP assembly.
+`contexts` groups access, identity, library, community, presentation, matching,
+knowledge, scheduling and synchronization responsibilities. `worker` owns provider
+adapters, import execution and Celery entry points. `mcp` owns protocol adapters.
+`shared` contains common transport, inference, pagination and dispatch support.
 
 ## Conventions
 
-Modules are named after the concern they own, not the layer they sit in: the folder
-already says `services/`, so the module is `services/ingestion.py` rather than
-`services/ingestion_service.py`. An app whose models outgrow one file exposes a
-`models/` package that re-exports every model, keeping `apps.<app>.models` importable.
-
-Formatting and linting are enforced by `ruff` (see `pyproject.toml`): the selected
-rules cover import order, modern syntax, naming, simplification, pytest style, and
-commented-out code. The narrow per-file ignores there exist for framework callbacks
-whose signatures are fixed by Django, DRF, or Celery. `mypy` is wired up but not yet
-part of `make check`; the codebase still carries a backlog of findings.
-
-Comments explain why something is the way it is, in English; if a comment restates
-what the line below does, it is noise and belongs in a commit message instead.
-Docstrings are for readers of the module's public surface — one line is usually
-enough. Operational shell entry points live in `scripts/`; anything bound to Django
-models or settings is a management command.
+Name modules for their responsibility. Keep pure policy in domain modules and
+I/O in application services and read models. Routes translate HTTP inputs and
+responses. Reuse context-owned services across HTTP, workers and MCP.
+Use explicit types, readable SQL parameters and short transactions. Keep network
+requests outside database locks and recheck ownership before durable writes.
+Comments explain decisions in English. Each app owns its toolchain and dependencies.
+Alembic owns schema changes. Conventional Commit bodies record design decisions.
 
 ## Knowledge Model
 
@@ -100,7 +61,7 @@ remain reversible and evidence is retained.
 ## AI And MCP
 
 AI produces structured proposals and cannot write canonical tables directly.
-`apps.ai` owns the durable harness, versioned Skills, typed Tools, policy, evidence,
+`contexts/knowledge` owns the durable harness, versioned Skills, typed Tools, policy, evidence,
 and audit; `integrations.ai` isolates vendor clients. A run is persisted as
 `AgentRun -> AgentStep -> AIRun/ToolInvocation -> SourceArtifact/AIClaim`.
 The database is the execution source of truth; checkpoints are immutable snapshots,
