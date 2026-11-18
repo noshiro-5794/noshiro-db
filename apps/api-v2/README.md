@@ -68,3 +68,15 @@ Cover downloads retain `BANGUMI_IMAGE_ALLOWED_HOSTS` and
 `BANGUMI_IMAGE_MAX_BYTES` and use the shared outbound proxy configuration.
 Calendar quarter boundaries use `DEPLOYMENT_TIME_ZONE`, defaulting to
 `Asia/Shanghai`.
+
+## MCP entry points
+
+Run the local internal harness with `uv run python -m api.mcp.internal`.
+Run the authenticated public HTTP service with `uv run python -m api.mcp.public`.
+The public endpoint is `/mcp`. Configure `MCP_HOST`, `MCP_PORT`, `MCP_RATE_LIMIT`
+and `MCP_RATE_WINDOW_SECONDS`. Existing access tokens use `DJANGO_SECRET_KEY`.
+The verifier checks access-token claims and active database users.
+
+Redis rate limits use `REDIS_CACHE_URL` or the existing `CACHE_URL`, with
+`CACHE_SOCKET_TIMEOUT` and `CACHE_SOCKET_CONNECT_TIMEOUT` defaulting to five
+seconds. Local runs without a Redis URL use process-local fixed-window counters.

@@ -1221,3 +1221,31 @@ Validation passed with strict typing of 210 modules, 421 offline cases and 240 P
 transaction cases. The public authenticated HTTP server, rate limiter, stdio/HTTP transport
 tests and full legacy MCP comparisons remain pending. This checkpoint completes the
 internal data/tool path, while the full migration goal remains active.
+
+### Public MCP transport and authentication
+
+Added the stateless JSON Streamable HTTP entry point with the existing three public
+tool names and read-only annotations. The SDK authentication, auth-context and scope
+middleware surround the transport while allowing its lifespan to run. Existing access
+tokens retain the legacy MCP signature/expiry/access-type/active-user checks. Malformed
+user identifiers reject before database binding. Refresh tokens and inactive users reject.
+
+Per-subject fixed-window limits use atomic Redis increment/expiry when a Redis cache URL
+is configured. Both the existing CACHE_URL and REDIS_CACHE_URL are accepted, with bounded
+connection/read timeouts. Local runs retain process-local limits with expired-window cleanup.
+Tests exercise HTTP middleware and real SDK dispatch through ASGI, including missing/invalid
+tokens, authenticated discovery, structured tool results and rate refusal. A separate SDK
+client launches the internal stdio process, initializes it, discovers all three tools and
+checks argument errors. PostgreSQL verifies JWT user lookup and disabled-user rejection.
+
+Full legacy query/proposal parity, a live Redis limit exercise and production transport
+configuration remain required before MCP cutover. Broader validation/mutation audits,
+consolidation, legacy removal and deployment remain pending under the active goal.
+
+Validation passed with strict typing of 212 modules, 425 offline cases and 241 PostgreSQL
+transaction cases. Public HTTP tests run through the SDK transport lifespan and middleware.
+JWT database tests cover active/inactive users, refresh/expired tokens and malformed user
+identifiers. An unconfigured signing secret rejects authentication. The stdio case starts
+the internal server as a separate process and exercises initialization, tool discovery and
+argument validation through the SDK client. Redis-backed limits still require a live Redis
+verification before deployment.

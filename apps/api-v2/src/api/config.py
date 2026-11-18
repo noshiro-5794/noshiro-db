@@ -47,6 +47,11 @@ class Settings(BaseSettings):
         default=1024, gt=0, validation_alias="AI_AGENT_MAX_OUTPUT_TOKENS"
     )
 
+    mcp_host: str = "127.0.0.1"
+    mcp_port: int = Field(default=8010, ge=1, le=65535)
+    mcp_rate_limit: int = Field(default=60, gt=0)
+    mcp_rate_window_seconds: int = Field(default=60, gt=0)
+
     @property
     def async_database_url(self) -> str:
         """Return the URL in the form asyncpg expects."""
