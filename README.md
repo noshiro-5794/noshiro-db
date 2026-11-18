@@ -1,32 +1,33 @@
 # Noshiro DB
 
 A source-neutral anime and visual novel knowledge base, personal library, and
-community. The Django API and the React web client live in one repository
+community. The FastAPI service and the React web client live in one repository
 because they ship the same contract at the same cadence.
 
 ## Layout
 
 ```text
 apps/
-  api/   Django, DRF, Celery, MCP entry points
+  api/   FastAPI, SQLAlchemy async, Alembic, Celery and MCP
   web/   React, TypeScript, Vite single-page application
 ```
 
 Each app keeps its own toolchain, lockfile, and documentation:
 
-- `apps/api/docs/` — architecture, development, deployment
+- `apps/api/docs/` — architecture and migration records
 - `apps/web/docs/` — architecture, development, deployment
 
 ## Quick Start
 
-The API needs PostgreSQL, Redis, and MinIO; bring them up with the infra compose
-file before the first run.
+The API needs PostgreSQL. Background tasks use Redis and calendar covers use
+S3-compatible object storage. Configure service URLs in `apps/api/.env`.
+Production service definitions live in `deploy/compose.prod.yml`.
 
 ```bash
 # API
 cd apps/api
 uv sync
-docker compose -f docker-compose.infra.yml up -d
+cp .env.example .env  # configure database and service credentials
 make migrate
 make run            # http://127.0.0.1:8008
 ```
@@ -45,14 +46,13 @@ Point the web client at a local API with `API_PROXY_TARGET=http://127.0.0.1:8008
 ## Checks
 
 ```bash
-make check          # ruff + pytest + the web quality gates
+make check          # ruff, mypy, pytest and the web quality gates
 make api-check      # API only
 make web-check      # web only
 make help
 ```
 
-Both apps run the same gates in CI; `.github/workflows/` triggers each side only
-when its own files change.
+CI runs app-owned quality gates and a PostgreSQL schema migration job.
 
 ## Conventions
 

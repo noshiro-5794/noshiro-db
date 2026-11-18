@@ -271,8 +271,8 @@ export const indexApi = {
       .then((staff) => {
         const role = query.role;
         const filtered = role ? staff.filter((item) => item.role === role) : staff;
-        const page = query.page ?? 1;
         const pageSize = query.page_size ?? (filtered.length || 1);
+        const page = query.page === 'last' ? Math.max(1, Math.ceil(filtered.length / pageSize)) : (query.page ?? 1);
         const start = (page - 1) * pageSize;
         return {
           count: filtered.length,
@@ -312,8 +312,8 @@ export const indexApi = {
         },
       })
       .then((relations) => {
-        const page = query.page ?? 1;
         const pageSize = query.page_size ?? (relations.length || 1);
+        const page = query.page === 'last' ? Math.max(1, Math.ceil(relations.length / pageSize)) : (query.page ?? 1);
         const start = (page - 1) * pageSize;
         return {
           count: relations.length,

@@ -98,7 +98,7 @@ export function getNextApiPageParam<T>(
 }
 
 export async function collectApiPages<T>(
-  fetchPage: (query: Required<PageQuery>) => Promise<ApiPage<T>>,
+  fetchPage: (query: Required<Pick<PageQuery, 'page_size'>> & { page: number }) => Promise<ApiPage<T>>,
   { pageSize, signal, maxPages = DEFAULT_MAX_PAGES, maxItems = DEFAULT_MAX_ITEMS }: CollectApiPagesOptions,
 ) {
   if (!Number.isSafeInteger(pageSize) || pageSize <= 0) {

@@ -1,32 +1,17 @@
-# The production deployment, described as it actually runs.
-#
-# Written by reading the running containers, not by trusting the older compose files:
-# PostgreSQL is 18 (the infra file still says 15) and mounts /var/lib/postgresql rather
-# than /var/lib/postgresql/data, because the 18 image keeps PGDATA one level deeper.
-#
-# Nothing here starts on its own. This file is the reference an operator runs against:
-#
-#   ENV_FILE=/vol1/1000/projects/noshiro-db/app/apps/api/.env.production \
-#     docker compose -p noshiro-db -f deploy/compose.prod.yml config
-#
-# The Django web service is deliberately absent: it was retired when the FastAPI
-# replacement took the proxy. The Django image is still here because its Celery
-# workers run the sync, AI and scheduled jobs.
 name: noshiro-db
 
 x-env-file: &env-file ${ENV_FILE:-../../app/apps/api/.env.production}
 x-app-image: &app-image "${APP_IMAGE:-noshiro-db/api}:${APP_IMAGE_TAG:-prod}"
-x-api-v2-image: &api-v2-image "${API_V2_IMAGE:-noshiro-db/api-v2}:${API_V2_TAG:-local}"
 
 services:
-  api-v2:
-    image: *api-v2-image
+  api:
+    image: *app-image
     restart: unless-stopped
     init: true
     env_file:
       - *env-file
     ports:
-      - "127.0.0.1:${API_V2_PORT:-8010}:8010"
+      - "127.0.0.1:${API_PORT:-8010}:8010"
     healthcheck:
       test:
         - CMD
@@ -43,31 +28,6 @@ services:
       - noshiro_net
 
 
-  # The replacement's own task runtime. It registers the same task names on the same
-  # queues as the Django workers, so starting it does not move any traffic by itself:
-  # whichever worker is up consumes the message.
-  worker-api-v2:
-    image: *api-v2-image
-    restart: unless-stopped
-    init: true
-    env_file:
-      - *env-file
-    command: >
-      celery -A api.worker.app worker -l info -Q ${API_V2_WORKER_QUEUES:-realtime,sync,ai}
-      --concurrency ${API_V2_WORKER_CONCURRENCY:-2}
-    # A worker whose broker connection dropped still runs; it just never receives
-    # anything. Asking the worker itself is the only check that notices.
-    healthcheck:
-      test:
-        - CMD-SHELL
-        - celery -A api.worker.app inspect ping --timeout 10 -d celery@$$HOSTNAME || exit 1
-      interval: 30s
-      timeout: 15s
-      retries: 3
-      start_period: 30s
-    networks:
-      - noshiro_net
-
   worker-realtime:
     image: *app-image
     restart: unless-stopped
@@ -75,13 +35,13 @@ services:
     env_file:
       - *env-file
     healthcheck:
-      test: ["CMD", "/app/docker/celery_healthcheck.sh"]
+      test: ["CMD-SHELL", "celery -A api.worker.app inspect ping --timeout 3 -d celery@$$HOSTNAME || exit 1"]
       interval: 20s
       timeout: 5s
       retries: 5
       start_period: 20s
     command: >
-      celery --workdir /app/src -A config.celery:app worker -l info
+      celery -A api.worker.app worker -l info
       -Q realtime
       --concurrency ${CELERY_REALTIME_CONCURRENCY:-2}
     networks:
@@ -94,13 +54,13 @@ services:
     env_file:
       - *env-file
     healthcheck:
-      test: ["CMD", "/app/docker/celery_healthcheck.sh"]
+      test: ["CMD-SHELL", "celery -A api.worker.app inspect ping --timeout 3 -d celery@$$HOSTNAME || exit 1"]
       interval: 20s
       timeout: 5s
       retries: 5
       start_period: 20s
     command: >
-      celery --workdir /app/src -A config.celery:app worker -l info
+      celery -A api.worker.app worker -l info
       -Q ai
       --concurrency ${CELERY_AI_CONCURRENCY:-8}
     networks:
@@ -113,13 +73,13 @@ services:
     env_file:
       - *env-file
     healthcheck:
-      test: ["CMD", "/app/docker/celery_healthcheck.sh"]
+      test: ["CMD-SHELL", "celery -A api.worker.app inspect ping --timeout 3 -d celery@$$HOSTNAME || exit 1"]
       interval: 20s
       timeout: 5s
       retries: 5
       start_period: 20s
     command: >
-      celery --workdir /app/src -A config.celery:app worker -l info
+      celery -A api.worker.app worker -l info
       -Q sync
       --concurrency ${CELERY_SYNC_CONCURRENCY:-1}
     networks:
@@ -132,12 +92,27 @@ services:
     env_file:
       - *env-file
     healthcheck:
-      test: ["CMD", "/app/docker/beat_healthcheck.sh"]
+      test: ["CMD", "python", "-m", "api.worker.health"]
       interval: 30s
       timeout: 5s
       retries: 5
       start_period: 20s
-    command: celery --workdir /app/src -A config.celery:app beat -l info
+    command: celery -A api.worker.app beat -l info --pidfile /tmp/celerybeat.pid --schedule /tmp/celerybeat-schedule
+    networks:
+      - noshiro_net
+
+  mcp:
+    image: *app-image
+    restart: unless-stopped
+    init: true
+    env_file:
+      - *env-file
+    environment:
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: "8011"
+    command: python -m api.mcp.public
+    ports:
+      - "127.0.0.1:${MCP_PUBLIC_PORT:-8011}:8011"
     networks:
       - noshiro_net
 

@@ -22,6 +22,6 @@ export type CursorPage<T> = {
 };
 
 export type PageQuery = {
-  page?: number;
+  page?: number | 'last';
   page_size?: number;
 };
