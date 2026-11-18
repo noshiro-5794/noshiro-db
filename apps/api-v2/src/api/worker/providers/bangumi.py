@@ -89,6 +89,30 @@ class BangumiClient:
     def fetch_person(self, person_id: int) -> dict[str, Any]:
         return self._entity("person", person_id)
 
+    def search_subjects(
+        self,
+        *,
+        keyword: str,
+        subject_types: tuple[int, ...] = (2,),
+        limit: int = 10,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        normalized = keyword.strip()
+        if not normalized:
+            raise ValueError("Bangumi subject search requires a keyword.")
+        body: dict[str, Any] = {"keyword": normalized[:512], "sort": "match"}
+        if subject_types:
+            body["filter"] = {"type": [int(value) for value in subject_types]}
+        payload = self._request(
+            "POST",
+            "/v0/search/subjects",
+            params={"limit": min(max(int(limit), 1), 50), "offset": max(0, int(offset))},
+            json=body,
+        )
+        if not isinstance(payload, dict) or not isinstance(payload.get("data"), list):
+            raise ProviderError("Bangumi subject search response must contain a data list.")
+        return payload
+
     def fetch_subject_episodes(
         self, *, subject_id: int, limit: int = 100, offset: int = 0
     ) -> dict[str, Any]:

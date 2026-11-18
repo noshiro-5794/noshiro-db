@@ -62,7 +62,7 @@ async def create_step(
     run_id: UUID,
     skill: str,
     payload: dict[str, Any],
-    kind: Literal["skill", "tool"] = "skill",
+    kind: Literal["skill", "tool", "model"] = "skill",
 ) -> UUID:
     # Serialize sequence allocation for skills sharing the same durable run.
     rows = await fetch(session, "SELECT id FROM agent_run WHERE id=:id FOR UPDATE", {"id": run_id})

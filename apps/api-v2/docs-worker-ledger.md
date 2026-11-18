@@ -1053,3 +1053,39 @@ continuation/legacy initialization, job replay/totals, frontier skips, failure d
 state replacement, partial collection isolation and stale-scanner races. No source requests
 were made. Registration is now 28/30. The two AI link-recall tasks, complete pagination/HTTP
 and MCP audits, app consolidation, legacy removal and production deployment remain pending.
+
+### MAL-anchored Bangumi search linking
+
+Registered the MAL-to-Bangumi search linker with the existing task name and batch defaults.
+Three multilingual search queries cover distinct scripts. The model receives compact,
+deduplicated search hits and may select only a returned ID at confidence 0.92 or higher.
+The default creates a reviewable candidate with provider-search evidence. Explicit application
+uses the existing resolution engine and records refused binds as abstentions. Subject import
+commits before the optional episode refresh, retaining the old partial-refresh behavior.
+
+Search, model inference and candidate writes have durable audit. Search artifacts now link
+through a tool invocation and step to their agent run. Selected-result snapshots retain the
+existing internal artifact representation. A shared content-addressed artifact writer also
+serves enrichment search, whose three-section cache/evidence comparison still matches.
+The model and step writers reuse the shared inference/agent-run services.
+
+Attempt acquisition is serialized by idempotency key. The running row's update version gates
+late model, source and candidate writes. Paused/waiting attempts report their current state.
+Interrupted running attempts become reclaimable after the existing 3900-second hard-task
+window, configurable with BANGUMI_LINK_ATTEMPT_STALE_SECONDS. Recovery fails unfinished
+step/inference/tool audit before beginning the next attempt. Restored production data contains
+five running Bangumi-link attempts, making this recovery path relevant to deployment.
+
+Validation passed with strict typing of 198 modules, 388 offline cases and 194 PostgreSQL
+transaction cases. Sixteen link database cases cover pending/application behavior, evidence
+rollback, replay/force, actionable walk budgets, missing/low-confidence IDs, outages,
+interrupted ownership, model contracts and stale recovery. Four provider-search database
+cases cover scope enforcement, unavailable retries, owned artifacts and cancellation during
+retrieval. Five serialized candidate/evidence/run/inference/representation sections match
+the old linker after excluding generated IDs. The added tool-invocation trace is checked
+separately. Source/model responses were mocked throughout validation.
+
+Task registration is now 29/30. MAL agent-based recall and its native tool-calling transcript
+runtime remain required. Complete pagination/HTTP/MCP audits, professional layering and
+configuration cleanup, app consolidation, legacy service/code/dependency/schema removal,
+production cutover and post-deployment verification remain part of the active goal.
