@@ -952,3 +952,17 @@ Private source patches, heads, environment and role backups are outside Git on t
 The object-storage archive passed listing/checksum validation. The database archive is still
 being captured as of this entry. No production application/schema changes have been applied.
 A complete isolated restore and migration rehearsal must follow archive completion.
+
+### VNDB daily incremental launcher
+
+Restored the scheduled daily VNDB campaign launcher using the existing campaign creator,
+committed job leases and explicit sync-queue dispatch. A daily idempotency key reuses the
+same campaign. Publishing occurs after the campaign commits. Broker failure retains that
+campaign and durably fails the launcher job so an operator can retry the same daily sweep.
+Completed jobs reject duplicate delivery. The local process date remains the daily-key
+boundary, matching the previous launcher.
+
+Validation passed with 359 offline cases, 140 PostgreSQL transaction cases and strict typing
+of 184 modules. Two database cases cover daily replay, job replay and failed dispatch
+recovery. Registration is now 24/30. Season pipelines/rollover, Bangumi incremental sync and
+two link-recall tasks remain required, along with the broader unfinished migration work.
