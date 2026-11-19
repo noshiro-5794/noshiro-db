@@ -1,4 +1,5 @@
 from typing import Annotated, Literal, cast
+from uuid import UUID
 
 from pydantic import (
     BaseModel,
@@ -67,3 +68,12 @@ class PublicLibraryQuery(BaseModel):
         "-watch_start_date",
         "watch_start_date",
     ] = "-id"
+
+
+class EpisodeProgressReplace(BaseModel):
+    finished_episode_ids: list[UUID] = Field(max_length=5000)
+
+    @field_validator("finished_episode_ids")
+    @classmethod
+    def unique_episodes(cls, value: list[UUID]) -> list[UUID]:
+        return list(dict.fromkeys(value))

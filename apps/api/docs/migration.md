@@ -1487,3 +1487,34 @@ Root checks passed 754 backend cases, one optional Redis case skipped, strict ty
 checks. HTTP operation inventory is 120/127. The remaining operations are avatar upload,
 episode progress GET/replace/set/delete and generic comment list/create. Deployment,
 remaining mutation semantics and retirement work remain part of the active goal.
+
+### Episode-progress operations
+
+Added read, bounded replacement, single-episode completion and idempotent removal
+through the existing library paths. Writes lock the owning entry and preserve atomic
+replacement when an insert fails. Episode discovery reuses the current-relation read
+model, includes both sides of a work's merge cluster and retains the existing handling
+of private active episodes and stored completion rows that are no longer listed.
+Duplicate requested identifiers are removed after the 5000-item validation limit.
+
+Nested validation errors retain index keys instead of flattening list errors into dotted
+field names. ProblemDocument describes the recursive error tree, and its definitions
+are merged into OpenAPI components so every schema reference resolves. Frontend progress
+contracts accept numeric or null episode facts and normalize them for existing controls.
+An absent episode number remains absent instead of becoming zero in the UI.
+
+Ten PostgreSQL cases cover all progress operations, membership/ownership failures,
+merge clusters, historical rows, nested validation, limits and rollback after an insert
+failure. Twenty full HTTP responses matched a rollback-only Django oracle, including
+facts, merged works, private/retired episodes, historical completion rows and errors.
+The oracle restricted the old nullable-join selector lock to the entry row to exercise
+its intended write behavior. The disposable HTTP fixture now rolls back failed requests
+as the real dependency does. Its blocked-account setup commits the relationship before
+checking several successive rejected requests, preventing test setup from being rolled
+back by the first expected error.
+
+Root checks passed 764 backend cases, with the dedicated Redis case skipped, strict
+typing of 226 modules, 245 frontend unit cases, browser checks and the production build.
+OpenAPI was regenerated. HTTP registration coverage is 124/127. Avatar upload and generic
+comment GET/POST remain to be ported, followed by the remaining behavior/configuration,
+production deployment and retirement work under the active goal.

@@ -25,6 +25,10 @@ function isNullableString(value: unknown) {
   return value === null || typeof value === 'string';
 }
 
+function isNullableNumberOrString(value: unknown) {
+  return isNullableString(value) || (typeof value === 'number' && Number.isFinite(value));
+}
+
 function isPublicUserSummary(value: unknown): value is PublicUserSummary {
   return (
     isRecord(value) &&
@@ -50,8 +54,7 @@ function isLibraryEntry(value: unknown): value is LibraryEntryPayload & Record<s
     !isInteger(value['id'], 1) ||
     typeof value['status'] !== 'string' ||
     (value['simple_rating'] !== null && !isInteger(value['simple_rating'], 1)) ||
-    (!isNullableString(value['rating']) &&
-      !(typeof value['rating'] === 'number' && Number.isFinite(value['rating']))) ||
+    !isNullableNumberOrString(value['rating']) ||
     typeof value['comment'] !== 'string' ||
     !isNullableString(value['watch_start_date']) ||
     !isNullableString(value['watch_end_date']) ||
@@ -98,7 +101,11 @@ function isProgressEpisode(value: unknown) {
     isRecord(value) &&
     typeof value['id'] === 'string' &&
     typeof value['title'] === 'string' &&
+    typeof value['title_cn'] === 'string' &&
     typeof value['type'] === 'string' &&
+    isNullableNumberOrString(value['number']) &&
+    isNullableNumberOrString(value['sort']) &&
+    isNullableString(value['air_date']) &&
     typeof value['is_finished'] === 'boolean'
   );
 }
@@ -190,17 +197,17 @@ export const decodeProgressSummary = (value: unknown) => {
       title: episode.title,
       title_cn: episode.title_cn,
       type: episode.type,
-      number: episode.number,
-      sort: episode.sort,
+      number: episode.number === null ? '' : String(episode.number),
+      sort: episode.sort === null ? '' : String(episode.sort),
       disc: 0,
       duration: '',
       raw_duration: '',
-      air_date: episode.air_date,
+      air_date: episode.air_date ?? '',
       comment_count: 0,
       description: '',
       provenance: null,
-      ep_num: episode.number === '' ? null : Number(episode.number),
-      date: episode.air_date,
+      ep_num: episode.number === null || episode.number === '' ? null : Number(episode.number),
+      date: episode.air_date ?? '',
       is_finished: episode.is_finished,
     })),
   } satisfies ProgressSummary;

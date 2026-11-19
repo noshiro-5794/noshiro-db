@@ -8,6 +8,7 @@ request path — the same fields Django emits from its exception handler.
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from http import HTTPStatus
 from typing import Any
 from uuid import uuid4
@@ -16,6 +17,8 @@ from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
+
+type FieldError = str | list[FieldError] | dict[str, FieldError]
 
 
 class ProblemError(Exception):
@@ -32,7 +35,7 @@ class ProblemError(Exception):
         status_code: int,
         detail: str,
         code: str = "",
-        errors: dict[str, list[str]] | None = None,
+        errors: Mapping[str, object] | None = None,
     ) -> None:
         super().__init__(detail)
         self.status_code = status_code
@@ -48,7 +51,7 @@ def problem_payload(
     instance: str,
     trace_id: str,
     code: str = "",
-    errors: dict[str, list[str]] | None = None,
+    errors: Mapping[str, object] | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "type": f"https://noshiro.moe/problems/{code}" if code else "about:blank",
@@ -105,10 +108,11 @@ async def validation_handler(request: Request, error: Exception) -> JSONResponse
         "bool_type": "Must be a valid boolean.",
         "string_type": "Not a valid string.",
         "uuid_parsing": "Must be a valid UUID.",
+        "uuid_type": "Must be a valid UUID.",
     }
-    errors: dict[str, list[str]] = {}
+    errors: dict[str, FieldError] = {}
     for item in details:
-        field = ".".join(str(value) for value in item["loc"][1:]) or "non_field_errors"
+        path = [str(value) for value in item["loc"][1:]] or ["non_field_errors"]
         message = messages.get(item["type"], item["msg"])
         if item["type"] == "string_too_long":
             message = f"Ensure this field has no more than {item['ctx']['max_length']} characters."
@@ -116,9 +120,24 @@ async def validation_handler(request: Request, error: Exception) -> JSONResponse
             message = "This field may not be blank."
         if item["type"] == "literal_error":
             message = f'"{item["input"]}" is not a valid choice.'
+        if item["type"] == "list_type":
+            message = f'Expected a list of items but got type "{type(item["input"]).__name__}".'
+        if item["type"] == "too_long" and item["ctx"].get("field_type") == "List":
+            message = f"Ensure this field has no more than {item['ctx']['max_length']} elements."
         if item["type"] != "missing" and item.get("input") is None:
             message = "This field may not be null."
-        errors.setdefault(field, []).append(message)
+        container = errors
+        for field in path[:-1]:
+            child = container.get(field)
+            if not isinstance(child, dict):
+                child = {}
+                container[field] = child
+            container = child
+        messages_for_field = container.get(path[-1])
+        if not isinstance(messages_for_field, list):
+            messages_for_field = []
+            container[path[-1]] = messages_for_field
+        messages_for_field.append(message)
     return await problem_handler(
         request,
         ProblemError(
