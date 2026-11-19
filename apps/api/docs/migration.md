@@ -1413,3 +1413,37 @@ and collection detail/items, generic comment list/create and mute actions need p
 The versioned OpenAPI URL also needs preserving. Existing tests and sampled payload
 comparisons did not cover this complete route inventory. These gaps keep production
 cutover and old runtime/database retirement pending under the active goal.
+
+### HTTP operation inventory and mute actions
+
+Retained a 93-path, 127-operation public HTTP inventory independently of the old
+runtime. Run `uv run python scripts/route_coverage.py` from apps/api to list missing
+registrations. The checker uses the generated operation map plus top-level schema
+routes because the installed FastAPI version stores included routers lazily.
+It currently reports 110/127 and exits nonzero for the 17 pending operations.
+The regular quality checks continue separately while those operations are ported.
+Registration coverage measures reachability and still needs business-behavior checks.
+
+Added mute PUT/DELETE endpoints with atomic create/update behavior, preserved creation
+time and reason-update rules, self-mute rejection and idempotent removal. A shared
+Pydantic request model validates block/mute reasons, including trimming, numeric
+string inputs, null/type rejection and the existing 256-character limit. PostgreSQL
+HTTP tests exercise mutations, list responses and validation errors. The versioned
+OpenAPI endpoint is restored at /api/v1/openapi/ and has a dedicated HTTP regression.
+
+Backend quality passed 741 cases before the final schema-URL regression was added.
+The 18 focused request-validation/mute cases passed afterward. Strict typing covers
+219 modules. Web checks passed 235 unit and seven browser cases plus the production
+build. One earlier combined run hit the existing 30-second workspace browser-test
+limit. The same case passed alone in 5.8 seconds and all seven passed in a full web
+rerun. Test timeouts and application behavior were left as configured.
+
+The missing operations cover avatar upload, episode progress, own/public reviews,
+public library/collection detail/items and generic comment list/create. The comment
+service audit also found missing target-type activity support, mute filtering,
+notification writes and target/parent lock checks. These semantics require completion
+alongside registering those routes before production cutover.
+
+The final backend rerun, including the versioned schema-URL regression, passed all
+742 cases with the dedicated Redis case skipped. The HTTP operation inventory still
+reports the 17 pending operations described above.

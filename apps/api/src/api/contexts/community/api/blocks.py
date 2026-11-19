@@ -32,8 +32,10 @@ from api.contexts.community.relationships import (
     list_followers,
     list_following,
     list_mutes,
+    mute_user,
     unblock_user,
     unfollow_user,
+    unmute_user,
 )
 from api.contexts.community.reports import (
     create_report,
@@ -48,6 +50,8 @@ from api.db import SessionDep
 from api.shared.cursor import decode
 from api.shared.pagination import PageSize, cursor_payload, ensure_page, page_params, page_payload
 from api.shared.problems import ProblemError
+
+from .schemas import RelationshipReason
 
 router = APIRouter(prefix="/api/v1/community", tags=["community"])
 
@@ -80,10 +84,43 @@ async def mutes(
     return page_payload(request, count=total, results=results, page=page, page_size=page_size)
 
 
+@router.put("/me/mutes/{target_user_id}/")
+async def mute(
+    target_user_id: int,
+    body: RelationshipReason,
+    session: SessionDep,
+    user: Annotated[Any, Depends(current_user)],
+) -> JSONResponse:
+    try:
+        data, created = await mute_user(
+            session, user_id=user.id, target_user_id=target_user_id, reason=body.reason
+        )
+    except LookupError as error:
+        raise ProblemError(status_code=404, detail="User not found.") from error
+    except PermissionError as error:
+        raise ProblemError(
+            status_code=400, detail="can not mute yourself", code="community.cannot_mute_self"
+        ) from error
+    return JSONResponse(data, status_code=201 if created else 200)
+
+
+@router.delete("/me/mutes/{target_user_id}/", status_code=204)
+async def unmute(
+    target_user_id: int,
+    session: SessionDep,
+    user: Annotated[Any, Depends(current_user)],
+) -> Response:
+    try:
+        await unmute_user(session, user_id=user.id, target_user_id=target_user_id)
+    except LookupError as error:
+        raise ProblemError(status_code=404, detail="User not found.") from error
+    return Response(status_code=204)
+
+
 @router.put("/me/blocks/{target_user_id}/")
 async def block(
     target_user_id: int,
-    body: dict[str, Any],
+    body: RelationshipReason,
     session: SessionDep,
     user: Annotated[Any, Depends(current_user)],
 ) -> JSONResponse:
@@ -93,10 +130,9 @@ async def block(
             detail="can not block yourself",
             code="community.cannot_block_self",
         )
-    reason = str(body.get("reason") or "")
     try:
         data, created = await block_user(
-            session, user_id=user.id, target_user_id=target_user_id, reason=reason
+            session, user_id=user.id, target_user_id=target_user_id, reason=body.reason
         )
     except LookupError as error:
         raise ProblemError(status_code=404, detail="User not found.") from error

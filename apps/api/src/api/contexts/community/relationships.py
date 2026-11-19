@@ -120,6 +120,44 @@ MUTE_JOINS = """
 """
 
 
+async def mute_user(
+    session: AsyncSession, *, user_id: int, target_user_id: int, reason: str
+) -> tuple[dict[str, Any], bool]:
+    await _target(session, target_user_id)
+    if user_id == target_user_id:
+        raise PermissionError("community.cannot_mute_self")
+    rows = await fetch(
+        session,
+        "INSERT INTO community_user_mute AS mute (user_id,muted_user_id,reason,created_at)"
+        " VALUES (:user,:target,:reason,now())"
+        " ON CONFLICT (user_id,muted_user_id) DO UPDATE SET reason="
+        " CASE WHEN EXCLUDED.reason <> '' THEN EXCLUDED.reason ELSE mute.reason END"
+        " RETURNING id,(xmax=0) AS created",
+        {"user": user_id, "target": target_user_id, "reason": reason},
+    )
+    # The upsert's tuple metadata distinguishes first creation from an update
+    # without a separate existence check racing another request.
+    created = bool(rows[0].created)
+    data = await fetch(
+        session,
+        f"SELECT {MUTE_COLUMNS} FROM community_user_mute AS mute {MUTE_JOINS} WHERE mute.id=:id",
+        {"id": rows[0].id},
+    )
+    await session.commit()
+    return block_payload(data[0]), created
+
+
+async def unmute_user(session: AsyncSession, *, user_id: int, target_user_id: int) -> None:
+    await _target(session, target_user_id)
+    await fetch(
+        session,
+        "DELETE FROM community_user_mute WHERE user_id=:user AND muted_user_id=:target"
+        " RETURNING id",
+        {"user": user_id, "target": target_user_id},
+    )
+    await session.commit()
+
+
 async def _page(
     session: AsyncSession,
     *,

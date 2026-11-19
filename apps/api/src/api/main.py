@@ -32,7 +32,13 @@ from .shared.schema import Application
 
 
 def create_app() -> FastAPI:
-    app = Application(title="Noshiro API", version="0.1.0")
+    app = Application(
+        title="Noshiro API",
+        version="0.1.0",
+        openapi_url="/api/v1/openapi/",
+        docs_url="/api/v1/docs/",
+        redoc_url=None,
+    )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"] if settings.cors_allow_all_origins else settings.cors_allowed_origins,

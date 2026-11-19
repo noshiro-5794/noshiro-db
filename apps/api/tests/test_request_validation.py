@@ -91,3 +91,10 @@ def test_openapi_documents_the_validation_problem_response():
     assert responses["400"]["content"]["application/problem+json"]["schema"] == {
         "$ref": "#/components/schemas/ProblemDocument"
     }
+
+
+@pytest.mark.asyncio
+async def test_versioned_openapi_url_preserves_the_public_schema_endpoint(client):
+    response = await client.get("/api/v1/openapi/")
+    assert response.status_code == 200
+    assert "/api/v1/auth/sessions/refresh/" in response.json()["paths"]
