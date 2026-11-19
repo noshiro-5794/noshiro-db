@@ -33,6 +33,30 @@ afterEach(() => {
 });
 
 describe('API client', () => {
+  it('preserves field errors and tracing from API validation problems', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          type: 'about:blank',
+          title: 'Bad Request',
+          status: 400,
+          detail: 'Request validation failed.',
+          instance: '/api/items/',
+          trace_id: 'validation-trace',
+          errors: { email: ['This field is required.'] },
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/problem+json' } },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(api.get('/api/items/', { skipAuth: true })).rejects.toMatchObject({
+      status: 400,
+      detail: 'Request validation failed.',
+      traceId: 'validation-trace',
+      errors: { email: ['This field is required.'] },
+    });
+  });
+
   it('serializes query values and omits empty values', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(envelopeResponse({ id: 1 }));
     vi.stubGlobal('fetch', fetchMock);
