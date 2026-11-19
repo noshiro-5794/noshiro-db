@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     cors_allow_all_origins: bool = False
     cors_allow_credentials: bool = False
     cors_allowed_origins: Annotated[list[str], NoDecode] = Field(default_factory=list)
+    avatar_max_upload_size: int = Field(default=10 * 1024 * 1024, gt=0)
+    avatar_allowed_content_types: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["image/jpeg", "image/png", "image/webp"]
+    )
     ai_base_url: str = Field(
         default="",
         validation_alias=AliasChoices("AI_AGENT_API_BASE_URL", "AI_BASE_URL"),
@@ -84,17 +88,22 @@ class Settings(BaseSettings):
     mcp_rate_limit: int = Field(default=60, gt=0)
     mcp_rate_window_seconds: int = Field(default=60, gt=0)
 
-    @field_validator("cors_allowed_origins", mode="before")
+    @field_validator("cors_allowed_origins", "avatar_allowed_content_types", mode="before")
     @classmethod
-    def origin_values(cls, value: Any) -> Any:
+    def list_values(cls, value: Any) -> Any:
         if isinstance(value, str):
             return json.loads(value) if value.lstrip().startswith("[") else value.split(",")
         return value
 
-    @field_validator("cors_allowed_origins")
+    @field_validator("cors_allowed_origins", "avatar_allowed_content_types")
     @classmethod
-    def clean_origins(cls, value: list[str]) -> list[str]:
+    def clean_values(cls, value: list[str]) -> list[str]:
         return [origin.strip() for origin in value if origin.strip()]
+
+    @field_validator("avatar_allowed_content_types")
+    @classmethod
+    def content_types(cls, value: list[str]) -> list[str]:
+        return [content_type.lower() for content_type in value]
 
     @field_validator("refresh_cookie_domain", mode="before")
     @classmethod

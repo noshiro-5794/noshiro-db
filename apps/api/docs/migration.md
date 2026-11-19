@@ -1550,3 +1550,36 @@ Root checks passed 784 backend cases, with one optional Redis case skipped, stri
 of 228 modules, 246 web unit cases, browser checks and the production build. OpenAPI was
 regenerated. Registration coverage is 126/127, leaving avatar upload before the remaining
 behavior/configuration review, rollout and retirement work.
+
+### Avatar upload and complete HTTP registration
+
+Registered multipart avatar upload with Pillow image verification and python-multipart
+parsing. The service reads the retained size and content-type settings, detects MIME
+from image bytes, checks supported image extensions and stores a generated filename
+using the detected format. Empty/corrupt/unsupported images and request encodings retain
+the existing field problems. Storage errors return users.avatar_upload_failed with 502.
+Uploads and object cleanup run outside database row locks through the existing boto3
+S3 adapter. API profile/settings reads now share a context-owned default-profile service
+that tolerates concurrent creation and reserved default nicknames.
+
+Avatar replacement reads the current URL under a profile lock, commits its new reference
+and then removes an owned prior object. Failed profile writes remove the unreferenced
+new upload. After an uncertain commit, cleanup verifies the reference and retains the
+object if the outcome cannot be established, preventing a durable URL from pointing at
+a deleted object. This can retain an unreferenced object during a simultaneous database
+outage. Deletion accepts only the configured storage origin/bucket and the account's
+avatar prefix. External avatar URLs are preserved.
+
+Fourteen avatar cases plus storage regressions exercise multipart requests, JPEG/PNG/WebP,
+MIME detection, limits, invalid data, profile creation/collision, failed uploads, failed
+profile writes and uncertain commit responses. S3 calls use botocore stubs in this run.
+The browser API-client regression verifies native FormData with bearer authentication
+and credentials. Live object-storage and production runtime verification remain pending.
+Implementation references are the official FastAPI request-files and Pillow Image docs.
+
+HTTP registration is now 127/127. The route inventory check is included in both the local
+API check and CI, alongside worker task and queue contracts. Root checks passed 799 backend
+cases, one optional Redis case skipped, strict typing of 230 modules, 247 frontend unit
+cases, seven browser cases and the production build. OpenAPI was regenerated. Complete
+registration does not finish the remaining request/mutation/configuration audit, production
+rollout or old runtime/schema retirement under the active goal.

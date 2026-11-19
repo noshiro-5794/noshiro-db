@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException
 
 from .config import settings
+from .contexts.access.api.avatars import router as avatars_router
 from .contexts.access.api.logout import router as logout_router
 from .contexts.access.api.profile import router as profile_router
 from .contexts.access.api.profiles import router as profiles_router
@@ -63,6 +64,7 @@ def create_app() -> FastAPI:
     app.include_router(session_router)
     app.include_router(refresh_router)
     app.include_router(profile_router)
+    app.include_router(avatars_router)
     app.include_router(collections_router)
     app.include_router(profiles_router)
     app.include_router(library_tags_router)

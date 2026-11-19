@@ -18,6 +18,8 @@ dependencies = [
     "redis>=6.4,<7",
     "boto3>=1.44,<2",
     "mcp>=2.3,<3",
+    "pillow>=13,<14",
+    "python-multipart>=0.0.20,<0.1",
 ]
 
 [dependency-groups]

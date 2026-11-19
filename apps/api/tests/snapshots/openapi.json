@@ -409,8 +409,8 @@
         "tags": [
           "profile"
         ],
-        "summary": "Myprofile Row",
-        "operationId": "myprofile_row_api_v1_users_me_profile__get",
+        "summary": "My Profile",
+        "operationId": "my_profile_api_v1_users_me_profile__get",
         "parameters": [
           {
             "name": "authorization",
@@ -437,7 +437,7 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": true,
-                  "title": "Response Myprofile Row Api V1 Users Me Profile  Get"
+                  "title": "Response My Profile Api V1 Users Me Profile  Get"
                 }
               }
             }
@@ -458,8 +458,8 @@
         "tags": [
           "profile"
         ],
-        "summary": "Updateprofile Row",
-        "operationId": "updateprofile_row_api_v1_users_me_profile__patch",
+        "summary": "Update Profile",
+        "operationId": "update_profile_api_v1_users_me_profile__patch",
         "parameters": [
           {
             "name": "authorization",
@@ -498,7 +498,70 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": true,
-                  "title": "Response Updateprofile Row Api V1 Users Me Profile  Patch"
+                  "title": "Response Update Profile Api V1 Users Me Profile  Patch"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/me/avatar/": {
+      "post": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Avatar",
+        "operationId": "avatar_api_v1_users_me_avatar__post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_avatar_api_v1_users_me_avatar__post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Avatar Api V1 Users Me Avatar  Post"
                 }
               }
             }
@@ -8576,6 +8639,20 @@
   },
   "components": {
     "schemas": {
+      "Body_avatar_api_v1_users_me_avatar__post": {
+        "properties": {
+          "avatar": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Avatar"
+          }
+        },
+        "type": "object",
+        "required": [
+          "avatar"
+        ],
+        "title": "Body_avatar_api_v1_users_me_avatar__post"
+      },
       "CommentCreate": {
         "properties": {
           "content": {

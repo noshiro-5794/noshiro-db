@@ -1,7 +1,7 @@
 UV ?= uv
 RUN := $(UV) run
 
-.PHONY: sync lint format type test check migrate revision run openapi
+.PHONY: sync lint format type test contracts check migrate revision run openapi
 
 sync:
 	$(UV) sync
@@ -20,7 +20,12 @@ type:
 test:
 	$(RUN) pytest -q
 
-check: lint type test
+contracts:
+	$(RUN) python scripts/route_coverage.py
+	$(RUN) python scripts/task_coverage.py
+	$(RUN) python scripts/queue_check.py
+
+check: lint type contracts test
 
 migrate:
 	$(RUN) alembic upgrade head
