@@ -1518,3 +1518,35 @@ typing of 226 modules, 245 frontend unit cases, browser checks and the productio
 OpenAPI was regenerated. HTTP registration coverage is 124/127. Avatar upload and generic
 comment GET/POST remain to be ported, followed by the remaining behavior/configuration,
 production deployment and retirement work under the active goal.
+
+### Generic comments and durable interaction effects
+
+Registered generic comment GET/POST and moved comment routes into their own API module.
+Typed comment requests cover content, target/parent identifiers, visibility, spoiler
+flags, edits and moderation. Activity targets are now included in comment payloads.
+Public activity access checks inherit the visibility of related entries, reviews and
+collections. Comment lists filter muted authors and both block directions. Creation
+checks target/parent locks and block relationships before writing.
+
+Comment creation, post/parent reply counts, activity and recipient notification are
+one transaction. Target locks precede comment locks across create/edit/delete paths.
+Deleting a leaf decrements post/parent counters, while retaining a hidden parent with
+replies also hides its feed activity. Editing or deleting another author's comment
+returns the existing permission-denied problem. Self-notifications are omitted and
+replies notify the parent author. The existing nested post-comment path uses the same
+context service as the generic path.
+
+Twenty PostgreSQL cases exercise all four target types, activity/notification metadata,
+reply recipients, private-resource visibility, muted/blocked authors, locks, permissions,
+validation and rollback after a notification-insert failure. Twenty simultaneous HTTP
+requests through independent PostgreSQL connections all created comments and left exactly
+20 comments, 20 activities, 20 notifications and a post reply count of 20. Temporary
+committed rows were removed after that concurrency case.
+
+A rollback-only oracle matched 34 complete legacy HTTP responses and comment creation
+side effects. Generated write identifiers and timestamps were normalized for comparison.
+The frontend decoder regression covers activity targets and hidden parent records.
+Root checks passed 784 backend cases, with one optional Redis case skipped, strict typing
+of 228 modules, 246 web unit cases, browser checks and the production build. OpenAPI was
+regenerated. Registration coverage is 126/127, leaving avatar upload before the remaining
+behavior/configuration review, rollout and retirement work.

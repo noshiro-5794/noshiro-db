@@ -22,7 +22,21 @@ VISIBLE = {
     " WHERE review.id = :id AND review.is_public AND entry.is_public"
     " AND entry.entity_id IS NOT NULL",
     "collection": "SELECT 1 FROM user_collection WHERE id = :id AND is_public",
-    "activity": "SELECT 1 FROM community_activity WHERE id = :id AND visibility = 'public'",
+    "activity": "SELECT 1 FROM community_activity AS activity WHERE activity.id=:id"
+    " AND activity.visibility='public' AND activity.feed_policy<>'hidden'"
+    " AND (activity.user_subject_id IS NULL OR EXISTS ("
+    " SELECT 1 FROM user_library_entry WHERE id=activity.user_subject_id AND is_public))"
+    " AND (activity.review_id IS NULL OR EXISTS ("
+    " SELECT 1 FROM user_review AS review JOIN user_library_entry AS entry"
+    " ON entry.id=review.user_subject_id WHERE review.id=activity.review_id"
+    " AND review.is_public AND entry.is_public))"
+    " AND (activity.collection_id IS NULL OR EXISTS ("
+    " SELECT 1 FROM user_collection WHERE id=activity.collection_id AND is_public))"
+    " AND (activity.collection_item_id IS NULL OR EXISTS ("
+    " SELECT 1 FROM user_collection_item AS item"
+    " JOIN user_collection AS collection ON collection.id=item.collection_id"
+    " JOIN user_library_entry AS entry ON entry.id=item.user_subject_id"
+    " WHERE item.id=activity.collection_item_id AND collection.is_public AND entry.is_public))",
 }
 
 

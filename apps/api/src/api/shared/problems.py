@@ -120,6 +120,10 @@ async def validation_handler(request: Request, error: Exception) -> JSONResponse
             message = "This field may not be blank."
         if item["type"] == "literal_error":
             message = f'"{item["input"]}" is not a valid choice.'
+        if item["type"] == "greater_than_equal":
+            message = f"Ensure this value is greater than or equal to {item['ctx']['ge']}."
+        if item["type"] == "less_than_equal":
+            message = f"Ensure this value is less than or equal to {item['ctx']['le']}."
         if item["type"] == "list_type":
             message = f'Expected a list of items but got type "{type(item["input"]).__name__}".'
         if item["type"] == "too_long" and item["ctx"].get("field_type") == "List":
