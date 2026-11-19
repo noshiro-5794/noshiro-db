@@ -1,0 +1,594 @@
+[
+  {
+    "path": "/api/v1/index/collections/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/index/collections/{slug}/entities/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/index/entities/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/index/entities/{entity_id}/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/index/entities/{entity_id}/episodes/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/index/entities/{entity_id}/relations/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/index/entities/{entity_id}/characters/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/index/entities/{entity_id}/credits/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/index/entities/{entity_id}/releases/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/index/entities/{entity_id}/metrics/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/index/entities/{entity_id}/evidence/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/index/calendar/events/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/index/calendar/board/events/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/auth/verification-codes/",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/auth/registrations/",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/auth/sessions/password/",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/auth/sessions/code/",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/auth/sessions/refresh/",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/auth/session/",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/auth/password-resets/",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/auth/social/providers/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/auth/social/github/start/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/auth/social/github/callback/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/users/me/profile/",
+    "methods": [
+      "GET",
+      "PATCH"
+    ]
+  },
+  {
+    "path": "/api/v1/users/me/settings/",
+    "methods": [
+      "GET",
+      "PATCH"
+    ]
+  },
+  {
+    "path": "/api/v1/users/me/profile/stats/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/users/me/avatar/",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/users/me/library/entries/",
+    "methods": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/users/me/library/entries/{entry_id}/",
+    "methods": [
+      "DELETE",
+      "GET",
+      "PATCH"
+    ]
+  },
+  {
+    "path": "/api/v1/users/me/library/entries/{entry_id}/releases/{release_id}/",
+    "methods": [
+      "DELETE",
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/v1/users/me/library/entries/{entry_id}/tags/",
+    "methods": [
+      "GET",
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/v1/users/me/library/entries/{entry_id}/rating-details/",
+    "methods": [
+      "GET",
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/v1/users/me/library/entries/{entry_id}/episodes/progress/",
+    "methods": [
+      "GET",
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/v1/users/me/library/entries/{entry_id}/episodes/{episode_id}/progress/",
+    "methods": [
+      "DELETE",
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/v1/users/me/library/entries/{entry_id}/reviews/",
+    "methods": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/users/me/tags/",
+    "methods": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/users/me/tags/{tag_id}/",
+    "methods": [
+      "DELETE",
+      "PATCH"
+    ]
+  },
+  {
+    "path": "/api/v1/users/me/reviews/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/users/me/reviews/{review_id}/",
+    "methods": [
+      "DELETE",
+      "GET",
+      "PATCH"
+    ]
+  },
+  {
+    "path": "/api/v1/users/me/collections/",
+    "methods": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/users/me/collections/{collection_id}/",
+    "methods": [
+      "DELETE",
+      "GET",
+      "PATCH"
+    ]
+  },
+  {
+    "path": "/api/v1/users/me/collections/{collection_id}/items/",
+    "methods": [
+      "GET",
+      "POST",
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/v1/users/me/collections/{collection_id}/items/{item_id}/",
+    "methods": [
+      "DELETE",
+      "PATCH"
+    ]
+  },
+  {
+    "path": "/api/v1/users/{user_id}/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/users/{user_id}/library/entries/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/users/{user_id}/reviews/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/users/{user_id}/collections/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/users/{user_id}/collections/{collection_id}/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/users/{user_id}/collections/{collection_id}/items/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/users/entities/{entity_id}/reviews/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/users/reviews/{review_id}/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/community/posts/",
+    "methods": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/community/posts/{post_id}/",
+    "methods": [
+      "DELETE",
+      "GET",
+      "PATCH"
+    ]
+  },
+  {
+    "path": "/api/v1/community/posts/{post_id}/comments/",
+    "methods": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/community/comments/",
+    "methods": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/community/comments/{comment_id}/",
+    "methods": [
+      "DELETE",
+      "PATCH"
+    ]
+  },
+  {
+    "path": "/api/v1/community/activities/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/community/me/activities/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/community/me/feed/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/community/users/{user_id}/activities/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/community/me/following/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/community/me/followers/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/community/me/following/{target_user_id}/",
+    "methods": [
+      "DELETE",
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/v1/community/me/blocks/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/community/me/blocks/{target_user_id}/",
+    "methods": [
+      "DELETE",
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/v1/community/me/mutes/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/community/me/mutes/{target_user_id}/",
+    "methods": [
+      "DELETE",
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/v1/community/users/{user_id}/following/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/community/users/{user_id}/followers/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/community/me/bookmarks/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/community/me/bookmarks/{target_type}/{target_id}/",
+    "methods": [
+      "DELETE",
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/v1/community/me/reactions/{target_type}/{target_id}/{reaction_type}/",
+    "methods": [
+      "DELETE",
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/v1/community/me/notifications/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/community/me/notifications/unread-count/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/community/me/notifications/read-state/",
+    "methods": [
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/v1/community/me/notifications/{notification_id}/read-state/",
+    "methods": [
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/v1/community/reports/",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/community/me/reports/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/community/moderation/reports/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/community/moderation/reports/{report_id}/",
+    "methods": [
+      "PATCH"
+    ]
+  },
+  {
+    "path": "/api/v1/community/moderation/posts/{post_id}/",
+    "methods": [
+      "PATCH"
+    ]
+  },
+  {
+    "path": "/api/v1/community/moderation/comments/{comment_id}/",
+    "methods": [
+      "PATCH"
+    ]
+  },
+  {
+    "path": "/api/v1/operations/matching/candidates/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/operations/matching/candidates/{candidate_id}/decide/",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/operations/import-jobs/",
+    "methods": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/operations/import-jobs/{job_id}/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/operations/sync/",
+    "methods": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/operations/sync/summary/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/operations/sync/{campaign_id}/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/operations/sync/{campaign_id}/items/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/operations/sync/{campaign_id}/claims/",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/operations/sync/{campaign_id}/{action}/",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/openapi/",
+    "methods": [
+      "GET"
+    ]
+  }
+]

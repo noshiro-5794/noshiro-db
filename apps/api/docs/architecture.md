@@ -104,7 +104,7 @@ from the proxy. On the current server, the v2raya plain HTTP inbound listens on
 ## Public API
 
 The public REST root is `/api/v1/`, assembled by `api.main.create_app`.
-OpenAPI is served at `/openapi.json` and exported by `make openapi` into
+OpenAPI is served at `/api/v1/openapi/` and exported by `make openapi` into
 `tests/snapshots/openapi.json`. The web app owns its matching TypeScript client.
 
 Alembic owns the application schema. Production still contains framework support
