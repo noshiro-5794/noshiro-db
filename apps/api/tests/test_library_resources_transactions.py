@@ -92,7 +92,11 @@ async def library_client(integration_session):
     await session.commit()
 
     async def database():
-        yield session
+        try:
+            yield session
+        except Exception:
+            await session.rollback()
+            raise
 
     async def viewer(request: Request):
         identifier = request.headers.get("x-test-user")
@@ -209,6 +213,7 @@ async def test_block_relationship_hides_all_public_owner_resources(library_clien
         "VALUES (:source,:target,'',now()) RETURNING id",
         {"source": source, "target": target},
     )
+    await session.commit()
     client.headers["x-test-user"] = str(data.viewer)
     for suffix in [
         "",

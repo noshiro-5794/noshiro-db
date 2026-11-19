@@ -5,6 +5,8 @@ from typing import Any
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
+from .problems import FieldError
+
 
 class ProblemDocument(BaseModel):
     type: str
@@ -14,15 +16,16 @@ class ProblemDocument(BaseModel):
     instance: str
     trace_id: str
     code: str | None = None
-    errors: dict[str, list[str]] | None = None
+    errors: dict[str, FieldError] | None = None
 
 
 class Application(FastAPI):
     def openapi(self) -> dict[str, Any]:
         schema = super().openapi()
-        schema.setdefault("components", {}).setdefault("schemas", {})["ProblemDocument"] = (
-            ProblemDocument.model_json_schema()
-        )
+        components = schema.setdefault("components", {}).setdefault("schemas", {})
+        problem = ProblemDocument.model_json_schema(ref_template="#/components/schemas/{model}")
+        components.update(problem.pop("$defs", {}))
+        components["ProblemDocument"] = problem
         response = {
             "description": "Request validation failed.",
             "content": {

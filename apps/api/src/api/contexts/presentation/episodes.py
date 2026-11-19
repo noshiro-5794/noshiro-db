@@ -50,7 +50,10 @@ CURRENT_RELATION = """
 """
 
 
-async def _episode_ids(session: AsyncSession, cluster: list[str]) -> list[UUID]:
+async def episode_ids(
+    session: AsyncSession, cluster: list[str], *, public_only: bool = True
+) -> list[UUID]:
+    visibility = "AND target.visibility = 'public'" if public_only else ""
     rows = await fetch(
         session,
         f"""
@@ -61,7 +64,7 @@ async def _episode_ids(session: AsyncSession, cluster: list[str]) -> list[UUID]:
           AND relation.relation_type = 'has-episode'
           AND target.kind = 'episode'
           AND target.lifecycle = 'active'
-          AND target.visibility = 'public'
+          {visibility}
           AND {CURRENT_RELATION}
         """,
         {"ids": cluster},
@@ -158,7 +161,7 @@ async def episode_page(
     page: int,
     page_size: int,
 ) -> tuple[int, list[dict[str, Any]]]:
-    ids = await _episode_ids(session, cluster)
+    ids = await episode_ids(session, cluster)
     facts = await _ordering_facts(session, ids)
     ordered = sorted(ids, key=lambda episode: _order(episode, facts))
     total = len(ordered)
