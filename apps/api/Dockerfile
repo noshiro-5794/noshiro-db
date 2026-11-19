@@ -6,7 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1
 
-RUN pip install --no-cache-dir uv
+RUN pip install --no-cache-dir uv==0.13.4
 
 WORKDIR /app
 
