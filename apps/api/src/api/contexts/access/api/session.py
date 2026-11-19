@@ -4,6 +4,7 @@ from fastapi import APIRouter, Response
 from pydantic import BaseModel
 
 from api.config import settings
+from api.contexts.access.cookies import set_refresh_cookie
 from api.contexts.access.security import create_tokens, verify_password
 from api.contexts.presentation.fragments import fetch
 from api.db import SessionDep
@@ -63,13 +64,5 @@ async def password_login(
         access_seconds=settings.access_token_seconds,
         refresh_seconds=settings.refresh_token_seconds,
     )
-    response.set_cookie(
-        key=settings.refresh_cookie_name,
-        value=refresh,
-        max_age=settings.refresh_token_seconds,
-        path=settings.refresh_cookie_path,
-        secure=settings.refresh_cookie_secure,
-        httponly=True,
-        samesite=settings.refresh_cookie_samesite,
-    )
+    set_refresh_cookie(response, refresh)
     return {"access": access}

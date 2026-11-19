@@ -1364,3 +1364,26 @@ override while retaining its existing default. Production needs an AMD64 build.
 SSH access to the production host has been verified. PostgreSQL is healthy and the
 application containers remain stopped. Production rollout and remaining mutation,
 schema-retirement and deployment cleanup work continue under the active goal.
+
+### Browser session deployment settings
+
+Production configuration inspection found that refresh-cookie options and CORS
+were absent from the replacement service. Shared cookie helpers now apply the
+configured name, path, domain, secure flag, SameSite and cookie lifetime across
+password/code/social login, registration and logout. Existing JWT_REFRESH_COOKIE
+variables remain readable during environment migration. JWT_SECRET is the canonical
+signing setting, with the existing key accepted as a fallback to preserve sessions.
+The example environment uses current names and MCP defaults to its dedicated port.
+
+HTTP CORS middleware now reads the production origin and credential settings.
+Origin lists accept existing comma-separated values and JSON lists. Browser tests
+cover credentialed authorization preflight, allowed-origin error responses, rejected
+origins and the development allow-all setting. Cookie tests verify environment
+parsing, signing-key precedence, matching issuance/removal scope and HTTP login/logout.
+
+API validation passed strict typing of 216 modules and 718 PostgreSQL-enabled cases,
+with the dedicated Redis case skipped. One stale-state timestamp case failed in an
+initial full run, then passed in isolation and in both subsequent full runs. No
+behavior change was made to that scanner. Production containers remain stopped.
+The frontend's refresh endpoint was found missing during this audit and is the next
+required session change before rollout.

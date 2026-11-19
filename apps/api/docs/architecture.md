@@ -103,10 +103,11 @@ from the proxy. On the current server, the v2raya plain HTTP inbound listens on
 
 ## Public API
 
-The only public REST root is `/api/v1/`, assembled by `config.api_urls`. There is no
-unversioned compatibility API or `/api/v2/`. OpenAPI at `/api/v1/openapi/` is the
-endpoint and schema contract.
+The public REST root is `/api/v1/`, assembled by `api.main.create_app`.
+OpenAPI is served at `/openapi.json` and exported by `make openapi` into
+`tests/snapshots/openapi.json`. The web app owns its matching TypeScript client.
 
-The source-neutral tables currently coexist with deprecated Bangumi-centered tables
-during migration. Old `Subject` data is read-only migration input. Production schema
-and data changes follow [Deployment](deployment.md).
+Alembic owns the application schema. Production still contains framework support
+tables awaiting dependency and data checks before retirement. Session blacklist
+records remain active application data. Production changes follow the root
+[deployment guide](../../../deploy/README.md).

@@ -1,13 +1,17 @@
-from typing import Any, Literal
+import json
+from typing import Annotated, Any, Literal
 
-from pydantic import AliasChoices, Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import AliasChoices, Field, field_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore", populate_by_name=True)
 
     database_url: str = "postgresql://noshiro@127.0.0.1:5432/noshiro_db"
+    cors_allow_all_origins: bool = False
+    cors_allow_credentials: bool = False
+    cors_allowed_origins: Annotated[list[str], NoDecode] = Field(default_factory=list)
     ai_base_url: str = Field(
         default="",
         validation_alias=AliasChoices("AI_AGENT_API_BASE_URL", "AI_BASE_URL"),
@@ -16,13 +20,36 @@ class Settings(BaseSettings):
         default="",
         validation_alias=AliasChoices("AI_AGENT_API_KEY", "AI_API_KEY"),
     )
-    jwt_secret: str = Field(default="", validation_alias=AliasChoices("DJANGO_SECRET_KEY"))
+    jwt_secret: str = Field(
+        default="", validation_alias=AliasChoices("JWT_SECRET", "DJANGO_SECRET_KEY")
+    )
     access_token_seconds: int = 2 * 60 * 60
     refresh_token_seconds: int = 30 * 24 * 60 * 60
-    refresh_cookie_name: str = "noshiro_refresh"
-    refresh_cookie_path: str = "/api/v1/auth/"
-    refresh_cookie_secure: bool = False
-    refresh_cookie_samesite: Literal["lax", "strict", "none"] = "lax"
+    refresh_cookie_name: str = Field(
+        default="noshiro_refresh",
+        validation_alias=AliasChoices("REFRESH_COOKIE_NAME", "JWT_REFRESH_COOKIE_NAME"),
+    )
+    refresh_cookie_path: str = Field(
+        default="/api/v1/auth/",
+        validation_alias=AliasChoices("REFRESH_COOKIE_PATH", "JWT_REFRESH_COOKIE_PATH"),
+    )
+    refresh_cookie_domain: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("REFRESH_COOKIE_DOMAIN", "JWT_REFRESH_COOKIE_DOMAIN"),
+    )
+    refresh_cookie_secure: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("REFRESH_COOKIE_SECURE", "JWT_REFRESH_COOKIE_SECURE"),
+    )
+    refresh_cookie_samesite: Literal["lax", "strict", "none"] = Field(
+        default="lax",
+        validation_alias=AliasChoices("REFRESH_COOKIE_SAMESITE", "JWT_REFRESH_COOKIE_SAMESITE"),
+    )
+    refresh_cookie_max_age: int = Field(
+        default=30 * 24 * 60 * 60,
+        gt=0,
+        validation_alias=AliasChoices("REFRESH_COOKIE_MAX_AGE", "JWT_REFRESH_COOKIE_MAX_AGE"),
+    )
     github_client_id: str = Field(
         default="",
         validation_alias=AliasChoices("GITHUB_OAUTH_CLIENT_ID"),
@@ -53,9 +80,31 @@ class Settings(BaseSettings):
     match_candidate_sweep_cron_hours: int = Field(default=4, gt=0)
 
     mcp_host: str = "127.0.0.1"
-    mcp_port: int = Field(default=8010, ge=1, le=65535)
+    mcp_port: int = Field(default=8011, ge=1, le=65535)
     mcp_rate_limit: int = Field(default=60, gt=0)
     mcp_rate_window_seconds: int = Field(default=60, gt=0)
+
+    @field_validator("cors_allowed_origins", mode="before")
+    @classmethod
+    def origin_values(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            return json.loads(value) if value.lstrip().startswith("[") else value.split(",")
+        return value
+
+    @field_validator("cors_allowed_origins")
+    @classmethod
+    def clean_origins(cls, value: list[str]) -> list[str]:
+        return [origin.strip() for origin in value if origin.strip()]
+
+    @field_validator("refresh_cookie_domain", mode="before")
+    @classmethod
+    def cookie_domain(cls, value: Any) -> Any:
+        return value or None
+
+    @field_validator("refresh_cookie_samesite", mode="before")
+    @classmethod
+    def cookie_samesite(cls, value: Any) -> Any:
+        return value.lower() if isinstance(value, str) else value
 
     @property
     def async_database_url(self) -> str:
