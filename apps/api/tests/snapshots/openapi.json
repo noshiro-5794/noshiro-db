@@ -379,6 +379,31 @@
         }
       }
     },
+    "/api/v1/auth/sessions/refresh/": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Refresh Session",
+        "operationId": "refresh_session_api_v1_auth_sessions_refresh__post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Refresh Session Api V1 Auth Sessions Refresh  Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/users/me/profile/": {
       "get": {
         "tags": [

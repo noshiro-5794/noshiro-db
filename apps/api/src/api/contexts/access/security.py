@@ -39,11 +39,18 @@ def session_claims(token: str, secret: str, *, token_type: str = ACCESS) -> dict
         if claims["token_type"] != token_type or isinstance(raw_id, bool):
             return None
         user_id = int(str(raw_id))
-        if not 0 < user_id < 2**63:
+        expiry = int(claims["exp"])
+        if (
+            not 0 < user_id < 2**63
+            or not 0 < expiry <= 253402300799
+            or not claims["jti"]
+            or len(claims["jti"]) > 255
+        ):
             return None
     except (jwt.PyJWTError, ValueError, TypeError, OverflowError):
         return None
     claims["user_id"] = str(user_id)
+    claims["exp"] = expiry
     return claims
 
 
@@ -66,9 +73,18 @@ def revoke_token(password_hash: str) -> str:
     return hashlib.md5(password_hash.encode()).hexdigest().upper()
 
 
-def _token(*, user_id: int, password_hash: str, secret: str, token_type: str, seconds: int) -> str:
+def _token(
+    *,
+    user_id: int,
+    password_hash: str,
+    secret: str,
+    token_type: str,
+    seconds: int,
+    claims: dict[str, Any] | None = None,
+) -> str:
     issued = datetime.now(UTC)
     payload = {
+        **(claims or {}),
         "token_type": token_type,
         "exp": int((issued + timedelta(seconds=seconds)).timestamp()),
         "iat": int(issued.timestamp()),
@@ -80,7 +96,13 @@ def _token(*, user_id: int, password_hash: str, secret: str, token_type: str, se
 
 
 def create_tokens(
-    *, user_id: int, password_hash: str, secret: str, access_seconds: int, refresh_seconds: int
+    *,
+    user_id: int,
+    password_hash: str,
+    secret: str,
+    access_seconds: int,
+    refresh_seconds: int,
+    claims: dict[str, Any] | None = None,
 ) -> tuple[str, str]:
     if not secret:
         raise ProblemError(
@@ -95,6 +117,7 @@ def create_tokens(
             secret=secret,
             token_type=ACCESS,
             seconds=access_seconds,
+            claims=claims,
         ),
         _token(
             user_id=user_id,
@@ -102,6 +125,7 @@ def create_tokens(
             secret=secret,
             token_type=REFRESH,
             seconds=refresh_seconds,
+            claims=claims,
         ),
     )
 
