@@ -10,6 +10,7 @@ from typing import Any
 from fastapi import APIRouter, Request, Response
 
 from api.config import settings
+from api.contexts.access.cookies import clear_refresh_cookie
 from api.contexts.access.security import REFRESH, session_claims
 from api.contexts.presentation.fragments import fetch
 from api.db import SessionDep
@@ -70,9 +71,5 @@ async def logout(request: Request, session: SessionDep) -> Response:
         if claims is not None:
             await _blacklist(session, raw, claims)
     response = Response(status_code=204)
-    response.delete_cookie(
-        key=settings.refresh_cookie_name,
-        path=settings.refresh_cookie_path,
-        samesite=settings.refresh_cookie_samesite,
-    )
+    clear_refresh_cookie(response)
     return response

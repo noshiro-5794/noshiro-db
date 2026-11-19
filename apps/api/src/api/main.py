@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException
 
+from .config import settings
 from .contexts.access.api.logout import router as logout_router
 from .contexts.access.api.profile import router as profile_router
 from .contexts.access.api.profiles import router as profiles_router
@@ -30,6 +32,20 @@ from .shared.schema import Application
 
 def create_app() -> FastAPI:
     app = Application(title="Noshiro API", version="0.1.0")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"] if settings.cors_allow_all_origins else settings.cors_allowed_origins,
+        allow_credentials=settings.cors_allow_credentials,
+        allow_methods=["DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT"],
+        allow_headers=[
+            "accept",
+            "authorization",
+            "content-type",
+            "user-agent",
+            "x-csrftoken",
+            "x-requested-with",
+        ],
+    )
     app.include_router(health_router)
     app.include_router(registration_router)
     app.include_router(social_router)
