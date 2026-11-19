@@ -11,12 +11,11 @@ from fastapi import APIRouter, Depends
 
 from api.contexts.access.api.profile import (
     COLOR,
-    DEFAULT_THEME,
     INVALID_COLOR,
     profile_payload,
-    profile_row,
 )
 from api.contexts.access.dependencies import current_user
+from api.contexts.access.profiles import DEFAULT_THEME, get_or_create_profile
 from api.contexts.presentation.fragments import fetch
 from api.db import SessionDep
 from api.shared.problems import ProblemError
@@ -108,7 +107,7 @@ def _validate(payload: dict[str, Any]) -> tuple[dict[str, Any], dict[str, list[s
 async def my_settings(
     session: SessionDep, user: Annotated[Any, Depends(current_user)]
 ) -> dict[str, Any]:
-    return profile_payload(await profile_row(session, user), user)
+    return profile_payload(await get_or_create_profile(session, user_id=user.id), user)
 
 
 @router.patch("/me/settings/")
@@ -120,7 +119,7 @@ async def update_settings(
     values, errors = _validate(payload)
     if errors:
         raise ProblemError(status_code=400, detail="Request validation failed.", errors=errors)
-    profile = await profile_row(session, user)
+    profile = await get_or_create_profile(session, user_id=user.id)
     if not values:
         return profile_payload(profile, user)
     assignments = ", ".join(f"{column} = :{column}" for column in values)

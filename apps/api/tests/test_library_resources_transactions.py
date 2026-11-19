@@ -126,6 +126,7 @@ async def library_client(integration_session):
         entities=entities,
         collection=collection,
         private=private_collection,
+        app=app,
     )
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app),

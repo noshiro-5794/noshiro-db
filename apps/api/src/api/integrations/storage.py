@@ -1,7 +1,7 @@
 """S3-compatible object uploads with existing deployment setting aliases."""
 
 from typing import TYPE_CHECKING
-from urllib.parse import quote
+from urllib.parse import quote, unquote, urlsplit
 
 import boto3
 from botocore.config import Config
@@ -11,6 +11,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 if TYPE_CHECKING:
     from mypy_boto3_s3 import S3Client
+
+
+def _object_name(value: str) -> str:
+    name = value.strip().replace("\\", "/").strip("/")
+    if not name or any(part in {"", ".", ".."} for part in name.split("/")):
+        raise ValueError("Object name must be a non-empty relative path.")
+    return name
 
 
 class StorageSettings(BaseSettings):
@@ -64,9 +71,7 @@ class ObjectStorage:
         return self._client
 
     def upload_bytes(self, name: str, data: bytes, content_type: str) -> str:
-        name = name.strip().replace("\\", "/").strip("/")
-        if not name or any(part in {"", ".", ".."} for part in name.split("/")):
-            raise ValueError("Object name must be a non-empty relative path.")
+        name = _object_name(name)
         client = self.client
         bucket = self.settings.bucket
         if not self._bucket_ready:
@@ -87,6 +92,23 @@ class ObjectStorage:
         client.put_object(Bucket=bucket, Key=name, Body=data, ContentType=content_type)
         base = (self.settings.public_url or self.settings.endpoint_url).rstrip("/")
         return f"{base}/{quote(bucket)}/{quote(name, safe='/')}"
+
+    def delete_public_url(self, url: str, *, prefix: str = "") -> bool:
+        base = urlsplit(self.settings.public_url or self.settings.endpoint_url)
+        target = urlsplit(url)
+        path_prefix = f"{base.path.rstrip('/')}/{quote(self.settings.bucket)}/"
+        if (target.scheme, target.netloc) != (base.scheme, base.netloc):
+            return False
+        if not target.path.startswith(path_prefix):
+            return False
+        try:
+            name = _object_name(unquote(target.path[len(path_prefix) :]))
+        except ValueError:
+            return False
+        if prefix and not name.startswith(prefix):
+            return False
+        self.client.delete_object(Bucket=self.settings.bucket, Key=name)
+        return True
 
     def close(self) -> None:
         if self._client is not None:

@@ -77,3 +77,23 @@ def test_s3_setting_names_take_precedence_over_legacy_aliases():
         MINIO_ENDPOINT="old.test",
     )
     assert settings.endpoint_url == "https://new.test"
+
+
+def test_delete_public_url_checks_origin_bucket_and_owned_prefix(storage):
+    for url in [
+        "https://external.test/catalogue/avatars/7/old.png",
+        "https://media.test/other/avatars/7/old.png",
+        "https://media.test/catalogue/avatars/8/old.png",
+        "https://media.test/catalogue/avatars/7/../other.png",
+    ]:
+        assert storage.delete_public_url(url, prefix="avatars/7/") is False
+    assert storage._client is None
+    with Stubber(storage.client) as stub:
+        stub.add_response("delete_object", {}, {"Bucket": "catalogue", "Key": "avatars/7/a b.png"})
+        assert (
+            storage.delete_public_url(
+                "https://media.test/catalogue/avatars/7/a%20b.png", prefix="avatars/7/"
+            )
+            is True
+        )
+        stub.assert_no_pending_responses()
