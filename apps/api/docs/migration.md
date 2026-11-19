@@ -1447,3 +1447,43 @@ alongside registering those routes before production cutover.
 The final backend rerun, including the versioned schema-URL regression, passed all
 742 cases with the dedicated Redis case skipped. The HTTP operation inventory still
 reports the 17 pending operations described above.
+
+### Review lifecycle and public library resources
+
+Registered own-review list/detail/update/delete, public-review detail, public user/entity
+review lists, public library entries and public collection detail/items. Public account
+visibility checks apply in both block directions, and public item lists filter private
+library entries even when the viewer owns the collection. Library and review DTOs now
+validate query choices and review writes with the existing field messages. The library
+status choice is drop, matching retained records and the frontend. Date-only watch fields
+serialize as dates, and literal search patterns escape SQL wildcards. Collection searches
+include notes and preserve secondary ordering.
+
+Review edits lock the review row. The retained Django selector attempted to lock nullable
+outer-join rows, causing valid edits/deletes to fail in the reference application.
+The temporary comparison oracle restricted that reference lock to its own row before
+comparing intended mutation results. With that correction, 53 complete HTTP responses
+matched across reads, filtering, all public library ordering choices, validation, writes
+and deletion. Generated identifiers and write timestamps were excluded for writes.
+The oracle ran entirely inside a rolled-back disposable database transaction.
+
+Alembic revision 0006_content_delete_rules transfers 42 content foreign-key deletion
+rules from the former ORM collector into PostgreSQL. The actions preserve the existing
+CASCADE/SET NULL contract for library entries, collections, reviews, posts and dependent
+community content. A PostgreSQL HTTP regression deletes a review with dependent comments,
+reports, notifications and activity, checks immediate foreign-key integrity, preserves
+an unrelated review and retains moderation records whose report reference becomes null.
+Fresh installation, downgrade to the baseline and upgrade to head passed in a temporary
+database, which was removed afterward. Upgrade and downgrade of the new revision passed
+in the disposable integration database, and the restored production copy upgraded to head.
+Production itself has received no schema change in this step.
+
+The frontend decoder accepts finite numeric API ratings and normalizes them to its
+existing decimal-string representation. Prior response tests covered null ratings and
+missed numeric values, causing rated library entries to fail decoding. Nine regression
+cases now cover numeric/string/null inputs and invalid values. OpenAPI was regenerated.
+Root checks passed 754 backend cases, one optional Redis case skipped, strict typing of
+224 modules, 244 frontend unit cases, seven browser cases and the remaining build/lint
+checks. HTTP operation inventory is 120/127. The remaining operations are avatar upload,
+episode progress GET/replace/set/delete and generic comment list/create. Deployment,
+remaining mutation semantics and retirement work remain part of the active goal.

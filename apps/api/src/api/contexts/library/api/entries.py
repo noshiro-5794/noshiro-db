@@ -23,6 +23,8 @@ from api.db import SessionDep
 from api.shared.pagination import ensure_page, page_params, page_payload
 from api.shared.problems import ProblemError
 
+from .schemas import ReviewCreate
+
 router = APIRouter(prefix="/api/v1/users", tags=["library"])
 
 
@@ -215,12 +217,14 @@ async def get_entry_reviews(
 @router.post("/me/library/entries/{entry_id}/reviews/")
 async def add_entry_review(
     entry_id: int,
-    body: dict[str, Any],
+    body: ReviewCreate,
     session: SessionDep,
     user: Annotated[Any, Depends(current_user)],
 ) -> JSONResponse:
     try:
-        data = await create_review(session, user_id=user.id, entry_id=entry_id, body=body)
+        data = await create_review(
+            session, user_id=user.id, entry_id=entry_id, body=body.model_dump()
+        )
     except LookupError as error:
         raise ProblemError(status_code=404, detail="Library entry not found.") from error
     except ValueError as error:

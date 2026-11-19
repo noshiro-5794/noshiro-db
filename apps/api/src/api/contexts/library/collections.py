@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.presentation.fragments import fetch
 from api.shared.pagination import page_offset
+from api.shared.sql import contains_pattern
 
 ORDERINGS = {
     "id": "collection.id",
@@ -38,8 +39,8 @@ async def list_public_collections(
         clauses.append("collection.is_public")
     params: dict[str, Any] = {"user_id": user_id, "viewer": viewer_id}
     if keyword:
-        clauses.append("collection.name ILIKE :keyword")
-        params["keyword"] = f"%{keyword}%"
+        clauses.append("(collection.name ILIKE :keyword OR collection.note ILIKE :keyword)")
+        params["keyword"] = contains_pattern(keyword)
     clause = " AND ".join(clauses)
     total = await fetch(
         session,
@@ -65,7 +66,7 @@ async def list_public_collections(
                           AND bookmark.user_id = :viewer) AS has_bookmarked
         FROM user_collection AS collection
         """
-        + f" WHERE {clause} ORDER BY {order} LIMIT :limit OFFSET :offset",
+        + f" WHERE {clause} ORDER BY {order},collection.id DESC LIMIT :limit OFFSET :offset",
         {
             **params,
             "limit": page_size,
@@ -188,6 +189,19 @@ async def my_collection(
     return await collection_by_id(session, viewer_id=user_id, collection_id=collection_id)
 
 
+async def public_collection(
+    session: AsyncSession, *, viewer_id: int, user_id: int, collection_id: int
+) -> dict[str, Any]:
+    rows = await fetch(
+        session,
+        "SELECT id FROM user_collection WHERE id=:collection AND user_id=:user AND is_public",
+        {"collection": collection_id, "user": user_id},
+    )
+    if not rows:
+        raise LookupError(collection_id)
+    return await collection_by_id(session, viewer_id=viewer_id, collection_id=collection_id)
+
+
 async def update_collection(
     session: AsyncSession, *, user_id: int, collection_id: int, body: dict[str, Any]
 ) -> dict[str, Any]:
@@ -266,11 +280,20 @@ async def list_items(
     collection_id: int,
     page: int,
     page_size: int,
+    public_only: bool = False,
 ) -> tuple[int, list[dict[str, Any]]]:
-    await my_collection(session, user_id=user_id, collection_id=collection_id)
+    if public_only:
+        await public_collection(
+            session, viewer_id=viewer_id, user_id=user_id, collection_id=collection_id
+        )
+    else:
+        await my_collection(session, user_id=user_id, collection_id=collection_id)
+    visibility = " AND entry.is_public" if public_only else ""
     total = await fetch(
         session,
-        "SELECT count(*) AS total FROM user_collection_item WHERE collection_id = :id",
+        "SELECT count(*) AS total FROM user_collection_item AS item"
+        " JOIN user_library_entry AS entry ON entry.id=item.user_subject_id"
+        " WHERE item.collection_id=:id" + visibility,
         {"id": collection_id},
     )
     rows = await fetch(
@@ -281,6 +304,9 @@ async def list_items(
         FROM user_collection_item AS item
         JOIN user_library_entry AS entry ON entry.id = item.user_subject_id
         WHERE item.collection_id = :id
+        """
+        + visibility
+        + """
         ORDER BY item.order ASC, item.id ASC
         LIMIT :limit OFFSET :offset
         """,

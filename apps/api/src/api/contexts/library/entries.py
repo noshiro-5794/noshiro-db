@@ -12,6 +12,7 @@ from api.contexts.identity.resolution import cluster_ids, resolve
 from api.contexts.presentation.fragments import fetch, isoformat
 from api.contexts.presentation.summary import entity_summary
 from api.shared.pagination import page_offset
+from api.shared.sql import contains_pattern
 
 ORDERINGS = frozenset({"created_at", "-created_at", "updated_at", "-updated_at"})
 
@@ -64,8 +65,11 @@ async def list_entries(
     ordering: str,
     page: int,
     page_size: int,
+    public_only: bool = False,
 ) -> tuple[int, list[dict[str, Any]]]:
     clauses = ["entry.user_id = :user_id"]
+    if public_only:
+        clauses.extend(["entry.is_public", "entry.entity_id IS NOT NULL"])
     params: dict[str, Any] = {}
     if status:
         clauses.append("entry.status = :status")
@@ -83,7 +87,7 @@ async def list_entries(
             " AND name.text ILIKE :keyword)"
             " OR entry.comment ILIKE :keyword)"
         )
-        params["keyword"] = f"%{keyword}%"
+        params["keyword"] = contains_pattern(keyword)
     if tag_id:
         clauses.append(
             "EXISTS (SELECT 1 FROM user_library_entry_tag AS relation"
@@ -95,7 +99,15 @@ async def list_entries(
     where = " AND ".join(clauses)
     field = ordering.lstrip("-")
     direction = "DESC" if ordering.startswith("-") else "ASC"
-    if field not in {"created_at", "updated_at"}:
+    if field not in {
+        "id",
+        "created_at",
+        "updated_at",
+        "rating",
+        "simple_rating",
+        "watch_start_date",
+        "watch_end_date",
+    }:
         field, direction = "updated_at", "DESC"
     total = await fetch(
         session,
@@ -170,7 +182,7 @@ async def delete_entry(session: AsyncSession, *, user_id: int, entry_id: int) ->
     await session.commit()
 
 
-STATUSES = ("doing", "wish", "done", "on_hold", "dropped")
+STATUSES = ("doing", "wish", "done", "on_hold", "drop")
 NOT_CHOICE = '"{}" is not a valid choice.'
 
 

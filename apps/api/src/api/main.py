@@ -19,6 +19,8 @@ from .contexts.community.api.notifications import (
 from .contexts.community.api.operations import router as operations_router
 from .contexts.library.api.collections import router as collections_router
 from .contexts.library.api.entries import router as library_entries_router
+from .contexts.library.api.public import router as public_library_router
+from .contexts.library.api.reviews import router as reviews_router
 from .contexts.library.api.stats import router as library_stats_router
 from .contexts.library.api.tags import router as library_tags_router
 from .contexts.presentation.api.board import router as board_router
@@ -64,6 +66,8 @@ def create_app() -> FastAPI:
     app.include_router(library_tags_router)
     app.include_router(library_stats_router)
     app.include_router(library_entries_router)
+    app.include_router(reviews_router)
+    app.include_router(public_library_router)
     app.include_router(logout_router)
     app.include_router(settings_router)
     app.include_router(catalogue_router)
