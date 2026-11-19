@@ -6299,6 +6299,302 @@
         }
       }
     },
+    "/api/v1/community/moderation/posts/{post_id}/": {
+      "patch": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Moderate",
+        "operationId": "moderate_api_v1_community_moderation_posts__post_id___patch",
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Post Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Moderate Api V1 Community Moderation Posts  Post Id   Patch"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/community/moderation/reports/{report_id}/": {
+      "patch": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Resolve",
+        "operationId": "resolve_api_v1_community_moderation_reports__report_id___patch",
+        "parameters": [
+          {
+            "name": "report_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Report Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Resolve Api V1 Community Moderation Reports  Report Id   Patch"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/community/comments/": {
+      "get": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Comments",
+        "operationId": "comments_api_v1_community_comments__get",
+        "parameters": [
+          {
+            "name": "target_type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "enum": [
+                "post",
+                "review",
+                "collection",
+                "activity"
+              ],
+              "type": "string",
+              "title": "Target Type"
+            }
+          },
+          {
+            "name": "target_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "title": "Target Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Comments Api V1 Community Comments  Get"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Add Comment",
+        "operationId": "add_comment_api_v1_community_comments__post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TargetCommentCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/community/posts/{post_id}/comments/": {
       "get": {
         "tags": [
@@ -6406,9 +6702,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "additionalProperties": true,
-                "title": "Body"
+                "$ref": "#/components/schemas/CommentCreate"
               }
             }
           }
@@ -6484,9 +6778,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "additionalProperties": true,
-                "title": "Body"
+                "$ref": "#/components/schemas/CommentUpdate"
               }
             }
           }
@@ -6586,88 +6878,6 @@
         }
       }
     },
-    "/api/v1/community/moderation/posts/{post_id}/": {
-      "patch": {
-        "tags": [
-          "community"
-        ],
-        "summary": "Moderate",
-        "operationId": "moderate_api_v1_community_moderation_posts__post_id___patch",
-        "parameters": [
-          {
-            "name": "post_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Post Id"
-            }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": true,
-                "title": "Body"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Moderate Api V1 Community Moderation Posts  Post Id   Patch"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Request validation failed.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDocument"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Resource not found.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDocument"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/community/moderation/comments/{comment_id}/": {
       "patch": {
         "tags": [
@@ -6707,9 +6917,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "additionalProperties": true,
-                "title": "Body"
+                "$ref": "#/components/schemas/CommentModeration"
               }
             }
           }
@@ -6723,88 +6931,6 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Moderate A Comment Api V1 Community Moderation Comments  Comment Id   Patch"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Request validation failed.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDocument"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Resource not found.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDocument"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/community/moderation/reports/{report_id}/": {
-      "patch": {
-        "tags": [
-          "community"
-        ],
-        "summary": "Resolve",
-        "operationId": "resolve_api_v1_community_moderation_reports__report_id___patch",
-        "parameters": [
-          {
-            "name": "report_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Report Id"
-            }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": true,
-                "title": "Body"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Resolve Api V1 Community Moderation Reports  Report Id   Patch"
                 }
               }
             }
@@ -8450,6 +8576,89 @@
   },
   "components": {
     "schemas": {
+      "CommentCreate": {
+        "properties": {
+          "content": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 1,
+            "title": "Content"
+          },
+          "parent_id": {
+            "type": "integer",
+            "maximum": 9.223372036854776e+18,
+            "title": "Parent Id"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "public",
+              "private",
+              "followers"
+            ],
+            "title": "Visibility",
+            "default": "public"
+          },
+          "is_spoiler": {
+            "type": "boolean",
+            "title": "Is Spoiler",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "content"
+        ],
+        "title": "CommentCreate"
+      },
+      "CommentModeration": {
+        "properties": {
+          "action_type": {
+            "type": "string",
+            "enum": [
+              "hide",
+              "lock"
+            ],
+            "title": "Action Type"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Reason",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "action_type"
+        ],
+        "title": "CommentModeration"
+      },
+      "CommentUpdate": {
+        "properties": {
+          "content": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 1,
+            "title": "Content"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "public",
+              "private",
+              "followers"
+            ],
+            "title": "Visibility"
+          },
+          "is_spoiler": {
+            "type": "boolean",
+            "title": "Is Spoiler"
+          }
+        },
+        "type": "object",
+        "title": "CommentUpdate"
+      },
       "EpisodeProgressReplace": {
         "properties": {
           "finished_episode_ids": {
@@ -8568,6 +8777,59 @@
         },
         "type": "object",
         "title": "ReviewUpdate"
+      },
+      "TargetCommentCreate": {
+        "properties": {
+          "target_type": {
+            "type": "string",
+            "enum": [
+              "post",
+              "review",
+              "collection",
+              "activity"
+            ],
+            "title": "Target Type"
+          },
+          "target_id": {
+            "type": "integer",
+            "maximum": 9.223372036854776e+18,
+            "minimum": 1.0,
+            "title": "Target Id"
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 1,
+            "title": "Content"
+          },
+          "parent_id": {
+            "type": "integer",
+            "maximum": 9.223372036854776e+18,
+            "title": "Parent Id"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "public",
+              "private",
+              "followers"
+            ],
+            "title": "Visibility",
+            "default": "public"
+          },
+          "is_spoiler": {
+            "type": "boolean",
+            "title": "Is Spoiler",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "target_type",
+          "target_id",
+          "content"
+        ],
+        "title": "TargetCommentCreate"
       },
       "ValidationError": {
         "properties": {

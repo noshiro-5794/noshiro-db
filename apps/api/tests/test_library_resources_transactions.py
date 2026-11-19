@@ -100,7 +100,11 @@ async def library_client(integration_session):
 
     async def viewer(request: Request):
         identifier = request.headers.get("x-test-user")
-        return SimpleNamespace(id=int(identifier)) if identifier else None
+        return (
+            SimpleNamespace(id=int(identifier), is_staff=int(identifier) == owner)
+            if identifier
+            else None
+        )
 
     async def authenticated(request: Request):
         user = await viewer(request)

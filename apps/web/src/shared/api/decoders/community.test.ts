@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   decodeCommunityNotification,
+  decodeCommunityComment,
   decodeCommunityPost,
   decodeNotificationReadAllResult,
   decodeNotificationUnreadCount,
@@ -9,6 +10,27 @@ import {
 const user = { id: 1, nickname: 'User', avatar: '' };
 
 describe('community response decoders', () => {
+  it('accepts activity comments and hidden parents with replies', () => {
+    const comment = {
+      id: 3,
+      parent_id: null,
+      target: { type: 'activity', id: 2 },
+      content: 'Reply',
+      visibility: 'public',
+      is_spoiler: false,
+      is_hidden: false,
+      is_locked: false,
+      reply_count: 0,
+      reaction_count: 0,
+      author: user,
+      viewer_state: { has_liked: false, is_following_author: false },
+    };
+    expect(decodeCommunityComment(comment)).toEqual(comment);
+    const hidden = { ...comment, content: '', is_hidden: true, author: null, reply_count: 1 };
+    expect(decodeCommunityComment(hidden)).toEqual(hidden);
+    expect(() => decodeCommunityComment({ ...comment, target: { type: 'activity', id: 0 } })).toThrow(TypeError);
+  });
+
   it('validates post viewer permissions and counters', () => {
     const post = {
       id: 1,
