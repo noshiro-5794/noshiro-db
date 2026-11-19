@@ -112,6 +112,10 @@ async def validation_handler(request: Request, error: Exception) -> JSONResponse
         message = messages.get(item["type"], item["msg"])
         if item["type"] == "string_too_long":
             message = f"Ensure this field has no more than {item['ctx']['max_length']} characters."
+        if item["type"] == "string_too_short" and item["ctx"]["min_length"] == 1:
+            message = "This field may not be blank."
+        if item["type"] == "literal_error":
+            message = f'"{item["input"]}" is not a valid choice.'
         if item["type"] != "missing" and item.get("input") is None:
             message = "This field may not be null."
         errors.setdefault(field, []).append(message)

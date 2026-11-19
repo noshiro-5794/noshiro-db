@@ -12,7 +12,7 @@ live here instead of being repeated per query:
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlalchemy import text
@@ -59,9 +59,11 @@ CURRENT = """
 """
 
 
-def isoformat(value: datetime | None) -> str | None:
+def isoformat(value: date | datetime | None) -> str | None:
     if value is None:
         return None
+    if not isinstance(value, datetime):
+        return value.isoformat()
     rendered = value.astimezone(UTC).isoformat()
     return rendered[:-6] + "Z" if rendered.endswith("+00:00") else rendered
 

@@ -42,13 +42,16 @@ function isRatingDetail(value: unknown): value is RatingDetail {
   return isRecord(value) && typeof value['key'] === 'string' && typeof value['value'] === 'string';
 }
 
-function isLibraryEntry(value: unknown): value is LibraryEntry & Record<string, unknown> {
+type LibraryEntryPayload = Omit<LibraryEntry, 'rating'> & { rating: string | number | null };
+
+function isLibraryEntry(value: unknown): value is LibraryEntryPayload & Record<string, unknown> {
   if (
     !isRecord(value) ||
     !isInteger(value['id'], 1) ||
     typeof value['status'] !== 'string' ||
     (value['simple_rating'] !== null && !isInteger(value['simple_rating'], 1)) ||
-    !isNullableString(value['rating']) ||
+    (!isNullableString(value['rating']) &&
+      !(typeof value['rating'] === 'number' && Number.isFinite(value['rating']))) ||
     typeof value['comment'] !== 'string' ||
     !isNullableString(value['watch_start_date']) ||
     !isNullableString(value['watch_end_date']) ||
@@ -157,6 +160,7 @@ export const decodeUserSubject = (value: unknown) => {
   const subject = subjectSummaryFromEntity(entry.entity);
   return {
     ...entry,
+    rating: entry.rating === null ? null : String(entry.rating),
     subject,
   } as unknown as UserSubject;
 };

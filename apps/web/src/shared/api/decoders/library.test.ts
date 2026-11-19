@@ -7,6 +7,7 @@ import {
   decodePublicUserSubject,
   decodeReview,
   decodeUserSubjectContext,
+  decodeUserSubject,
 } from './library';
 
 const entity = {
@@ -60,6 +61,15 @@ const review = {
 };
 
 describe('library response decoders', () => {
+  it.each([null, 0, 8.5, 10, '8.5'])('accepts the API rating representation %s', (rating) => {
+    const decoded = decodeUserSubject({ ...userSubject, rating });
+    expect(decoded.rating).toBe(rating === null ? null : String(rating));
+  });
+
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, true, {}])('rejects invalid rating values %s', (rating) => {
+    expect(() => decodeUserSubject({ ...userSubject, rating })).toThrow(TypeError);
+  });
+
   it('accepts full progress responses', () => {
     expect(decodeProgressSummary(progress)).toMatchObject({ finished_count: 1 });
     expect(

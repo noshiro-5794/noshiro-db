@@ -7,6 +7,7 @@ counts join on `review_id` rather than filtering a polymorphic pair.
 from __future__ import annotations
 
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +15,8 @@ from api.contexts.community.activities import create_review_activity
 from api.contexts.identity.resolution import cluster_ids, resolve
 from api.contexts.presentation.fragments import fetch, isoformat
 from api.contexts.presentation.summary import entity_summary
+from api.shared.pagination import page_offset
+from api.shared.sql import contains_pattern
 
 REVIEW_QUERY = """
     SELECT review.id, review.title, review.content, review.is_public,
@@ -143,3 +146,119 @@ async def create_review(
         session, REVIEW_QUERY + " WHERE review.id = :id", {"id": rows[0].id, "viewer": user_id}
     )
     return await review_data(session, found[0])
+
+
+PUBLIC_REVIEWS = """
+    review.is_public AND entry.is_public
+    AND NOT EXISTS (
+        SELECT 1 FROM community_user_block
+        WHERE (user_id=:viewer AND blocked_user_id=entry.user_id)
+           OR (user_id=entry.user_id AND blocked_user_id=:viewer)
+    )
+"""
+
+
+async def list_reviews(
+    session: AsyncSession,
+    *,
+    viewer_id: int,
+    user_id: int | None = None,
+    entity_id: UUID | None = None,
+    public_only: bool = False,
+    keyword: str = "",
+    ordering: str = "-created_at",
+    page: int,
+    page_size: int,
+) -> tuple[int, list[dict[str, Any]]]:
+    clauses = ["entry.entity_id IS NOT NULL"]
+    params: dict[str, Any] = {"viewer": viewer_id}
+    if user_id is not None:
+        clauses.append("entry.user_id=:user")
+        params["user"] = user_id
+    if entity_id is not None:
+        entities = await fetch(session, "SELECT id FROM entity WHERE id=:id", {"id": entity_id})
+        if not entities:
+            raise LookupError(entity_id)
+        root = await resolve(session, entity_id) or entity_id
+        ids = await cluster_ids(session, root)
+        clauses.append("entry.entity_id=ANY(CAST(:entities AS uuid[]))")
+        params["entities"] = [str(value) for value in ids]
+    if public_only:
+        clauses.append(PUBLIC_REVIEWS)
+    if keyword.strip():
+        clauses.append("(review.title ILIKE :keyword OR review.content ILIKE :keyword)")
+        params["keyword"] = contains_pattern(keyword.strip())
+    field = ordering.lstrip("-")
+    if field not in {"id", "created_at", "updated_at"}:
+        field, ordering = "created_at", "-created_at"
+    direction = "DESC" if ordering.startswith("-") else "ASC"
+    where = " AND ".join(clauses)
+    count = await fetch(
+        session,
+        "SELECT count(*) AS total FROM user_review AS review"
+        " JOIN user_library_entry AS entry ON entry.id=review.user_subject_id"
+        f" WHERE {where}",
+        params,
+    )
+    total = int(count[0].total)
+    rows = await fetch(
+        session,
+        REVIEW_QUERY + f" WHERE {where} ORDER BY review.{field} {direction},review.id DESC"
+        " LIMIT :limit OFFSET :offset",
+        {**params, "limit": page_size, "offset": page_offset(page, page_size, total)},
+    )
+    return total, [await review_data(session, row) for row in rows]
+
+
+async def get_review(
+    session: AsyncSession, *, viewer_id: int, review_id: int, own: bool = False
+) -> dict[str, Any]:
+    visibility = "entry.user_id=:viewer" if own else PUBLIC_REVIEWS
+    rows = await fetch(
+        session,
+        REVIEW_QUERY + f" WHERE review.id=:id AND entry.entity_id IS NOT NULL AND ({visibility})",
+        {"id": review_id, "viewer": viewer_id},
+    )
+    if not rows:
+        raise LookupError(review_id)
+    return await review_data(session, rows[0])
+
+
+async def _lock_review(session: AsyncSession, user_id: int, review_id: int) -> None:
+    rows = await fetch(
+        session,
+        "SELECT review.id FROM user_review AS review"
+        " JOIN user_library_entry AS entry ON entry.id=review.user_subject_id"
+        " WHERE review.id=:review AND entry.user_id=:user AND entry.entity_id IS NOT NULL"
+        " FOR UPDATE OF review",
+        {"review": review_id, "user": user_id},
+    )
+    if not rows:
+        raise LookupError(review_id)
+
+
+async def update_review(
+    session: AsyncSession, *, user_id: int, review_id: int, values: dict[str, Any]
+) -> dict[str, Any]:
+    await _lock_review(session, user_id, review_id)
+    fields = {
+        key: value
+        for key, value in values.items()
+        if key in {"title", "content", "is_public", "is_spoiler"}
+    }
+    if not fields:
+        raise ValueError({"non_field_errors": ["No fields to update."]})
+    assignments = ", ".join(f"{field}=:{field}" for field in fields)
+    await fetch(
+        session,
+        f"UPDATE user_review SET {assignments},updated_at=now() WHERE id=:id RETURNING id",
+        {**fields, "id": review_id},
+    )
+    await session.commit()
+    return await get_review(session, viewer_id=user_id, review_id=review_id, own=True)
+
+
+async def delete_review(session: AsyncSession, *, user_id: int, review_id: int) -> None:
+    await _lock_review(session, user_id, review_id)
+    await fetch(session, "DELETE FROM user_review WHERE id=:id RETURNING id", {"id": review_id})
+    await session.commit()

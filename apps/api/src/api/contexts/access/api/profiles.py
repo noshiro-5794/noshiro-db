@@ -2,13 +2,12 @@
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends
 
 from api.contexts.access.dependencies import optional_user
-from api.contexts.library.collections import list_public_collections
+from api.contexts.access.profiles import ensure_public_user
 from api.contexts.presentation.fragments import fetch
 from api.db import SessionDep
-from api.shared.pagination import ensure_page, page_params, page_payload
 from api.shared.problems import ProblemError
 
 router = APIRouter(prefix="/api/v1/users", tags=["profile"])
@@ -22,16 +21,7 @@ async def public_profile(
     session: SessionDep,
     viewer: Annotated[Any | None, Depends(optional_user)],
 ) -> dict[str, Any]:
-    if viewer is not None and viewer.id != user_id:
-        blocked = await fetch(
-            session,
-            "SELECT 1 FROM community_user_block"
-            " WHERE (user_id = :a AND blocked_user_id = :b)"
-            "    OR (user_id = :b AND blocked_user_id = :a)",
-            {"a": viewer.id, "b": user_id},
-        )
-        if blocked:
-            raise ProblemError(status_code=404, detail=NOT_FOUND)
+    await ensure_public_user(session, user_id=user_id, viewer_id=viewer.id if viewer else 0)
     rows = await fetch(
         session,
         """
@@ -76,26 +66,3 @@ async def public_profile(
         },
         "is_following": bool(row.is_following),
     }
-
-
-@router.get("/{user_id}/collections/")
-async def public_collections(
-    user_id: int,
-    session: SessionDep,
-    request: Request,
-    viewer: Annotated[Any | None, Depends(optional_user)],
-    keyword: str = "",
-    ordering: str = "id",
-) -> dict[str, Any]:
-    page, page_size = page_params(request)
-    total, results = await list_public_collections(
-        session,
-        viewer_id=viewer.id if viewer else 0,
-        user_id=user_id,
-        keyword=keyword.strip(),
-        ordering=ordering,
-        page=page,
-        page_size=page_size,
-    )
-    ensure_page(page, page_size, total)
-    return page_payload(request, count=total, results=results, page=page, page_size=page_size)
