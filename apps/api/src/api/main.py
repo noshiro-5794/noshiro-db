@@ -1,4 +1,6 @@
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException
 
 from .contexts.access.api.logout import router as logout_router
 from .contexts.access.api.profile import router as profile_router
@@ -22,11 +24,12 @@ from .contexts.presentation.api.catalogue import router as catalogue_router
 from .contexts.presentation.api.entity import router as entity_router
 from .contexts.presentation.api.health import router as health_router
 from .contexts.signal.api import router as signal_router
-from .shared.problems import ProblemError, problem_handler
+from .shared.problems import ProblemError, http_error_handler, problem_handler, validation_handler
+from .shared.schema import Application
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Noshiro API", version="0.1.0")
+    app = Application(title="Noshiro API", version="0.1.0")
     app.include_router(health_router)
     app.include_router(registration_router)
     app.include_router(social_router)
@@ -48,6 +51,8 @@ def create_app() -> FastAPI:
     app.include_router(entity_router)
     app.include_router(signal_router)
     app.add_exception_handler(ProblemError, problem_handler)
+    app.add_exception_handler(RequestValidationError, validation_handler)
+    app.add_exception_handler(HTTPException, http_error_handler)
     return app
 
 

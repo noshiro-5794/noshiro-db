@@ -1343,3 +1343,24 @@ empty-key token. Valid configured token issuance remains unchanged.
 Validation passed with strict typing of 214 modules, 455 offline cases and 246
 PostgreSQL transaction cases. The dedicated Redis case remains skipped in this run.
 Production rollout and the remaining general request/mutation contract work are pending.
+
+### Framework validation and container runtime
+
+FastAPI request validation now returns the existing structured 400 problem response,
+including field errors. Malformed path identifiers return a 404 problem. Missing
+routes, unsupported methods and malformed JSON use the same response envelope.
+OpenAPI describes the actual 400 and path-related 404 responses. The frontend
+regression case verifies field errors and trace identifiers through its API client.
+
+The complete quality gate passed 708 backend cases, with one optional Redis case
+skipped, strict typing of 215 modules, 235 web unit cases and seven browser cases.
+The locally built ARM64 container runs as UID 10001, has no Django package, loads
+all 18 periodic schedules and returns successful liveness, readiness and collection
+responses against the restored production database. Its OpenAPI matches the checked-in
+snapshot. The base image came from the public ECR Docker library mirror after the
+Docker Hub authentication request timed out. The Dockerfile now accepts a base-image
+override while retaining its existing default. Production needs an AMD64 build.
+
+SSH access to the production host has been verified. PostgreSQL is healthy and the
+application containers remain stopped. Production rollout and remaining mutation,
+schema-retirement and deployment cleanup work continue under the active goal.
