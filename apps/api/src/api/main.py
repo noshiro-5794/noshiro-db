@@ -7,6 +7,7 @@ from .config import settings
 from .contexts.access.api.logout import router as logout_router
 from .contexts.access.api.profile import router as profile_router
 from .contexts.access.api.profiles import router as profiles_router
+from .contexts.access.api.refresh import router as refresh_router
 from .contexts.access.api.registration import router as registration_router
 from .contexts.access.api.session import router as session_router
 from .contexts.access.api.settings import router as settings_router
@@ -50,6 +51,7 @@ def create_app() -> FastAPI:
     app.include_router(registration_router)
     app.include_router(social_router)
     app.include_router(session_router)
+    app.include_router(refresh_router)
     app.include_router(profile_router)
     app.include_router(collections_router)
     app.include_router(profiles_router)

@@ -1387,3 +1387,29 @@ initial full run, then passed in isolation and in both subsequent full runs. No
 behavior change was made to that scanner. Production containers remain stopped.
 The frontend's refresh endpoint was found missing during this audit and is the next
 required session change before rollout.
+
+### Refresh-token endpoint and route inventory audit
+
+Registered the browser's existing sessions/refresh endpoint. Rotation locks the
+account before checking revocation, validates active-account and password state,
+blacklists the consumed token and records its replacement in one transaction.
+Custom token claims survive rotation. Pre-fingerprint refresh tokens acquire the
+current password fingerprint. Logout shares the context-owned revocation service.
+Stored token identifiers and expiry values are validated before database binding.
+
+PostgreSQL regression cases cover replay, logout revocation, inactive/deleted users,
+password changes, legacy claims, malformed claims and a replacement-insert failure.
+Two simultaneous HTTP requests through independent PostgreSQL connections produce
+one successful rotation and one rejection. A failed replacement insert rolls back
+the consumed-token revocation. The web client already calls this endpoint with the
+matching payload, so its existing contract requires no change. OpenAPI was regenerated.
+Root checks passed 731 backend cases and 235 web unit cases, seven browser cases,
+strict typing of 218 modules and the remaining lint/build checks. Redis remains an
+explicit opt-in case skipped in this run.
+
+A fresh inventory from the retained Django URL resolver identified further missing
+HTTP operations. Avatar upload, episode progress, own/public reviews, public library
+and collection detail/items, generic comment list/create and mute actions need porting.
+The versioned OpenAPI URL also needs preserving. Existing tests and sampled payload
+comparisons did not cover this complete route inventory. These gaps keep production
+cutover and old runtime/database retirement pending under the active goal.
