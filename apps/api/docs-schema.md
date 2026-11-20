@@ -10,24 +10,9 @@ Existing databases already stamped at 0001 apply only the subsequent revisions.
 An unversioned existing database is rejected by the bootstrap; validate it against
 the baseline and explicitly `alembic stamp 0001_baseline` before upgrading.
 
-The baseline is irreversible because dropping it would delete all core tables.
-Restore a backup to undo a bootstrap. Later revisions retain their own downgrade
-operations; the tested round trip is head → 0001_baseline → head.
-
-## Transition rule
-
-While both services run:
-
-1. **DDL is Alembic's.** New tables, columns, indexes, views and data moves are
-   written as revisions here — never as a Django migration.
-2. **Django models follow the database.** When a column changes, the model is
-   updated so the old service keeps serving, and the Django migration that
-   `makemigrations` wants is written as `SeparateDatabaseAndState` with **no
-   database operations**: it only moves Django's internal state.
-3. **No new Django-native DDL** — a second history would make "what is the
-   schema" ambiguous, which is the problem this change removes.
-
-After the cutover the Django app is deleted and only this history remains.
+Alembic owns tables, columns, indexes, views and data migrations. Restore a
+backup to reverse the schema bootstrap or framework retirement. The bootstrap
+creates the core tables. Framework retirement drops the obsolete Django metadata.
 
 ## Revisions
 
@@ -37,6 +22,11 @@ After the cutover the Django app is deleted and only this history remains.
 | `0002_display_profile` | `entity_display_profile` | applied, downgraded, re-applied on production |
 | `0003_metric_tables` | `metric_current`, `metric_daily` + backfill from `metric_snapshot` | applied, downgraded, re-applied; counts reproduce exactly |
 | `0004_metric_view` | `entity_metric_current` | applied; 551,018 rows, one per (entity, metric) |
+| `0005_campaign_queue_indexes` | bounded campaign work indexes | production-copy rehearsal and downgrade |
+| `0006_content_delete_rules` | database-managed content deletion rules | production-copy rehearsal and downgrade |
+| `0007_refresh_token_tables` | application-owned refresh token and revocation tables | reversible rename, production row counts preserved |
+| `0008_retire_django` | remove the old framework tables and metadata | production-copy and empty bootstrap rehearsals, rejection with nonempty groups tested |
+| `0009_retire_schema_aliases` | remove transitional views over the renamed tables | production-copy and empty bootstrap upgrade and downgrade |
 
 `0003` copies what `metric_snapshot` holds: **551,018** current rows against
 551,018 distinct `(record, metric)` keys, **697,636** daily rows against the same
@@ -63,6 +53,6 @@ make revision m="add table"  # new empty revision
 uv run alembic downgrade -1  # one step back
 ```
 
-Every revision must be reversible or explicitly documented as not being so; the
-schema CI job runs `upgrade head`, `downgrade 0001_baseline`, then `upgrade head`
-on a fresh PostgreSQL 18 service.
+The schema CI job upgrades through `0007_refresh_token_tables`, downgrades to
+`0001_baseline` and then upgrades through the retirement revisions to head on a
+fresh PostgreSQL 18 service.
