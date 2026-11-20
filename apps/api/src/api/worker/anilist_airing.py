@@ -99,7 +99,9 @@ async def upsert_episode(
     external_id = str(
         item.get("id") or f"{media['id']}:{item.get('episode') or starts_at.isoformat()}"
     )
-    stable = {key: item[key] for key in ("id", "episode", "airingAt") if key in item}
+    stable: dict[str, Any] = {
+        key: item[key] for key in ("id", "episode", "airingAt") if key in item
+    }
     if not stable:
         stable = {"id": external_id, "airingAt": item.get("airingAt")}
     recorded = await records.record_payload(
