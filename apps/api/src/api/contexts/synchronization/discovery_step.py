@@ -9,12 +9,12 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.contexts.presentation.fragments import fetch
 from api.contexts.synchronization.campaigns import get_campaign
 from api.contexts.synchronization.discovery import discover_page
 from api.contexts.synchronization.domain import LeaseLost
 from api.contexts.synchronization.work_items import enqueue_page
-from api.worker.providers.catalog import DeltaPage
+from api.db import fetch
+from api.integrations.providers.catalog import DeltaPage
 
 
 def positive_int(value: Any, default: int) -> int:

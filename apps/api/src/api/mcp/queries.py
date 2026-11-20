@@ -7,9 +7,9 @@ from mcp.server.mcpserver.exceptions import ToolError
 
 from api.contexts.identity import resolution
 from api.contexts.knowledge import retrieval
-from api.contexts.presentation.fragments import fetch
 from api.contexts.presentation.relations import CURRENT_RELATION
 from api.contexts.presentation.summary import entity_summary
+from api.db import fetch
 from api.worker.session import session_scope
 
 

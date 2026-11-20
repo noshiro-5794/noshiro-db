@@ -1,8 +1,7 @@
-"""The worker runtime: the replacement's own Celery application.
+"""Register Celery tasks, queue routing, and the periodic schedule.
 
-It registers the same task names the Django workers answer to, on the same queues, so a
-task published by either service can be consumed by either worker. That is what makes the
-migration a queue-by-queue flip instead of a coordinated release.
+Task names are the broker protocol. Keep them stable across Python module moves so
+queued messages can be delivered during a rolling release.
 """
 
 from __future__ import annotations
@@ -11,22 +10,22 @@ import os
 
 from celery import Celery
 
-from api.worker import (  # noqa: F401  registers the tasks
-    ai_tasks,
-    calendar_tasks,
-    campaign_tasks,
-    frontier_tasks,
-    incremental_tasks,
-    linking_tasks,
-    mail_tasks,
+from api.worker.schedule import periodic_tasks
+from api.worker.tasks import (  # noqa: F401
+    ai,
+    calendar,
+    campaigns,
+    frontier,
+    incremental,
+    linking,
+    mail,
+    maintenance,
     manual_sync,
     match_application,
-    matching_tasks,
-    season_tasks,
-    tasks,
-    vndb_tasks,
+    matching,
+    seasons,
+    vndb,
 )
-from api.worker.schedule import periodic_tasks
 
 app = Celery("noshiro-worker", broker=os.environ.get("CELERY_BROKER_URL", ""))
 

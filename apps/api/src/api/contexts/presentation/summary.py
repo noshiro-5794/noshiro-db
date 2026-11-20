@@ -8,8 +8,9 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.identity.resolution import cluster_ids, is_public, resolve
+from api.db import fetch
 
-from .fragments import current_rows, fetch, row_provenance, visible
+from .provenance import current_rows, row_provenance, visible
 
 
 def choose_name(names: list[Any], language: str) -> str:

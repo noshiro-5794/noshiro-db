@@ -7,8 +7,7 @@ from api.config import settings
 from api.contexts.access.cookies import set_refresh_cookie
 from api.contexts.access.rate_limits import limited
 from api.contexts.access.security import create_tokens, verify_password
-from api.contexts.presentation.fragments import fetch
-from api.db import SessionDep
+from api.db import SessionDep, fetch
 from api.shared.problems import ProblemError
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])

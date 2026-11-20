@@ -1,148 +1,56 @@
-# Deployment
+# Web deployment
 
-Noshiro DB Frontend is a Vite single-page application. In production, build it into static files and serve them through a static web server or object storage/CDN. The backend API is deployed separately behind its own hostname.
+The Vite build produces a static SPA. Build with the public site origin and
+the public API origin in `.env.production`.
 
-## Recommended Topology
-
-```text
-Browser
-  -> https://<frontend-domain>/
-  -> Nginx or equivalent static hosting
-      -> static frontend files from dist/
-  -> https://<api-domain>/
-      -> proxied to the FastAPI backend
-```
-
-Use two separate hostnames:
-
-- frontend: `https://<frontend-domain>/`
-- backend API: `https://<api-domain>/`
-- frontend build variable: `VITE_API_BASE_URL=https://<api-domain>`
-
-The frontend request paths already include `/api/v1/`. Do not set `VITE_API_BASE_URL` to `https://<api-domain>/api` or `https://<api-domain>/api/v1`, otherwise requests become double-prefixed.
-
-## Production Build
-
-Create a production environment file:
-
-```bash
+```sh
 cp .env.production.example .env.production
-```
-
-Set values:
-
-```text
-VITE_SITE_URL=https://<frontend-domain>
-VITE_API_BASE_URL=https://<api-domain>
-VITE_HCAPTCHA_SITE_KEY=your-site-key
-```
-
-Build:
-
-```bash
-fnm use --install-if-missing
-corepack enable pnpm
 pnpm install --frozen-lockfile
-pnpm check
+pnpm build
 ```
 
-The production files are generated in `dist/`.
+Set `VITE_SITE_URL` to the frontend origin and `VITE_API_BASE_URL` to the API
+origin, such as `https://api.example.org`. The client adds the `/api/v1/`
+prefix to resource paths. Set `VITE_HCAPTCHA_SITE_KEY` for an environment
+where email verification requires CAPTCHA. Keep the verification secret in
+the API environment.
 
-If dependencies are already installed on the deployment machine, `pnpm build` is enough for a rebuild. Use `pnpm install --frozen-lockfile` for clean release builds.
+## Serve the app
 
-## Static Hosting
+Publish the contents of `dist/` to the Web host. Serve browser routes through
+the SPA fallback and return missing hashed assets as missing files.
 
-Configure any static-site host, Nginx server block, or CDN bucket with:
+```caddyfile
+app.example.org {
+    root * /srv/noshiro-web
 
-```text
-Document root: contents of dist/
-Default index: index.html
-HTTPS: enabled
-```
+    @assets path /assets/*
+    handle @assets {
+        file_server
+    }
 
-The frontend does not need a public Node.js port in production. Do not expose the Vite dev port `5173`.
-
-Copy the built files to your static-site root with a tool that supports atomic or clean replacement, for example:
-
-```bash
-rsync -a --delete dist/ /srv/<frontend-domain>/public/
-```
-
-Keep the target path under your deployment directory and avoid committing machine-specific paths to this repository.
-
-## SPA Fallback
-
-TanStack Router handles routes such as `/search`, `/calendar`, and `/entities/<id>` in the browser. The static server must fall back to `index.html` when a real file does not exist.
-
-Use a static-site rewrite or Nginx location:
-
-```nginx
-location / {
-    try_files $uri $uri/ /index.html;
+    handle {
+        try_files {path} /index.html
+        file_server
+    }
 }
-
-add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://js.hcaptcha.com https://*.hcaptcha.com; style-src 'self' 'unsafe-inline' https://*.hcaptcha.com; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://<api-domain> https://api.bgm.tv https://*.hcaptcha.com; frame-src https://*.hcaptcha.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests" always;
-add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()" always;
-add_header X-Content-Type-Options "nosniff" always;
-add_header X-Frame-Options "DENY" always;
-add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
 ```
 
-Replace `<api-domain>` with your actual API hostname and keep the CSP tightly scoped.
+Use HTTPS on both origins. Configure API CORS for the frontend origin and
+enable credentialed requests for session refresh. Keep refresh cookies secure
+and scoped to the API host. Allow the same frontend origin on the API’s
+cookie-authenticated refresh and logout endpoints.
 
-Without this fallback, direct visits or refreshes on nested routes will return `404 Not Found`.
+Apply a Content Security Policy that permits the Web origin, its configured
+API and image origins, and the hCaptcha script and frame origins when used.
+Block third-party framing and object embeds. Set the host’s referrer,
+permissions, content-type, and HSTS headers. The cache rules in
+`public/_headers` cover unversioned icons, the manifest, and the social card.
 
-This fallback must apply to all frontend routes, including public pages like `/search`, `/calendar`, `/docs/...`, entity pages, and authenticated workspace routes. API traffic should not be served by the frontend site; it belongs on `<api-domain>`.
+## Verify a release
 
-## Ports
+Open the home page and a deep link such as `/search`. Verify that the browser
+can fetch the API and that authenticated refresh works. Confirm registration
+and password reset load the CAPTCHA widget when enabled.
 
-For public access, only expose HTTPS and HTTP redirect ports:
-
-- `443` for HTTPS
-- `80` for HTTP to HTTPS redirect
-
-Keep development and backend process ports private:
-
-- Vite dev server `5173` should not be exposed in production.
-- Backend process ports such as `8008` should stay behind the API reverse proxy.
-
-## Backend Notes
-
-Make sure the backend production settings allow only the deployment origins:
-
-- the reverse proxy routes `<api-domain>` to the FastAPI service
-- CORS allowed origins include only `https://<frontend-domain>`, with credentialed requests enabled
-- the refresh cookie is host-only for `<api-domain>`, `HttpOnly`, `Secure`, and `SameSite=Lax` or stricter; a shared parent-domain cookie is unnecessary
-- cookie-authenticated refresh and logout endpoints validate `Origin` against an explicit allowlist; CORS response headers and `SameSite` alone are not a substitute for server-side CSRF enforcement
-- uploaded media/static backend files have their own serving strategy
-- calendar cover images may be served from MinIO/CDN URLs when the backend has mirrored them successfully; otherwise Bangumi image URLs can still appear as fallback data
-
-## hCaptcha
-
-Login, registration, and password-reset email-code flows can show hCaptcha before sending a code. Use the public site key in frontend environment variables:
-
-```text
-VITE_HCAPTCHA_SITE_KEY=your-site-key
-```
-
-The hCaptcha secret belongs only in backend environment variables and must never be committed to this repository.
-
-## Smoke Test
-
-After deployment:
-
-```bash
-curl -I https://<frontend-domain>/
-curl -I https://<api-domain>/api/v1/
-```
-
-Then open:
-
-```text
-https://<frontend-domain>/
-https://<frontend-domain>/search
-https://<frontend-domain>/calendar
-```
-
-Refresh a nested route such as `/entities/<id>` to confirm SPA fallback is working.
+[Backend deployment](../../../deploy/README.md)

@@ -464,7 +464,7 @@ test.afterEach(async ({ page }) => {
 test('public home opens the catalog and renders API data', async ({ page }) => {
   await page.goto('/');
 
-  await expect(page.getByRole('heading', { name: 'An open catalogue of anime and visual novels' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Explore works and their connections' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Airing this season' })).toBeVisible();
   await expect(page.getByText(subjectTitle).first()).toBeVisible();
 
@@ -486,6 +486,16 @@ test('protected routes preserve the destination while redirecting to login', asy
   await expect.poll(() => currentReturnTarget(page)).toBe('/library?keyword=noshiro');
   await expect(page.getByRole('textbox', { name: 'Email' })).toBeVisible();
   await expect(page.getByLabel('Password')).toBeVisible();
+});
+
+test('documentation redirects unknown pages and links to the usage guide', async ({ page }) => {
+  await page.goto('/docs/constructor');
+
+  await expect(page).toHaveURL(/\/docs\/introduction$/u);
+  await expect(page.getByRole('heading', { name: 'About Noshiro DB' })).toBeVisible();
+  await page.getByRole('link', { name: 'How to use', exact: true }).click();
+  await expect(page).toHaveURL(/\/docs\/guide$/u);
+  await expect(page.getByRole('heading', { name: 'Browse as a guest' })).toBeVisible();
 });
 
 test('guests can open public details while authenticated write actions stay gated', async ({ page }) => {

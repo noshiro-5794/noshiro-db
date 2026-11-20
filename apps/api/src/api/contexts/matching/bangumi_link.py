@@ -22,13 +22,14 @@ from api.contexts.matching.bangumi_models import (
     search_queries,
 )
 from api.contexts.matching.bangumi_prompt import PROMPT_VERSION, SYSTEM_PROMPT
-from api.contexts.presentation.fragments import fetch
+from api.db import fetch
+from api.integrations.providers.bangumi import BangumiClient
 from api.shared import inference
 from api.shared.ai import complete_json
-from api.worker import bangumi_episodes, incremental_tasks, provider_search
-from api.worker.providers.bangumi import BangumiClient
+from api.worker import bangumi_episodes, provider_search
 from api.worker.session import session_scope
 from api.worker.subject_import import import_subject
+from api.worker.tasks import incremental as incremental_tasks
 
 USE_CASE = "bangumi_link_search"
 

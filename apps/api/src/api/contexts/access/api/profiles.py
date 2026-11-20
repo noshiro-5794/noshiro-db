@@ -6,8 +6,7 @@ from fastapi import APIRouter, Depends
 
 from api.contexts.access.dependencies import optional_user
 from api.contexts.access.profiles import ensure_public_user
-from api.contexts.presentation.fragments import fetch
-from api.db import SessionDep
+from api.db import SessionDep, fetch
 from api.shared.problems import ProblemError
 
 router = APIRouter(prefix="/api/v1/users", tags=["profile"])

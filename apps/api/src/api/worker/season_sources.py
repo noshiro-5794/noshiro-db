@@ -8,11 +8,13 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.contexts.presentation.fragments import fetch
-from api.worker import calendar_sync, ingestion, records, snapshot_retention
-from api.worker.providers.anilist import AniListClient
-from api.worker.providers.bangumi import BangumiClient
-from api.worker.providers.mal import MALClient, season_name_for_quarter
+from api.contexts.ingestion import observations as ingestion
+from api.contexts.ingestion import records
+from api.db import fetch
+from api.integrations.providers.anilist import AniListClient
+from api.integrations.providers.bangumi import BangumiClient
+from api.integrations.providers.mal import MALClient, season_name_for_quarter
+from api.worker import calendar_sync, snapshot_retention
 from api.worker.session import session_scope
 
 

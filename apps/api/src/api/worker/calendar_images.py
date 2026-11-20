@@ -7,8 +7,8 @@ from urllib.parse import urlparse
 
 import httpx
 
+from api.integrations.providers.http import client as build_client
 from api.integrations.storage import ObjectStorage
-from api.worker.providers.http import client as build_client
 
 logger = logging.getLogger(__name__)
 

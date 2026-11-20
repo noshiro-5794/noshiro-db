@@ -14,10 +14,11 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.identity.resolution import cluster_ids, is_active, is_public, resolve
+from api.db import fetch
 from api.shared.pagination import page_offset
 
 from .detail import entity_detail
-from .fragments import PROVENANCE, fetch, row_provenance
+from .provenance import PROVENANCE, row_provenance
 from .summary import preferred_name
 
 ORDERING_SLUGS = ("disc", "episode-number", "sort")

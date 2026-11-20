@@ -11,7 +11,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.contexts.presentation.fragments import fetch
+from api.db import fetch
 
 
 async def _entity(session: AsyncSession, entity_id: str) -> Any:

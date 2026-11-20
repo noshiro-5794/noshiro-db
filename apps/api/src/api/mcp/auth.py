@@ -8,7 +8,7 @@ from redis.asyncio import Redis
 
 from api.config import settings
 from api.contexts.access.security import session_claims
-from api.contexts.presentation.fragments import fetch
+from api.db import fetch
 from api.worker.session import session_scope
 
 

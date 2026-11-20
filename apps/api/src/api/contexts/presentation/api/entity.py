@@ -10,10 +10,9 @@ from api.contexts.presentation.credits import entity_credits
 from api.contexts.presentation.detail import entity_detail
 from api.contexts.presentation.episodes import episode_page
 from api.contexts.presentation.evidence import entity_evidence
-from api.contexts.presentation.fragments import fetch
 from api.contexts.presentation.relations import entity_relations
 from api.contexts.presentation.releases import entity_releases
-from api.db import SessionDep
+from api.db import SessionDep, fetch
 from api.shared.pagination import (
     ensure_page,
     page_params,

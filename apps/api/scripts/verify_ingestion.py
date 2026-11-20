@@ -17,8 +17,10 @@ import uuid
 from datetime import UTC, datetime
 
 import api.worker.mal_import as mal_import
-from api.contexts.presentation.fragments import fetch
-from api.worker import entities, facts, ingestion, metrics, presentation, profiles, records
+from api.contexts.ingestion import entities, facts, metrics, profiles, records
+from api.contexts.ingestion import metadata as presentation
+from api.contexts.ingestion import observations as ingestion
+from api.db import fetch
 from api.worker.session import session_scope
 
 PROVIDER = "vndb"

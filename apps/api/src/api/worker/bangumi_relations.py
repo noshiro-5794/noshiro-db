@@ -6,9 +6,11 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.identity.relations import canonical_relation_type
-from api.contexts.presentation.fragments import fetch
+from api.contexts.ingestion import observations as ingestion
+from api.contexts.ingestion import records
+from api.contexts.ingestion import relations as graph
 from api.contexts.synchronization.terms import preferred_terms
-from api.worker import graph, ingestion, records
+from api.db import fetch
 from api.worker.bangumi_entities import provide_entity
 from api.worker.subject_import import provide_subject
 

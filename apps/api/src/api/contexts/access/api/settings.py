@@ -16,8 +16,7 @@ from api.contexts.access.api.profile import (
 )
 from api.contexts.access.dependencies import current_user
 from api.contexts.access.profiles import DEFAULT_THEME, get_or_create_profile
-from api.contexts.presentation.fragments import fetch
-from api.db import SessionDep
+from api.db import SessionDep, fetch
 from api.shared.problems import ProblemError
 
 router = APIRouter(prefix="/api/v1/users", tags=["profile"])

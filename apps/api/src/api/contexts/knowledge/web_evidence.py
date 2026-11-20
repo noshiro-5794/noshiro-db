@@ -7,7 +7,7 @@ from uuid import UUID
 
 from api.contexts.knowledge import agent_runs
 from api.contexts.knowledge import artifacts as evidence_artifacts
-from api.contexts.presentation.fragments import fetch
+from api.db import fetch
 from api.shared.web_search import configured, search
 from api.worker.session import session_scope
 

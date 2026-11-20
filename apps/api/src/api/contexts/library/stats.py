@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.contexts.presentation.fragments import fetch
+from api.db import fetch
 
 
 def window(year: int, zone: ZoneInfo) -> tuple[datetime, datetime]:

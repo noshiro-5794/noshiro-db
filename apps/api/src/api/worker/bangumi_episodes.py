@@ -7,8 +7,11 @@ from uuid import UUID, uuid5
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.contexts.presentation.fragments import fetch
-from api.worker import entities, facts, graph, ingestion, presentation, records
+from api.contexts.ingestion import entities, facts, records
+from api.contexts.ingestion import metadata as presentation
+from api.contexts.ingestion import observations as ingestion
+from api.contexts.ingestion import relations as graph
+from api.db import fetch
 from api.worker.subject_mapping import clean_string
 
 EPISODE_NAMESPACE = UUID("1e6aface-b51d-4cf9-b37a-7dd12beb2e2e")

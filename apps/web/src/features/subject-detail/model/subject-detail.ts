@@ -64,7 +64,7 @@ export function seoDescriptionOf(subject: SubjectDetail) {
     subject.summary ||
     subject.description ||
     metaOf(subject) ||
-    'Open anime and galgame details on Noshiro DB.'
+    'Explore this work and its related records on Noshiro DB.'
   );
 }
 

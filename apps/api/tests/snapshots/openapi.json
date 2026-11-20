@@ -7205,76 +7205,6 @@
         }
       }
     },
-    "/api/v1/operations/import-jobs/{job_id}/": {
-      "get": {
-        "tags": [
-          "operations"
-        ],
-        "summary": "Import Job Detail",
-        "operationId": "import_job_detail_api_v1_operations_import_jobs__job_id___get",
-        "parameters": [
-          {
-            "name": "job_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Job Id"
-            }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Import Job Detail Api V1 Operations Import Jobs  Job Id   Get"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Request validation failed.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDocument"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Resource not found.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDocument"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/operations/sync/{campaign_id}/": {
       "get": {
         "tags": [
@@ -7636,22 +7566,30 @@
         }
       }
     },
-    "/api/v1/operations/matching/candidates/": {
-      "get": {
+    "/api/v1/operations/sync/{campaign_id}/{action}/": {
+      "post": {
         "tags": [
           "operations"
         ],
-        "summary": "Matching Candidates",
-        "operationId": "matching_candidates_api_v1_operations_matching_candidates__get",
+        "summary": "Control Campaign",
+        "operationId": "control_campaign_api_v1_operations_sync__campaign_id___action___post",
         "parameters": [
           {
-            "name": "status",
-            "in": "query",
-            "required": false,
+            "name": "campaign_id",
+            "in": "path",
+            "required": true,
             "schema": {
               "type": "string",
-              "default": "",
-              "title": "Status"
+              "title": "Campaign Id"
+            }
+          },
+          {
+            "name": "action",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Action"
             }
           },
           {
@@ -7679,13 +7617,93 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": true,
-                  "title": "Response Matching Candidates Api V1 Operations Matching Candidates  Get"
+                  "title": "Response Control Campaign Api V1 Operations Sync  Campaign Id   Action   Post"
                 }
               }
             }
           },
           "400": {
             "description": "Request validation failed.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/operations/import-jobs/{job_id}/": {
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Import Job Detail",
+        "operationId": "import_job_detail_api_v1_operations_import_jobs__job_id___get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Import Job Detail Api V1 Operations Import Jobs  Job Id   Get"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -7847,6 +7865,67 @@
         }
       }
     },
+    "/api/v1/operations/matching/candidates/": {
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Matching Candidates",
+        "operationId": "matching_candidates_api_v1_operations_matching_candidates__get",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Status"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Matching Candidates Api V1 Operations Matching Candidates  Get"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/operations/matching/candidates/{candidate_id}/decide/": {
       "post": {
         "tags": [
@@ -7900,85 +7979,6 @@
             "content": {
               "application/json": {
                 "schema": {}
-              }
-            }
-          },
-          "400": {
-            "description": "Request validation failed.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDocument"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Resource not found.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDocument"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/operations/sync/{campaign_id}/{action}/": {
-      "post": {
-        "tags": [
-          "operations"
-        ],
-        "summary": "Control Campaign",
-        "operationId": "control_campaign_api_v1_operations_sync__campaign_id___action___post",
-        "parameters": [
-          {
-            "name": "campaign_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Campaign Id"
-            }
-          },
-          {
-            "name": "action",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Action"
-            }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Control Campaign Api V1 Operations Sync  Campaign Id   Action   Post"
-                }
               }
             }
           },

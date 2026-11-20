@@ -10,8 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.knowledge import agent_runs
 from api.contexts.knowledge.agent_runs import EvidenceContext, WriteGuard
-from api.contexts.presentation.fragments import fetch
 from api.contexts.synchronization.terms import normalize_key
+from api.db import fetch
 from api.shared.ai import complete_json
 from api.shared.inference import fail_run, finish_run, start_run
 from api.worker.session import session_scope

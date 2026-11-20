@@ -18,7 +18,7 @@ import asyncio
 import hashlib
 import json
 
-from api.contexts.presentation.fragments import fetch
+from api.db import fetch
 from api.worker.session import session_scope
 
 BY_POLICY = """

@@ -1,21 +1,15 @@
-# Agent Notes
+# Repository instructions
 
-Two apps, two toolchains, one contract:
+- `apps/api` uses uv, FastAPI, SQLAlchemy async, Alembic, Celery, and MCP. Run `make -C apps/api check`.
+- `apps/web` uses pnpm, React, and Vite. Run `pnpm --dir apps/web check`.
+- Run `make check` from the root for changes that affect both apps.
 
-- `apps/api` — FastAPI + SQLAlchemy async + Alembic + Celery + MCP, managed with **uv**. Gates:
-  `make -C apps/api check`.
-- `apps/web` — React + Vite SPA, managed with **pnpm**. Gates:
-  `pnpm --dir apps/web check`.
-- Root: `make check` runs both.
+The API owns request and response shapes. Run `make openapi` and update
+`apps/web/src/shared/api/` in the same change when they change. Keep the app
+toolchains independent. Do not add a root Node workspace or import source
+code from one app into the other.
 
-Rules that matter when changing code:
-
-- The API owns the payload shapes. Regenerate `apps/api/tests/snapshots/openapi.json`
-  with `make openapi` and update `apps/web/src/shared/api/` in the same change.
-- Keep each app's tooling local. Do not add a root Node workspace, and do not let
-  the web app reach into Python sources (or the reverse).
-- Naming, comment, and layering conventions are documented in each app's
-  `docs/architecture.md` under "Conventions". Read the relevant one before
-  renaming modules or moving files.
-- Commits are Conventional Commits with a body that explains why; the commit
-  history is the design record for decisions the code cannot express.
+Read the Conventions section of the relevant
+[API architecture](apps/api/docs/architecture.md) or
+[Web architecture](apps/web/docs/architecture.md) before moving modules.
+Use Conventional Commits and explain the reason for the change in the body.

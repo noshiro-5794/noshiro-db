@@ -18,7 +18,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.identity.work_families import BINDABLE
-from api.contexts.presentation.fragments import fetch
+from api.db import fetch
 
 MAX_REDIRECT_DEPTH = 32
 MAX_CLUSTER_DEPTH = 32

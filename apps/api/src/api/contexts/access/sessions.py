@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.config import settings
 from api.contexts.access.security import REFRESH, create_tokens, revoke_token, session_claims
-from api.contexts.presentation.fragments import fetch
+from api.db import fetch
 from api.shared.problems import ProblemError
 
 

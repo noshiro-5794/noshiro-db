@@ -15,7 +15,7 @@ from api.contexts.knowledge.enrichment_models import (
     FieldProposal,
 )
 from api.contexts.knowledge.web_evidence import SearchArtifact
-from api.contexts.presentation.fragments import fetch
+from api.db import fetch
 from api.shared.ai import complete_json
 from api.shared.inference import fail_run, finish_run, start_run
 from api.worker.session import session_scope

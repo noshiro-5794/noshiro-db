@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.community.people import person as _person
 from api.contexts.community.visibility import visible
-from api.contexts.presentation.fragments import fetch
+from api.db import fetch
 from api.shared.pagination import page_offset
 
 TARGETS = ("post", "comment", "review", "collection", "activity")

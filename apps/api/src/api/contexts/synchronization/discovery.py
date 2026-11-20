@@ -7,11 +7,11 @@ import os
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.contexts.presentation.fragments import fetch
+from api.db import fetch
+from api.integrations.providers.anilist import AniListClient
+from api.integrations.providers.catalog import CatalogPage, DeltaPage
+from api.integrations.providers.vndb import VNDBClient
 from api.worker.frontier import highest_stored_id, read_frontier
-from api.worker.providers.anilist import AniListClient
-from api.worker.providers.catalog import CatalogPage, DeltaPage
-from api.worker.providers.vndb import VNDBClient
 
 
 async def numeric_page(

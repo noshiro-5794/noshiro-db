@@ -7,9 +7,11 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.identity.names import SourceName
-from api.contexts.presentation.fragments import fetch
+from api.contexts.ingestion import entities, facts, metrics, records
+from api.contexts.ingestion import metadata as presentation
+from api.contexts.ingestion import observations as ingestion
+from api.db import fetch
 from api.shared.text import slugify
-from api.worker import entities, facts, ingestion, metrics, presentation, records
 from api.worker import vndb_mapping as mapping
 
 

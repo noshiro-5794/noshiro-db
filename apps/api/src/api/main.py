@@ -18,7 +18,6 @@ from .contexts.community.api.comments import router as comments_router
 from .contexts.community.api.notifications import (
     router as community_notifications_router,
 )
-from .contexts.community.api.operations import router as operations_router
 from .contexts.library.api.collections import router as collections_router
 from .contexts.library.api.entries import router as library_entries_router
 from .contexts.library.api.progress import router as progress_router
@@ -26,12 +25,15 @@ from .contexts.library.api.public import router as public_library_router
 from .contexts.library.api.reviews import router as reviews_router
 from .contexts.library.api.stats import router as library_stats_router
 from .contexts.library.api.tags import router as library_tags_router
+from .contexts.matching.api import router as matching_operations_router
 from .contexts.presentation.api.board import router as board_router
 from .contexts.presentation.api.calendar import router as calendar_router
 from .contexts.presentation.api.catalogue import router as catalogue_router
 from .contexts.presentation.api.entity import router as entity_router
-from .contexts.presentation.api.health import router as health_router
 from .contexts.signal.api import router as signal_router
+from .contexts.synchronization.api.campaigns import router as campaign_router
+from .contexts.synchronization.api.import_jobs import router as import_jobs_router
+from .health import router as health_router
 from .shared.problems import ProblemError, http_error_handler, problem_handler, validation_handler
 from .shared.schema import Application
 
@@ -81,7 +83,9 @@ def create_app() -> FastAPI:
     app.include_router(community_notifications_router)
     app.include_router(community_blocks_router)
     app.include_router(comments_router)
-    app.include_router(operations_router)
+    app.include_router(campaign_router)
+    app.include_router(import_jobs_router)
+    app.include_router(matching_operations_router)
     app.include_router(entity_router)
     app.include_router(signal_router)
     app.add_exception_handler(ProblemError, problem_handler)

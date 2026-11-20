@@ -13,10 +13,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.community.activities import create_review_activity
 from api.contexts.identity.resolution import cluster_ids, resolve
-from api.contexts.presentation.fragments import fetch, isoformat
 from api.contexts.presentation.summary import entity_summary
+from api.db import fetch
 from api.shared.pagination import page_offset
 from api.shared.sql import contains_pattern
+from api.shared.timestamps import isoformat
 
 REVIEW_QUERY = """
     SELECT review.id, review.title, review.content, review.is_public,

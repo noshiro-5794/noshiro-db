@@ -9,10 +9,11 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.identity.resolution import cluster_ids, resolve
-from api.contexts.presentation.fragments import fetch, isoformat
 from api.contexts.presentation.summary import entity_summary
+from api.db import fetch
 from api.shared.pagination import page_offset
 from api.shared.sql import contains_pattern
+from api.shared.timestamps import isoformat
 
 ORDERINGS = frozenset({"created_at", "-created_at", "updated_at", "-updated_at"})
 

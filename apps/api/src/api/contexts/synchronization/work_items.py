@@ -9,9 +9,9 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.contexts.presentation.fragments import fetch
 from api.contexts.synchronization.campaigns import get_campaign
 from api.contexts.synchronization.domain import LeaseLost, classify_failure
+from api.db import fetch
 
 
 async def enqueue_page(

@@ -4,7 +4,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.contexts.presentation.fragments import fetch
+from api.db import fetch
 
 OBSERVATION_REFERENCES = (
     ("ai_proposal", "source_observation_id"),

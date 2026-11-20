@@ -11,8 +11,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from api.contexts.identity import resolution
 from api.contexts.presentation.catalogue import entity_page
 from api.contexts.presentation.detail import entity_detail
-from api.contexts.presentation.fragments import fetch
-from api.worker.providers.mal import MALClient
+from api.db import fetch
+from api.integrations.providers.mal import MALClient
 from api.worker.session import session_scope
 
 

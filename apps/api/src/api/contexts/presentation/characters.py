@@ -6,9 +6,10 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.db import fetch
 from api.shared.pagination import page_offset
 
-from .fragments import PROVENANCE, PROVENANCE_JOINS, fetch, row_provenance
+from .provenance import PROVENANCE, PROVENANCE_JOINS, row_provenance
 from .summary import public_summary
 
 CURRENT_APPEARANCE = """

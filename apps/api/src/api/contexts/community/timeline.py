@@ -12,9 +12,10 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.identity.resolution import cluster_ids, resolve
-from api.contexts.presentation.fragments import fetch, isoformat
 from api.contexts.presentation.summary import entity_summary
+from api.db import fetch
 from api.shared.cursor import Cursor, paginate, timestamp_position
+from api.shared.timestamps import isoformat
 
 from .people import person
 

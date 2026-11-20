@@ -17,8 +17,8 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.contexts.presentation.fragments import fetch
-from api.worker.providers.errors import ProviderError
+from api.db import fetch
+from api.integrations.providers.errors import ProviderError
 from api.worker.subject_import import import_subject
 
 TASK_NAME = "bangumi_subject_refresh"

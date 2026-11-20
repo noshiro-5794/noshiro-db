@@ -15,8 +15,8 @@ import sys
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from api.contexts.identity.resolution import cluster_ids, resolve
-from api.contexts.presentation.fragments import fetch
 from api.contexts.presentation.summary import entity_summary
+from api.db import fetch
 
 
 async def run(limit: int) -> int:

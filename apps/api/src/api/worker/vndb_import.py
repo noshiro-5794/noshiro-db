@@ -5,9 +5,9 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.identity import vndb as identity
+from api.integrations.providers.vndb import VNDBImportBatch
 from api.worker import vndb_graph as graph
 from api.worker import vndb_related as related
-from api.worker.providers.vndb import VNDBImportBatch
 from api.worker.vndb_projection import Projection, project_work, record_source
 
 

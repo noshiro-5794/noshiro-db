@@ -16,7 +16,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .fragments import fetch
+from api.db import fetch
 
 MAX_DESCRIPTION_CHARS = 2000
 NUMBER = re.compile(r"\d+(?:[.,]\d+)?")

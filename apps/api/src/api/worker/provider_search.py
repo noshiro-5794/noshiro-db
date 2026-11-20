@@ -11,9 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.knowledge import agent_runs, artifacts
 from api.contexts.knowledge.agent_runs import WriteGuard
-from api.contexts.presentation.fragments import fetch
-from api.worker.providers.bangumi import BangumiClient
-from api.worker.providers.errors import ProviderError
+from api.db import fetch
+from api.integrations.providers.bangumi import BangumiClient
+from api.integrations.providers.errors import ProviderError
 from api.worker.session import session_scope
 
 

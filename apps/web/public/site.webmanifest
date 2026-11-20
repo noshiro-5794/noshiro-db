@@ -1,7 +1,7 @@
 {
   "name": "Noshiro DB",
   "short_name": "Noshiro",
-  "description": "Anime and galgame catalog",
+  "description": "Media knowledge base and personal library",
   "id": "/",
   "start_url": "/",
   "scope": "/",

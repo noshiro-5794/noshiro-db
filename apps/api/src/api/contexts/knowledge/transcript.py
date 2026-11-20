@@ -7,7 +7,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.contexts.presentation.fragments import fetch
+from api.db import fetch
 
 
 async def append(

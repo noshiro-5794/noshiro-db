@@ -6,8 +6,8 @@ from typing import Any, Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.contexts.presentation.fragments import fetch
 from api.contexts.synchronization.domain import LeaseLost
+from api.db import fetch
 
 Part = Literal["subject", "episodes", "subjects", "staff", "characters", "character", "person"]
 
