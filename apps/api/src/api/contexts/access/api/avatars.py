@@ -44,6 +44,12 @@ async def _form_user(request: Request, user: Annotated[Any, Depends(current_user
         raise ProblemError(
             status_code=415, detail=f'Unsupported media type "{content_type}" in request.'
         )
+    if "avatar" not in await request.form():
+        raise ProblemError(
+            status_code=400,
+            detail="Request validation failed.",
+            errors={"avatar": ["No file was submitted."]},
+        )
     return user
 
 

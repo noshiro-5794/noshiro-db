@@ -222,9 +222,9 @@ async def test_invalid_images_return_existing_field_errors(
 @pytest.mark.asyncio
 async def test_missing_non_file_and_unsupported_request_types(avatar_client):
     _, client, _, _, _ = avatar_client
-    missing = await client.post(PATH)
+    missing = await client.post(PATH, files={"unrelated": (None, "")})
     assert missing.status_code == 400 and missing.json()["errors"] == {
-        "avatar": ["This field is required."]
+        "avatar": ["No file was submitted."]
     }
     text_file = await client.post(PATH, data={"avatar": "plain text"})
     assert text_file.status_code == 400
