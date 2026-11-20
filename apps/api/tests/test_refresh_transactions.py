@@ -83,9 +83,7 @@ async def test_refresh_rotates_and_rejects_replay_then_logout(refresh_client):
     assert access["custom_claim"] == claims["custom_claim"] == "retained"
     assert access["jti"] != claims["jti"] != "existing-refresh"
     assert claims["hash_password"] == revoke_token("stored-password")
-    assert (await fetch(session, "SELECT count(*) AS n FROM token_blacklist_outstandingtoken", {}))[
-        0
-    ].n == 2
+    assert (await fetch(session, "SELECT count(*) AS n FROM refresh_token", {}))[0].n == 2
     replay = await refresh(client, original)
     assert replay.status_code == 401 and replay.json()["code"] == "token_not_valid"
     again = await refresh(client, rotated)
@@ -115,9 +113,7 @@ async def test_unusable_refresh_claims_reject_without_writes(refresh_client, cha
     session, client, user = refresh_client
     response = await refresh(client, token_for(user, **changes))
     assert response.status_code == 401, response.text
-    assert (await fetch(session, "SELECT count(*) AS n FROM token_blacklist_outstandingtoken", {}))[
-        0
-    ].n == 0
+    assert (await fetch(session, "SELECT count(*) AS n FROM refresh_token", {}))[0].n == 0
 
 
 @pytest.mark.asyncio
@@ -163,14 +159,14 @@ async def test_failed_replacement_insert_rolls_back_revocation(refresh_client, m
     real_fetch = sessions.fetch
 
     async def fail_replacement(session, query, parameters):
-        if query.startswith("INSERT INTO token_blacklist_outstandingtoken"):
+        if query.startswith("INSERT INTO refresh_token"):
             raise RuntimeError("replacement insert failed")
         return await real_fetch(session, query, parameters)
 
     monkeypatch.setattr(sessions, "fetch", fail_replacement)
     with pytest.raises(RuntimeError, match="replacement insert failed"):
         await refresh(client, token_for(user))
-    assert (await fetch(session, "SELECT count(*) AS n FROM token_blacklist_blacklistedtoken", {}))[
+    assert (await fetch(session, "SELECT count(*) AS n FROM refresh_token_revocation", {}))[
         0
     ].n == 0
 
@@ -217,7 +213,7 @@ async def test_concurrent_refresh_consumes_the_token_once(integration_session, m
         async with factory() as session:
             counts = await fetch(
                 session,
-                "SELECT count(*) AS n FROM token_blacklist_outstandingtoken WHERE user_id=:id",
+                "SELECT count(*) AS n FROM refresh_token WHERE user_id=:id",
                 {"id": user_id},
             )
             assert counts[0].n == 2
@@ -226,13 +222,13 @@ async def test_concurrent_refresh_consumes_the_token_once(integration_session, m
             async with engine.begin() as connection:
                 await connection.execute(
                     text(
-                        "DELETE FROM token_blacklist_blacklistedtoken WHERE token_id IN "
-                        "(SELECT id FROM token_blacklist_outstandingtoken WHERE user_id=:id)"
+                        "DELETE FROM refresh_token_revocation WHERE token_id IN "
+                        "(SELECT id FROM refresh_token WHERE user_id=:id)"
                     ),
                     {"id": user_id},
                 )
                 await connection.execute(
-                    text("DELETE FROM token_blacklist_outstandingtoken WHERE user_id=:id"),
+                    text("DELETE FROM refresh_token WHERE user_id=:id"),
                     {"id": user_id},
                 )
                 await connection.execute(text('DELETE FROM "user" WHERE id=:id'), {"id": user_id})

@@ -10,7 +10,7 @@ Browser
   -> Nginx or equivalent static hosting
       -> static frontend files from dist/
   -> https://<api-domain>/
-      -> proxied to the Django backend
+      -> proxied to the FastAPI backend
 ```
 
 Use two separate hostnames:
@@ -111,11 +111,10 @@ Keep development and backend process ports private:
 
 Make sure the backend production settings allow only the deployment origins:
 
-- allowed hosts include `<api-domain>`
+- the reverse proxy routes `<api-domain>` to the FastAPI service
 - CORS allowed origins include only `https://<frontend-domain>`, with credentialed requests enabled
 - the refresh cookie is host-only for `<api-domain>`, `HttpOnly`, `Secure`, and `SameSite=Lax` or stricter; a shared parent-domain cookie is unnecessary
 - cookie-authenticated refresh and logout endpoints validate `Origin` against an explicit allowlist; CORS response headers and `SameSite` alone are not a substitute for server-side CSRF enforcement
-- trusted CSRF origins include `https://<frontend-domain>` only for endpoints that actually use Django CSRF validation
 - uploaded media/static backend files have their own serving strategy
 - calendar cover images may be served from MinIO/CDN URLs when the backend has mirrored them successfully; otherwise Bangumi image URLs can still appear as fallback data
 

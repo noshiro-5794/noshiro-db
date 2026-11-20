@@ -24,9 +24,7 @@ class Settings(BaseSettings):
         default="",
         validation_alias=AliasChoices("AI_AGENT_API_KEY", "AI_API_KEY"),
     )
-    jwt_secret: str = Field(
-        default="", validation_alias=AliasChoices("JWT_SECRET", "DJANGO_SECRET_KEY")
-    )
+    jwt_secret: str = ""
     access_token_seconds: int = 2 * 60 * 60
     refresh_token_seconds: int = 30 * 24 * 60 * 60
     refresh_cookie_name: str = Field(

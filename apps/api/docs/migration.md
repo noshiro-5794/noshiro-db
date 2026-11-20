@@ -1583,3 +1583,16 @@ cases, one optional Redis case skipped, strict typing of 230 modules, 247 fronte
 cases, seven browser cases and the production build. OpenAPI was regenerated. Complete
 registration does not finish the remaining request/mutation/configuration audit, production
 rollout or old runtime/schema retirement under the active goal.
+
+### Framework schema retirement
+
+Alembic renames the refresh token and revocation tables, their sequences and
+constraints, and the revocation timestamp in place. The production rehearsal
+retained 1,390 issued tokens and 847 revocations across the rename and rollback.
+The runtime signing key is supplied as `JWT_SECRET` with its existing value.
+
+The next revision removes the nine old framework tables. It locks and checks
+group, grant, admin log and session tables before removing any of them. The
+production copy contains no records in these tables. Generated permissions,
+content types and migration metadata are retained in the pre-upgrade backup.
+Restore that backup to recover the retired framework schema.

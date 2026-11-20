@@ -10,7 +10,7 @@ from fastapi import APIRouter, Request, Response
 from api.config import settings
 from api.contexts.access.cookies import clear_refresh_cookie
 from api.contexts.access.security import REFRESH, session_claims
-from api.contexts.access.sessions import blacklist_refresh_token
+from api.contexts.access.sessions import revoke_refresh_token
 from api.db import SessionDep
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
@@ -22,7 +22,7 @@ async def logout(request: Request, session: SessionDep) -> Response:
     if raw:
         claims = session_claims(raw, settings.jwt_secret, token_type=REFRESH)
         if claims is not None:
-            await blacklist_refresh_token(session, raw, claims)
+            await revoke_refresh_token(session, raw, claims)
             await session.commit()
     response = Response(status_code=204)
     clear_refresh_cookie(response)
