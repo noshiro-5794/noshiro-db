@@ -2,7 +2,7 @@
 
 Two apps, two toolchains, one contract:
 
-- `apps/api` — Django + DRF + Celery + MCP, managed with **uv**. Gates:
+- `apps/api` — FastAPI + SQLAlchemy async + Alembic + Celery + MCP, managed with **uv**. Gates:
   `make -C apps/api check`.
 - `apps/web` — React + Vite SPA, managed with **pnpm**. Gates:
   `pnpm --dir apps/web check`.

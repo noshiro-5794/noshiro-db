@@ -33,6 +33,47 @@ afterEach(() => {
 });
 
 describe('API client', () => {
+  it('sends avatar files as credentialed multipart data', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ avatar: 'https://media.test/avatars/user.png' }), {
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    setAccessToken('avatar-access');
+    const body = new FormData();
+    body.append('avatar', new File(['image'], 'avatar.png', { type: 'image/png' }));
+    const result = await api.post<{ avatar: string }, FormData>('/api/v1/users/me/avatar/', body);
+    expect(result.avatar).toBe('https://media.test/avatars/user.png');
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ body, credentials: 'include' });
+    expect(requestHeaders(fetchMock).get('Content-Type')).toBeNull();
+    expect(requestHeaders(fetchMock).get('Authorization')).toBe('Bearer avatar-access');
+  });
+
+  it('preserves field errors and tracing from API validation problems', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          type: 'about:blank',
+          title: 'Bad Request',
+          status: 400,
+          detail: 'Request validation failed.',
+          instance: '/api/items/',
+          trace_id: 'validation-trace',
+          errors: { email: ['This field is required.'] },
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/problem+json' } },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(api.get('/api/items/', { skipAuth: true })).rejects.toMatchObject({
+      status: 400,
+      detail: 'Request validation failed.',
+      traceId: 'validation-trace',
+      errors: { email: ['This field is required.'] },
+    });
+  });
+
   it('serializes query values and omits empty values', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(envelopeResponse({ id: 1 }));
     vi.stubGlobal('fetch', fetchMock);

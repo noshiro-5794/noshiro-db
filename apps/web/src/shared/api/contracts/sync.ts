@@ -1,7 +1,7 @@
 import type { DecimalString, ISODateString, OpenString, UUID } from './common';
 import type { SubjectType } from './subject';
 
-export type ImportJobProvider = 'bangumi' | 'vndb' | OpenString;
+export type ImportJobProvider = 'vndb' | 'anilist' | 'mal' | OpenString;
 export type ImportJobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | OpenString;
 
 export type ImportJobProgress = {
@@ -29,7 +29,7 @@ export type ImportJob = {
 };
 
 export type ImportJobCreate = {
-  provider: 'vndb';
+  provider: 'vndb' | 'anilist' | 'mal';
   external_id: string;
   include_related?: boolean;
 };
