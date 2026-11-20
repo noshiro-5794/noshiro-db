@@ -1574,7 +1574,9 @@ Fourteen avatar cases plus storage regressions exercise multipart requests, JPEG
 MIME detection, limits, invalid data, profile creation/collision, failed uploads, failed
 profile writes and uncertain commit responses. S3 calls use botocore stubs in this run.
 The browser API-client regression verifies native FormData with bearer authentication
-and credentials. Live object-storage and production runtime verification remain pending.
+and credentials. Eleven rollback-only HTTP comparisons matched the Django avatar
+responses after normalizing trace IDs. Live object-storage and production runtime
+verification are recorded below.
 Implementation references are the official FastAPI request-files and Pillow Image docs.
 
 HTTP registration is now 127/127. The route inventory check is included in both the local
@@ -1616,3 +1618,33 @@ proxy. Unsuccessful provider responses return the same captcha problem as a
 rejected token. The frontend build uses the production site's public Site Key.
 The Redis-backed regression verified ten accepted attempts and six rate-limited
 requests across concurrent clients and two FastAPI instances.
+
+### Production cutover
+
+Production release `6cdcd7795e1a` runs one AMD64 application image for FastAPI,
+public MCP, the three Celery workers and beat. The edge serves the Vite build
+from the frontend hostname and proxies the API and MCP paths to loopback.
+PostgreSQL, the broker, the cache and MinIO are managed by the same production
+Compose manifest.
+
+The production database advanced from `0004_metric_view` to
+`0009_retire_schema_aliases`. Counts matched the restored production snapshot
+for accounts, issued and revoked refresh tokens, library entries, reviews,
+posts and provider records. The retired framework tables and transitional
+views are absent from the active schema. The old containers and images were
+removed and their source checkouts were archived privately with the
+pre-cutover database backup.
+
+A production HTTPS smoke test exercised password sign-in, secure cookies,
+profile and library reads, avatar upload and public retrieval, refresh,
+logout and authenticated MCP tool discovery and search. It removed its
+temporary account and object. All three production queue subscriptions and
+the beat heartbeat were verified. A browser loaded catalogue data from the
+production API and rendered hCaptcha on registration and password reset.
+Email verification logic was exercised in PostgreSQL integration tests.
+Production email delivery was outside that test. GitHub OAuth remains
+disabled by the production configuration.
+
+The final root checks passed 801 backend tests with PostgreSQL and Redis,
+247 frontend unit tests, seven browser tests and the production build. The
+HTTP and worker inventories cover all 127 operations and 30 tasks.
