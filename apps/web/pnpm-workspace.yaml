@@ -7,3 +7,5 @@ strictPeerDependencies: true
 # memory-exhaustion advisory in JSON deserialization.
 overrides:
   seroval: '>=1.6.3'
+patchedDependencies:
+  '@tanstack/react-router@1.170.44': patches/@tanstack__react-router@1.170.44.patch

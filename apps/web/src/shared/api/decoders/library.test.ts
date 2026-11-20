@@ -7,6 +7,7 @@ import {
   decodePublicUserSubject,
   decodeReview,
   decodeUserSubjectContext,
+  decodeUserSubject,
 } from './library';
 
 const entity = {
@@ -60,6 +61,50 @@ const review = {
 };
 
 describe('library response decoders', () => {
+  it('normalizes numeric and absent episode facts from the progress API', () => {
+    const decoded = decodeProgressSummary({
+      ...progress,
+      episodes: [
+        {
+          id: 'episode',
+          title: 'Episode',
+          title_cn: '',
+          type: '',
+          number: 1.5,
+          sort: null,
+          air_date: null,
+          is_finished: false,
+        },
+      ],
+    });
+    expect(decoded.episodes).toMatchObject([{ number: '1.5', sort: '', air_date: '', ep_num: 1.5 }]);
+    const missing = decodeProgressSummary({
+      ...progress,
+      episodes: [
+        {
+          id: 'episode',
+          title: 'Episode',
+          title_cn: '',
+          type: '',
+          number: null,
+          sort: null,
+          air_date: null,
+          is_finished: false,
+        },
+      ],
+    });
+    expect(missing.episodes).toMatchObject([{ number: '', ep_num: null }]);
+  });
+
+  it.each([null, 0, 8.5, 10, '8.5'])('accepts the API rating representation %s', (rating) => {
+    const decoded = decodeUserSubject({ ...userSubject, rating });
+    expect(decoded.rating).toBe(rating === null ? null : String(rating));
+  });
+
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, true, {}])('rejects invalid rating values %s', (rating) => {
+    expect(() => decodeUserSubject({ ...userSubject, rating })).toThrow(TypeError);
+  });
+
   it('accepts full progress responses', () => {
     expect(decodeProgressSummary(progress)).toMatchObject({ finished_count: 1 });
     expect(

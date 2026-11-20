@@ -82,9 +82,9 @@ export type EpisodeProgressItem = {
   title: string;
   title_cn: string;
   type: string;
-  number: string;
-  sort: string;
-  air_date: string;
+  number: string | number | null;
+  sort: string | number | null;
+  air_date: string | null;
   is_finished: boolean;
 };
 
