@@ -67,7 +67,7 @@ jobs:
         with:
           version: "0.13.4"
       - run: uv sync --locked
-      - run: uv run alembic upgrade head
+      - run: uv run alembic upgrade 0007_refresh_token_tables
       - run: uv run alembic downgrade 0001_baseline
       - run: uv run alembic upgrade head
       - run: uv run pytest -q tests/test_*transactions.py

@@ -10,9 +10,7 @@ from api.contexts.presentation.fragments import fetch
 from api.shared.problems import ProblemError
 
 
-async def blacklist_refresh_token(
-    session: AsyncSession, token: str, claims: dict[str, Any]
-) -> None:
+async def revoke_refresh_token(session: AsyncSession, token: str, claims: dict[str, Any]) -> None:
     users = await fetch(
         session,
         'SELECT id FROM "user" WHERE id=:id FOR UPDATE',
@@ -23,7 +21,7 @@ async def blacklist_refresh_token(
     rows = await fetch(
         session,
         """
-        INSERT INTO token_blacklist_outstandingtoken (
+        INSERT INTO refresh_token (
             user_id, jti, token, created_at, expires_at
         ) VALUES (
             :user_id, :jti, :token, now(), to_timestamp(:expires_at)
@@ -41,13 +39,13 @@ async def blacklist_refresh_token(
     if not rows:
         rows = await fetch(
             session,
-            "SELECT id FROM token_blacklist_outstandingtoken WHERE jti = :jti",
+            "SELECT id FROM refresh_token WHERE jti = :jti",
             {"jti": claims["jti"]},
         )
     await fetch(
         session,
         """
-        INSERT INTO token_blacklist_blacklistedtoken (token_id, blacklisted_at)
+        INSERT INTO refresh_token_revocation (token_id, revoked_at)
         VALUES (:token_id, now())
         ON CONFLICT (token_id) DO NOTHING
         RETURNING id
@@ -72,8 +70,8 @@ async def rotate_refresh_token(session: AsyncSession, token: str) -> tuple[str, 
         )
     revoked = await fetch(
         session,
-        "SELECT 1 FROM token_blacklist_blacklistedtoken AS revoked"
-        " JOIN token_blacklist_outstandingtoken AS issued ON issued.id=revoked.token_id"
+        "SELECT 1 FROM refresh_token_revocation AS revoked"
+        " JOIN refresh_token AS issued ON issued.id=revoked.token_id"
         " WHERE issued.jti=:jti",
         {"jti": claims["jti"]},
     )
@@ -101,12 +99,12 @@ async def rotate_refresh_token(session: AsyncSession, token: str) -> tuple[str, 
         refresh_seconds=settings.refresh_token_seconds,
         claims=claims,
     )
-    await blacklist_refresh_token(session, token, claims)
+    await revoke_refresh_token(session, token, claims)
     new_claims = session_claims(refresh, settings.jwt_secret, token_type=REFRESH)
     assert new_claims is not None
     await fetch(
         session,
-        "INSERT INTO token_blacklist_outstandingtoken"
+        "INSERT INTO refresh_token"
         " (user_id,jti,token,created_at,expires_at)"
         " VALUES (:user,:jti,:token,now(),to_timestamp(:expiry)) RETURNING id",
         {

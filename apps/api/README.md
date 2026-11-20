@@ -4,7 +4,8 @@ FastAPI, SQLAlchemy 2 async, Alembic and Pydantic v2 power the API, workers and 
 Use `make check` for lint, types and tests, `make migrate` for schema upgrades,
 `make run` for local HTTP serving and `make openapi` for the API contract snapshot.
 
-See `docs/architecture.md` for module ownership and conventions.
+See `docs/architecture.md` for module ownership and conventions and
+`../../deploy/README.md` for production deployment.
 
 ## Calendar object storage
 
@@ -24,7 +25,8 @@ Calendar quarter boundaries use `DEPLOYMENT_TIME_ZONE`, defaulting to
 Run the local internal harness with `uv run python -m api.mcp.internal`.
 Run the authenticated public HTTP service with `uv run python -m api.mcp.public`.
 The public endpoint is `/mcp`. Configure `MCP_HOST`, `MCP_PORT`, `MCP_RATE_LIMIT`
-and `MCP_RATE_WINDOW_SECONDS`. Existing access tokens use `DJANGO_SECRET_KEY`.
+and `MCP_RATE_WINDOW_SECONDS`. Keep `JWT_SECRET` set to the signing key used by
+existing access and refresh tokens.
 The verifier checks access-token claims and active database users.
 
 Redis rate limits use `REDIS_CACHE_URL` or the existing `CACHE_URL`, with

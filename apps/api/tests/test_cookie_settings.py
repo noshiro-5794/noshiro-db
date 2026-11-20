@@ -33,12 +33,9 @@ def test_cookie_environment_configuration(monkeypatch, prefix):
     assert configured.refresh_cookie_max_age == 3600
 
 
-def test_canonical_signing_key_takes_precedence(monkeypatch):
+def test_signing_key_environment_configuration(monkeypatch):
     monkeypatch.setenv("JWT_SECRET", "current-key")
-    monkeypatch.setenv("DJANGO_SECRET_KEY", "previous-key")
     assert Settings(_env_file=None).jwt_secret == "current-key"
-    monkeypatch.delenv("JWT_SECRET")
-    assert Settings(_env_file=None).jwt_secret == "previous-key"
 
 
 def test_empty_domain_is_host_only():

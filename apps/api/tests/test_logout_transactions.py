@@ -48,9 +48,7 @@ async def test_logout_clears_malformed_signed_cookies_without_blacklist_writes(
         "/api/v1/auth/session/", headers={"Cookie": f"{settings.refresh_cookie_name}={token}"}
     )
     assert response.status_code == 204 and "Max-Age=0" in response.headers["set-cookie"]
-    assert (await fetch(session, "SELECT count(*) AS n FROM token_blacklist_outstandingtoken", {}))[
-        0
-    ].n == 0
+    assert (await fetch(session, "SELECT count(*) AS n FROM refresh_token", {}))[0].n == 0
 
 
 @pytest.mark.asyncio
@@ -74,7 +72,7 @@ async def test_logout_blacklists_once_and_ignores_deleted_user_tokens(logout_cli
             "/api/v1/auth/session/", headers={"Cookie": f"{settings.refresh_cookie_name}={token}"}
         )
         assert response.status_code == 204
-    assert (await fetch(session, "SELECT count(*) AS n FROM token_blacklist_blacklistedtoken", {}))[
+    assert (await fetch(session, "SELECT count(*) AS n FROM refresh_token_revocation", {}))[
         0
     ].n == 1
     missing = jwt.encode(
