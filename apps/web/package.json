@@ -1,7 +1,7 @@
 {
   "name": "noshiro-db-web",
   "private": true,
-  "description": "React frontend for the Noshiro DB anime and galgame catalog",
+  "description": "React frontend for the Noshiro DB media catalogue and personal library",
   "license": "AGPL-3.0-only",
   "homepage": "https://app.noshiro.moe",
   "repository": {

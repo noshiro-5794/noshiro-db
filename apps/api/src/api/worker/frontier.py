@@ -23,8 +23,8 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.contexts.presentation.fragments import fetch as sql_fetch
-from api.worker.providers.errors import ProviderError
+from api.db import fetch as sql_fetch
+from api.integrations.providers.errors import ProviderError
 
 FRONTIER_TASK_NAME = "provider_frontier"
 NUMERIC_ID = r"^[0-9]+$"

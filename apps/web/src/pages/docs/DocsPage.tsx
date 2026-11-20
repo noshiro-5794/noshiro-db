@@ -3,15 +3,16 @@ import { ArrowLeft, BookOpen, Sparkles } from 'lucide-react';
 import { useAuth } from '@/entities/session';
 import { publicAssetPaths } from '@/shared/assets/public-assets';
 import { useI18n } from '@/shared/i18n';
-import { defaultDocsSlug, docsContent, personalDocsSlug } from './content/docs';
 import { routes } from '@/shared/routing/paths';
 import { Seo } from '@/shared/seo/Seo';
 import { Button } from '@/shared/ui/Button';
 import { PublicFooter } from '@/widgets/public-footer';
+import { defaultDocsSlug, docsContent, docsSlugs, isDocsSlug, personalDocsSlug } from './content';
 import './docs.css';
 
 const ownerAvatarSrc = publicAssetPaths.owner;
 const docsRoute = getRouteApi('/docs/$slug');
+const siteDocsSlugs = docsSlugs.filter((slug) => slug !== personalDocsSlug);
 
 function OwnerAvatar({ size = 'sm' }: { size?: 'sm' | 'md' }) {
   return (
@@ -35,20 +36,19 @@ export function DocsPage() {
   const { locale, t } = useI18n();
   const auth = useAuth();
   const { slug } = docsRoute.useParams();
-  const content = docsContent[locale];
-  const page = content.pages[slug];
-  const isPersonalPage = page?.slug === personalDocsSlug;
-  const personalNavItem = content.nav.find((item) => item.slug === personalDocsSlug);
-  const siteNavItems = content.nav.filter((item) => item.slug !== personalDocsSlug);
-  const stickyTopClass = auth.role === 'guest' ? 'top-24' : 'top-8';
-
-  if (!page) {
+  if (!isDocsSlug(slug)) {
     return <Navigate replace params={{ slug: defaultDocsSlug }} to="/docs/$slug" />;
   }
 
+  const pages = docsContent[locale];
+  const page = pages[slug];
+  const ownerTitle = pages[personalDocsSlug].title;
+  const isPersonalPage = slug === personalDocsSlug;
+  const stickyTopClass = auth.role === 'guest' ? 'top-24' : 'top-8';
+
   return (
     <>
-      <Seo title={page.title} description={page.description} path={routes.docs(page.slug)} />
+      <Seo title={page.title} description={page.description} path={routes.docs(slug)} />
       <div className="docs-layout" data-slot="docs-layout">
         <aside className="docs-sidebar hidden lg:block" data-slot="docs-sidebar">
           <div className={`docs-sidebar-sticky sticky ${stickyTopClass}`}>
@@ -59,22 +59,20 @@ export function DocsPage() {
               </Link>
             </Button>
 
-            {personalNavItem ? (
-              <Link
-                className={isPersonalPage ? 'docs-personal-link is-active' : 'docs-personal-link'}
-                data-slot="docs-personal-link"
-                params={{ slug: personalNavItem.slug }}
-                to="/docs/$slug"
-              >
-                <div className="flex items-center gap-3">
-                  <OwnerAvatar size="md" />
-                  <span className="min-w-0">
-                    <span className="docs-nav-label">{t('docs.badge')}</span>
-                    <span className="docs-personal-title">{personalNavItem.title}</span>
-                  </span>
-                </div>
-              </Link>
-            ) : null}
+            <Link
+              className={isPersonalPage ? 'docs-personal-link is-active' : 'docs-personal-link'}
+              data-slot="docs-personal-link"
+              params={{ slug: personalDocsSlug }}
+              to="/docs/$slug"
+            >
+              <div className="flex items-center gap-3">
+                <OwnerAvatar size="md" />
+                <span className="min-w-0">
+                  <span className="docs-nav-label">{t('docs.badge')}</span>
+                  <span className="docs-personal-title">{ownerTitle}</span>
+                </span>
+              </div>
+            </Link>
 
             <div className="docs-navigation" data-slot="docs-navigation">
               <div className="docs-nav-heading">
@@ -82,21 +80,17 @@ export function DocsPage() {
                 {t('docs.sectionNav')}
               </div>
               <nav className="grid gap-1">
-                {siteNavItems.map((item) => {
-                  const isActive = item.slug === page.slug;
-
-                  return (
-                    <Link
-                      className={isActive ? 'docs-nav-link is-active' : 'docs-nav-link'}
-                      data-slot="docs-nav-link"
-                      key={item.slug}
-                      params={{ slug: item.slug }}
-                      to="/docs/$slug"
-                    >
-                      <span>{item.title}</span>
-                    </Link>
-                  );
-                })}
+                {siteDocsSlugs.map((itemSlug) => (
+                  <Link
+                    className={itemSlug === slug ? 'docs-nav-link is-active' : 'docs-nav-link'}
+                    data-slot="docs-nav-link"
+                    key={itemSlug}
+                    params={{ slug: itemSlug }}
+                    to="/docs/$slug"
+                  >
+                    <span>{pages[itemSlug].title}</span>
+                  </Link>
+                ))}
               </nav>
             </div>
           </div>
@@ -147,20 +141,18 @@ export function DocsPage() {
             className="docs-mobile-navigation lg:hidden"
             data-slot="docs-mobile-navigation"
           >
-            {personalNavItem ? (
-              <Link className="docs-mobile-personal-link" params={{ slug: personalNavItem.slug }} to="/docs/$slug">
-                <span>{personalNavItem.title}</span>
-                <OwnerAvatar />
-              </Link>
-            ) : null}
-            {siteNavItems.map((item) => (
+            <Link className="docs-mobile-personal-link" params={{ slug: personalDocsSlug }} to="/docs/$slug">
+              <span>{ownerTitle}</span>
+              <OwnerAvatar />
+            </Link>
+            {siteDocsSlugs.map((itemSlug) => (
               <Link
-                className={item.slug === page.slug ? 'docs-mobile-nav-link is-active' : 'docs-mobile-nav-link'}
-                key={item.slug}
-                params={{ slug: item.slug }}
+                className={itemSlug === slug ? 'docs-mobile-nav-link is-active' : 'docs-mobile-nav-link'}
+                key={itemSlug}
+                params={{ slug: itemSlug }}
                 to="/docs/$slug"
               >
-                {item.title}
+                {pages[itemSlug].title}
               </Link>
             ))}
           </nav>

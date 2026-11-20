@@ -1,113 +1,47 @@
-# Architecture
+# API architecture
 
-The API uses FastAPI, SQLAlchemy 2 async sessions, Alembic, Pydantic v2,
-PostgreSQL, Redis, Celery and S3-compatible object storage.
+`api.main.create_app` assembles FastAPI routes and transport middleware.
+`api.config` loads settings, and `api.db` owns async sessions and parameterized
+SQL execution. Mutable application state lives in PostgreSQL or Redis.
 
-The `api` package contains application configuration and HTTP assembly.
-`contexts` groups access, identity, library, community, presentation, matching,
-knowledge, scheduling and synchronization responsibilities. `worker` owns provider
-adapters, import execution and Celery entry points. `mcp` owns protocol adapters.
-`shared` contains common transport, inference, pagination and dispatch support.
+## Package ownership
+
+| Package | Responsibility |
+| --- | --- |
+| `contexts/access` | Accounts, profiles, sessions, and authorization |
+| `contexts/library` | Library entries, progress, tags, collections, and reviews |
+| `contexts/community` | Posts, comments, follows, reactions, notifications, and moderation |
+| `contexts/presentation` | Public catalogue read models, entity pages, airing data, and provenance |
+| `contexts/identity` and `contexts/index` | Source identity, canonical entities, and resolution |
+| `contexts/ingestion` | Provider records, observations, facts, and projected metadata |
+| `contexts/synchronization` | Durable imports, campaigns, work items, and staff synchronization routes |
+| `contexts/matching` | Candidate review, model evaluation, proposals, and matching routes |
+| `contexts/knowledge` and `contexts/scheduling` | Evidence workflows, enrichment, and airing schedule policy |
+| `integrations` | External provider clients and object storage |
+| `worker` | Celery registration, task adapters, scheduling, and provider import orchestration |
+| `mcp` | Internal proposal tools and authenticated public catalogue reads |
+| `shared` | Transport problems, cursors, dispatch, timestamps, and reusable infrastructure |
+
+## HTTP and jobs
+
+Routes validate transport inputs, enforce access, and delegate to the owning
+context. Staff import, synchronization, and matching endpoints share the
+`/api/v1/operations/` prefix. Community modules own social operations.
+
+Workers use the `realtime`, `ai`, and `sync` queues. Task entry points live under
+`worker/tasks/`. `worker/app.py` registers the task modules and maintains the
+broker protocol names. `worker/schedule.py` defines the periodic schedule.
+
+External provider HTTP clients live under `integrations/providers/`.
+Ingestion code owns records and projections used by imports from several
+providers. [Data model](data-model.md)
 
 ## Conventions
 
-Name modules for their responsibility. Keep pure policy in domain modules and
-I/O in application services and read models. Routes translate HTTP inputs and
-responses. Reuse context-owned services across HTTP, workers and MCP.
-Use explicit types, readable SQL parameters and short transactions. Keep network
-requests outside database locks and recheck ownership before durable writes.
-Comments explain decisions in English. Each app owns its toolchain and dependencies.
-Alembic owns schema changes. Conventional Commit bodies record design decisions.
-
-## Knowledge Model
-
-```text
-Entity
-|- Work
-|  |- AnimeProfile
-|  `- GalgameProfile
-|- Release
-|- Episode
-|- Contributor (Person or Organization)
-`- Character
-```
-
-`Entity` is the stable UUID, visibility, lifecycle, and redirect anchor. `Work` is a
-creative work. Platform, language, regional, and limited editions are Releases;
-sequels, independent seasons, OVAs, fandiscs, and materially different remakes are
-separate Works. Anime and Galgame enter the primary Index collections; other works
-remain searchable related entities.
-
-Names retain language, script, region, kind, and provenance. Partial dates retain
-their precision and raw value. Adult and spoiler visibility belongs to the affected
-entity, description, fact, or media rather than being inferred at response time.
-Core relations use typed models; `Fact` is reserved for long-tail knowledge.
-
-## Provider Data Flow
-
-Bangumi and VNDB are peer providers. Neither wins because it was imported first.
-
-```text
-ProviderRevision -> MappingRun -> Observation -> evidence
-                                             -> resolution -> API projection
-ProviderRecord <-> ProviderRepresentation <-> Entity
-```
-
-Raw revisions and normalized observations are immutable and mapper-versioned. Metrics
-remain separate by provider and observation time. Resolver policy chooses rebuildable
-projections without deleting conflicting source values. Merges use redirects so they
-remain reversible and evidence is retained.
-
-## AI And MCP
-
-AI produces structured proposals and cannot write canonical tables directly.
-`contexts/knowledge` owns the durable harness, versioned Skills, typed Tools, policy, evidence,
-and audit; `integrations.ai` isolates vendor clients. A run is persisted as
-`AgentRun -> AgentStep -> AIRun/ToolInvocation -> SourceArtifact/AIClaim`.
-The database is the execution source of truth; checkpoints are immutable snapshots,
-and retries use explicit state transitions and idempotency scopes. Apply, approval,
-and validation steps fail closed until a concrete handler is registered.
-
-Open-ended retrieval tasks run on a second runtime mode: an append-only
-`AgentMessage` transcript drives a native tool-calling loop until the model
-returns a final answer. The loop reuses the same tool registry, permission
-scopes, budget, and evidence capture as deterministic workflows, so decision
-skills stay bounded while recall skills (for example Bangumi↔MAL candidate
-discovery) may search the database and external APIs iteratively before the
-adjudicator decides.
-
-Provider-wide synchronization is linked to one `AgentRun` through `SyncCampaign`.
-Fetch, pagination, mapping, and revision writes remain deterministic and resumable;
-AI is invoked only at explicit normalization/enrichment boundaries with an
-`Observation` or `SourceArtifact` attached. AI output is a claim/proposal and needs
-policy review before canonical projection. `SyncWorkItem` leases make duplicate
-Celery delivery and worker interruption recoverable; a campaign is not considered
-complete while discovery pages or queued work items remain.
-
-The anime calendar keeps one active **airing board** (the current on-air season)
-instead of accumulating quarterly rows: calendar refreshes replace the board in
-place and archive the window on season rollover, while each work keeps its own
-per-episode airing facts. The board feeds a durable `airing_daily` queue that
-refreshes current-season subjects and episodes in bounded batches.
-
-The internal MCP server exposes reads and audited proposal submission; the public
-server exposes only authenticated, rate-limited safe projections. MCP tools and
-in-process tools share the same namespaced, Pydantic-validated registry and explicit
-permission scopes.
-
-External HTTP clients use `OUTBOUND_PROXY_URL` when configured. Set it on servers
-that cannot reach Bangumi, VNDB, image hosts, Resend, hCaptcha, or the AI provider
-directly. Internal service names in `OUTBOUND_NO_PROXY_HOSTS` should remain excluded
-from the proxy. On the current server, the v2raya plain HTTP inbound listens on
-`192.168.3.222:7890`; use that as `OUTBOUND_PROXY_URL`.
-
-## Public API
-
-The public REST root is `/api/v1/`, assembled by `api.main.create_app`.
-OpenAPI is served at `/api/v1/openapi/` and exported by `make openapi` into
-`tests/snapshots/openapi.json`. The web app owns its matching TypeScript client.
-
-Alembic owns the application schema. Production still contains framework support
-tables awaiting dependency and data checks before retirement. Session blacklist
-records remain active application data. Production changes follow the root
-[deployment guide](../../../deploy/README.md).
+- Name a module for its responsibility. Use the package path to carry domain context.
+- Keep SQL execution in `api.db`. Keep catalogue provenance and visibility policy in the presentation context.
+- Use Pydantic schemas at HTTP and tool boundaries. Keep domain policy in the context that owns it.
+- Keep transactions explicit. Perform network I/O outside database locks and recheck ownership before committing results.
+- Commit provider revisions, observations, and durable job state at the context boundaries that own them.
+- Preserve HTTP request and response shapes, OpenAPI operation IDs, and broker task names when moving internal code.
+- Use Alembic for schema changes. Write comments in English and record design decisions in commit bodies.

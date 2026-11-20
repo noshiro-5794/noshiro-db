@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.index import resolution
-from api.contexts.presentation.fragments import fetch
+from api.db import fetch
 
 POLICY = "official-cross-id-v1"
 
@@ -168,7 +168,7 @@ def extract_ids(
 async def observe_bangumi(
     session: AsyncSession, entity_id: Any, observation_id: Any, payload: dict[str, Any]
 ) -> Any:
-    from api.worker.facts import record_fact
+    from api.contexts.ingestion.facts import record_fact
 
     for external_id, pointer in sorted(set(extract_ids(payload))):
         await record_fact(

@@ -9,9 +9,9 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.contexts.presentation.fragments import fetch
 from api.contexts.presentation.identity import load_redirects, root_of
 from api.contexts.scheduling import board_rules as rules
+from api.db import fetch
 from api.worker import calendar_write
 
 

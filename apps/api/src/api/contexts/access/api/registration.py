@@ -91,13 +91,13 @@ async def send_code(
 
 
 async def _insert(session: Any, sql: str, params: dict[str, Any]) -> Any:
-    from api.contexts.presentation.fragments import fetch
+    from api.db import fetch
 
     return await fetch(session, sql, params)
 
 
 async def _verify(session: Any, *, email: str, purpose: str, code: str) -> Any:
-    from api.contexts.presentation.fragments import fetch
+    from api.db import fetch
 
     rows = await fetch(
         session,
@@ -143,7 +143,7 @@ async def _verify(session: Any, *, email: str, purpose: str, code: str) -> Any:
 
 @router.post("/registrations/", **limited("registration"))
 async def register(body: dict[str, Any], session: SessionDep) -> JSONResponse:
-    from api.contexts.presentation.fragments import fetch
+    from api.db import fetch
 
     email = str(body.get("email", "")).strip().lower()
     password = body.get("password")
@@ -217,7 +217,7 @@ async def register(body: dict[str, Any], session: SessionDep) -> JSONResponse:
 
 @router.post("/sessions/code/", **limited("login"))
 async def code_login(body: dict[str, Any], session: SessionDep) -> JSONResponse:
-    from api.contexts.presentation.fragments import fetch
+    from api.db import fetch
 
     email = str(body.get("email", "")).strip().lower()
     code = body.get("code")
@@ -259,7 +259,7 @@ async def code_login(body: dict[str, Any], session: SessionDep) -> JSONResponse:
 
 @router.post("/password-resets/", status_code=204, **limited("reset"))
 async def reset_password(body: dict[str, Any], session: SessionDep) -> None:
-    from api.contexts.presentation.fragments import fetch
+    from api.db import fetch
 
     email = str(body.get("email", "")).strip().lower()
     code = body.get("code")

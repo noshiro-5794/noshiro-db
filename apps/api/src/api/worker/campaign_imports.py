@@ -6,11 +6,11 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.integrations.providers.anilist import AniListClient
+from api.integrations.providers.bangumi import BangumiClient
+from api.integrations.providers.mal import MALClient
+from api.integrations.providers.vndb import VNDBClient
 from api.worker import anilist_import, bangumi_sync, mal_import, vndb_import
-from api.worker.providers.anilist import AniListClient
-from api.worker.providers.bangumi import BangumiClient
-from api.worker.providers.mal import MALClient
-from api.worker.providers.vndb import VNDBClient
 
 
 async def fetch_source(

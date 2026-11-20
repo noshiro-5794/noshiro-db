@@ -5,8 +5,11 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.contexts.presentation.fragments import fetch
-from api.worker import entities, facts, graph, ingestion, presentation, records
+from api.contexts.ingestion import entities, facts, records
+from api.contexts.ingestion import metadata as presentation
+from api.contexts.ingestion import observations as ingestion
+from api.contexts.ingestion import relations as graph
+from api.db import fetch
 from api.worker.anilist_import import as_int
 
 

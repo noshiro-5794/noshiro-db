@@ -7,8 +7,9 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.contexts.presentation.fragments import fetch, isoformat
+from api.db import fetch
 from api.shared.pagination import page_offset
+from api.shared.timestamps import isoformat
 
 from .errors import CommentPermissionDenied, InteractionBlocked
 from .people import person

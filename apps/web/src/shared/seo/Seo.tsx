@@ -6,8 +6,6 @@ import { useI18n } from '@/shared/i18n';
 
 const siteName = 'Noshiro DB';
 const defaultTitle = siteName;
-const defaultDescription =
-  'Explore anime and galgames, browse weekly anime, and keep track of marks, reviews, and collections.';
 const defaultImage = '/og-image.png';
 
 const htmlLangByLocale: Record<Locale, string> = {
@@ -57,17 +55,18 @@ function ensureCanonical(href: string) {
   element.href = href;
 }
 
-function compactDescription(value?: string) {
-  return (value || defaultDescription).replace(/\s+/gu, ' ').trim().slice(0, 180);
+function compactDescription(value: string) {
+  return value.replace(/\s+/gu, ' ').trim().slice(0, 180);
 }
 
 export function Seo({ description, image, noindex = false, path, title, type = 'website' }: SeoProps) {
   const location = useLocation();
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
+  const siteDescription = t('public.siteDescription');
 
   useEffect(() => {
     const resolvedTitle = title && title !== siteName ? `${title} | ${siteName}` : defaultTitle;
-    const resolvedDescription = compactDescription(description);
+    const resolvedDescription = compactDescription(description || siteDescription);
     const resolvedUrl = absoluteUrl(path ?? `${location.pathname}${location.searchStr}`);
     const resolvedImage = absoluteUrl(image || defaultImage);
 
@@ -90,7 +89,7 @@ export function Seo({ description, image, noindex = false, path, title, type = '
     ensureMeta('meta[name="twitter:title"]', { name: 'twitter:title', content: resolvedTitle });
     ensureMeta('meta[name="twitter:description"]', { name: 'twitter:description', content: resolvedDescription });
     ensureMeta('meta[name="twitter:image"]', { name: 'twitter:image', content: resolvedImage });
-  }, [description, image, locale, location.pathname, location.searchStr, noindex, path, title, type]);
+  }, [description, image, locale, location.pathname, location.searchStr, noindex, path, siteDescription, title, type]);
 
   return null;
 }

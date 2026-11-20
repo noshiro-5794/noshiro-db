@@ -9,8 +9,10 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.contexts.ingestion import observations as ingestion
+from api.contexts.ingestion import records
 from api.worker import calendar as calendar_read
-from api.worker import calendar_lookup, calendar_write, ingestion, records
+from api.worker import calendar_lookup, calendar_write
 
 PROVIDER = "bangumi"
 SUBJECT_NAMESPACE = "subject"

@@ -36,6 +36,9 @@ const publicDirectory = path.join(repositoryRoot, 'public');
 const markPath = path.join(publicDirectory, 'assets', 'brand', 'mark.png');
 const markBase64 = (await readFile(markPath)).toString('base64');
 const markDataUrl = `data:image/png;base64,${markBase64}`;
+const wordmarkFont = (await readFile(path.join(publicDirectory, 'fonts', 'space-grotesk-600.woff2'))).toString(
+  'base64',
+);
 
 /** Geometry shared by the CSS compositions and the ICO bitmap. */
 const geometry = {
@@ -65,9 +68,6 @@ const pngTargets = [
 ];
 
 const ogImage = { height: 630, width: 1200 };
-
-const fontStack =
-  '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Hiragino Sans", "Microsoft YaHei", sans-serif';
 
 /** The transparent framing shows the artwork exactly as authored. */
 function iconMarkup(size, framing) {
@@ -99,51 +99,39 @@ function iconDocument(size, framing) {
 }
 
 function ogDocument({ height, width }) {
-  const title = '动画与 Galgame 的开放资料库';
-  const body = '搜索日语、中文或英文标题，都能落到同一部作品；当季放送时间、简介与制作阵容，随时可查。';
   return `<!doctype html>
-<html><head><meta charset="utf-8"><style>
+<html lang="en"><head><meta charset="utf-8"><style>
+  @font-face {
+    font-family: "Space Grotesk";
+    font-weight: 600;
+    src: url(data:font/woff2;base64,${wordmarkFont}) format("woff2");
+  }
   * { box-sizing: border-box; }
   html, body { margin: 0; }
   body {
-    background: #111113;
-    color: #f1f1f3;
-    font-family: ${fontStack};
-    height: ${String(height)}px;
-    overflow: hidden;
-    position: relative;
-    width: ${String(width)}px;
-  }
-  .glow {
-    background: radial-gradient(52% 46% at 50% 0%, rgba(139, 124, 182, 0.42) 0%, rgba(139, 124, 182, 0) 72%);
-    inset: 0;
-    position: absolute;
-  }
-  .frame {
+    background: #f5f2eb;
+    color: #232220;
     display: flex;
     flex-direction: column;
-    height: 100%;
+    font-family: Arial, sans-serif;
+    height: ${String(height)}px;
     justify-content: space-between;
-    padding: 72px 80px 64px;
-    position: relative;
+    padding: 62px 80px 50px;
+    width: ${String(width)}px;
   }
-  .brand { align-items: center; display: flex; gap: 18px; }
-  .brand > span { border-radius: 22% !important; }
-  .brand strong { font-size: 28px; font-weight: 600; letter-spacing: -0.01em; }
-  h1 { font-size: 60px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.18; margin: 64px 0 0; max-width: 900px; }
-  p { color: #a4a4ad; font-size: 24px; line-height: 1.6; margin: 24px 0 0; max-width: 820px; }
-  footer { align-items: baseline; color: #898993; display: flex; font-size: 20px; justify-content: space-between; }
+  header { align-items: center; display: flex; gap: 14px; }
+  header strong { font: 600 26px "Space Grotesk", Arial, sans-serif; }
+  h1 { font-size: 84px; font-weight: 700; letter-spacing: -0.045em; line-height: 1.02; margin: 0; }
+  p { color: #57524c; font-size: 26px; letter-spacing: -0.012em; line-height: 1.4; margin: 26px 0 0; }
+  footer { border-top: 1px solid #c9c3b8; color: #57524c; font-size: 20px; padding-top: 20px; }
 </style></head>
 <body>
-  <div class="glow"></div>
-  <div class="frame">
-    <div>
-      <div class="brand">${iconMarkup(64, 'bleed')}<strong>Noshiro DB</strong></div>
-      <h1>${title}</h1>
-      <p>${body}</p>
-    </div>
-    <footer><span>Bangumi · AniList · MyAnimeList</span><span>app.noshiro.moe</span></footer>
-  </div>
+  <header>${iconMarkup(42, 'tile')}<strong>Noshiro DB</strong></header>
+  <main>
+    <h1>Explore works<br>and their connections.</h1>
+    <p>A knowledge base for anime, manga, games, and related media.</p>
+  </main>
+  <footer>app.noshiro.moe</footer>
 </body></html>`;
 }
 
@@ -232,7 +220,9 @@ function buildIco(images) {
   return Buffer.concat([directory, ...payloads]);
 }
 
-const browser = await chromium.launch();
+const browser = await chromium.launch({
+  executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+});
 const page = await browser.newPage({ deviceScaleFactor: 1 });
 
 for (const target of pngTargets) {

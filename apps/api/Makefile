@@ -1,10 +1,11 @@
 UV ?= uv
 RUN := $(UV) run
+LOCAL_ENV := $(if $(wildcard .env),--env-file .env)
 
-.PHONY: sync lint format type test contracts check migrate revision run openapi
+.PHONY: sync lint format type test test-integration contracts check migrate revision run openapi
 
 sync:
-	$(UV) sync
+	$(UV) sync --locked
 
 lint:
 	$(RUN) ruff check src tests scripts migrations
@@ -20,10 +21,13 @@ type:
 test:
 	$(RUN) pytest -q
 
+test-integration:
+	$(RUN) pytest -q -k transactions
+
 contracts:
-	$(RUN) python scripts/route_coverage.py
-	$(RUN) python scripts/task_coverage.py
-	$(RUN) python scripts/queue_check.py
+	$(RUN) python scripts/contracts/route_coverage.py
+	$(RUN) python scripts/contracts/task_coverage.py
+	$(RUN) python scripts/contracts/queue_check.py
 
 check: lint type contracts test
 
@@ -34,7 +38,7 @@ revision:
 	$(RUN) alembic revision -m "$(m)"
 
 run:
-	$(RUN) uvicorn api.main:app --host 127.0.0.1 --port 8008
+	$(RUN) $(LOCAL_ENV) uvicorn api.main:app --host 127.0.0.1 --port 8008
 
 openapi:
-	$(RUN) python scripts/openapi.py
+	$(RUN) python scripts/contracts/openapi.py

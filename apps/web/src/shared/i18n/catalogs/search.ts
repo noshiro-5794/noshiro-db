@@ -3,7 +3,7 @@ import { defineMessages } from '../define-messages';
 export const searchMessages = defineMessages({
   'zh-CN': {
     'search.title': '搜索',
-    'search.pageBody': '按标题、年份、季度、平台、集数或来源 ID 查找动画与 Galgame。',
+    'search.pageBody': '按标题、类型、年份、季度、平台或来源 ID 查找作品。',
     'search.keyword': '关键词',
     'search.type': '类型',
     'search.sourceId': 'Source ID',
@@ -40,7 +40,7 @@ export const searchMessages = defineMessages({
   },
   'en-US': {
     'search.title': 'Search',
-    'search.pageBody': 'Find anime and galgame entries by title, year, season, platform or source ID.',
+    'search.pageBody': 'Find works by title, type, year, season, platform, or source ID.',
     'search.keyword': 'Keyword',
     'search.type': 'Type',
     'search.sourceId': 'Source ID',

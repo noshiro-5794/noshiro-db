@@ -14,10 +14,10 @@ from api.contexts.knowledge import agent_runs, enrichment, normalization
 from api.contexts.knowledge.agent_runs import EvidenceContext, WriteGuard
 from api.contexts.knowledge.enrichment_models import CompletionInput
 from api.contexts.knowledge.normalization import NormalizationInput
-from api.contexts.presentation.fragments import fetch
 from api.contexts.synchronization import campaigns
 from api.contexts.synchronization.discovery_step import positive_int
 from api.contexts.synchronization.domain import PROVIDER_NAMESPACES, LeaseLost
+from api.db import fetch
 from api.worker.session import session_scope
 
 

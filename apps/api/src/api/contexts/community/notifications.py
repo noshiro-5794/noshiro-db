@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.contexts.community import notification_targets
 from api.contexts.community.people import person
 from api.contexts.community.targets import activity_target
-from api.contexts.presentation.fragments import fetch
+from api.db import fetch
 from api.shared.cursor import Cursor, paginate, timestamp_position
 
 

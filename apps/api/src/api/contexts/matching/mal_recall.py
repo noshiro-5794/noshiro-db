@@ -22,10 +22,10 @@ from api.contexts.matching.mal_models import (
     observed_mal_ids,
 )
 from api.contexts.matching.mal_prompt import SYSTEM_PROMPT
-from api.contexts.presentation.fragments import fetch
+from api.db import fetch
+from api.integrations.providers.mal import MALClient
 from api.shared.dispatch import publish
 from api.worker import mal_import
-from api.worker.providers.mal import MALClient
 from api.worker.session import session_scope
 
 

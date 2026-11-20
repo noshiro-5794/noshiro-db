@@ -1,31 +1,21 @@
-# Security Policy
+# Security policy
 
-## Reporting a Vulnerability
+## Report a vulnerability
 
-Do not open a public issue for security vulnerabilities. Use GitHub's private
-vulnerability reporting on the repository Security tab instead.
+Use the repository’s [private vulnerability reporting page](https://github.com/noshiro-5794/noshiro-db/security).
+Include the affected component and revision, the conditions needed to reproduce
+the issue, and its impact. Keep credentials and private user data out of the
+report.
 
-Include:
+Security fixes target the current `main` branch.
 
-- affected component (API or web client) and version
-- steps to reproduce
-- impact
-- any proposed mitigation
+## Operate a release
 
-## Supported Versions
+- Store signing keys, provider credentials, and database credentials outside the checkout.
+- Serve the Web and public API through HTTPS. Set explicit CORS origins and trusted proxy addresses.
+- Set `JWT_SECRET`, `REFRESH_COOKIE_SECURE`, and `ENABLE_API_DOCS` in the production API environment.
+- Restrict database, Redis, and object storage access to the services that need it.
+- Pass durable record IDs in Celery messages. Retrieve sensitive data inside the worker.
+- Use the authenticated MCP endpoint for public knowledge queries.
 
-Only the latest `main` branch receives security fixes until versioned releases
-are introduced.
-
-## Production Security Requirements
-
-- `DJANGO_SECRET_KEY` must be unique and never committed.
-- `DEBUG` must be `False`.
-- `CORS_ALLOW_ALL_ORIGINS` must be `False`.
-- `TRUSTED_PROXY_CIDRS` must contain only reverse proxy addresses.
-- refresh cookies must use `Secure`, `HttpOnly`, and an explicit `SameSite`.
-- Admin and interactive API docs must be disabled unless explicitly enabled.
-- Celery messages must not contain email addresses, passwords, tokens, or
-  verification codes; tasks receive durable record IDs.
-- The web client must only talk to the API over HTTPS, and its static host must
-  keep the headers in `apps/web/docs/deployment.md`.
+See the [deployment guide](deploy/README.md) for the production service layout.

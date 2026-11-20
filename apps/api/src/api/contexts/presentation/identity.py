@@ -12,7 +12,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .fragments import fetch
+from api.db import fetch
 
 
 def redirect_map(rows: list[Any]) -> dict[UUID, UUID]:

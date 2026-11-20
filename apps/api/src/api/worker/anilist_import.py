@@ -8,9 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.identity.names import SourceName
 from api.contexts.index import resolution
-from api.contexts.presentation.fragments import fetch
+from api.contexts.ingestion import entities, facts, metrics, profiles, records
+from api.contexts.ingestion import metadata as presentation
+from api.contexts.ingestion import observations as ingestion
+from api.db import fetch
 from api.shared.text import slugify
-from api.worker import entities, facts, ingestion, metrics, presentation, profiles, records
 
 PROVIDER = "anilist"
 NAMESPACE = "anime"

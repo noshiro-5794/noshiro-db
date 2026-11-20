@@ -23,7 +23,7 @@ INVALID = "Given token not valid for any token type"
 
 
 async def _user_for(session: AsyncSession, user_id: int) -> Any:
-    from api.contexts.presentation.fragments import fetch
+    from api.db import fetch
 
     rows = await fetch(
         session,

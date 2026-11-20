@@ -35,7 +35,7 @@ async def integration_session():
 
 @pytest_asyncio.fixture
 async def register_provider(integration_session):
-    from api.contexts.presentation.fragments import fetch
+    from api.db import fetch
 
     async def register(slug, name):
         await fetch(

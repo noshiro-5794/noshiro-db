@@ -1,5 +1,5 @@
 from collections.abc import AsyncIterator
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import Depends
 from sqlalchemy import text
@@ -9,6 +9,11 @@ from .config import settings
 
 engine = create_async_engine(settings.async_database_url, pool_pre_ping=True)
 session_factory = async_sessionmaker(engine, expire_on_commit=False)
+
+
+async def fetch(session: AsyncSession, sql: str, params: dict[str, Any]) -> list[Any]:
+    """Execute parameterized SQL and materialize its result in the caller's session."""
+    return list((await session.execute(text(sql), params)).all())
 
 
 async def get_session() -> AsyncIterator[AsyncSession]:

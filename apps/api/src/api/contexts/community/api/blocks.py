@@ -37,8 +37,7 @@ from api.contexts.community.reports import (
     resolve_report,
 )
 from api.contexts.community.timeline import list_activities
-from api.contexts.presentation.fragments import fetch
-from api.db import SessionDep
+from api.db import SessionDep, fetch
 from api.shared.cursor import decode
 from api.shared.pagination import PageSize, cursor_payload, ensure_page, page_params, page_payload
 from api.shared.problems import ProblemError

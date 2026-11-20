@@ -11,7 +11,7 @@ from PIL import Image
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.config import settings
-from api.contexts.presentation.fragments import fetch
+from api.db import fetch
 from api.integrations.storage import ObjectStorage
 from api.shared.problems import ProblemError
 

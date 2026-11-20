@@ -11,9 +11,9 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.contexts.presentation.fragments import fetch
 from api.contexts.scheduling.domain import SlotProposal
 from api.contexts.scheduling.prompt import SYSTEM_PROMPT
+from api.db import fetch
 from api.shared.ai import complete_json
 from api.shared.web_search import configured, search
 from api.worker.session import session_scope

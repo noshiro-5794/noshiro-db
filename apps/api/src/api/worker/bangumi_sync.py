@@ -7,12 +7,12 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.contexts.presentation.fragments import fetch
 from api.contexts.presentation.summary import preferred_name
+from api.db import fetch
+from api.integrations.providers.bangumi import BangumiClient
 from api.worker.bangumi_entities import import_entity
 from api.worker.bangumi_episodes import import_episodes
 from api.worker.bangumi_relations import RelatedIds, import_relations, related_ids
-from api.worker.providers.bangumi import BangumiClient
 from api.worker.subject_import import import_subject
 
 

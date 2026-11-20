@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.contexts.index import resolution
 from api.contexts.matching.domain import MatchProposal, bind_allowed, structured_sides
 from api.contexts.matching.prompt import PROMPT_VERSION, SYSTEM_PROMPT
-from api.contexts.presentation.fragments import fetch
+from api.db import fetch
 from api.shared.ai import complete_json
 from api.shared.inference import fail_run, optional_number, start_run
 from api.worker.session import session_scope

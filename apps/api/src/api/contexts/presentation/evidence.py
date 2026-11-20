@@ -6,7 +6,8 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .fragments import fetch, isoformat
+from api.db import fetch
+from api.shared.timestamps import isoformat
 
 
 async def entity_evidence(session: AsyncSession, *, cluster: list[str]) -> list[dict[str, Any]]:

@@ -14,9 +14,10 @@ export const publicMessages = defineMessages({
     'public.menuBrowse': '浏览',
 
     'public.heroChip': '无需注册即可浏览',
-    'public.heroTitle': '动画与 Galgame 的开放资料库',
+    'public.heroTitle': '二次元作品与关联知识库',
+    'public.siteDescription': '探索作品、角色、创作者和发行版本，整理个人资料库，分享评论和收藏集。',
     'public.heroBody':
-      '搜日语、中文或英文标题，都能落到同一部作品；查看当季放送时间、简介与制作阵容；把在看、想看、看完的作品整理成自己的清单。',
+      '按日语、中文或英文标题搜索作品，查看角色、制作阵容与关联作品，关注当季动画放送，并把看过和玩过的作品整理成自己的资料库。',
     'public.startSearch': '搜索作品',
     'public.viewSchedule': '查看放送表',
 
@@ -32,9 +33,11 @@ export const publicMessages = defineMessages({
     'public.menuBrowse': 'Browse',
 
     'public.heroChip': 'No account needed to browse',
-    'public.heroTitle': 'An open catalogue of anime and visual novels',
+    'public.heroTitle': 'Explore works and their connections',
+    'public.siteDescription':
+      'Explore works, characters, creators, and releases. Organize your library and share reviews and collections.',
     'public.heroBody':
-      'Search in Japanese, Chinese or English and land on the same work. Follow the season schedule, read synopses and staff credits, and keep everything you watch in one list.',
+      'Search by Japanese, Chinese, or English title. Follow anime airings, discover related works and credits, and keep track of what you watch, read, and play.',
     'public.startSearch': 'Search the catalogue',
     'public.viewSchedule': 'See the weekly schedule',
 
@@ -50,9 +53,11 @@ export const publicMessages = defineMessages({
     'public.menuBrowse': 'メニュー',
 
     'public.heroChip': '登録なしで閲覧できます',
-    'public.heroTitle': 'アニメとギャルゲーのオープンなデータベース',
+    'public.heroTitle': '作品とつながりを探すデータベース',
+    'public.siteDescription':
+      '作品、登場人物、制作者、発売・配信情報を探し、個人ライブラリやレビュー、コレクションを共有できます。',
     'public.heroBody':
-      '日本語・中国語・英語、どのタイトルで検索しても同じ作品にたどり着きます。今期の放送時間やあらすじ、スタッフ情報を確認して、観た作品をひとつのリストにまとめましょう。',
+      '日本語・中国語・英語のタイトルで作品を探し、関連作品やクレジット、今期のアニメ放送予定を確認できます。観た作品、読んだ作品、遊んだ作品をひとつのライブラリにまとめましょう。',
     'public.startSearch': '作品を検索',
     'public.viewSchedule': '放送スケジュールを見る',
 

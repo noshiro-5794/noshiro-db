@@ -15,7 +15,9 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .fragments import CURRENT, current_rows, fetch
+from api.db import fetch
+
+from .provenance import CURRENT, current_rows
 from .summary import entity_summary
 
 BUNDLE_VERSION = "v1"

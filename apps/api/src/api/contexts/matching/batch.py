@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.contexts.identity.work_families import are_bindable
 from api.contexts.index import resolution
 from api.contexts.matching.service import finish_proposal
-from api.contexts.presentation.fragments import fetch
+from api.db import fetch
 
 TASK = "match_apply_rotation"
 SHARD = "pending"

@@ -5,10 +5,10 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.identity.names import SourceName
-from api.contexts.presentation.fragments import fetch
-from api.worker import records
+from api.contexts.ingestion import records
+from api.contexts.ingestion.relations import credit, ensure_contributor, relation
+from api.db import fetch
 from api.worker import vndb_mapping as mapping
-from api.worker.graph import credit, ensure_contributor, relation
 from api.worker.vndb_projection import (
     Projection,
     ensure_identity,

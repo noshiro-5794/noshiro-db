@@ -10,7 +10,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.contexts.presentation.fragments import fetch
+from api.db import fetch
 
 VISIBLE = {
     "post": "SELECT 1 FROM community_post WHERE id = :id"

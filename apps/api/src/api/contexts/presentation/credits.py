@@ -6,7 +6,9 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .fragments import PROVENANCE, PROVENANCE_JOINS, fetch, row_provenance
+from api.db import fetch
+
+from .provenance import PROVENANCE, PROVENANCE_JOINS, row_provenance
 from .summary import public_summary
 
 CURRENT_CREDIT = """

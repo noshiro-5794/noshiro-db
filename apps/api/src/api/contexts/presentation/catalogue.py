@@ -12,9 +12,10 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.db import fetch
 from api.shared.pagination import page_offset
 
-from .fragments import CURRENT, fetch
+from .provenance import CURRENT
 from .summary import entity_summary
 
 DEFAULT_COLLECTIONS = ("anime", "galgame")

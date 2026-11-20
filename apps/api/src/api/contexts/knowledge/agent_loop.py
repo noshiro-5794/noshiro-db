@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.knowledge import agent_runs, checkpoints, retrieval, transcript
 from api.contexts.knowledge.budget import Budget
-from api.contexts.presentation.fragments import fetch
+from api.db import fetch
 from api.shared import inference
 from api.shared.ai import AgentCompletion, AgentToolCall, AIError, complete_agent, model_for
 from api.worker import provider_search

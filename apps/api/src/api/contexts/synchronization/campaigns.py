@@ -8,7 +8,6 @@ from uuid import UUID, uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.contexts.presentation.fragments import fetch
 from api.contexts.synchronization.domain import (
     ACTIVE,
     TERMINAL,
@@ -16,6 +15,7 @@ from api.contexts.synchronization.domain import (
     LeaseLost,
     UnsupportedAction,
 )
+from api.db import fetch
 
 
 async def get_campaign(

@@ -11,7 +11,7 @@ from uuid import UUID
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.contexts.presentation.fragments import fetch
+from api.db import fetch
 
 SWEEP_TASK_NAME = "match_candidate_sweep"
 POLICY_VERSION = "title-similarity-v2"

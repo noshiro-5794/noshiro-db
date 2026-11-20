@@ -5,7 +5,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.community.people import person
-from api.contexts.presentation.fragments import fetch
+from api.db import fetch
 
 TARGET_FIELDS = ("activity", "post", "comment", "review", "collection")
 USER_FIELDS = "u.id AS user_id,p.nickname,p.avatar"

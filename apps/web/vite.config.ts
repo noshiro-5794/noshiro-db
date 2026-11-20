@@ -3,10 +3,11 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
 
-const defaultApiProxyTarget = 'https://api.noshiro.moe';
+const localApiOrigin = 'http://127.0.0.1:8008';
+const productionApiOrigin = 'https://api.noshiro.moe';
 
 function readApiProxyTarget(value: string | undefined) {
-  const url = new URL(value?.trim() || defaultApiProxyTarget);
+  const url = new URL(value?.trim() || localApiOrigin);
 
   if (!['http:', 'https:'].includes(url.protocol) || url.pathname !== '/' || url.search || url.hash) {
     throw new Error('API_PROXY_TARGET must be an HTTP(S) origin without a path, query, or fragment');
@@ -49,7 +50,7 @@ export default defineConfig(({ mode }) => {
               proxyResponse.headers['set-cookie'] = setCookie.map(allowRefreshCookieOnHttpDevelopmentOrigin);
             });
           },
-          ...(apiProxyTarget === defaultApiProxyTarget
+          ...(apiProxyTarget === productionApiOrigin
             ? {
                 headers: {
                   Origin: 'https://app.noshiro.moe',

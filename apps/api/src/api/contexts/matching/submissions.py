@@ -7,7 +7,7 @@ from typing import Any
 from uuid import UUID
 
 from api.contexts.matching.domain import MatchProposal
-from api.contexts.presentation.fragments import fetch
+from api.db import fetch
 from api.worker.session import session_scope
 
 

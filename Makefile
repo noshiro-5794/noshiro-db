@@ -3,10 +3,13 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: help check api-check api-test api-lint api-migrate api-run web-check web-install web-dev web-icons openapi
+.PHONY: help check dev-up dev-stop api-install api-check api-test api-lint api-migrate api-run web-check web-install web-dev web-icons openapi
 
 help:
 	@echo "check        run every gate (API + web)"
+	@echo "dev-up       start local PostgreSQL and Redis"
+	@echo "dev-stop     stop local infrastructure"
+	@echo "api-install  API: install the locked Python environment"
 	@echo "api-check    API: lint, types and tests"
 	@echo "api-test     API: pytest"
 	@echo "api-lint     API: ruff check and format check"
@@ -19,6 +22,15 @@ help:
 	@echo "openapi      API: regenerate tests/snapshots/openapi.json"
 
 check: api-check web-check
+
+dev-up:
+	docker compose -f deploy/compose.dev.yml up -d --wait
+
+dev-stop:
+	docker compose -f deploy/compose.dev.yml stop
+
+api-install:
+	$(MAKE) -C apps/api sync
 
 api-check:
 	$(MAKE) -C apps/api check

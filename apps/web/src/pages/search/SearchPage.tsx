@@ -65,7 +65,7 @@ export function SearchPage() {
     <Page hideHeader ownHeading title={t('search.title')} seo={false}>
       <Seo
         title={t('nav.catalog')}
-        description="Search anime and galgame entries by title, year, season, platform, episode count, content type, and source ID."
+        description="Search works by title, year, season, platform, episode count, content type, or source ID."
         path={routes.search}
       />
       <div className="grid gap-5 pb-8">

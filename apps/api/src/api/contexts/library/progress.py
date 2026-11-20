@@ -8,8 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.contexts.identity.resolution import cluster_ids, resolve
 from api.contexts.presentation.detail import entity_detail
 from api.contexts.presentation.episodes import episode_ids
-from api.contexts.presentation.fragments import fetch
 from api.contexts.presentation.summary import preferred_name
+from api.db import fetch
 
 
 async def _entry(session: AsyncSession, *, user_id: int, entry_id: int, lock: bool = False) -> Any:

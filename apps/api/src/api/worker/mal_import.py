@@ -8,10 +8,11 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import api.worker.ingestion as ingestion_module
+import api.contexts.ingestion.observations as ingestion_module
 from api.contexts.index import resolution
-from api.contexts.presentation.fragments import fetch
-from api.worker import entities, facts, metrics, presentation, profiles, records
+from api.contexts.ingestion import entities, facts, metrics, profiles, records
+from api.contexts.ingestion import metadata as presentation
+from api.db import fetch
 
 PROVIDER = "mal"
 NAMESPACE = "anime"

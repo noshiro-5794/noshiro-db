@@ -8,8 +8,9 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.identity.resolution import cluster_ids, is_active, is_public, resolve
+from api.db import fetch
 
-from .fragments import PROVENANCE, PROVENANCE_JOINS, fetch, row_provenance
+from .provenance import PROVENANCE, PROVENANCE_JOINS, row_provenance
 from .summary import entity_summary
 
 CURRENT_RELATION = """

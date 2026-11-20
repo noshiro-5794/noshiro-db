@@ -14,7 +14,8 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.community.visibility import visible
-from api.contexts.presentation.fragments import fetch, isoformat
+from api.db import fetch
+from api.shared.timestamps import isoformat
 
 TARGETS = ("post", "comment", "review", "collection", "activity")
 REACTIONS = ("like", "useful", "agree")

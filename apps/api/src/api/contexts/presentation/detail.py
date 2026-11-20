@@ -1,9 +1,4 @@
-"""From an entity to one page: names, descriptions, facts, links, ratings, sources.
-
-The shape of the document is the Django serializer's; the rules come from
-`fragments` and the summary from `summary`, so this module only says which lists
-exist and what each row carries.
-"""
+"""Build the public entity detail from current catalogue records and their sources."""
 
 from __future__ import annotations
 
@@ -12,15 +7,10 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .fragments import (
-    PROVENANCE,
-    PROVENANCE_JOINS,
-    current_rows,
-    fetch,
-    isoformat,
-    row_provenance,
-    visible,
-)
+from api.db import fetch
+from api.shared.timestamps import isoformat
+
+from .provenance import PROVENANCE, PROVENANCE_JOINS, current_rows, row_provenance, visible
 from .summary import entity_summary
 
 

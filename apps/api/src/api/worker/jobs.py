@@ -14,7 +14,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.contexts.presentation.fragments import fetch
+from api.db import fetch
 
 DEFAULT_LEASE_SECONDS = 3600
 OPEN_STATUSES = ("queued", "running")

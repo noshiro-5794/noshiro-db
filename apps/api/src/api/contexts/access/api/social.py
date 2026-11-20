@@ -88,7 +88,7 @@ async def _social_login(
     session: Any, profile: dict[str, Any], state: dict[str, Any]
 ) -> tuple[int, str, str]:
     from api.contexts.access.security import hash_password
-    from api.contexts.presentation.fragments import fetch
+    from api.db import fetch
 
     identity = await fetch(
         session,
