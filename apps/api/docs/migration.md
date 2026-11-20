@@ -1596,3 +1596,9 @@ group, grant, admin log and session tables before removing any of them. The
 production copy contains no records in these tables. Generated permissions,
 content types and migration metadata are retained in the pre-upgrade backup.
 Restore that backup to recover the retired framework schema.
+
+The following revision removes ten transitional views over the canonical
+catalogue, matching and library tables. Runtime SQL uses the canonical tables.
+The views contained no data and had no dependent production objects. Their
+upgrade and downgrade were verified on the production copy and the fresh
+PostgreSQL test schema.

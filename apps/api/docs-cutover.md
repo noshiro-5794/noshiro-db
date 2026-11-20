@@ -1,5 +1,9 @@
 # Cutover readiness
 
+This records the initial cutover review. See `docs/migration.md` for later
+implementation and verification and `../../deploy/README.md` for current
+deployment instructions.
+
 A go/no-go for retiring the Django service, written from the port's own record
 rather than from optimism. The answer today is **no-go**, for four concrete reasons.
 
