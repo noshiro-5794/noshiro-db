@@ -77,6 +77,25 @@
               }
             }
           },
+          "429": {
+            "description": "Authentication rate limit exceeded.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until another attempt can be made.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1.0
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
           "400": {
             "description": "Request validation failed.",
             "content": {
@@ -115,6 +134,25 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          },
+          "429": {
+            "description": "Authentication rate limit exceeded.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until another attempt can be made.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1.0
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
               }
             }
           },
@@ -159,6 +197,25 @@
               }
             }
           },
+          "429": {
+            "description": "Authentication rate limit exceeded.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until another attempt can be made.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1.0
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
           "400": {
             "description": "Request validation failed.",
             "content": {
@@ -194,6 +251,25 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "429": {
+            "description": "Authentication rate limit exceeded.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until another attempt can be made.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1.0
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
           },
           "400": {
             "description": "Request validation failed.",
@@ -238,6 +314,25 @@
                     "type": "string"
                   },
                   "title": "Response Github Start Api V1 Auth Social Github Start  Get"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Authentication rate limit exceeded.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until another attempt can be made.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
                 }
               }
             }
@@ -366,6 +461,25 @@
               }
             }
           },
+          "429": {
+            "description": "Authentication rate limit exceeded.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until another attempt can be made.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1.0
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
           "400": {
             "description": "Request validation failed.",
             "content": {
@@ -397,6 +511,25 @@
                   },
                   "type": "object",
                   "title": "Response Refresh Session Api V1 Auth Sessions Refresh  Post"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Authentication rate limit exceeded.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until another attempt can be made.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1.0
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
                 }
               }
             }

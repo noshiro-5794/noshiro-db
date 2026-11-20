@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from api.config import settings
 from api.contexts.access.cookies import set_refresh_cookie
+from api.contexts.access.rate_limits import limited
 from api.contexts.access.security import create_tokens, verify_password
 from api.contexts.presentation.fragments import fetch
 from api.db import SessionDep
@@ -42,7 +43,7 @@ async def _user_case_insensitive(session: SessionDep, email: str) -> Any:
     return rows[0] if rows else None
 
 
-@router.post("/sessions/password/")
+@router.post("/sessions/password/", **limited("login"))
 async def password_login(
     payload: PasswordLogin, response: Response, session: SessionDep
 ) -> dict[str, str]:

@@ -40,8 +40,8 @@ def create_app() -> FastAPI:
     app = Application(
         title="Noshiro API",
         version="0.1.0",
-        openapi_url="/api/v1/openapi/",
-        docs_url="/api/v1/docs/",
+        openapi_url="/api/v1/openapi/" if settings.enable_api_docs else None,
+        docs_url="/api/v1/docs/" if settings.enable_api_docs else None,
         redoc_url=None,
     )
     app.add_middleware(

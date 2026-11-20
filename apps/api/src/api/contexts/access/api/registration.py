@@ -7,14 +7,17 @@ import re
 import secrets
 from typing import Any
 
-from fastapi import APIRouter
+import httpx
+from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 from api.config import settings
 from api.contexts.access.cookies import set_refresh_cookie
+from api.contexts.access.rate_limits import limited
 from api.contexts.access.security import create_tokens, hash_password
 from api.db import SessionDep
 from api.shared.dispatch import publish
+from api.shared.outbound import proxy_for
 from api.shared.problems import ProblemError
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
@@ -25,9 +28,10 @@ CODE_RE = re.compile(r"^\d{6}$")
 MAX_ATTEMPTS = 5
 
 
-@router.post("/verification-codes/", status_code=202)
+@router.post("/verification-codes/", status_code=202, **limited("verification"))
 async def send_code(
     body: dict[str, Any],
+    request: Request,
     session: SessionDep,
 ) -> dict[str, str]:
     email = str(body.get("email", "")).strip().lower()
@@ -39,7 +43,10 @@ async def send_code(
         errors["purpose"] = [f'"{purpose}" is not a valid choice.']
     if errors:
         raise ProblemError(status_code=400, detail="Request validation failed.", errors=errors)
-    await _verify_captcha(str(body.get("hcaptcha_token", "")))
+    await _verify_captcha(
+        str(body.get("hcaptcha_token") or ""),
+        remote_ip=request.client.host if request.client else None,
+    )
     await _insert(
         session,
         "SELECT pg_advisory_xact_lock(hashtextextended(:scope,0))",
@@ -134,7 +141,7 @@ async def _verify(session: Any, *, email: str, purpose: str, code: str) -> Any:
     return row
 
 
-@router.post("/registrations/")
+@router.post("/registrations/", **limited("registration"))
 async def register(body: dict[str, Any], session: SessionDep) -> JSONResponse:
     from api.contexts.presentation.fragments import fetch
 
@@ -208,7 +215,7 @@ async def register(body: dict[str, Any], session: SessionDep) -> JSONResponse:
     return response
 
 
-@router.post("/sessions/code/")
+@router.post("/sessions/code/", **limited("login"))
 async def code_login(body: dict[str, Any], session: SessionDep) -> JSONResponse:
     from api.contexts.presentation.fragments import fetch
 
@@ -250,7 +257,7 @@ async def code_login(body: dict[str, Any], session: SessionDep) -> JSONResponse:
     return response
 
 
-@router.post("/password-resets/", status_code=204)
+@router.post("/password-resets/", status_code=204, **limited("reset"))
 async def reset_password(body: dict[str, Any], session: SessionDep) -> None:
     from api.contexts.presentation.fragments import fetch
 
@@ -287,21 +294,24 @@ async def reset_password(body: dict[str, Any], session: SessionDep) -> None:
 CAPTCHA_FAILED = "Captcha validation failed."
 
 
-async def _verify_captcha(token: str) -> None:
-    """Mirror the old service: only enforced when hCaptcha is switched on."""
-    import os
-
-    import httpx
-
-    if os.environ.get("HCAPTCHA_ENABLED", "").lower() not in {"1", "true", "yes"}:
+async def _verify_captcha(token: str, *, remote_ip: str | None) -> None:
+    if not settings.hcaptcha_enabled:
         return
-    secret = os.environ.get("HCAPTCHA_SECRET_KEY", "")
-    if not secret or not token:
-        raise ProblemError(status_code=400, detail=CAPTCHA_FAILED, code="users.invalid_captcha")
-    async with httpx.AsyncClient(timeout=10) as client:
-        response = await client.post(
-            "https://api.hcaptcha.com/siteverify",
-            data={"secret": secret, "response": token},
-        )
-    if not response.json().get("success"):
-        raise ProblemError(status_code=400, detail=CAPTCHA_FAILED, code="users.invalid_captcha")
+    invalid = ProblemError(status_code=400, detail=CAPTCHA_FAILED, code="users.invalid_captcha")
+    if not settings.hcaptcha_secret_key or not token:
+        raise invalid
+    data = {"secret": settings.hcaptcha_secret_key, "response": token}
+    if remote_ip:
+        data["remoteip"] = remote_ip
+    url = settings.hcaptcha_siteverify_url
+    try:
+        async with httpx.AsyncClient(
+            timeout=settings.hcaptcha_timeout, proxy=proxy_for(url), trust_env=False
+        ) as client:
+            response = await client.post(url, data=data)
+            response.raise_for_status()
+            result = response.json()
+    except (httpx.HTTPError, ValueError) as error:
+        raise invalid from error
+    if not isinstance(result, dict) or result.get("success") is not True:
+        raise invalid
