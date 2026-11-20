@@ -4,6 +4,7 @@ from fastapi import APIRouter, Request, Response
 
 from api.config import settings
 from api.contexts.access.cookies import set_refresh_cookie
+from api.contexts.access.rate_limits import limited
 from api.contexts.access.sessions import rotate_refresh_token
 from api.db import SessionDep
 from api.shared.problems import ProblemError
@@ -11,7 +12,7 @@ from api.shared.problems import ProblemError
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 
-@router.post("/sessions/refresh/")
+@router.post("/sessions/refresh/", **limited("refresh"))
 async def refresh_session(
     request: Request, response: Response, session: SessionDep
 ) -> dict[str, str]:

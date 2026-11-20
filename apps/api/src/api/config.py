@@ -9,10 +9,16 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", populate_by_name=True)
 
     database_url: str = "postgresql://noshiro@127.0.0.1:5432/noshiro_db"
+    redis_cache_url: str = ""
+    enable_api_docs: bool = True
     cors_allow_all_origins: bool = False
     cors_allow_credentials: bool = False
     cors_allowed_origins: Annotated[list[str], NoDecode] = Field(default_factory=list)
     avatar_max_upload_size: int = Field(default=10 * 1024 * 1024, gt=0)
+    hcaptcha_enabled: bool = False
+    hcaptcha_secret_key: str = ""
+    hcaptcha_siteverify_url: str = "https://api.hcaptcha.com/siteverify"
+    hcaptcha_timeout: float = Field(default=5, gt=0)
     avatar_allowed_content_types: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["image/jpeg", "image/png", "image/webp"]
     )

@@ -8,7 +8,10 @@ Build the image for the deployment host from `apps/api/Dockerfile` using
 `apps/api` as the context. Use an immutable release tag. Store the production
 environment outside the source checkout and restrict access to the deployment
 user. See `apps/api/.env.example` for application settings. Set `JWT_SECRET` to
-the existing signing key so active sessions survive the rollout.
+the existing signing key so active sessions survive the rollout. Set
+`REDIS_CACHE_URL` to the shared cache for per-client authentication limits
+and `FORWARDED_ALLOW_IPS` to the reverse proxy address seen by the API
+container. Set `ENABLE_API_DOCS=false` to disable the public schema and docs.
 
 ```sh
 export APP_IMAGE=noshiro-db/api APP_IMAGE_TAG=release-tag

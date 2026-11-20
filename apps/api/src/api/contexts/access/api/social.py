@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import APIRouter
 
 from api.contexts.access.cookies import set_refresh_cookie
+from api.contexts.access.rate_limits import limited
 from api.contexts.access.security import create_tokens
 from api.db import SessionDep
 from api.shared.problems import ProblemError
@@ -14,7 +15,7 @@ from api.shared.problems import ProblemError
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 
-@router.get("/social/github/start/")
+@router.get("/social/github/start/", **limited("login"))
 async def github_start(redirect: str = "") -> dict[str, str]:
     from api.config import settings
     from api.contexts.access import oauth

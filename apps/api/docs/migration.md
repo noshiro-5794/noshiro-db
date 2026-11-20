@@ -1602,3 +1602,17 @@ catalogue, matching and library tables. Runtime SQL uses the canonical tables.
 The views contained no data and had no dependent production objects. Their
 upgrade and downgrade were verified on the production copy and the fresh
 PostgreSQL test schema.
+
+### Authentication controls at cutover
+
+The API restores the password, code, verification, registration, refresh and
+reset rate limits. Clients share an atomic sliding window in Redis across API
+processes. Limit responses use the existing problem format and include
+`Retry-After`. The deployment uses the upstream proxy address to identify the
+client and retains the production setting that disables API documentation.
+
+Email verification uses the configured hCaptcha URL, timeout and outbound
+proxy. Unsuccessful provider responses return the same captcha problem as a
+rejected token. The frontend build uses the production site's public Site Key.
+The Redis-backed regression verified ten accepted attempts and six rate-limited
+requests across concurrent clients and two FastAPI instances.
