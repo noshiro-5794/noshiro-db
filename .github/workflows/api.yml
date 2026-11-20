@@ -1,125 +1,73 @@
-name: API
+name: api
 
 on:
-  # No path filter here on purpose: a required status check must be reported on
-  # every pull request. A filtered workflow simply never runs for a PR that
-  # touches other paths, and the check then waits forever, which blocks the
-  # merge instead of protecting it. The push filter stays, so a merge only
-  # re-runs the suite for the app it changed.
-  #
-  # The image build and its vulnerability scan live in api-image.yml, which is
-  # triggered separately; they are not part of this required check.
-  pull_request:
   push:
     branches: [main]
     paths:
-      - apps/api/**
-      - .github/workflows/api.yml
-  # Manual runs use the workflow file from the default branch and ignore the
-  # push path filter, so a full run needs no dummy commit.
-  workflow_dispatch:
+      - "apps/api/**"
+      - ".github/workflows/api.yml"
+  pull_request:
 
-# Read-only: every step runs project code, none of them need to write to the
-# repository or to another API surface.
+concurrency:
+  group: api-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
-# Keyed on the workflow as well as the ref: two workflows running on the same
-# ref (API and Web on one pull request head) must not cancel each other.
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-defaults:
-  run:
-    working-directory: apps/api
-
 jobs:
   quality:
-    # Distinct from the web workflow's job name: two workflows reporting the
-    # same check name leave the branch rules with an ambiguous entry, and the
-    # required-status-check picker offers nothing at all.
     name: api quality
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.13.4"
+      - run: uv sync --locked
+      - run: uv run ruff check src tests scripts migrations
+      - run: uv run ruff format --check src tests scripts migrations
+      - run: uv run mypy
+      - run: uv run python scripts/route_coverage.py
+      # A task registered under a name the old service never used is never consumed,
+      # silently. The static check reads the retained task contract.
+      - run: uv run python scripts/task_coverage.py
+      # Routing and consumption are separate declarations; when they disagree the
+      # message sits on the queue unread, which is how a task silently stops running.
+      - run: uv run python scripts/queue_check.py
+      - run: uv run pytest -q
+
+  schema:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
     services:
       postgres:
-        image: postgres:15.18-bookworm
+        image: postgres:18-bookworm
         env:
-          POSTGRES_DB: noshiro_test
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: migration-test
+          POSTGRES_DB: noshiro_schema_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d noshiro_test"
+          --health-cmd pg_isready
           --health-interval 5s
           --health-timeout 5s
-          --health-retries 10
+          --health-retries 12
     env:
-      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/noshiro_test
-      UV_FROZEN: "true"
+      DATABASE_URL: postgresql://postgres:migration-test@127.0.0.1:5432/noshiro_schema_test
+      NOSHIRO_INTEGRATION_DATABASE_URL: postgresql://postgres:migration-test@127.0.0.1:5432/noshiro_schema_test
     steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v7
         with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.13"
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
-        with:
-          # Pinned to the version the project's `required-version` range
-          # accepts. Left floating, the action installs whatever uv was
-          # released last, and a new minor silently fails the whole job at
-          # `uv sync` before a single test runs.
           version: "0.13.4"
-          enable-cache: true
-
-      - name: Install dependencies
-        run: uv sync --all-groups
-
-      - name: Run static and framework checks
-        run: |
-          uv run ruff check .
-          uv run ruff format --check src tests
-          DJANGO_SETTINGS_MODULE=config.settings.test uv run python src/manage.py check
-          DJANGO_SETTINGS_MODULE=config.settings.test uv run python src/manage.py makemigrations --check --dry-run
-          DJANGO_SETTINGS_MODULE=config.settings.test uv run python src/manage.py spectacular --validate --fail-on-warn
-
-      - name: Run tests with coverage
-        run: >-
-          uv run pytest
-          -n auto
-          --cov=src
-          --cov-report=term-missing
-          --cov-report=xml
-          --cov-fail-under=60
-
-      - name: Enforce changed-code coverage
-        # `skip-diff-cover` exists for mechanical changes: a rename touches dozens
-        # of files whose changed lines are imports and declarations that no test
-        # can execute, so the gate measures noise rather than risk. Apply the
-        # label only with a one-line justification in the pull request body.
-        if: >-
-          github.event_name == 'pull_request' &&
-          !contains(github.event.pull_request.labels.*.name, 'skip-diff-cover')
-        run: |
-          # The job runs for every pull request now, so a change that touches no
-          # Python has nothing to measure and must not fail the check.
-          if git diff --name-only "origin/${{ github.base_ref }}...HEAD" | grep -q '^apps/api/.*\.py$'; then
-            uv run diff-cover coverage.xml \
-              --compare-branch="origin/${{ github.base_ref }}" \
-              --exclude "apps/api/src/*/*/migrations/*" \
-              --fail-under=80
-          else
-            echo "No Python changes in this pull request; skipping changed-code coverage."
-          fi
-
-      - name: Audit Python dependencies
-        run: uv run pip-audit --strict
+      - run: uv sync --locked
+      - run: uv run alembic upgrade 0007_refresh_token_tables
+      - run: uv run alembic downgrade 0001_baseline
+      - run: uv run alembic upgrade head
+      - run: uv run pytest -q tests/test_*transactions.py

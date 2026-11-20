@@ -7,10 +7,10 @@
 
 help:
 	@echo "check        run every gate (API + web)"
-	@echo "api-check    API: lint, tests, Django checks, migration drift"
+	@echo "api-check    API: lint, types and tests"
 	@echo "api-test     API: pytest"
 	@echo "api-lint     API: ruff check and format check"
-	@echo "api-migrate  API: bootstrap and migrate the local database"
+	@echo "api-migrate  API: apply Alembic migrations"
 	@echo "api-run      API: serve on 127.0.0.1:8008"
 	@echo "web-install  web: install dependencies from the lockfile"
 	@echo "web-dev      web: Vite dev server"

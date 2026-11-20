@@ -1,44 +1,41 @@
-ARG PYTHON_VERSION=3.13.14
-ARG UV_VERSION=0.13.4
-ARG PYTHON_BASE_IMAGE=python:${PYTHON_VERSION}-slim-bookworm
-
-FROM ${PYTHON_BASE_IMAGE} AS runtime
-ARG UV_VERSION
+ARG PYTHON_IMAGE=python:3.13.14-slim-bookworm
+FROM ${PYTHON_IMAGE} AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
-    PATH="/app/.venv/bin:$PATH" \
-    TZ=Asia/Shanghai
-
-WORKDIR /app
-
-LABEL org.opencontainers.image.title="noshiro-db-api" \
-      org.opencontainers.image.description="Noshiro DB API runtime" \
-      org.opencontainers.image.source="https://github.com/noshiro-5794/noshiro-db"
+    UV_COMPILE_BYTECODE=1
 
 RUN apt-get update \
     && apt-get upgrade -y \
-    && apt-get install -y --no-install-recommends tzdata \
-    && python -m pip install --no-cache-dir "uv==${UV_VERSION}" \
     && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --no-install-project
+RUN pip install --no-cache-dir uv==0.13.4
 
-COPY src ./src
-COPY docker ./docker
+WORKDIR /app
 
-RUN addgroup --system app \
-    && adduser --system --ingroup app app \
-    && chown -R app:app /app
+# Permissions are set at COPY time: the build context on the deployment host can
+# carry mode 000 on files, and inheriting that makes the app unreadable to itself.
 
-RUN chmod +x docker/entrypoint.sh docker/celery_healthcheck.sh docker/beat_healthcheck.sh
+# Dependencies first: they change less often than the source.
+COPY --chmod=644 pyproject.toml uv.lock ./
+RUN uv sync --no-dev --frozen --no-install-project
 
-EXPOSE 8008
+COPY --chmod=755 src ./src
+COPY --chmod=644 alembic.ini ./
+COPY --chmod=755 migrations ./migrations
+RUN uv sync --no-dev --frozen --no-editable
 
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONPATH=/app/src
+
+RUN useradd --create-home --uid 10001 app && chown -R app:app /app \
+    && chmod -R a+rX /app
 USER app
 
-ENTRYPOINT ["/app/docker/entrypoint.sh"]
-CMD ["gunicorn", "--chdir", "/app/src", "config.wsgi:application", "--bind", "0.0.0.0:8008", "--workers", "3", "--timeout", "120"]
+EXPOSE 8010
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/health/ready/', timeout=3)"
+
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8010"]

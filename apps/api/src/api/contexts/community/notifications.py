@@ -1,0 +1,159 @@
+"""Notification counts and the read cursor.
+
+Small on purpose: the list endpoint belongs with the feed work, but the badge in
+the header only needs a count and a way to clear it.
+"""
+
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Any
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from api.contexts.community import notification_targets
+from api.contexts.community.people import person
+from api.contexts.community.targets import activity_target
+from api.contexts.presentation.fragments import fetch
+from api.shared.cursor import Cursor, paginate, timestamp_position
+
+
+def notification_payload(row: Any) -> dict[str, Any]:
+    read_at = row.read_at
+    target = activity_target(row)
+    return {
+        "id": row.id,
+        "notification_type": row.notification_type,
+        "actor": person(row.actor_id, row.actor_nickname, row.actor_avatar),
+        "target": target,
+        "metadata": row.metadata,
+        "is_read": read_at is not None,
+        "read_at": _iso(read_at),
+        "created_at": _iso(row.created_at),
+    }
+
+
+def _iso(value: datetime | None) -> str | None:
+    return value.isoformat().replace("+00:00", "Z") if value else None
+
+
+async def unread_count(session: AsyncSession, *, user_id: int) -> int:
+    rows = await fetch(
+        session,
+        "SELECT count(*) AS total FROM community_notification"
+        " WHERE recipient_id = :user_id AND read_at IS NULL",
+        {"user_id": user_id},
+    )
+    return int(rows[0].total)
+
+
+async def mark_all_read(session: AsyncSession, *, user_id: int) -> int:
+    rows = await fetch(
+        session,
+        "UPDATE community_notification SET read_at = now()"
+        " WHERE recipient_id = :user_id AND read_at IS NULL"
+        " RETURNING id",
+        {"user_id": user_id},
+    )
+    await session.commit()
+    return len(rows)
+
+
+NOTIFICATION_QUERY = """
+    SELECT notification.id, notification.notification_type, notification.metadata,
+           notification.activity_id,notification.post_id,notification.comment_id,
+           notification.review_id,notification.collection_id,
+           notification.read_at, notification.created_at,
+           actor.id AS actor_id, actor_profile.nickname AS actor_nickname,
+           actor_profile.avatar AS actor_avatar,
+           activity_user.id AS activity_user_id,
+           activity_user_profile.nickname AS activity_user_nickname,
+           activity_user_profile.avatar AS activity_user_avatar,
+           activity_target.id AS activity_target_id,
+           activity_target_profile.nickname AS activity_target_nickname,
+           activity_target_profile.avatar AS activity_target_avatar
+    FROM community_notification AS notification
+    LEFT JOIN "user" AS actor ON actor.id = notification.actor_id
+    LEFT JOIN user_profile AS actor_profile ON actor_profile.user_id = actor.id
+    LEFT JOIN community_activity AS activity ON activity.id = notification.activity_id
+    LEFT JOIN "user" AS activity_user ON activity_user.id = activity.user_id
+    LEFT JOIN user_profile AS activity_user_profile
+      ON activity_user_profile.user_id = activity_user.id
+    LEFT JOIN "user" AS activity_target ON activity_target.id = activity.target_user_id
+    LEFT JOIN user_profile AS activity_target_profile
+      ON activity_target_profile.user_id = activity_target.id
+"""
+
+
+async def read_one(session: AsyncSession, *, user_id: int, notification_id: int) -> dict[str, Any]:
+    rows = await fetch(
+        session,
+        NOTIFICATION_QUERY
+        + " WHERE notification.id = :id AND notification.recipient_id = :user_id",
+        {"id": notification_id, "user_id": user_id},
+    )
+    if not rows:
+        raise LookupError(notification_id)
+    row = rows[0]
+    if row.read_at is None:
+        await fetch(
+            session,
+            "UPDATE community_notification SET read_at = now()"
+            " WHERE id = :id AND read_at IS NULL RETURNING read_at",
+            {"id": notification_id},
+        )
+        await session.commit()
+        rows = await fetch(
+            session,
+            NOTIFICATION_QUERY
+            + " WHERE notification.id = :id AND notification.recipient_id = :user_id",
+            {"id": notification_id, "user_id": user_id},
+        )
+        row = rows[0]
+    return (await payloads(session, [row]))[0]
+
+
+async def payloads(session: AsyncSession, rows: list[Any]) -> list[dict[str, Any]]:
+    targets = await notification_targets.load(session, rows)
+    result = []
+    for row in rows:
+        payload = notification_payload(row)
+        payload["target"] = targets[row.id]
+        result.append(payload)
+    return result
+
+
+async def list_for_user(
+    session: AsyncSession,
+    *,
+    user_id: int,
+    cursor: Cursor,
+    page_size: int,
+    is_read: bool | None,
+) -> tuple[list[dict[str, Any]], Cursor | None, Cursor | None]:
+    clauses = ["notification.recipient_id = :user_id"]
+    params: dict[str, Any] = {
+        "user_id": user_id,
+        "limit": page_size + 1,
+        "offset": cursor.offset,
+    }
+    if is_read is not None:
+        clauses.append(
+            "notification.read_at IS NOT NULL" if is_read else "notification.read_at IS NULL"
+        )
+    if cursor.position is not None:
+        comparison = ">" if cursor.reverse else "<"
+        clauses.append(f"notification.created_at {comparison} CAST(:position AS timestamptz)")
+        params["position"] = timestamp_position(cursor.position)
+    direction = "ASC" if cursor.reverse else "DESC"
+    rows = await fetch(
+        session,
+        NOTIFICATION_QUERY
+        + " WHERE "
+        + " AND ".join(clauses)
+        + f" ORDER BY notification.created_at {direction}, notification.id {direction}"
+        " LIMIT :limit OFFSET :offset",
+        params,
+    )
+    page, next_cursor, previous_cursor = paginate(rows, cursor, page_size)
+    return await payloads(session, page), next_cursor, previous_cursor
