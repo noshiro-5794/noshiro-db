@@ -1,4 +1,4 @@
-import type { Transition, Variants } from 'motion/react';
+import { stagger, type Transition, type Variants } from 'motion/react';
 
 /**
  * Motion values for the JS-driven animations.
@@ -19,7 +19,7 @@ const enterTransition: Transition = { duration: slowSeconds, ease: easeStandard 
 /** Staggers a column of hero elements without each one naming its own delay. */
 export const heroStackVariants: Variants = {
   hidden: {},
-  visible: { transition: { delayChildren: 0.04, staggerChildren: 0.07 } },
+  visible: { transition: { delayChildren: stagger(0.07, { startDelay: 0.04 }) } },
 };
 
 export const enterVariants: Variants = {
