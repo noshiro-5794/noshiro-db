@@ -25,7 +25,6 @@ export type {
   EntityKind,
   EntityLifecycle,
   EntityMedia,
-  EntityMetric,
   EntityName,
   EntityRelation,
   EntityRelease,

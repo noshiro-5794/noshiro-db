@@ -45,7 +45,7 @@ def test_facts_keep_numbers_as_numbers() -> None:
     facts = fact_candidates(MEDIA)
     assert facts["episode-count"] == (12, "number")
     assert "anilist-format" not in facts
-    assert facts["anilist-average-score"] == (81, "number")
+    assert "anilist-average-score" not in facts
     assert facts["release-date"] == ("2020-04-05", "date")
 
 

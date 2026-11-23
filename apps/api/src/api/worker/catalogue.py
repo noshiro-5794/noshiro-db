@@ -54,7 +54,7 @@ async def _rank(session: AsyncSession, *, work_type: str, source: str, metric: s
         session,
         """
         SELECT DISTINCT ON (m.entity_id) m.entity_id, m.value
-        FROM metric_snapshot AS m
+        FROM ranking.provider_metric AS m
         JOIN provider_record AS r ON r.id = m.provider_record_id
         JOIN provider_namespace AS ns ON ns.id = r.namespace_id
         JOIN provider AS p ON p.id = ns.provider_id
@@ -100,8 +100,6 @@ async def score_map(session: AsyncSession) -> dict[Any, Decimal]:
 
 async def refresh(session: AsyncSession, *, now: datetime) -> int:
     scores = await score_map(session)
-    if not scores:
-        return 0
     return await _persist(session, scores, now=now)
 
 
@@ -145,24 +143,23 @@ async def _persist(
         {"ids": list(scores)},
     )
     scorable_ids = {row.id for row in scorable}
-    if not scorable_ids:
-        return 0
     payload = json.dumps(
         [{"entity_id": str(key), "score": str(scores[key])} for key in scorable_ids]
     )
     await fetch(
         session,
-        "UPDATE work SET popularity = v.score, popularity_refreshed_at = :now"
-        " FROM jsonb_to_recordset(CAST(:rows AS jsonb))"
-        "   AS v(entity_id uuid, score numeric)"
-        " WHERE work.entity_id = v.entity_id RETURNING work.entity_id",
+        "INSERT INTO ranking.entity_rank (entity_id, score, refreshed_at)"
+        " SELECT v.entity_id, v.score, :now FROM jsonb_to_recordset(CAST(:rows AS jsonb))"
+        " AS v(entity_id uuid, score numeric)"
+        " ON CONFLICT (entity_id) DO UPDATE SET score = EXCLUDED.score,"
+        " refreshed_at = EXCLUDED.refreshed_at"
+        " WHERE entity_rank.refreshed_at <= EXCLUDED.refreshed_at RETURNING entity_id",
         {"rows": payload, "now": now},
     )
     # Anything this run did not touch keeps a stale score, so it is cleared.
     await fetch(
         session,
-        "UPDATE work SET popularity = 0, popularity_refreshed_at = :now"
-        " WHERE popularity_refreshed_at < :now RETURNING entity_id",
+        "DELETE FROM ranking.entity_rank WHERE refreshed_at < :now RETURNING entity_id",
         {"now": now},
     )
     return len(scorable_ids)

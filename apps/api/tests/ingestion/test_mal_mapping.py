@@ -70,7 +70,7 @@ def test_a_boolean_is_typed_as_boolean() -> None:
 
     original = mal_import.fact_candidates
     facts = original({"id": 5, "mean": True})
-    assert facts["mal-score"] == (True, "boolean")
+    assert "mal-score" not in facts
 
 
 def test_subject_types_fall_back_to_other() -> None:

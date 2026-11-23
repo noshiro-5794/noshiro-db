@@ -30,25 +30,6 @@ MAX_MEDIA = 6
 MAX_ALTERNATES = 2
 DESCRIPTION_CHARS = 1500
 
-# Values produced by other sites' users rather than by the work. They may rank a
-# listing internally and must never reach a page, so the generator never sees
-# them. The set shrinks to nothing once metric extraction stops writing these
-# predicates as facts.
-SIGNAL_PREDICATES = frozenset(
-    {
-        "mal-score",
-        "mal-rank",
-        "mal-members",
-        "mal-popularity",
-        "anilist-average-score",
-        "anilist-favourites",
-        "anilist-popularity",
-        "anilist-trending",
-        "comment-count",
-        "playtime-votes",
-    }
-)
-
 
 async def _media(session: AsyncSession, cluster: list[str]) -> list[dict[str, Any]]:
     rows = await fetch(
@@ -200,7 +181,6 @@ async def _fields(session: AsyncSession, root: UUID) -> list[dict[str, Any]]:
             "alternates": alternates.get(row.predicate_id, []),
         }
         for row in decisions
-        if row.slug not in SIGNAL_PREDICATES
     ]
 
 

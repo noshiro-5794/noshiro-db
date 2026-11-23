@@ -203,7 +203,6 @@ export const decodeProgressSummary = (value: unknown) => {
       duration: '',
       raw_duration: '',
       air_date: episode.air_date ?? '',
-      comment_count: 0,
       description: '',
       provenance: null,
       ep_num: episode.number === null || episode.number === '' ? null : Number(episode.number),

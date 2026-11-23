@@ -105,8 +105,8 @@ async def import_graph(
             session,
             """
             INSERT INTO work
-              (entity_id, work_type, popularity, popularity_refreshed_at, created_at, updated_at)
-            VALUES (:entity, :type, 0, NULL, now(), now())
+              (entity_id, work_type, created_at, updated_at)
+            VALUES (:entity, :type, now(), now())
             ON CONFLICT DO NOTHING RETURNING entity_id
             """,
             {

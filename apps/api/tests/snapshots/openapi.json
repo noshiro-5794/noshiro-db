@@ -8711,63 +8711,6 @@
           }
         }
       }
-    },
-    "/api/v1/index/entities/{entity_id}/metrics/": {
-      "get": {
-        "tags": [
-          "catalogue"
-        ],
-        "summary": "Entity Metrics",
-        "operationId": "entity_metrics_api_v1_index_entities__entity_id__metrics__get",
-        "parameters": [
-          {
-            "name": "entity_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Entity Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "additionalProperties": true
-                  },
-                  "title": "Response Entity Metrics Api V1 Index Entities  Entity Id  Metrics  Get"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Request validation failed.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDocument"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Resource not found.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDocument"
-                }
-              }
-            }
-          }
-        }
-      }
     }
   },
   "components": {

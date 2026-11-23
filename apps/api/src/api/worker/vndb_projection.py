@@ -258,7 +258,12 @@ async def project_work(session: AsyncSession, vndb_id: str, data: dict[str, Any]
         entity_id=entity_id,
         provider_record_id=record_id,
         observed_at=revision[0].fetched_at,
-        values={"score": data.get("rating"), "votes": data.get("votecount")},
+        values={
+            "score": data.get("rating"),
+            "votes": data.get("votecount"),
+            "popularity": data.get("popularity"),
+            "playtime-votes": data.get("length_votes"),
+        },
     )
     await write_facts(session, projection, mapping.work_facts(data))
     await write_tags(session, projection, data)

@@ -19,9 +19,10 @@ def as_decimal(raw: Any) -> Decimal | None:
     if raw is None or raw == "" or isinstance(raw, bool):
         return None
     try:
-        return Decimal(str(raw))
+        value = Decimal(str(raw))
     except (InvalidOperation, TypeError, ValueError):
         return None
+    return value if value.is_finite() else None
 
 
 async def record_metrics(
@@ -41,7 +42,7 @@ async def record_metrics(
         await fetch(
             session,
             """
-            INSERT INTO metric_snapshot
+            INSERT INTO ranking.provider_metric
               (metric, value, sample_size, observed_at, entity_id, provider_record_id)
             VALUES (:metric, :value, NULL, :at, :entity, :record)
             ON CONFLICT (provider_record_id, metric, observed_at)

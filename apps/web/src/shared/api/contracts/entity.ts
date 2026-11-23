@@ -150,7 +150,6 @@ export type EntityEpisode = {
   duration: string | null;
   raw_duration: string;
   air_date: string | null;
-  comment_count: number | null;
   description: string;
   provenance: FieldProvenance | null;
 };
@@ -172,14 +171,6 @@ export type EntityRelease = {
   platform: string;
   region: string;
   evidence: FactEvidence[];
-};
-
-export type EntityMetric = {
-  metric: string;
-  value: string;
-  sample_size: number;
-  observed_at: ISODateString;
-  provider: string;
 };
 
 export type EntityEvidence = {

@@ -59,7 +59,7 @@ async def test_mal_import_preserves_source_fields_metrics_and_replays_once(mal_s
         )
     )[0]
     assert membership.inclusion_reason == "MAL anime"
-    assert (await fetch(session, "SELECT count(*) AS n FROM metric_snapshot", {}))[0].n == 3
+    assert (await fetch(session, "SELECT count(*) AS n FROM ranking.provider_metric", {}))[0].n == 5
     assert (await fetch(session, "SELECT count(*) AS n FROM provider_revision", {}))[0].n == 1
     evidence = await fetch(session, "SELECT json_pointer FROM fact_evidence", {})
     assert {row.json_pointer for row in evidence} == set(mal_import.FACT_POINTERS.values())

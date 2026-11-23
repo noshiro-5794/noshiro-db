@@ -104,7 +104,7 @@ async def test_full_anilist_projection_is_idempotent_and_preserves_metadata(anil
         "voice_performance",
         "entity_term",
         "airing_event",
-        "metric_snapshot",
+        "ranking.provider_metric",
         "provider_revision",
     ):
         counts[table] = (await fetch(session, f"SELECT count(*) AS n FROM {table}", {}))[0].n
@@ -114,7 +114,7 @@ async def test_full_anilist_projection_is_idempotent_and_preserves_metadata(anil
         "voice_performance": 1,
         "entity_term": 2,
         "airing_event": 1,
-        "metric_snapshot": 4,
+        "ranking.provider_metric": 4,
         "provider_revision": 3,
     }
     revision = (

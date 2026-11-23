@@ -29,6 +29,26 @@ Display projections select summaries, names, and artwork for the public API.
 Resolution uses redirects and preserves the underlying evidence. Entity and
 field visibility, audience, and spoiler rules govern presentation.
 
+## Relationship sources
+
+Public relationship queries use eligible current observations. The application
+prefers one provider's episode list to keep numbering and specials consistent.
+Credits fall back by role. Related works choose the preferred evidence for each
+canonical target and relation type, then include distinct edges from other sources.
+These choices leave source evidence and episode progress identities intact.
+
+Override the priority order using `RELATIONSHIP_SOURCES` as JSON, for example
+`{"episodes":["bangumi","anilist"],"credits":["bangumi","anilist","mal","vndb"]}`.
+Omitted lists take their defaults. Visibility and redistribution filters apply
+before provider priority.
+
+## Internal ranking
+
+External engagement observations live in `ranking.provider_metric`.
+`ranking.entity_rank` holds the derived ordering score. Public listings use it
+for ordering and return entity data. Provider scores, vote counts, and comment
+counts stay outside the public API, MCP and display inputs.
+
 ## AI and provider synchronization
 
 Workers can create structured proposals from source observations and artifacts.

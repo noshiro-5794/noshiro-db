@@ -168,7 +168,6 @@ def work_facts(data: dict[str, Any]) -> list[Fact]:
     for field, slug, name, value_type in (
         ("languages", "languages", "Languages", "json"),
         ("platforms", "platforms", "Platforms", "json"),
-        ("length_votes", "playtime-votes", "Playtime Votes", "number"),
     ):
         facts.extend(_optional_fact(data, field, slug, name, value_type))
     return facts

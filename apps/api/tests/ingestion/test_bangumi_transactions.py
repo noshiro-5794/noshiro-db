@@ -64,7 +64,9 @@ async def test_subject_metadata_names_facts_and_rating_history_match_source(bang
     )[0]
     assert (profile.episode_count, profile.premiered_on) == (12, date(2026, 1, 1))
     ratings = await fetch(
-        session, "SELECT metric, value FROM metric_snapshot ORDER BY observed_at, metric", {}
+        session,
+        "SELECT metric, value FROM ranking.provider_metric ORDER BY observed_at, metric",
+        {},
     )
     assert [tuple(row) for row in ratings] == [
         ("rank", Decimal(100)),

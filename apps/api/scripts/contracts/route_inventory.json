@@ -54,12 +54,6 @@
     ]
   },
   {
-    "path": "/api/v1/index/entities/{entity_id}/metrics/",
-    "methods": [
-      "GET"
-    ]
-  },
-  {
     "path": "/api/v1/index/entities/{entity_id}/evidence/",
     "methods": [
       "GET"

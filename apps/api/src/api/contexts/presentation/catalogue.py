@@ -111,7 +111,7 @@ def _clauses(
 
 def _order(ordering: str) -> str:
     if ordering == POPULAR_ORDERING:
-        return "work.popularity DESC NULLS LAST, entity.updated_at DESC, entity.id"
+        return "rank.score DESC NULLS LAST, entity.updated_at DESC, entity.id"
     return "entity.updated_at DESC, entity.id"
 
 
@@ -160,7 +160,7 @@ async def entity_page(
         f"""
         SELECT entity.id
         FROM entity
-        LEFT JOIN work ON work.entity_id = entity.id
+        LEFT JOIN ranking.entity_rank AS rank ON rank.entity_id = entity.id
         WHERE {where}
         ORDER BY {_order(ordering)}
         LIMIT :limit OFFSET :offset

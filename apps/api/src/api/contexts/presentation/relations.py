@@ -11,6 +11,7 @@ from api.contexts.identity.resolution import cluster_ids, is_active, is_public, 
 from api.db import fetch
 
 from .provenance import PROVENANCE, PROVENANCE_JOINS, row_provenance
+from .source_preference import priority
 from .summary import entity_summary
 
 CURRENT_RELATION = """
@@ -98,9 +99,16 @@ async def entity_relations(
         {"ids": cluster},
     )
     evidence = await _evidence(session, [row.id for row in rows])
+    for sources in evidence.values():
+        sources.sort(key=lambda source: priority("relations", source["provider"]))
+
+    def relation_priority(row: Any) -> tuple[int, str]:
+        sources = evidence.get(row.id, [])
+        return priority("relations", sources[0]["provider"] if sources else None)
+
     rendered: list[dict[str, Any]] = []
     seen: set[tuple[str, UUID]] = set()
-    for row in rows:
+    for row in sorted(rows, key=relation_priority):
         target = await resolve(session, row.to_entity_id)
         if target is None or not await is_active(session, target):
             continue

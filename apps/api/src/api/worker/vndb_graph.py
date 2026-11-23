@@ -181,9 +181,9 @@ async def import_relations(session: AsyncSession, work: Projection, data: dict[s
         await fetch(
             session,
             """
-            INSERT INTO work (entity_id, work_type, popularity, popularity_refreshed_at,
+            INSERT INTO work (entity_id, work_type,
                               created_at, updated_at)
-            VALUES (:id, 'galgame', 0, NULL, now(), now()) ON CONFLICT DO NOTHING
+            VALUES (:id, 'galgame', now(), now()) ON CONFLICT DO NOTHING
             RETURNING entity_id
             """,
             {"id": target.entity_id},

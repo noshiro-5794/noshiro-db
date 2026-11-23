@@ -1,8 +1,22 @@
 import json
 from typing import Annotated, Any, Literal
 
-from pydantic import AliasChoices, Field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+
+class RelationshipSources(BaseModel):
+    episodes: tuple[str, ...] = ("bangumi", "anilist", "mal")
+    credits: tuple[str, ...] = ("bangumi", "anilist", "mal", "vndb")
+    relations: tuple[str, ...] = ("bangumi", "anilist", "mal", "vndb")
+
+    @field_validator("episodes", "credits", "relations")
+    @classmethod
+    def distinct_providers(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        providers = tuple(provider.strip().lower() for provider in value)
+        if not providers or "" in providers or len(set(providers)) != len(providers):
+            raise ValueError("Provide an ordered list of distinct provider slugs.")
+        return providers
 
 
 class Settings(BaseSettings):
@@ -11,6 +25,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://noshiro@127.0.0.1:5432/noshiro_db"
     redis_cache_url: str = ""
     enable_api_docs: bool = True
+    relationship_sources: RelationshipSources = Field(default_factory=RelationshipSources)
     cors_allow_all_origins: bool = False
     cors_allow_credentials: bool = False
     cors_allowed_origins: Annotated[list[str], NoDecode] = Field(default_factory=list)

@@ -31,9 +31,6 @@ FACT_POINTERS = {
     "release-date": "/startDate",
     "end-date": "/endDate",
     "anilist-id-mal": "/idMal",
-    "anilist-average-score": "/averageScore",
-    "anilist-popularity": "/popularity",
-    "anilist-favourites": "/favourites",
     "anilist-trending": "/trending",
 }
 
@@ -99,9 +96,6 @@ def fact_candidates(media: dict[str, Any]) -> dict[str, tuple[Any, str]]:
         "release-date": _fuzzy_date(media.get("startDate")),
         "end-date": _fuzzy_date(media.get("endDate")),
         "anilist-id-mal": as_int(media.get("idMal")),
-        "anilist-average-score": media.get("averageScore"),
-        "anilist-popularity": media.get("popularity"),
-        "anilist-favourites": media.get("favourites"),
         "anilist-trending": media.get("trending"),
     }
     result = {}

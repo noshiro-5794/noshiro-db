@@ -19,6 +19,7 @@ from api.shared.pagination import page_offset
 
 from .detail import entity_detail
 from .provenance import PROVENANCE, row_provenance
+from .source_preference import priority
 from .summary import preferred_name
 
 ORDERING_SLUGS = ("disc", "episode-number", "sort")
@@ -123,11 +124,13 @@ def _order(episode_id: UUID, facts: dict[tuple[UUID, str], Any]) -> tuple[float,
     return (number("disc"), number("sort"), number("episode-number"), str(episode_id))
 
 
-async def _provenance(session: AsyncSession, episode: UUID) -> dict[str, Any] | None:
+async def _sources(session: AsyncSession, ids: list[UUID]) -> dict[UUID, dict[str, Any]]:
+    if not ids:
+        return {}
     rows = await fetch(
         session,
         f"""
-        SELECT {PROVENANCE}
+        SELECT representation.entity_id, {PROVENANCE}
         FROM entity_representation AS representation
         JOIN provider_record AS record ON record.id = representation.provider_record_id
         JOIN provider_namespace AS namespace ON namespace.id = record.namespace_id
@@ -137,14 +140,20 @@ async def _provenance(session: AsyncSession, episode: UUID) -> dict[str, Any] | 
          AND pointer.schema_name = 'index.episode'
         JOIN provider_observation AS observation ON observation.id = pointer.observation_id
         LEFT JOIN mapping_run AS run ON run.id = observation.mapping_run_id
-        WHERE representation.entity_id = CAST(:episode AS uuid)
+        WHERE representation.entity_id = ANY(CAST(:ids AS uuid[]))
           AND representation.is_active
-        ORDER BY provider.slug, record.external_id, pointer.id
-        LIMIT 1
+          AND record.status = 'active'
+          AND provider.redistribution_policy <> 'forbidden'
+        ORDER BY record.external_id, pointer.id
         """,
-        {"episode": str(episode)},
+        {"ids": ids},
     )
-    return row_provenance(rows[0]) if rows else None
+    sources: dict[UUID, dict[str, Any]] = {}
+    for row in sorted(rows, key=lambda item: priority("episodes", item.provider_slug)):
+        provenance = row_provenance(row)
+        if provenance is not None:
+            sources.setdefault(row.entity_id, provenance)
+    return sources
 
 
 def _fact_value(facts: list[dict[str, Any]], slug: str) -> Any:
@@ -163,6 +172,17 @@ async def episode_page(
     page_size: int,
 ) -> tuple[int, list[dict[str, Any]]]:
     ids = await episode_ids(session, cluster)
+    sources = await _sources(session, ids)
+    if sources:
+        preferred = min(
+            (source["provider"] for source in sources.values()),
+            key=lambda provider: priority("episodes", provider),
+        )
+        ids = [
+            identifier
+            for identifier in ids
+            if sources.get(identifier, {}).get("provider") == preferred
+        ]
     facts = await _ordering_facts(session, ids)
     ordered = sorted(ids, key=lambda episode: _order(episode, facts))
     total = len(ordered)
@@ -202,9 +222,8 @@ async def episode_page(
                 "duration": duration,
                 "raw_duration": _fact_value(episode_facts, "raw-duration") or "",
                 "air_date": _fact_value(episode_facts, "air-date"),
-                "comment_count": _fact_value(episode_facts, "comment-count"),
                 "description": descriptions[0]["text"] if descriptions else "",
-                "provenance": await _provenance(session, root),
+                "provenance": sources.get(episode),
             }
         )
     return total, results

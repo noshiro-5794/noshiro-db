@@ -132,9 +132,9 @@ async def ensure_work(session: AsyncSession, *, entity_id: Any, work_type: str) 
         session,
         """
         INSERT INTO work
-          (entity_id, work_type, popularity, popularity_refreshed_at,
+          (entity_id, work_type,
            created_at, updated_at)
-        VALUES (:entity, :work_type, 0, NULL, now(), now())
+        VALUES (:entity, :work_type, now(), now())
         ON CONFLICT (entity_id) DO UPDATE SET work_type = EXCLUDED.work_type,
                                               updated_at = now()
         RETURNING entity_id

@@ -74,10 +74,11 @@ async def test_work_projection_preserves_source_flags_safety_and_revision_metric
     assert link.link_type == "editeur-site"
     observed = await fetch(
         session,
-        "SELECT metric, value FROM metric_snapshot WHERE entity_id=:id ORDER BY metric",
+        "SELECT metric, value FROM ranking.provider_metric WHERE entity_id=:id ORDER BY metric",
         {"id": projection.entity_id},
     )
     assert [(row.metric, row.value) for row in observed] == [
+        ("playtime-votes", Decimal(0)),
         ("score", Decimal(80)),
         ("votes", Decimal(100)),
     ]
@@ -86,7 +87,7 @@ async def test_work_projection_preserves_source_flags_safety_and_revision_metric
         "SELECT json_pointer FROM fact_evidence WHERE observation_id=:id ORDER BY json_pointer",
         {"id": projection.observation_id},
     )
-    assert [row.json_pointer for row in evidence] == ["/languages", "/length_votes", "/released"]
+    assert [row.json_pointer for row in evidence] == ["/languages", "/released"]
     assert (await fetch(session, "SELECT count(*) AS n FROM provider_revision", {}))[0].n == 1
     tags = await fetch(
         session,

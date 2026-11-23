@@ -5,7 +5,7 @@ def test_problem_payload_matches_the_django_envelope() -> None:
     payload = problem_payload(
         status_code=404,
         detail="Entity not found.",
-        instance="/api/v1/index/entities/x/metrics/",
+        instance="/api/v1/index/entities/x/episodes/",
         trace_id="abc123",
     )
 
@@ -14,6 +14,6 @@ def test_problem_payload_matches_the_django_envelope() -> None:
         "title": "Not Found",
         "status": 404,
         "detail": "Entity not found.",
-        "instance": "/api/v1/index/entities/x/metrics/",
+        "instance": "/api/v1/index/entities/x/episodes/",
         "trace_id": "abc123",
     }

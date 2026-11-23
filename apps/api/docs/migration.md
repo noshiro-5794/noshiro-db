@@ -19,7 +19,8 @@ make migrate
 
 ## Recovery
 
-The baseline and framework retirement revisions require backup-based recovery.
+The baseline, framework retirement and internal ranking cleanup revisions
+require backup-based recovery.
 The remaining revisions describe their downgrade behavior in the migration
 source. Test recovery on a restored copy before using it on production data.
 
