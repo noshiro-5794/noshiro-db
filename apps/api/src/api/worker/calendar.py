@@ -39,13 +39,13 @@ def weekday_raw_value(weekday: dict[str, Any]) -> str:
     return ""
 
 
-def collection_doing(item: dict[str, Any]) -> int:
-    """How many users are watching; anything unreadable counts as none."""
+def watching_count(item: dict[str, Any]) -> int | None:
+    """Read the numeric signal for internal ranking."""
     collection = item.get("collection")
     if not isinstance(collection, dict):
-        return 0
+        return None
     doing = collection.get("doing")
-    return doing if isinstance(doing, int) and not isinstance(doing, bool) and doing >= 0 else 0
+    return doing if isinstance(doing, int) and not isinstance(doing, bool) and doing >= 0 else None
 
 
 def calendar_items(data: list[Any]) -> list[dict[str, Any]]:
@@ -89,17 +89,17 @@ __all__ = [
     "board_metadata",
     "build_event",
     "calendar_items",
-    "collection_doing",
     "count_calendar_items",
     "diff_ids",
     "ids_from_groups",
+    "watching_count",
     "weekday_counts",
     "weekday_number",
     "weekday_raw_value",
 ]
 
 
-def build_event(*, work_id: Any, weekday: dict[str, Any], item: dict[str, Any]) -> dict[str, Any]:
+def build_event(*, work_id: Any, weekday: dict[str, Any]) -> dict[str, Any]:
     """One airing event from a calendar item, matching the old construction.
 
     ``precision`` degrades to ``unknown`` when the weekday cannot be numbered, rather
@@ -111,7 +111,6 @@ def build_event(*, work_id: Any, weekday: dict[str, Any], item: dict[str, Any]) 
         "weekday": number,
         "precision": "weekday" if number is not None else "unknown",
         "raw_value": weekday_raw_value(weekday),
-        "collection_doing": collection_doing(item),
     }
 
 

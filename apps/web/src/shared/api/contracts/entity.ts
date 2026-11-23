@@ -191,7 +191,6 @@ export type CalendarEvent = {
   weekday: number | null;
   precision: string;
   raw_value: string;
-  collection_doing: number;
   work?: EntitySummary | null;
   provenance: FieldProvenance | null;
 };

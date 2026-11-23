@@ -87,3 +87,37 @@ async def test_refused_merge_rolls_back_decision_before_safe_fallback(monkeypatc
                 await transaction.rollback()
     finally:
         await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_reviewed_group_keeps_two_work_identities(integration_session, register_provider):
+    from api.worker.subject_import import import_subject
+
+    session = integration_session
+    await register_provider("bangumi", "Bangumi")
+    left = await import_subject(session, {"id": 1, "type": 2, "name": "First work"})
+    right = await import_subject(session, {"id": 2, "type": 2, "name": "Second work"})
+    candidate = uuid4()
+    await fetch(
+        session,
+        """
+        INSERT INTO match_candidate (id,left_entity_id,right_entity_id,score,runner_up_margin,
+          policy_version,status,hard_conflicts,created_at,updated_at)
+        VALUES (:id,:left,:right,1,1,'transaction-fixture','pending','[]',now(),now())
+        RETURNING id
+        """,
+        {"id": candidate, "left": left, "right": right},
+    )
+    await resolution.decide(session, candidate_id=candidate, outcome="group", reason="Same season")
+    edges = await fetch(
+        session,
+        "SELECT from_entity_id, to_entity_id FROM entity_relation"
+        " WHERE relation_type='same-season'",
+        {},
+    )
+    assert {tuple(edge) for edge in edges} == {(left, right), (right, left)}
+    assert await resolution.resolve(session, left) == left
+    assert await resolution.resolve(session, right) == right
+    assert not await fetch(
+        session, "SELECT id FROM curated_collection WHERE slug LIKE 'season-group-%'", {}
+    )

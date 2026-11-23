@@ -81,7 +81,6 @@ async def collection(
         mapper=f"bangumi.{namespace}",
         mapper_version=f"bangumi-{namespace}-v2",
         normalized_data={
-            **payload,
             "_projection_hash": ingestion.normalized_hash(
                 [role_for(item, preferred) for item in items if isinstance(item, dict)]
             ),

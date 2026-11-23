@@ -102,7 +102,12 @@ async def episode_identity(
 
 
 async def import_episodes(
-    session: AsyncSession, work_id: Any, subject_id: str, items: list[Any]
+    session: AsyncSession,
+    work_id: Any,
+    subject_id: str,
+    items: list[Any],
+    *,
+    complete: bool | None = None,
 ) -> None:
     async with session.begin_nested():
         payload = {"items": items}
@@ -120,8 +125,8 @@ async def import_episodes(
             session,
             provider_record_id=collection.record_id,
             mapper="bangumi.subject-episodes",
-            mapper_version="bangumi-subject-episodes-v1",
-            normalized_data=payload,
+            mapper_version="bangumi-subject-episodes-v2",
+            normalized_data={"complete": complete},
             schema_name="index.work.episodes",
             schema_version="1",
         )

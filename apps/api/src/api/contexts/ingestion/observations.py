@@ -41,15 +41,21 @@ def normalized_hash(data: Any) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
-async def _latest_revision(session: AsyncSession, provider_record_id: Any) -> Any:
+async def _latest_revision(
+    session: AsyncSession, provider_record_id: Any
+) -> tuple[Any, str | None]:
     rows = await fetch(
         session,
-        "SELECT latest_revision_id FROM provider_record WHERE id = :id",
+        """
+        SELECT record.latest_revision_id, revision.payload_hash FROM provider_record AS record
+        LEFT JOIN provider_revision AS revision ON revision.id = record.latest_revision_id
+        WHERE record.id = :id
+        """,
         {"id": provider_record_id},
     )
     if not rows:
         raise LookupError(f"provider_record {provider_record_id} does not exist")
-    return rows[0].latest_revision_id
+    return rows[0].latest_revision_id, rows[0].payload_hash
 
 
 async def _select_current(
@@ -106,7 +112,7 @@ async def record_observation(
     digest = normalized_hash(normalized_data)
     payload = json.dumps(normalized_data, ensure_ascii=False, default=str)
     at = observed_at or datetime.now(UTC)
-    revision_id = await _latest_revision(session, provider_record_id)
+    revision_id, revision_hash = await _latest_revision(session, provider_record_id)
 
     if revision_id is None:
         # A record with no revision predates the revision pipeline; it can only carry
@@ -219,7 +225,7 @@ async def record_observation(
             "origin": MAPPED_ORIGIN,
             "schema": schema_name,
             "version": schema_version,
-            "data": payload,
+            "data": None if digest == revision_hash else payload,
             "hash": digest,
             "at": at,
         },

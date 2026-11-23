@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+from unicodedata import normalize
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,6 +28,26 @@ CURRENT_CREDIT = """
         )
     )
 """
+
+ROLE_ALIASES = {
+    "导演": "director",
+    "監督": "director",
+    "原作": "original creator",
+    "脚本": "script",
+    "編劇": "script",
+    "编剧": "script",
+    "系列构成": "series composition",
+    "シリーズ構成": "series composition",
+    "角色设计": "character design",
+    "キャラクターデザイン": "character design",
+    "音乐": "music",
+    "音楽": "music",
+}
+
+
+def role_key(role: str) -> str:
+    key = " ".join(normalize("NFKC", role).casefold().split())
+    return ROLE_ALIASES.get(key, key)
 
 
 async def entity_credits(
@@ -54,13 +75,14 @@ async def entity_credits(
     provider_by_role: dict[str, str | None] = {}
     seen: set[tuple[str, str]] = set()
     for row in sorted(rows, key=lambda item: priority("credits", item.provider_slug)):
-        if row.role in provider_by_role and provider_by_role[row.role] != row.provider_slug:
+        role = role_key(row.role)
+        if role in provider_by_role and provider_by_role[role] != row.provider_slug:
             continue
         contributor = await public_summary(session, entity_id=row.contributor_id, language=language)
         if contributor is None:
             continue
-        provider_by_role[row.role] = row.provider_slug
-        key = (row.role, contributor["id"])
+        provider_by_role[role] = row.provider_slug
+        key = (role, contributor["id"])
         if key in seen:
             continue
         seen.add(key)

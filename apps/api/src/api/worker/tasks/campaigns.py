@@ -84,6 +84,7 @@ async def fetch_step(campaign_id: UUID, owner: str, maximum: int | None, deadlin
                 item.cursor,
                 forbidden=bool(policy and policy[0].storage_policy == "forbidden"),
                 progress=progress,
+                scope=session_scope,
             )
             async with session_scope() as session:
                 await campaigns.owned(

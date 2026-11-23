@@ -9,7 +9,9 @@ from api.db import fetch
 from api.integrations.providers.capture import SourceResponse
 
 
-async def store(session: AsyncSession, response: SourceResponse) -> UUID:
+async def store(
+    session: AsyncSession, response: SourceResponse, *, batch_id: UUID | None = None
+) -> UUID:
     params = {
         "provider": response.provider,
         "hash": sha256(response.body).hexdigest(),
@@ -42,8 +44,9 @@ async def store(session: AsyncSession, response: SourceResponse) -> UUID:
         session,
         """
         INSERT INTO ingest.source_fetch (
-            id, document_id, endpoint, method, status_code, content_type, fetched_at
-        ) VALUES (:id, :document, :endpoint, :method, :status, :type, :at)
+            id, document_id, endpoint, method, status_code, content_type, fetched_at,
+            batch_id, request_hash
+        ) VALUES (:id, :document, :endpoint, :method, :status, :type, :at, :batch, :hash)
         RETURNING id
         """,
         {
@@ -54,9 +57,39 @@ async def store(session: AsyncSession, response: SourceResponse) -> UUID:
             "status": response.status_code,
             "type": response.content_type,
             "at": response.fetched_at,
+            "batch": batch_id,
+            "hash": response.request_hash,
         },
     )
     return response.id
+
+
+async def begin_batch(session: AsyncSession, provider: str, external_id: str) -> UUID | None:
+    rows = await fetch(
+        session,
+        """
+        INSERT INTO ingest.source_batch (provider_id, external_id)
+        SELECT id, :external FROM provider
+        WHERE slug = :provider AND is_enabled AND storage_policy = 'allowed'
+        RETURNING id
+        """,
+        {"provider": provider, "external": external_id},
+    )
+    return rows[0].id if rows else None
+
+
+async def complete_batch(session: AsyncSession, batch_id: UUID) -> None:
+    await fetch(
+        session,
+        """
+        UPDATE ingest.source_batch AS batch SET completed_at = clock_timestamp()
+        WHERE batch.id = :id AND EXISTS (
+            SELECT 1 FROM ingest.source_fetch WHERE batch_id = batch.id
+        )
+        RETURNING id
+        """,
+        {"id": batch_id},
+    )
 
 
 async def link_revision(

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import re
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from hashlib import sha256
 from typing import Any
 from uuid import UUID
@@ -87,29 +88,26 @@ async def submit(
     if errors:
         raise ValueError(" ".join(errors))
     title = next(item for item in bundle["names"] if item["id"] == proposal.title_name_id)
+    citations = (
+        list(dict.fromkeys(proposal.description_source_ids)) if proposal.description_text else []
+    )
+    values = asdict(proposal)
+    values["description_source_ids"] = citations
+    content = json.dumps([model, prompt_version, values], ensure_ascii=False, sort_keys=True)
+    proposal_hash = sha256(content.encode("utf-8")).hexdigest()
     rows = await fetch(
         session,
         """
         INSERT INTO entity_metadata_revision (
             entity_id, language, title_name_id, title_text, description_text,
             is_machine_generated, cover_asset_id, bundle_version, input_hash, model,
-            prompt_version, confidence, agent_step_id
+            prompt_version, confidence, agent_step_id, proposal_hash
         ) VALUES (
             CAST(:entity AS uuid), :language, :title_name_id, :title_text, :description_text,
             :machine, CAST(:cover AS uuid), :bundle_version, :input_hash, :model,
-            :prompt_version, :confidence, :step_id
+            :prompt_version, :confidence, :step_id, :proposal_hash
         )
-        ON CONFLICT (entity_id, language, input_hash) WHERE state = 'draft' DO UPDATE SET
-            title_name_id = EXCLUDED.title_name_id,
-            title_text = EXCLUDED.title_text,
-            description_text = EXCLUDED.description_text,
-            is_machine_generated = EXCLUDED.is_machine_generated,
-            cover_asset_id = EXCLUDED.cover_asset_id,
-            model = EXCLUDED.model,
-            prompt_version = EXCLUDED.prompt_version,
-            confidence = EXCLUDED.confidence,
-            agent_step_id = EXCLUDED.agent_step_id,
-            updated_at = now()
+        ON CONFLICT (entity_id, language, input_hash, proposal_hash) DO NOTHING
         RETURNING id, state
         """,
         {
@@ -126,17 +124,30 @@ async def submit(
             "prompt_version": prompt_version,
             "confidence": proposal.confidence,
             "step_id": agent_step_id,
+            "proposal_hash": proposal_hash,
         },
     )
+    if not rows:
+        existing = (
+            await fetch(
+                session,
+                """
+                SELECT id, state FROM entity_metadata_revision
+                WHERE entity_id=CAST(:entity AS uuid) AND language=:language
+                  AND input_hash=:input_hash AND proposal_hash=:proposal_hash
+                """,
+                {
+                    "entity": entity,
+                    "language": language,
+                    "input_hash": input_hash,
+                    "proposal_hash": proposal_hash,
+                },
+            )
+        )[0]
+        return int(existing.id), str(existing.state)
     row = rows[0]
-    await fetch(
-        session,
-        "DELETE FROM entity_metadata_citation WHERE revision_id = :id RETURNING position",
-        {"id": row.id},
-    )
-    if proposal.description_text:
+    if citations:
         texts = {item["id"]: item["text"] for item in bundle["descriptions"]}
-        citations = list(dict.fromkeys(proposal.description_source_ids))
         await fetch(
             session,
             """
@@ -161,7 +172,7 @@ async def activate(
     *,
     entity_id: UUID,
     language: str,
-    input_hash: str,
+    revision_id: int,
     reviewed_by: int | None = None,
 ) -> int | None:
     """Approve an evidence-current draft and switch the publication pointer atomically."""
@@ -171,12 +182,12 @@ async def activate(
     draft = await fetch(
         session,
         """
-        SELECT id, is_machine_generated FROM entity_metadata_revision
-        WHERE entity_id = :entity AND language = :language AND input_hash = :input_hash
+        SELECT id, is_machine_generated, input_hash FROM entity_metadata_revision
+        WHERE entity_id = :entity AND language = :language AND id = :revision
           AND state = 'draft'
         FOR UPDATE
         """,
-        {"entity": entity_id, "language": language, "input_hash": input_hash},
+        {"entity": entity_id, "language": language, "revision": revision_id},
     )
     if not draft or await resolve(session, entity_id) != entity_id:
         return None
@@ -188,7 +199,7 @@ async def activate(
         language=language,
         for_ai=draft[0].is_machine_generated,
     )
-    if current["input_hash"] != input_hash:
+    if current["input_hash"] != draft[0].input_hash:
         return None
     identifier = int(draft[0].id)
     await fetch(

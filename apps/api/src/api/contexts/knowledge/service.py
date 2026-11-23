@@ -1,4 +1,4 @@
-"""Classification and extraction with source permissions and durable inference audit."""
+"""Work classification with source permissions and durable inference audit."""
 
 from __future__ import annotations
 
@@ -12,8 +12,8 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.index import resolution
-from api.contexts.knowledge.domain import Classification, Extraction
-from api.contexts.presentation.detail import entity_detail
+from api.contexts.knowledge.domain import Classification
+from api.contexts.presentation.bundle import build_bundle
 from api.db import fetch
 from api.shared.ai import complete_json
 from api.shared.inference import fail_run, optional_number, start_run
@@ -25,13 +25,6 @@ CLASSIFICATION_PROMPT = (
     "projection. Return a JSON object with work_type, confidence, and a "
     "concise reason. work_type must be anime, galgame, manga, novel, game, "
     "music, other, unclassified, or abstain. Never infer private identities."
-)
-EXTRACTION_PROMPT = (
-    "Extract only explicitly stated facts from the supplied provider "
-    "observation. Return a JSON object with a claims array. Each claim must "
-    "contain predicate, value, value_type, language, spoiler_level, safety, "
-    "json_pointer, and confidence. Use an empty claims array when evidence is "
-    "insufficient. Do not infer aliases, private identities, or unstated facts."
 )
 
 
@@ -158,16 +151,10 @@ async def complete(
     started = monotonic()
     try:
         raw, usage = await complete_json(system=system, payload=payload)
-        if use_case == "entity_classification":
-            classification = Classification.model_validate(raw)
-            output = classification.model_dump(mode="json")
-            confidence = classification.confidence
-            abstained = classification.work_type == "abstain"
-        else:
-            extraction = Extraction.model_validate(raw)
-            output = extraction.model_dump(mode="json")
-            confidence = extraction.confidence
-            abstained = not extraction.claims
+        classification = Classification.model_validate(raw)
+        output = classification.model_dump(mode="json")
+        confidence = classification.confidence
+        abstained = classification.work_type == "abstain"
         async with session_scope() as session:
             await fetch(
                 session,
@@ -206,7 +193,7 @@ async def complete(
 
 async def classify_entity(entity_id: str) -> str:
     use_case = "entity_classification"
-    version = "entity-classification-v1"
+    version = "entity-classification-v2"
     async with session_scope() as session:
         entity, cluster, public = await target(session, entity_id)
         if entity.kind != "work":
@@ -242,9 +229,10 @@ async def classify_entity(entity_id: str) -> str:
                 entity_id=entity.id,
                 output={"work_type": "abstain", "confidence": "0", "reason": reason},
             )
-        payload = await entity_detail(
-            session, root=entity.id, cluster_ids=list(cluster), language=""
+        evidence = await build_bundle(
+            session, root=entity.id, cluster_ids=sorted(map(str, cluster)), for_ai=True
         )
+        payload = evidence["bundle"]
     return await complete(
         use_case=use_case,
         prompt_version=version,
@@ -252,82 +240,4 @@ async def classify_entity(entity_id: str) -> str:
         system=CLASSIFICATION_PROMPT,
         payload=payload,
         entity_id=entity.id,
-    )
-
-
-async def extract_evidence(observation_id: str, entity_id: str) -> str:
-    use_case = "evidence_extraction"
-    version = "evidence-extraction-v1"
-    async with session_scope() as session:
-        entity, cluster, public = await target(session, entity_id)
-        rows = await fetch(
-            session,
-            """
-            SELECT o.*, p.slug AS provider_slug, p.ai_usage_policy FROM provider_observation o
-            JOIN provider_record r ON r.id = o.provider_record_id
-            JOIN provider_namespace ns ON ns.id = r.namespace_id
-            JOIN provider p ON p.id = ns.provider_id WHERE o.id = :id
-        """,
-            {"id": UUID(observation_id)},
-        )
-        if not rows:
-            raise LookupError("Observation not found.")
-        observation = rows[0]
-        active = await fetch(
-            session,
-            """
-            SELECT 1 FROM entity_representation WHERE provider_record_id = :record
-              AND entity_id = ANY(:ids) AND is_active LIMIT 1
-        """,
-            {"record": observation.provider_record_id, "ids": list(cluster)},
-        )
-        if not active:
-            raise InputNotAllowed(
-                "Observation is not an active representation of the target entity."
-            )
-        current = await fetch(
-            session,
-            """
-            SELECT 1 FROM provider_current_observation
-            WHERE provider_record_id = :record AND observation_id = :observation
-        """,
-            {"record": observation.provider_record_id, "observation": observation.id},
-        )
-        if not current:
-            raise InputNotAllowed("Only a current observation can be processed.")
-        metadata = {
-            "entity_id": str(entity.id),
-            "observation_id": str(observation.id),
-            "provider": observation.provider_slug,
-        }
-        reason = None
-        if observation.ai_usage_policy != "allowed":
-            reason = "Provider policy does not explicitly allow AI processing."
-        elif not public:
-            reason = "Restricted entities cannot be sent to an AI provider."
-        if reason:
-            return await abstain(
-                session,
-                use_case=use_case,
-                prompt_version=version,
-                metadata=metadata,
-                entity_id=entity.id,
-                observation_id=observation.id,
-                output={"claims": [], "reason": reason},
-            )
-        payload = {
-            "entity_id": str(entity.id),
-            "provider": observation.provider_slug,
-            "schema_name": observation.schema_name,
-            "schema_version": observation.schema_version,
-            "normalized_data": observation.normalized_data,
-        }
-    return await complete(
-        use_case=use_case,
-        prompt_version=version,
-        metadata=metadata,
-        system=EXTRACTION_PROMPT,
-        payload=payload,
-        entity_id=entity.id,
-        observation_id=observation.id,
     )

@@ -63,7 +63,7 @@ async def project_subject(
         provider_record_id=record_id,
         mapper=MAPPER,
         mapper_version=mapper_version,
-        normalized_data={**data, "_projection_hash": ingestion.normalized_hash(mapped)},
+        normalized_data={"_projection_hash": ingestion.normalized_hash(mapped)},
         schema_name="index.work",
         schema_version="1",
     )
@@ -181,17 +181,21 @@ async def replay_subject(session: AsyncSession, subject_id: int, fetch_id: UUID)
     current = await fetch(
         session,
         """
-        SELECT record.latest_payload_hash
+        SELECT revision.payload_hash, record.status
         FROM provider_record AS record
         JOIN provider_namespace AS namespace ON namespace.id = record.namespace_id
         JOIN provider ON provider.id = namespace.provider_id
+        LEFT JOIN provider_revision AS revision ON revision.id = record.latest_revision_id
         WHERE provider.slug = :provider AND namespace.slug = :namespace
           AND record.external_id = :id
         FOR UPDATE OF record
         """,
         {"provider": PROVIDER, "namespace": SUBJECT_NAMESPACE, "id": str(subject_id)},
     )
-    if current and current[0].latest_payload_hash not in ("", records.payload_hash(data)):
+    if current and (
+        current[0].status != "active"
+        or current[0].payload_hash not in (None, records.payload_hash(data))
+    ):
         raise ValueError("Replaying this response would replace a newer source revision.")
     return await import_subject(session, data, source_fetch_id=fetch_id)
 

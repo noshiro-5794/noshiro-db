@@ -2,7 +2,8 @@
 
 ## Identity
 
-An entity has a stable UUID, lifecycle, visibility, and redirect target. A
+An entity has a stable UUID, lifecycle, and visibility. Active identity
+memberships determine its canonical UUID. A
 work represents a creative work, while a release represents an edition with
 a particular platform, language, region, or distribution. Episodes,
 characters, people, and organizations can be linked to the same catalogue.
@@ -44,14 +45,17 @@ imports archive eligible upstream response bodies before decoding.
 parsed revisions to their responses and JSON pointers. Earlier revisions
 retain their parsed record payload.
 
-From the API directory, `uv run python -m scripts.replay_source SUBJECT_ID FETCH_ID`
-replays the captured subject without provider network access. The replay checks
-the endpoint and current revision before applying the mapper.
+From the API directory, `uv run python -m scripts.replay_source batch BATCH_UUID`
+previews a complete captured work import offline. Add `--apply` to reproject a
+batch that still matches the active source revisions. The standalone command
+`replay_source bangumi-subject SUBJECT_ID FETCH_ID` handles an individual
+Bangumi subject response.
 
 ## Relationship sources
 
 Public relationship queries use eligible current observations. The application
-prefers one provider's episode list to keep numbering and specials consistent.
+uses one provider's episode list and fields to keep numbering and specials
+consistent. Coverage is evaluated before source priority.
 Credits fall back by role. Related works choose the preferred evidence for each
 canonical target and relation type, then include distinct edges from other sources.
 These choices leave source evidence and episode progress identities intact.
@@ -66,7 +70,8 @@ before provider priority.
 External engagement observations live in `ranking.provider_metric`.
 `ranking.entity_rank` holds the derived ordering score. Public listings use it
 for ordering and return entity data. Provider scores, vote counts, and comment
-counts stay outside the public API, MCP and display inputs.
+counts stay outside the public API, MCP and display inputs. This includes the
+external watching counts captured by the weekly calendar.
 
 ## Subject metadata
 

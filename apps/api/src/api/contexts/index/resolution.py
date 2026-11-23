@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 from typing import Any
 
@@ -460,7 +459,25 @@ async def decide(
                 }
             )
         elif outcome == "group":
-            data = json.dumps({"grouped_entities": True, "merged": False})
+            left = await _entity(session, await resolve(session, candidate.left_entity_id))
+            right = await _entity(session, await resolve(session, candidate.right_entity_id))
+            if left.id == right.id or left.kind != "work" or right.kind != "work":
+                raise ResolutionError("Grouping requires two distinct catalogue works.")
+            await fetch(
+                session,
+                """
+                INSERT INTO entity_relation
+                  (from_entity_id, to_entity_id, relation_type, qualifiers, created_at, updated_at)
+                VALUES (:left, :right, 'same-season',
+                        jsonb_build_object('reviewed', true), now(), now()),
+                       (:right, :left, 'same-season',
+                        jsonb_build_object('reviewed', true), now(), now())
+                ON CONFLICT (from_entity_id, to_entity_id, relation_type) DO NOTHING
+                RETURNING id
+                """,
+                {"left": left.id, "right": right.id},
+            )
+            data = json.dumps({"relation_type": "same-season", "merged": False})
         else:
             return
         await fetch(
@@ -468,69 +485,6 @@ async def decide(
             "UPDATE candidate_decision SET decision_data = CAST(:data AS jsonb),"
             " updated_at = now() WHERE id = :id RETURNING id",
             {"data": data, "id": decision_id},
-        )
-
-
-GROUP_PREFIX = "season-group-"
-
-
-async def _original_name(session: AsyncSession, entity_id: Any) -> str | None:
-    rows = await fetch(
-        session,
-        "SELECT text FROM entity_name WHERE entity_id = :id AND kind = 'original'"
-        " ORDER BY id LIMIT 1",
-        {"id": entity_id},
-    )
-    return rows[0].text if rows else None
-
-
-async def ensure_pair_group(
-    session: AsyncSession, *, left_id: Any, right_id: Any, reason: str
-) -> None:
-    """Create or reuse the collection that lists two granularity entries together."""
-    originals = [
-        text
-        for text in (
-            await _original_name(session, left_id),
-            await _original_name(session, right_id),
-        )
-        if text
-    ]
-    key = "|".join(sorted(originals)).lower().strip()
-    digest = hashlib.sha1(key.encode()).hexdigest()[:12]
-    slug = f"{GROUP_PREFIX}{digest}"
-    name = f"同季分组 {originals[0][:100]}" if originals else "同季分组"
-    rows = await fetch(
-        session,
-        "SELECT id FROM curated_collection WHERE slug = :slug",
-        {"slug": slug},
-    )
-    if rows:
-        collection_id = rows[0].id
-    else:
-        created = await fetch(
-            session,
-            "INSERT INTO curated_collection (slug, name, is_enabled, created_at,"
-            " updated_at) VALUES (:slug, :name, true, now(), now()) RETURNING id",
-            {"slug": slug, "name": name},
-        )
-        collection_id = created[0].id
-    for entity_id in (left_id, right_id):
-        exists = await fetch(
-            session,
-            "SELECT 1 FROM curated_membership WHERE collection_id = :collection"
-            " AND entity_id = :entity",
-            {"collection": collection_id, "entity": entity_id},
-        )
-        if exists:
-            continue
-        await fetch(
-            session,
-            "INSERT INTO curated_membership (listing_state, inclusion_reason,"
-            " collection_id, entity_id, created_at, updated_at)"
-            " VALUES ('listed', :reason, :collection, :entity, now(), now())"
-            " RETURNING id",
-            {"reason": reason, "collection": collection_id, "entity": entity_id},
         )
 
 
@@ -557,14 +511,3 @@ async def settle_proposal(
             "id": rows[0].id,
         },
     )
-
-
-async def candidate_entities(session: AsyncSession, candidate_id: Any) -> Any:
-    rows = await fetch(
-        session,
-        "SELECT left_entity_id, right_entity_id FROM match_candidate WHERE id = :id",
-        {"id": candidate_id},
-    )
-    if not rows:
-        raise CandidateNotFound(candidate_id)
-    return rows[0]

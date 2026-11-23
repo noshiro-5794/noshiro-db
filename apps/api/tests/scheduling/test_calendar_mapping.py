@@ -8,10 +8,10 @@ from api.worker.calendar import (
     board_metadata,
     build_event,
     calendar_items,
-    collection_doing,
     count_calendar_items,
     diff_ids,
     ids_from_groups,
+    watching_count,
     weekday_counts,
     weekday_number,
     weekday_raw_value,
@@ -67,11 +67,11 @@ def test_the_item_count_survives_malformed_groups() -> None:
     assert count_calendar_items([None, {"items": "x"}, {"items": []}]) == 0
 
 
-def test_unreadable_collection_counts_are_zero() -> None:
-    assert collection_doing({"collection": {"doing": 12}}) == 12
-    assert collection_doing({"collection": {"doing": -1}}) == 0
-    assert collection_doing({"collection": {"doing": True}}) == 0
-    assert collection_doing({}) == 0
+def test_unreadable_collection_counts_are_missing() -> None:
+    assert watching_count({"collection": {"doing": 12}}) == 12
+    assert watching_count({"collection": {"doing": -1}}) is None
+    assert watching_count({"collection": {"doing": True}}) is None
+    assert watching_count({}) is None
 
 
 def test_weekday_counts_are_keyed_by_string_and_skip_unknowns() -> None:
@@ -89,24 +89,22 @@ def test_the_flattened_items_keep_their_payload_shape() -> None:
 
 
 def test_an_event_degrades_to_unknown_when_the_weekday_is_missing() -> None:
-    event = build_event(work_id="w", weekday={"en": "Someday"}, item={"id": 1})
+    event = build_event(work_id="w", weekday={"en": "Someday"})
     assert event["weekday"] is None
     assert event["precision"] == "unknown"
     assert event["raw_value"] == "Someday"
 
 
-def test_an_event_carries_the_watching_count() -> None:
+def test_an_event_contains_schedule_fields() -> None:
     event = build_event(
         work_id="w",
         weekday={"id": 3, "en": "Wed"},
-        item={"id": 1, "collection": {"doing": 42}},
     )
     assert event == {
         "work_id": "w",
         "weekday": 3,
         "precision": "weekday",
         "raw_value": "Wed",
-        "collection_doing": 42,
     }
 
 

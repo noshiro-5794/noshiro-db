@@ -31,8 +31,12 @@ async def test_model_draft_is_work_scoped_and_reads_through_publication(bangumi_
     )
     saved = await metadata_harness.submit_draft(session, draft)
     assert saved["state"] == "draft"
+    assert await metadata_harness.submit_draft(session, draft) == saved
+    alternative = draft.model_copy(update={"description": "Updated synopsis."})
+    next_revision = await metadata_harness.submit_draft(session, alternative)
+    assert next_revision["id"] != saved["id"]
     assert (
-        await activate(session, entity_id=entity_id, language="en", input_hash=draft.input_hash)
+        await activate(session, entity_id=entity_id, language="en", revision_id=saved["id"])
         == saved["id"]
     )
 
@@ -43,15 +47,12 @@ async def test_model_draft_is_work_scoped_and_reads_through_publication(bangumi_
         return [row["text"] for row in document["descriptions"]]
 
     assert await descriptions() == ["Published synopsis.", "Original description."]
-    assert await activate(session, entity_id=entity_id, language="en", input_hash="0" * 64) is None
+    assert await activate(session, entity_id=entity_id, language="en", revision_id=0) is None
     assert (await descriptions())[0] == "Published synopsis."
 
-    replacement = draft.model_copy(update={"description": "Updated synopsis."})
-    next_revision = await metadata_harness.submit_draft(session, replacement)
-    assert next_revision["id"] != saved["id"]
     assert (await descriptions())[0] == "Published synopsis."
     assert (
-        await activate(session, entity_id=entity_id, language="en", input_hash=draft.input_hash)
+        await activate(session, entity_id=entity_id, language="en", revision_id=next_revision["id"])
         == (next_revision["id"])
     )
     assert (await descriptions())[0] == "Updated synopsis."

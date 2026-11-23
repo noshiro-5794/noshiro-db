@@ -59,6 +59,5 @@ export function sortCalendarItems(items: CalendarSubjectItem[], ordering: Subjec
     return ordering === '-title' ? nextItems.reverse() : nextItems;
   }
 
-  nextItems.sort((a, b) => b.doing - a.doing || itemTitle(a).localeCompare(itemTitle(b)));
   return nextItems;
 }

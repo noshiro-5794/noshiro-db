@@ -4250,8 +4250,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "type": "object",
-                    "additionalProperties": true
+                    "$ref": "#/components/schemas/CalendarEvent"
                   },
                   "title": "Response Calendar Api V1 Index Calendar Events  Get"
                 }
@@ -8728,6 +8727,106 @@
           "avatar"
         ],
         "title": "Body_avatar_api_v1_users_me_avatar__post"
+      },
+      "CalendarEvent": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "work_id": {
+            "type": "string",
+            "title": "Work Id"
+          },
+          "episode_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Episode Id"
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone"
+          },
+          "region": {
+            "type": "string",
+            "title": "Region"
+          },
+          "weekday": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weekday"
+          },
+          "precision": {
+            "type": "string",
+            "title": "Precision"
+          },
+          "raw_value": {
+            "type": "string",
+            "title": "Raw Value"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provenance"
+          },
+          "work": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Work"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "work_id",
+          "episode_id",
+          "starts_at",
+          "timezone",
+          "region",
+          "weekday",
+          "precision",
+          "raw_value",
+          "provenance",
+          "work"
+        ],
+        "title": "CalendarEvent"
       },
       "CommentCreate": {
         "properties": {

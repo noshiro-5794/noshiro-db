@@ -73,7 +73,7 @@ async def add_events(
 ) -> int:
     """Append one generation of events for an observation.
 
-    Each event: ``work_id``, ``collection_doing``, ``timezone``, ``region``,
+    Each event: ``work_id``, ``timezone``, ``region``,
     ``precision``, ``raw_value`` and optionally ``starts_at``, ``weekday``,
     ``episode_entity_id``.
     """
@@ -83,7 +83,6 @@ async def add_events(
         [
             {
                 "work_id": str(event["work_id"]),
-                "collection_doing": int(event.get("collection_doing", 0)),
                 "timezone": event.get("timezone") or "Asia/Tokyo",
                 "region": event.get("region") or "",
                 "weekday": event.get("weekday"),
@@ -102,13 +101,13 @@ async def add_events(
         """
         INSERT INTO airing_event
           (starts_at, timezone, region, weekday, precision, raw_value,
-           episode_entity_id, observation_id, work_id, collection_doing,
+           episode_entity_id, observation_id, work_id,
            created_at, updated_at)
         SELECT e.starts_at, e.timezone, e.region, e.weekday,
                e.precision, e.raw_value, e.episode_entity_id, :observation,
-               e.work_id, e.collection_doing, now(), now()
+               e.work_id, now(), now()
         FROM jsonb_to_recordset(CAST(:rows AS jsonb)) AS e(
-          work_id uuid, collection_doing integer, timezone text, region text,
+          work_id uuid, timezone text, region text,
           weekday integer, precision text, raw_value text,
           starts_at timestamptz, episode_entity_id uuid)
         ON CONFLICT DO NOTHING

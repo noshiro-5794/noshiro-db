@@ -152,7 +152,6 @@ export type CalendarSubjectItem = {
   platform: string | null;
   nsfw: boolean;
   weekday_en: WeekdayEn;
-  doing: number;
 };
 
 export type CalendarGroup = {

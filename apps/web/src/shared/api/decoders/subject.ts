@@ -267,7 +267,6 @@ function calendarEventToItem(value: CalendarEvent): CalendarSubjectItem {
     platform: work?.platform ?? (value.region || value.timezone),
     nsfw: work?.nsfw ?? false,
     weekday_en: weekday ?? 'Mon',
-    doing: value.collection_doing,
   };
 }
 
@@ -286,7 +285,6 @@ function decodeCalendarEvents(value: unknown): CalendarEvent[] {
         (item['weekday'] === null || (isInteger(item['weekday']) && item['weekday'] >= 1 && item['weekday'] <= 7)) &&
         typeof item['precision'] === 'string' &&
         typeof item['raw_value'] === 'string' &&
-        (item['collection_doing'] === undefined || isInteger(item['collection_doing'], 0)) &&
         (item['work'] === undefined || item['work'] === null || isEntitySummary(item['work'])),
     )
   ) {

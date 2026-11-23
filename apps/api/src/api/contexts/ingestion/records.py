@@ -5,8 +5,7 @@ Ported from `ProviderRecordService.record_many`. The guarantees that matter:
 * One record per ``(namespace, external_id)``, created on demand and then locked.
 * A revision only when the payload **actually changed** — compared by a canonical hash,
   so a re-fetch that returns the same body costs one read and no row.
-* The record always points at the revision matching ``latest_payload_hash``; a record whose
-  revision cannot be found is a conflict, not something to paper over.
+* The record points to one current revision. The revision itself owns the payload hash.
 
 ``raw_state`` records how complete the stored payload is, per provider and namespace: a
 calendar page is a bounded projection, a Bangumi record without payload is legacy.
@@ -16,6 +15,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -44,6 +46,16 @@ RAW = "raw"
 SLIM = "slim"
 STUB = "stub"
 LEGACY = "legacy"
+_preserve_current = ContextVar("preserve_current_revisions", default=False)
+
+
+@contextmanager
+def preserve_current_revisions() -> Iterator[None]:
+    token = _preserve_current.set(True)
+    try:
+        yield
+    finally:
+        _preserve_current.reset(token)
 
 
 class RecordConflict(RuntimeError):
@@ -134,10 +146,10 @@ async def ensure_record(
         """
         INSERT INTO provider_record
           (id, namespace_id, external_id, canonical_url, status, origin, raw_state,
-           latest_payload_hash, latest_revision_id,
+           latest_revision_id,
            first_seen_at, last_seen_at, created_at, updated_at)
         VALUES (gen_random_uuid(), :namespace, :external_id, :url, 'active', :origin,
-                :raw_state, '', NULL, clock_timestamp(), clock_timestamp(), now(), now())
+                :raw_state, NULL, clock_timestamp(), clock_timestamp(), now(), now())
         ON CONFLICT (namespace_id, external_id) DO UPDATE
         SET canonical_url = CASE WHEN EXCLUDED.canonical_url = ''
                                  THEN provider_record.canonical_url ELSE EXCLUDED.canonical_url END,
@@ -185,10 +197,10 @@ async def record_payload(
         """
         INSERT INTO provider_record
           (id, namespace_id, external_id, canonical_url, status, origin, raw_state,
-           latest_payload_hash, latest_revision_id,
+           latest_revision_id,
            first_seen_at, last_seen_at, created_at, updated_at)
         VALUES (gen_random_uuid(), :namespace, :external_id, :url, 'active', :origin,
-                :raw_state, '', NULL, :at, :at, now(), now())
+                :raw_state, NULL, :at, :at, now(), now())
         ON CONFLICT (namespace_id, external_id) DO NOTHING
         RETURNING id
         """,
@@ -203,15 +215,24 @@ async def record_payload(
     )
     rows = await fetch(
         session,
-        "SELECT id, latest_payload_hash FROM provider_record"
-        " WHERE namespace_id = :namespace AND external_id = :external_id FOR UPDATE",
+        """
+        SELECT record.id, revision.payload_hash, record.status
+        FROM provider_record AS record
+        LEFT JOIN provider_revision AS revision ON revision.id = record.latest_revision_id
+        WHERE record.namespace_id = :namespace AND record.external_id = :external_id
+        FOR UPDATE OF record
+        """,
         {"namespace": namespace_id, "external_id": external_id},
     )
     if not rows:
         raise RecordConflict(f"Record {namespace_slug}:{external_id} could not be persisted.")
     record_id = rows[0].id
     digest = payload_hash(payload)
-    changed = rows[0].latest_payload_hash != digest
+    changed = rows[0].payload_hash != digest
+    if _preserve_current.get() and (
+        rows[0].status != "active" or (changed and rows[0].payload_hash)
+    ):
+        raise RecordConflict(f"Replay would override {namespace_slug}:{external_id}.")
 
     if changed:
         await fetch(
@@ -257,7 +278,7 @@ async def record_payload(
         UPDATE provider_record
         SET canonical_url = CASE WHEN :url = '' THEN canonical_url ELSE :url END,
             status = 'active', origin = :origin, raw_state = :raw_state,
-            last_seen_at = :at, latest_payload_hash = :hash,
+            last_seen_at = :at,
             latest_revision_id = :revision, updated_at = now()
         WHERE id = :record
         RETURNING id
@@ -269,7 +290,6 @@ async def record_payload(
                 provider_slug=provider_slug, namespace_slug=namespace_slug
             ),
             "at": at,
-            "hash": digest,
             "revision": revision_id,
             "record": record_id,
         },

@@ -6,10 +6,14 @@ with the schema-only baseline and advances to `head`.
 
 ## Existing databases
 
-Existing Alembic-managed databases apply the pending revisions in order.
-Record the current revision and create a verified backup before a production
-migration. Inspect unversioned databases against the baseline before
-explicitly stamping them.
+Existing Alembic-managed databases apply pending revisions in order. Record the
+current revision and create a verified backup before a production migration.
+For catalogue upgrades from `0009`, stop catalogue writes and drain the worker
+queues before switching versions. Run the migration, then start the API and
+workers from the same release. The migration preserves work UUIDs, source
+revisions, reviewed metadata, and historical calendar engagement, and removes
+the replaced ranking and display structures. Inspect unversioned databases
+against the baseline before explicitly stamping them.
 
 ```sh
 uv run alembic current
@@ -19,8 +23,8 @@ make migrate
 
 ## Recovery
 
-The baseline, framework retirement, internal ranking cleanup, and raw source
-archive revisions require backup-based recovery.
+The migration source identifies the revisions that require backup-based
+recovery, including the ranking and metadata replacements.
 The remaining revisions describe their downgrade behavior in the migration
 source. Test recovery on a restored copy before using it on production data.
 

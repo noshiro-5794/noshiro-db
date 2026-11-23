@@ -11,7 +11,6 @@ REPO = Path(__file__).resolve().parents[4]
 WORKER = REPO / "apps/api/src/api/worker"
 INVENTORY = Path(__file__).with_name("task_inventory.json")
 REGISTERED = re.compile(r'(?<![\w.])name="([\w.]+)"')
-MIN_REGISTERED = 30
 
 
 def contract_tasks() -> dict[str, str]:
@@ -61,11 +60,7 @@ def main() -> int:
     print("missing:")
     for name in result["missing"]:
         print(f"  - {name}")
-    if result["taken"] < MIN_REGISTERED:
-        print(
-            f"REGRESSION: {result['taken']} registered tasks, floor is {MIN_REGISTERED}"
-            " — a registration was probably removed"
-        )
+    if result["missing"]:
         return 1
     if result["unknown"]:
         print("registered outside the broker task contract:")

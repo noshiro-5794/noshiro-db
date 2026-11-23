@@ -95,6 +95,10 @@ async def score_map(session: AsyncSession) -> dict[Any, Decimal]:
     scores: dict[Any, Decimal] = {}
     for signal in PRIMARY_SIGNALS:
         scores.update(standings(await _series(session, redirects, signal)))
+    for entity_id, score in standings(
+        await _series(session, redirects, ("anime", "bangumi", "calendar-watching"))
+    ).items():
+        scores.setdefault(entity_id, score)
     return scores
 
 

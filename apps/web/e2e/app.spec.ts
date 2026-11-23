@@ -47,7 +47,6 @@ const calendarEvent = {
   weekday: 4,
   precision: 'weekday',
   raw_value: '2026-09-03',
-  collection_doing: 12,
   work: entitySummary,
   provenance: null,
 };

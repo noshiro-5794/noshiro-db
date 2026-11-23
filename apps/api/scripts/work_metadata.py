@@ -21,11 +21,13 @@ async def run(args: argparse.Namespace) -> None:
                 session,
                 entity_id=args.entity,
                 language=args.language,
-                input_hash=args.input_hash,
+                revision_id=args.revision,
                 reviewed_by=args.reviewer,
             )
             if identifier is None:
-                raise SystemExit("No current draft matches this work, language, and evidence hash.")
+                raise SystemExit(
+                    "This draft no longer matches current evidence for the work and language."
+                )
             print(json.dumps({"published_revision_id": identifier}))
             return
         if args.command == "show":
@@ -90,7 +92,7 @@ def main() -> None:
     show = commands.add_parser("show")
     show.add_argument("--limit", type=int, choices=range(1, 101), default=20, metavar="1-100")
     publish = commands.add_parser("publish")
-    publish.add_argument("input_hash")
+    publish.add_argument("revision", type=int)
     publish.add_argument("--reviewer", type=int)
     for command in (preview, show, publish):
         command.add_argument("entity", type=UUID)

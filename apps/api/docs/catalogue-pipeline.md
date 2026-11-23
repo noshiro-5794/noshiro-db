@@ -1,24 +1,30 @@
 # Catalogue pipeline design
 
 The catalogue uses PostgreSQL for source identity, structured observations,
-entity membership, and published metadata. Celery runs fetch, matching, and
-publication jobs. Raw responses and ranking signals have independent lifecycles.
+entity membership, and published metadata. Celery runs fetching, matching, and metadata generation. Publication is a
+separate reviewed step. Raw responses and ranking signals have independent lifecycles.
 
 ## Source documents and mapping
 
-Archive the response body before JSON decoding or projection. Record a digest,
-provider, endpoint, response media type, fetch time, and permitted cache
-validators. Omit authorization headers and URL credentials. Keep the exact body
-in private storage and reference a shared response when it contains more than
-one provider record. A record revision should identify the relevant JSON
-pointer or ordered page references. Historical parsed-only revisions remain
-replayable at the record level with their capture format identified explicitly.
+The worker commits each eligible response body to `ingest.source_document`
+before JSON decoding. Document bytes are deduplicated per provider. Separate
+fetch events record the endpoint path, HTTP method, status, media type, time,
+and a request fingerprint. Credentials, request bodies, and URL query values
+stay outside the archive. `ingest.revision_source` traces each parsed revision
+to the relevant response and JSON location.
 
-Store mapper name, version, input revision, and schema version with each
-observation. Typed tables own frequent fields and edges. General facts cover
-provider-specific extensions. A current-observation pointer selects the
-published result of a successful projection transaction. Failed fetches and
-mapping attempts retain their audit without replacing a successful observation.
+Catalogue fetches and complete manual Bangumi syncs retain a batch identifier.
+Replay runs the provider parser and mapper with archived responses, including
+paginated follow-ups. It previews projections in a rolled-back transaction by
+default. Applying a batch requires current, active source revisions. Historical
+records created before original-response retention retain their parsed input.
+
+Mapper runs reference a parsed revision and its versioned observation. Typed
+tables hold names, people, episodes, credits, and work relationships. A
+current-observation pointer identifies the selected projection. When the
+observation is identical to its parsed revision, the mapping run references
+that revision's payload. Only distinct projection data is stored on the
+observation.
 
 ## Identity and relationship read models
 
@@ -30,11 +36,15 @@ and visibility. Ending a membership rebuilds the affected published outputs.
 User records keep their original targets and review history, including records
 created while a match was active. Public aliases provide address continuity.
 
-Episode lists use one eligible provider per work and track the coverage of each
-collection. Credits fall back by normalized role and deduplicate contributors by
+Episode lists use one eligible provider per work, including that provider's
+titles, ordering, and episode fields. A complete collection takes precedence
+over an unknown or partial one. Within the same coverage level, the configured
+provider order applies. Credits fall back by normalized role and deduplicate contributors by
 canonical identity. Related work edges prefer higher-priority evidence for the
 same canonical target and relation type. Distinct edges can come from multiple
 providers. Provider policy and current observation checks run before selection.
+A staff decision grouping two distinct works creates a same-season relation.
+Published collection slugs retain their existing navigation targets.
 
 ## Entity metadata and publication
 
@@ -60,12 +70,12 @@ value becomes ineligible.
 The internal MCP tools `get_metadata_evidence` and `submit_metadata_draft` use
 the same scope and validation as the campaign worker. Model inputs contain
 eligible names, source descriptions, and cover options for one work. The campaign
-worker records proposals as drafts. Curators inspect revisions and publish
-against the evidence fingerprint:
+worker records proposals as drafts. Curators inspect proposals and publish an immutable draft revision. Publication
+verifies that its evidence fingerprint is still current.
 
 ```sh
 uv run python -m scripts.work_metadata show ENTITY_UUID --language en
-uv run python -m scripts.work_metadata publish ENTITY_UUID EVIDENCE_HASH --language en
+uv run python -m scripts.work_metadata publish ENTITY_UUID REVISION_ID --language en
 ```
 
 Public API and MCP read the same publication. The model never receives third-party
@@ -73,8 +83,10 @@ rating or popularity values, episodes, credits, characters, or related works.
 
 ## Ranking and migration
 
-Store observations and derived ordering only in the ranking domain. Public
-queries may order results by the internal rank and only serialize the entities.
+The ranking schema holds external engagement observations and derived ordering.
+Catalogue listings and the weekly calendar use internal ordering. Their public
+responses serialize the catalogue data and omit raw signals and derived rank.
+The active broadcast board uses provider observations and rule-based selection.
 When migrating, validate fresh installs, populated upgrades, replay, split
 without data loss, publication rollback, and signal exclusion at every public
 surface. Remove replaced storage and compatibility code after the corresponding

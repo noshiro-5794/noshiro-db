@@ -44,7 +44,11 @@ async def cluster_entities(session: AsyncSession, cluster_ids: list[str]) -> lis
 
 
 async def _media(
-    session: AsyncSession, scope: list[str], *, preferred_cover: UUID | None
+    session: AsyncSession,
+    scope: list[str],
+    *,
+    preferred_cover: UUID | None,
+    machine_generated: bool,
 ) -> list[dict[str, Any]]:
     rows = await fetch(
         session,
@@ -52,17 +56,20 @@ async def _media(
             table="entity_media",
             alias="link",
             columns="asset.id AS asset_id, asset.url, link.purpose,"
-            " asset.safety, asset.spoiler_level",
+            " asset.safety, asset.spoiler_level,"
+            " (asset.id = CAST(:preferred_cover AS uuid)"
+            " AND link.purpose IN ('poster', 'cover')"
+            " AND (NOT :machine OR provider.ai_usage_policy = 'allowed')) AS preferred",
             record="asset.provider_record_id",
             extra_join="JOIN media_asset AS asset ON asset.id = link.asset_id",
         )
-        + " ORDER BY (asset.id = CAST(:preferred_cover AS uuid)) DESC NULLS LAST, link.id",
-        {"ids": scope, "preferred_cover": preferred_cover},
+        + " ORDER BY preferred DESC NULLS LAST, link.id",
+        {"ids": scope, "preferred_cover": preferred_cover, "machine": machine_generated},
     )
     return [
         {
             "url": row.url,
-            "purpose": "poster" if row.asset_id == preferred_cover else row.purpose,
+            "purpose": "poster" if row.preferred else row.purpose,
             "safety": row.safety,
             "provenance": row_provenance(row),
         }
@@ -139,6 +146,7 @@ async def entity_summary(
             session,
             cluster_ids if active and active.cover_asset_id else scope,
             preferred_cover=active.cover_asset_id if active else None,
+            machine_generated=active.is_machine_generated if active else False,
         )
         if content_allowed and spoiler_allowed
         else []

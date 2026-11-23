@@ -35,7 +35,7 @@ from .summary import entity_summary
 EVENT_COLUMNS = """
     event.id, event.work_id AS work_entity_id, event.episode_entity_id,
     event.starts_at, event.timezone, event.region, event.weekday,
-    event.precision, event.raw_value, event.collection_doing
+    event.precision, event.raw_value
 """
 
 EVENT_JOINS = f"""
@@ -106,13 +106,13 @@ async def _board_events(session: AsyncSession) -> list[Any]:
             session,
             f"{CURRENT_EVENT} AND {VISIBLE_WORK}"
             " AND event.observation_id = :board AND event.precision = 'weekday'"
-            " ORDER BY event.weekday, event.collection_doing DESC, event.id",
+            " ORDER BY event.weekday, event.id",
             {"board": board[0].observation_id},
         )
     return await _events(
         session,
         f"{CURRENT_EVENT} AND {VISIBLE_WORK} AND event.precision = 'weekday'"
-        " ORDER BY event.weekday, event.collection_doing DESC, event.id",
+        " ORDER BY event.weekday, event.id",
         {},
     )
 
@@ -141,13 +141,6 @@ async def calendar_events(
         ordered = await _range_events(session, start=start, end=end, timezone=timezone)
     else:
         ordered = await _board_events(session) + await _supplementary_events(session)
-        ordered.sort(
-            key=lambda event: (
-                event.weekday if event.weekday is not None else 7,
-                -event.collection_doing,
-                str(event.work_entity_id),
-            )
-        )
 
     resolved = await load_redirects(session)
 
@@ -158,7 +151,25 @@ async def calendar_events(
             current = collapsed.get(root)
             if current is None or (event.precision == "minute" and current.precision != "minute"):
                 collapsed[root] = event
-        ordered = list(collapsed.values())
+        ranks = {
+            row.entity_id: row.score
+            for row in await fetch(
+                session,
+                "SELECT entity_id, score FROM ranking.entity_rank WHERE entity_id = ANY(:ids)",
+                {"ids": list(collapsed)},
+            )
+        }
+        ordered = [
+            event
+            for _, event in sorted(
+                collapsed.items(),
+                key=lambda pair: (
+                    pair[1].weekday or 7,
+                    -ranks.get(pair[0], 0),
+                    str(pair[0]),
+                ),
+            )
+        ]
 
     work_roots = {root_of(event.work_entity_id, resolved) for event in ordered}
     episode_roots = {
@@ -220,7 +231,6 @@ async def calendar_events(
             "weekday": event.weekday,
             "precision": event.precision,
             "raw_value": event.raw_value,
-            "collection_doing": event.collection_doing,
             "provenance": row_provenance(event),
             # DRF renders a nullable field that is absent as null, so the key is
             # always there.

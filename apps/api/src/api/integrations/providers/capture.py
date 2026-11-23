@@ -5,6 +5,7 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from hashlib import sha256
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -21,6 +22,7 @@ class SourceResponse:
     content_type: str
     fetched_at: datetime
     body: bytes
+    request_hash: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,9 +40,9 @@ class SourceObject(dict[str, Any]):
 
 
 class SourceArray(list[Any]):
-    def __init__(self, value: list[Any], origin: SourceOrigin) -> None:
+    def __init__(self, value: list[Any], origins: tuple[SourceOrigin, ...]) -> None:
         super().__init__(value)
-        self.origin = origin
+        self.origins = origins
 
 
 _receiver: ContextVar[Callable[[SourceResponse], bool | None] | None] = ContextVar(
@@ -67,7 +69,7 @@ def _with_origin(value: Any, fetch_id: UUID, pointer: str = "") -> Any:
                 _with_origin(item, fetch_id, f"{pointer}/{index}")
                 for index, item in enumerate(value)
             ],
-            SourceOrigin(fetch_id, pointer),
+            (SourceOrigin(fetch_id, pointer),),
         )
     if isinstance(value, dict):
         return SourceObject(
@@ -82,12 +84,15 @@ def origins(value: Any) -> tuple[SourceOrigin, ...]:
     result: dict[UUID, SourceOrigin] = {}
 
     def visit(item: Any) -> None:
-        if isinstance(item, (SourceObject, SourceArray)):
+        if isinstance(item, SourceObject):
             result.setdefault(item.origin.fetch_id, item.origin)
+        elif isinstance(item, SourceArray):
+            for source in item.origins:
+                result.setdefault(source.fetch_id, source)
         if isinstance(item, dict):
             for child in item.values():
                 visit(child)
-        elif isinstance(item, list):
+        elif isinstance(item, list | tuple):
             for child in item:
                 visit(child)
 
@@ -95,7 +100,19 @@ def origins(value: Any) -> tuple[SourceOrigin, ...]:
     return tuple(result.values())
 
 
+REPLAY_FETCH_ID = "noshiro.source_fetch_id"
+
+
+def request_hash(request: httpx.Request) -> str:
+    """Identify a catalogue request without storing query strings or request bodies."""
+    return sha256(
+        b"\0".join((request.method.encode(), request.url.raw_path, request.content))
+    ).hexdigest()
+
+
 def decode_response(provider: str, response: httpx.Response) -> Any:
+    if identifier := response.extensions.get(REPLAY_FETCH_ID):
+        return _with_origin(response.json(), identifier)
     receive = _receiver.get()
     if receive is None:
         return response.json()
@@ -108,6 +125,7 @@ def decode_response(provider: str, response: httpx.Response) -> Any:
         content_type=response.headers.get("content-type", ""),
         fetched_at=datetime.now(UTC),
         body=response.content,
+        request_hash=request_hash(response.request),
     )
     retained = receive(capture)
     data = response.json()
