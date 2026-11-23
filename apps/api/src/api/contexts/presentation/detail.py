@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.db import fetch
 from api.shared.timestamps import isoformat
 
+from . import published
 from .provenance import PROVENANCE, PROVENANCE_JOINS, current_rows, row_provenance, visible
 from .summary import entity_summary
 
@@ -188,7 +189,11 @@ async def _facts(
             "predicate": row.predicate,
             "value": row.value,
             "language": row.language,
-            "status": row.status,
+            "status": (
+                "selected"
+                if decisions.get((row.predicate_id, row.language)) == row.id
+                else row.status
+            ),
             "confidence": str(row.confidence),
             "spoiler_level": row.spoiler_level,
             "safety": row.safety,
@@ -274,10 +279,21 @@ async def entity_detail(
 ) -> dict[str, Any]:
     summary = await entity_summary(session, root=root, cluster_ids=cluster_ids, language=language)
     content_allowed = summary["audience"] != "adult"
+    descriptions = await _descriptions(session, cluster_ids, content_allowed=content_allowed)
+    if content_allowed:
+        synopsis = await published.description(
+            session, entity_id=root, members=cluster_ids, language=language
+        )
+        if synopsis is not None:
+            descriptions = [synopsis] + [
+                row
+                for row in descriptions
+                if (row["text"], row["language"]) != (synopsis["text"], synopsis["language"])
+            ]
     return {
         **summary,
         "names": await _names(session, cluster_ids),
-        "descriptions": await _descriptions(session, cluster_ids, content_allowed=content_allowed),
+        "descriptions": descriptions,
         "facts": await _facts(
             session, root=root, cluster_ids=cluster_ids, content_allowed=content_allowed
         ),

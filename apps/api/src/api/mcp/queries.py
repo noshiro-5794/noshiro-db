@@ -7,7 +7,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 
 from api.contexts.identity import resolution
 from api.contexts.knowledge import retrieval
-from api.contexts.presentation.relations import CURRENT_RELATION
+from api.contexts.presentation.relations import entity_relations
 from api.contexts.presentation.summary import entity_summary
 from api.db import fetch
 from api.worker.session import session_scope
@@ -44,8 +44,8 @@ async def get_public_entity(*, entity_id: UUID, language: str = "") -> dict[str,
         )
         redirects = await fetch(
             session,
-            "SELECT source_entity_id FROM entity_redirect WHERE target_entity_id=ANY(:ids) "
-            "AND is_active ORDER BY source_entity_id",
+            "SELECT source_entity_id FROM entity_identity_membership"
+            " WHERE target_entity_id=ANY(:ids) AND is_active ORDER BY source_entity_id",
             {"ids": cluster},
         )
     return {
@@ -57,7 +57,6 @@ async def get_public_entity(*, entity_id: UUID, language: str = "") -> dict[str,
 
 
 async def get_public_relations(*, entity_id: UUID, language: str = "") -> dict[str, Any]:
-    await get_public_entity(entity_id=entity_id, language=language)
     async with session_scope() as session:
         root = await resolution.resolve(session, entity_id)
         if root is None or not await resolution.is_active(session, root):
@@ -65,39 +64,18 @@ async def get_public_relations(*, entity_id: UUID, language: str = "") -> dict[s
         members = await resolution.cluster_ids(session, root)
         if not await resolution.is_public(session, members):
             raise ToolError("Public entity not found.")
-        rows = await fetch(
+        rows = await entity_relations(
             session,
-            "SELECT relation.relation_type,relation.to_entity_id FROM entity_relation relation "
-            "WHERE relation.from_entity_id=ANY(:ids) AND "
-            + CURRENT_RELATION
-            + " ORDER BY relation.id LIMIT 100",
-            {"ids": list(members)},
+            root=root,
+            cluster=[str(value) for value in members],
+            language=language[:35],
+            limit=100,
         )
-        results = []
-        seen = set()
-        for row in rows:
-            target = await resolution.resolve(session, row.to_entity_id)
-            if target is None or not await resolution.is_active(session, target):
-                continue
-            cluster = await resolution.cluster_ids(session, target)
-            if not await resolution.is_public(session, cluster):
-                continue
-            key = (row.relation_type, target)
-            if key in seen:
-                continue
-            seen.add(key)
-            results.append(
-                {
-                    "relation_type": row.relation_type,
-                    "target": await entity_summary(
-                        session,
-                        root=target,
-                        cluster_ids=[str(value) for value in cluster],
-                        language=language[:35],
-                    ),
-                }
-            )
-    return {"results": results}
+    return {
+        "results": [
+            {"relation_type": row["relation_type"], "target": row["target"]} for row in rows
+        ]
+    }
 
 
 async def get_match_candidate(candidate_id: UUID) -> dict[str, Any]:

@@ -55,8 +55,10 @@ def _bundle_for_prompt(bundle: dict[str, Any]) -> dict[str, Any]:
 async def propose_with_model(
     bundle: dict[str, Any],
 ) -> tuple[DisplayProposal, dict[str, Any]]:
-    result, usage = await complete_json(system=SYSTEM_PROMPT, payload=_bundle_for_prompt(bundle))
+    if not bundle.get("ai_evidence") or bundle["entity"]["entity_type"] != "work":
+        raise ValueError("A work bundle filtered for AI use is required.")
     base = propose(bundle)
+    result, usage = await complete_json(system=SYSTEM_PROMPT, payload=_bundle_for_prompt(bundle))
     proposal = DisplayProposal(
         title_name_id=int(result.get("title_name_id", base.title_name_id)),
         description_text=str(result.get("description", "")),

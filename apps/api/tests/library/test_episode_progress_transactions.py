@@ -97,7 +97,7 @@ async def test_merged_work_relations_and_stored_finished_rows_are_preserved(prog
     )
     await fetch(
         session,
-        "INSERT INTO entity_redirect(source_entity_id,target_entity_id,merge_event_id,"
+        "INSERT INTO entity_identity_membership(source_entity_id,target_entity_id,merge_event_id,"
         "is_active,created_at,updated_at) VALUES (:source,:target,:event,true,now(),now())"
         " RETURNING id",
         {"source": data.entities[1], "target": data.entities[0], "event": event},

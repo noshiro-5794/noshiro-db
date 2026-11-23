@@ -26,8 +26,14 @@ region. Partial dates retain precision. Metrics retain provider and observation
 time.
 
 Display projections select summaries, names, and artwork for the public API.
-Resolution uses redirects and preserves the underlying evidence. Entity and
+Resolution uses effective identity memberships and preserves the underlying evidence. Entity and
 field visibility, audience, and spoiler rules govern presentation.
+
+An approved identity match creates an `entity_identity_membership` edge and
+an audit event. Entity lifecycle, facts, provider revisions, and user records
+retain their existing values. To reverse an edge, run
+`uv run python -m scripts.split_match EVENT_ID --reason "Review decision"`
+from the API directory. The split re-evaluates the affected fact selections.
 
 ## Source archive
 
@@ -60,6 +66,17 @@ External engagement observations live in `ranking.provider_metric`.
 `ranking.entity_rank` holds the derived ordering score. Public listings use it
 for ordering and return entity data. Provider scores, vote counts, and comment
 counts stay outside the public API, MCP and display inputs.
+
+## Subject metadata
+
+The metadata generator receives current, eligible evidence for a single work.
+The internal MCP tools `get_metadata_evidence` and `submit_metadata_draft` share
+the validation and draft storage flow. Drafts cite source names, descriptions,
+and eligible assets. Publishing checks the input fingerprint against current
+evidence before switching the active title, synopsis, and cover selection.
+Relations and credits use provider priority independently of the model.
+
+[Catalogue pipeline design](catalogue-pipeline.md)
 
 ## AI and provider synchronization
 

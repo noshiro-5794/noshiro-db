@@ -20,7 +20,7 @@ async def resolve(session: AsyncSession, entity_id: UUID) -> UUID | None:
                     SELECT CAST(:entity_id AS uuid), 0
                     UNION ALL
                     SELECT redirect.target_entity_id, chain.depth + 1
-                    FROM entity_redirect AS redirect
+                    FROM entity_identity_membership AS redirect
                     JOIN chain ON redirect.source_entity_id = chain.id
                     WHERE redirect.is_active AND chain.depth < :max_depth
                 )
@@ -43,7 +43,7 @@ async def cluster_ids(session: AsyncSession, root_id: UUID) -> set[UUID]:
                     SELECT CAST(:root_id AS uuid)
                     UNION
                     SELECT redirect.source_entity_id
-                    FROM entity_redirect AS redirect
+                    FROM entity_identity_membership AS redirect
                     JOIN cluster ON redirect.target_entity_id = cluster.id
                     WHERE redirect.is_active
                 )

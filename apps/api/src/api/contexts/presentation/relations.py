@@ -85,6 +85,7 @@ async def entity_relations(
     root: UUID,
     cluster: list[str],
     language: str,
+    limit: int | None = None,
 ) -> list[dict[str, Any]]:
     rows = await fetch(
         session,
@@ -132,4 +133,6 @@ async def entity_relations(
                 "evidence": evidence.get(row.id, []),
             }
         )
+        if limit is not None and len(rendered) >= limit:
+            break
     return rendered

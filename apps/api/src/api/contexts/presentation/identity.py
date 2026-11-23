@@ -42,7 +42,8 @@ async def load_redirects(session: AsyncSession) -> dict[UUID, UUID]:
     return redirect_map(
         await fetch(
             session,
-            "SELECT source_entity_id, target_entity_id FROM entity_redirect WHERE is_active",
+            "SELECT source_entity_id, target_entity_id FROM entity_identity_membership"
+            " WHERE is_active",
             {},
         )
     )

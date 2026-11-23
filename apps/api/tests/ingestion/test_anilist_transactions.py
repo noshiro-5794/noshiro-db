@@ -312,14 +312,12 @@ async def test_reimport_retires_partial_mapper_and_clears_its_selected_facts(ani
         {"id": written.record_id},
     )
     assert [row.mapper for row in cursors] == ["anilist.media"]
-    decision = (
-        await fetch(
-            session,
-            "SELECT selected_fact_id FROM resolution_decision WHERE entity_id=:id AND is_active",
-            {"id": entity.entity_id},
-        )
-    )[0]
-    assert decision.selected_fact_id is None
+    decisions = await fetch(
+        session,
+        "SELECT selected_fact_id FROM resolution_decision WHERE entity_id=:id AND is_active",
+        {"id": entity.entity_id},
+    )
+    assert decisions == []
     assert (await fetch(session, "SELECT count(*) AS n FROM provider_observation", {}))[0].n == 2
 
 

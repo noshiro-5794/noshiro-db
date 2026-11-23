@@ -39,6 +39,7 @@ async def run(entity_id: str, language: str, apply: bool) -> int:
             root=root,
             cluster_ids=[str(value) for value in cluster],
             language=language,
+            for_ai=True,
         )
         bundle = result["bundle"]
         rule = propose(bundle)

@@ -1,10 +1,4 @@
-"""Validation and storage of a display proposal.
-
-The generator proposes; this module decides whether the proposal may become a
-page. The checks are deterministic: every cited id must exist in the bundle, a
-rewritten description may not introduce a number that no cited fact contains,
-and a rejected proposal is stored as rejected rather than silently dropped.
-"""
+"""Validate, store, and publish versioned display proposals."""
 
 from __future__ import annotations
 
@@ -16,7 +10,10 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.contexts.identity.resolution import cluster_ids, resolve
 from api.db import fetch
+
+from .bundle import build_bundle
 
 MAX_DESCRIPTION_CHARS = 2000
 NUMBER = re.compile(r"\d+(?:[.,]\d+)?")
@@ -68,6 +65,8 @@ def validate(bundle: dict[str, Any], proposal: DisplayProposal, *, language: str
 
     description_ids = {item["id"] for item in bundle["descriptions"]}
     if proposal.description_text:
+        if not proposal.description_source_ids:
+            errors.append("a description must cite source descriptions")
         unknown = [
             value for value in proposal.description_source_ids if value not in description_ids
         ]
@@ -112,11 +111,13 @@ async def submit(
     model: str,
     prompt_version: str,
 ) -> tuple[int, str]:
-    """Store the proposal as a draft, or as rejected with its reasons."""
+    """Store a validated draft, preserving an already-published revision."""
     entity = bundle["entity"]["id"]
     language = bundle["language"]
-    title = next(item for item in bundle["names"] if item["id"] == proposal.title_name_id)
     errors = validate(bundle, proposal, language=language)
+    if errors:
+        raise ValueError(" ".join(errors))
+    title = next(item for item in bundle["names"] if item["id"] == proposal.title_name_id)
     rows = await fetch(
         session,
         """
@@ -162,10 +163,17 @@ async def submit(
             "model": model,
             "prompt_version": prompt_version,
             "confidence": proposal.confidence,
-            "state": "rejected" if errors else "draft",
-            "reason": "; ".join(errors),
+            "state": "draft",
+            "reason": "",
         },
     )
+    if not rows:
+        rows = await fetch(
+            session,
+            "SELECT id, state FROM entity_display_profile WHERE entity_id = CAST(:entity AS uuid)"
+            " AND language = :language AND input_hash = :hash",
+            {"entity": entity, "language": language, "hash": input_hash},
+        )
     row = rows[0]
     return int(row.id), str(row.state)
 
@@ -178,6 +186,32 @@ async def activate(
     Two statements in one transaction: the unique index allows a single active
     row per entity and language, so the old one has to leave first.
     """
+    await fetch(
+        session, "SELECT id FROM entity WHERE id = :entity FOR UPDATE", {"entity": entity_id}
+    )
+    params = {"entity": str(entity_id), "language": language, "input_hash": input_hash}
+    draft = await fetch(
+        session,
+        "SELECT id, is_machine_generated FROM entity_display_profile"
+        " WHERE entity_id = CAST(:entity AS uuid)"
+        " AND language = :language AND input_hash = :input_hash AND state = 'draft' FOR UPDATE",
+        params,
+    )
+    if not draft:
+        return None
+    root = await resolve(session, entity_id)
+    if root != entity_id:
+        return None
+    members = await cluster_ids(session, entity_id)
+    current = await build_bundle(
+        session,
+        root=entity_id,
+        cluster_ids=sorted(map(str, members)),
+        language=language,
+        for_ai=draft[0].is_machine_generated,
+    )
+    if current["input_hash"] != input_hash:
+        return None
     await fetch(
         session,
         """
@@ -194,13 +228,13 @@ async def activate(
         session,
         """
         UPDATE entity_display_profile
-        SET state = 'active', updated_at = now()
+        SET state = 'active', reviewed_at = now(), updated_at = now()
         WHERE entity_id = CAST(:entity AS uuid)
           AND language = :language
           AND input_hash = :input_hash
           AND state = 'draft'
         RETURNING id
         """,
-        {"entity": str(entity_id), "language": language, "input_hash": input_hash},
+        params,
     )
     return int(rows[0].id) if rows else None

@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.contexts.identity.resolution import cluster_ids, is_public, resolve
 from api.db import fetch
 
+from . import published
 from .provenance import current_rows, row_provenance, visible
 
 
@@ -42,23 +43,26 @@ async def cluster_entities(session: AsyncSession, cluster_ids: list[str]) -> lis
     )
 
 
-async def _media(session: AsyncSession, scope: list[str]) -> list[dict[str, Any]]:
+async def _media(
+    session: AsyncSession, scope: list[str], *, preferred_cover: UUID | None
+) -> list[dict[str, Any]]:
     rows = await fetch(
         session,
         current_rows(
             table="entity_media",
             alias="link",
-            columns="asset.url, link.purpose, asset.safety, asset.spoiler_level",
+            columns="asset.id AS asset_id, asset.url, link.purpose,"
+            " asset.safety, asset.spoiler_level",
             record="asset.provider_record_id",
             extra_join="JOIN media_asset AS asset ON asset.id = link.asset_id",
         )
-        + " ORDER BY link.id",
-        {"ids": scope},
+        + " ORDER BY (asset.id = CAST(:preferred_cover AS uuid)) DESC NULLS LAST, link.id",
+        {"ids": scope, "preferred_cover": preferred_cover},
     )
     return [
         {
             "url": row.url,
-            "purpose": row.purpose,
+            "purpose": "poster" if row.asset_id == preferred_cover else row.purpose,
             "safety": row.safety,
             "provenance": row_provenance(row),
         }
@@ -95,7 +99,7 @@ async def entity_summary(
         "SELECT entity_id, work_type FROM work"
         " WHERE entity_id = ANY(CAST(:ids AS uuid[]))"
         " AND work_type <> 'unclassified'"
-        " ORDER BY created_at, entity_id LIMIT 1",
+        " ORDER BY (work_type = 'galgame') DESC, created_at, entity_id LIMIT 1",
         {"ids": cluster_ids},
     )
     if not works:
@@ -125,27 +129,27 @@ async def entity_summary(
         ),
         {"ids": scope},
     )
-    active = await fetch(
-        session,
-        """
-        SELECT title_text
-        FROM entity_display_profile
-        WHERE entity_id = CAST(:root AS uuid)
-          AND language = :language
-          AND state = 'active'
-        """,
-        {"root": str(root), "language": language},
+    active = await published.profile(
+        session, entity_id=root, members=cluster_ids, language=language
     )
     content_allowed = audience != "adult"
     spoiler_allowed = all(row.spoiler_level <= 0 for row in members)
-    media = await _media(session, scope) if content_allowed and spoiler_allowed else []
+    media = (
+        await _media(
+            session,
+            cluster_ids if active and active.cover_asset_id else scope,
+            preferred_cover=active.cover_asset_id if active else None,
+        )
+        if content_allowed and spoiler_allowed
+        else []
+    )
     return {
         "id": str(root),
         "entity_type": root_row.kind,
         "lifecycle": root_row.lifecycle,
         "audience": audience,
         "work_type": works[0].work_type if works else None,
-        "display_name": active[0].title_text if active else choose_name(names, language),
+        "display_name": active.title_text if active else choose_name(names, language),
         "collections": sorted({row.slug for row in memberships}),
         "media": media,
     }
@@ -175,6 +179,11 @@ async def preferred_name(session: AsyncSession, *, entity_id: UUID, language: st
     if root is None:
         return "Untitled"
     ids = await cluster_ids(session, root)
+    active = await published.profile(
+        session, entity_id=root, members=list(map(str, ids)), language=language
+    )
+    if active is not None:
+        return str(active.title_text)
     names = await fetch(
         session,
         current_rows(

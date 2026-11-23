@@ -56,7 +56,9 @@ async def test_high_confidence_link_is_reviewable_and_replay_is_a_noop(link_runt
     assert result["outcome"] == "candidate_pending", result.get("error", result)
     candidate = (await fetch(session, "SELECT * FROM match_candidate", {}))[0]
     assert candidate.status == "pending"
-    assert (await fetch(session, "SELECT count(*) AS n FROM entity_redirect", {}))[0].n == 0
+    assert (await fetch(session, "SELECT count(*) AS n FROM entity_identity_membership", {}))[
+        0
+    ].n == 0
     audit = await fetch(session, "SELECT status,metadata FROM agent_run", {})
     assert audit[0].status == "succeeded" and audit[0].metadata["episodes_synced"] is True
     replay = await bangumi_link.attempt(root)
@@ -210,7 +212,9 @@ async def test_refused_bind_is_audited_as_abstained(link_runtime, monkeypatch):
     result = await bangumi_link.attempt(root, apply=True)
     assert result["outcome"] == "abstained"
     assert (await fetch(session, "SELECT status FROM match_candidate", {}))[0].status == "abstained"
-    assert (await fetch(session, "SELECT count(*) AS n FROM entity_redirect", {}))[0].n == 0
+    assert (await fetch(session, "SELECT count(*) AS n FROM entity_identity_membership", {}))[
+        0
+    ].n == 0
 
 
 @pytest.mark.asyncio

@@ -1,13 +1,4 @@
-"""The resolution engine behind the candidate decision.
-
-A `bind` is not a status update: it follows redirects, picks the canonical side,
-records a merge event and a redirect, marks the source merged, and then rebuilds every
-fact in the new cluster. The rebuild is why this file exists at all — without it a merge
-leaves the fact layer pointing at a cluster that no longer answers.
-
-Ported from `apps/index/services/resolution.py` and `fact_resolution.py`; the SQL is
-written by hand for the same reason the rest of this service is.
-"""
+"""Resolve identity memberships and rebuild derived fact selections."""
 
 from __future__ import annotations
 
@@ -56,7 +47,7 @@ async def resolve(session: AsyncSession, entity_id: Any) -> Any:
         seen.add(current)
         rows = await fetch(
             session,
-            "SELECT target_entity_id FROM entity_redirect"
+            "SELECT target_entity_id FROM entity_identity_membership"
             " WHERE source_entity_id = :id AND is_active ORDER BY created_at LIMIT 1",
             {"id": current},
         )
@@ -74,7 +65,7 @@ async def cluster_ids(session: AsyncSession, entity_id: Any) -> set[Any]:
     for _ in range(MAX_CLUSTER_DEPTH):
         rows = await fetch(
             session,
-            "SELECT DISTINCT source_entity_id FROM entity_redirect"
+            "SELECT DISTINCT source_entity_id FROM entity_identity_membership"
             " WHERE target_entity_id = ANY(:frontier) AND is_active",
             {"frontier": list(frontier)},
         )
@@ -183,6 +174,16 @@ async def merge(
     target = await _entity(session, await resolve(session, target_id))
     if source.id == target.id:
         raise ResolutionError("Cannot merge an entity into itself.")
+    await fetch(
+        session,
+        "SELECT id FROM entity WHERE id=ANY(:ids) ORDER BY id FOR UPDATE",
+        {"ids": [source.id, target.id]},
+    )
+    if (
+        await resolve(session, source.id) != source.id
+        or await resolve(session, target.id) != target.id
+    ):
+        raise ResolutionError("Entity membership changed. Retry the decision.")
     if source.kind != target.kind:
         raise ResolutionError("Cannot merge entities of different kinds.")
     if safety_rank(source) > safety_rank(target):
@@ -215,18 +216,70 @@ async def merge(
     event_id = rows[0].id
     await fetch(
         session,
-        "INSERT INTO entity_redirect (source_entity_id, target_entity_id, merge_event_id,"
-        " is_active, created_at, updated_at)"
+        "INSERT INTO entity_identity_membership"
+        " (source_entity_id, target_entity_id, merge_event_id, is_active, created_at, updated_at)"
         " VALUES (:source, :target, :event, true, now(), now()) RETURNING id",
         {"source": source.id, "target": target.id, "event": event_id},
     )
     await fetch(
         session,
-        "UPDATE entity SET lifecycle = 'merged', updated_at = now() WHERE id = :id RETURNING id",
-        {"id": source.id},
+        "UPDATE resolution_decision SET is_active=false, updated_at=now()"
+        " WHERE entity_id=:source AND is_active RETURNING id",
+        {"source": source.id},
     )
     await rebuild_entity(session, target.id)
     return event_id
+
+
+async def split(session: AsyncSession, *, merge_event_id: Any, reason: str) -> Any:
+    """End one membership edge and keep both sides' source and user data."""
+    if not reason.strip():
+        raise ResolutionError("A split decision requires a reason.")
+    params = {"id": merge_event_id}
+    rows = await fetch(
+        session,
+        "SELECT source_entity_id, target_entity_id FROM entity_merge_event WHERE id=:id",
+        params,
+    )
+    if not rows:
+        raise ResolutionError("Identity match not found.")
+    source, target = rows[0].source_entity_id, rows[0].target_entity_id
+    await fetch(
+        session,
+        "SELECT id FROM entity WHERE id=ANY(:ids) ORDER BY id FOR UPDATE",
+        {"ids": [source, target]},
+    )
+    ended = await fetch(
+        session,
+        "UPDATE entity_identity_membership SET is_active = false, updated_at = now()"
+        " WHERE merge_event_id = :id AND is_active RETURNING id",
+        params,
+    )
+    if not ended:
+        raise ResolutionError("Identity match is already inactive.")
+    await fetch(
+        session,
+        "UPDATE entity_merge_event SET reversed_at = now(), updated_at = now()"
+        " WHERE id = :id RETURNING id",
+        params,
+    )
+    result = await fetch(
+        session,
+        """
+        INSERT INTO entity_split_event (
+            id, reason, restored_snapshot, performed_at, merge_event_id, created_at, updated_at
+        ) VALUES (gen_random_uuid(), :reason, CAST(:snapshot AS jsonb),
+                  now(), :id, now(), now()) RETURNING id
+        """,
+        {
+            "id": merge_event_id,
+            "reason": reason.strip(),
+            "snapshot": json.dumps({"member": str(source), "previous_target": str(target)}),
+        },
+    )
+    await rebuild_entity(session, source)
+    await rebuild_entity(session, target)
+    return result[0].id
 
 
 async def current_facts(session: AsyncSession, ids: set[Any]) -> list[Any]:
@@ -305,6 +358,8 @@ async def _rebuild(session: AsyncSession, *, root: Any, predicate_id: Any, langu
         " AND is_active RETURNING id",
         {"root": root, "predicate": predicate_id, "language": language},
     )
+    if not facts:
+        return
     await fetch(
         session,
         "INSERT INTO resolution_decision (entity_id, predicate_id, language,"
@@ -320,19 +375,6 @@ async def _rebuild(session: AsyncSession, *, root: Any, predicate_id: Any, langu
             "reason": reason,
         },
     )
-    await fetch(
-        session,
-        "UPDATE fact SET status = 'candidate', updated_at = now()"
-        " WHERE entity_id = ANY(:ids) AND predicate_id = :predicate"
-        " AND language = :language AND status <> 'rejected' RETURNING id",
-        {"ids": list(ids), "predicate": predicate_id, "language": language},
-    )
-    if selected is not None:
-        await fetch(
-            session,
-            "UPDATE fact SET status = 'selected', updated_at = now() WHERE id = :id RETURNING id",
-            {"id": selected.id},
-        )
 
 
 async def rebuild_fact(
@@ -346,6 +388,12 @@ async def rebuild_entity(session: AsyncSession, entity_id: Any) -> int:
     root = await resolve(session, entity_id)
     ids = await cluster_ids(session, root)
     fields = {(fact.predicate_id, fact.language) for fact in await current_facts(session, ids)}
+    previous = await fetch(
+        session,
+        "SELECT predicate_id, language FROM resolution_decision WHERE entity_id=:id AND is_active",
+        {"id": root},
+    )
+    fields.update((row.predicate_id, row.language) for row in previous)
     for predicate_id, language in sorted(fields, key=lambda item: (str(item[0]), item[1])):
         await _rebuild(session, root=root, predicate_id=predicate_id, language=language)
     return len(fields)

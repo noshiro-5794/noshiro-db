@@ -10,7 +10,9 @@ from mcp.types import ToolAnnotations
 
 from api.contexts.knowledge import retrieval
 from api.contexts.matching import submissions
+from api.contexts.presentation import metadata_harness
 from api.mcp import queries
+from api.worker.session import session_scope
 
 
 def create_server() -> MCPServer[Any]:
@@ -41,6 +43,31 @@ def create_server() -> MCPServer[Any]:
     async def get_match_candidate(candidate_id: UUID) -> dict[str, Any]:
         """Read one match candidate and its safe evidence projection."""
         return await queries.get_match_candidate(candidate_id)
+
+    @server.tool(annotations=read_only, structured_output=True)
+    async def get_metadata_evidence(entity_id: UUID, language: str = "") -> dict[str, Any]:
+        """Read eligible evidence for the title, synopsis and cover of one work."""
+        try:
+            async with session_scope() as session:
+                return await metadata_harness.evidence(
+                    session, entity_id=entity_id, language=language[:35]
+                )
+        except (LookupError, ValueError) as error:
+            raise ToolError(str(error)) from error
+
+    @server.tool(
+        annotations=ToolAnnotations(
+            read_only_hint=False, destructive_hint=False, open_world_hint=False
+        ),
+        structured_output=True,
+    )
+    async def submit_metadata_draft(draft: metadata_harness.MetadataDraft) -> dict[str, Any]:
+        """Validate and save a work metadata draft for publication review."""
+        try:
+            async with session_scope() as session:
+                return await metadata_harness.submit_draft(session, draft)
+        except (LookupError, ValueError) as error:
+            raise ToolError(str(error)) from error
 
     @server.tool(
         annotations=ToolAnnotations(

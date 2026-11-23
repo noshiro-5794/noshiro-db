@@ -17,21 +17,43 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.db import fetch
 
-from .provenance import CURRENT, current_rows
+from .provenance import current_rows
 from .summary import entity_summary
 
-BUNDLE_VERSION = "v1"
+BUNDLE_VERSION = "v2"
 
 MAX_NAMES = 20
 MAX_DESCRIPTIONS = 3
-MAX_CREDITS = 20
-MAX_RELATIONS = 20
 MAX_MEDIA = 6
 MAX_ALTERNATES = 2
 DESCRIPTION_CHARS = 1500
+AI_SOURCE = " AND (NOT :for_ai OR provider.ai_usage_policy = 'allowed')"
+FACT_POLICY = """
+    AND fact.safety NOT IN ('explicit', 'suggestive') AND fact.spoiler_level = 0
+    AND (
+        (NOT :for_ai AND NOT EXISTS (
+            SELECT 1 FROM fact_evidence AS evidence WHERE evidence.fact_id = fact.id
+        ))
+        OR EXISTS (
+            SELECT 1
+            FROM fact_evidence AS evidence
+            JOIN provider_observation AS observation ON observation.id = evidence.observation_id
+            JOIN provider_current_observation AS pointer ON pointer.observation_id = observation.id
+              AND pointer.provider_record_id = observation.provider_record_id
+            JOIN provider_record AS record ON record.id = observation.provider_record_id
+            JOIN provider_namespace AS namespace ON namespace.id = record.namespace_id
+            JOIN provider ON provider.id = namespace.provider_id
+            WHERE evidence.fact_id = fact.id AND record.status = 'active'
+              AND provider.redistribution_policy <> 'forbidden'
+              AND (NOT :for_ai OR provider.ai_usage_policy = 'allowed')
+        )
+    )
+"""
 
 
-async def _media(session: AsyncSession, cluster: list[str]) -> list[dict[str, Any]]:
+async def _media(
+    session: AsyncSession, cluster: list[str], *, for_ai: bool
+) -> list[dict[str, Any]]:
     rows = await fetch(
         session,
         current_rows(
@@ -42,8 +64,10 @@ async def _media(session: AsyncSession, cluster: list[str]) -> list[dict[str, An
             record="asset.provider_record_id",
             extra_join="JOIN media_asset AS asset ON asset.id = link.asset_id",
         )
+        + AI_SOURCE
+        + " AND link.purpose IN ('poster', 'cover')"
         + " ORDER BY link.id",
-        {"ids": cluster},
+        {"ids": cluster, "for_ai": for_ai},
     )
     visible = [
         row
@@ -61,7 +85,9 @@ async def _media(session: AsyncSession, cluster: list[str]) -> list[dict[str, An
     ]
 
 
-async def _names(session: AsyncSession, cluster: list[str]) -> list[dict[str, Any]]:
+async def _names(
+    session: AsyncSession, cluster: list[str], *, for_ai: bool
+) -> list[dict[str, Any]]:
     rows = await fetch(
         session,
         current_rows(
@@ -71,8 +97,10 @@ async def _names(session: AsyncSession, cluster: list[str]) -> list[dict[str, An
             " name.is_official, name.is_original",
             record="name.provider_record_id",
         )
+        + AI_SOURCE
+        + " AND (NOT :for_ai OR NOT name.is_machine_generated)"
         + " ORDER BY name.kind, name.language, name.text, name.id",
-        {"ids": cluster},
+        {"ids": cluster, "for_ai": for_ai},
     )
     return [
         {
@@ -89,7 +117,7 @@ async def _names(session: AsyncSession, cluster: list[str]) -> list[dict[str, An
 
 
 async def _descriptions(
-    session: AsyncSession, cluster: list[str], language: str
+    session: AsyncSession, cluster: list[str], language: str, *, for_ai: bool
 ) -> list[dict[str, Any]]:
     rows = await fetch(
         session,
@@ -101,9 +129,11 @@ async def _descriptions(
             " description.safety",
             record="description.provider_record_id",
         )
+        + AI_SOURCE
+        + " AND (NOT :for_ai OR NOT description.is_machine_generated)"
         + " ORDER BY (description.language = :language) DESC,"
         " description.language, description.id",
-        {"ids": cluster, "language": language},
+        {"ids": cluster, "language": language, "for_ai": for_ai},
     )
     visible = [
         row
@@ -121,32 +151,34 @@ async def _descriptions(
     ]
 
 
-async def _fields(session: AsyncSession, root: UUID) -> list[dict[str, Any]]:
+async def _fields(session: AsyncSession, root: UUID, *, for_ai: bool) -> list[dict[str, Any]]:
     decisions = await fetch(
         session,
-        """
+        f"""
         SELECT decision.predicate_id, decision.language, fact.id, fact.value,
                fact.confidence, predicate.slug
         FROM resolution_decision AS decision
         JOIN fact ON fact.id = decision.selected_fact_id
         JOIN predicate ON predicate.id = decision.predicate_id
         WHERE decision.entity_id = CAST(:root AS uuid) AND decision.is_active
+          {FACT_POLICY}
         ORDER BY predicate.slug, decision.language
         """,
-        {"root": str(root)},
+        {"root": str(root), "for_ai": for_ai},
     )
     predicate_ids = [row.predicate_id for row in decisions]
     alternates: dict[int, list[dict[str, Any]]] = {}
     if predicate_ids:
         rivals = await fetch(
             session,
-            """
+            f"""
             SELECT fact.id, fact.predicate_id, fact.value, fact.language,
                    fact.confidence
             FROM fact
             WHERE fact.predicate_id = ANY(CAST(:pids AS bigint[]))
               AND fact.entity_id = CAST(:root AS uuid)
               AND fact.status <> 'rejected'
+              {FACT_POLICY}
               AND NOT EXISTS (
                 SELECT 1 FROM resolution_decision AS decision
                 WHERE decision.entity_id = fact.entity_id
@@ -157,7 +189,7 @@ async def _fields(session: AsyncSession, root: UUID) -> list[dict[str, Any]]:
               )
             ORDER BY fact.predicate_id, fact.confidence DESC, fact.id
             """,
-            {"pids": predicate_ids, "root": str(root)},
+            {"pids": predicate_ids, "root": str(root), "for_ai": for_ai},
         )
         for rival in rivals:
             bucket = alternates.setdefault(rival.predicate_id, [])
@@ -184,66 +216,17 @@ async def _fields(session: AsyncSession, root: UUID) -> list[dict[str, Any]]:
     ]
 
 
-async def _credits(session: AsyncSession, cluster: list[str]) -> list[dict[str, Any]]:
-    rows = await fetch(
-        session,
-        """
-        SELECT credit.role, credit.credited_as, credit.contributor_id
-        FROM credit
-        LEFT JOIN provider_observation AS observation
-          ON observation.id = credit.observation_id
-        LEFT JOIN provider_record AS record ON record.id = observation.provider_record_id
-        WHERE credit.work_id = ANY(CAST(:ids AS uuid[]))
-          AND {current}
-        ORDER BY credit.role, credit.id
-        LIMIT :limit
-        """.format(
-            current=CURRENT.format(
-                record="observation.provider_record_id",
-                observation="credit.observation_id",
-            )
-        ),
-        {"ids": cluster, "limit": MAX_CREDITS},
-    )
-    return [
-        {
-            "role": row.role,
-            "credited_as": row.credited_as,
-            "contributor_id": str(row.contributor_id),
-        }
-        for row in rows
-    ]
-
-
-async def _relations(session: AsyncSession, cluster: list[str]) -> list[dict[str, Any]]:
-    rows = await fetch(
-        session,
-        """
-        SELECT relation.relation_type, relation.to_entity_id
-        FROM entity_relation AS relation
-        WHERE relation.from_entity_id = ANY(CAST(:ids AS uuid[]))
-        ORDER BY relation.relation_type, relation.id
-        LIMIT :limit
-        """,
-        {"ids": cluster, "limit": MAX_RELATIONS},
-    )
-    return [
-        {
-            "relation_type": row.relation_type,
-            "to_entity_id": str(row.to_entity_id),
-        }
-        for row in rows
-    ]
-
-
 async def build_bundle(
     session: AsyncSession,
     *,
     root: UUID,
     cluster_ids: list[str],
     language: str = "",
+    for_ai: bool = False,
 ) -> dict[str, Any]:
     summary = await entity_summary(session, root=root, cluster_ids=cluster_ids, language=language)
+    if for_ai and (summary["entity_type"] != "work" or summary["lifecycle"] != "active"):
+        raise ValueError("Metadata model input requires an active work.")
     bundle: dict[str, Any] = {
         "bundle_version": BUNDLE_VERSION,
         "language": language,
@@ -253,12 +236,11 @@ async def build_bundle(
             "audience": summary["audience"],
             "work_type": summary["work_type"],
         },
-        "names": await _names(session, cluster_ids),
-        "descriptions": await _descriptions(session, cluster_ids, language),
-        "fields": await _fields(session, root),
-        "credits": await _credits(session, cluster_ids),
-        "relations": await _relations(session, cluster_ids),
-        "media": await _media(session, cluster_ids),
+        "names": await _names(session, cluster_ids, for_ai=for_ai),
+        "descriptions": await _descriptions(session, cluster_ids, language, for_ai=for_ai),
+        "fields": await _fields(session, root, for_ai=for_ai),
+        "media": await _media(session, cluster_ids, for_ai=for_ai),
+        "ai_evidence": for_ai,
     }
     canonical = json.dumps(bundle, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
     return {
