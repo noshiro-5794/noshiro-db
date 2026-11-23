@@ -276,7 +276,16 @@ export const attributeLabelKeys: Record<string, MessageKey> = {
   'broadcast-time': 'subject.attrBroadcastTime',
   'broadcast-timezone': 'subject.attrBroadcastTimezone',
   season: 'subject.attrSeason',
+  'season-year': 'subject.attrSeasonYear',
   status: 'subject.attrStatus',
+  'duration-minutes': 'subject.attrDurationMinutes',
+  'source-material': 'subject.attrSourceMaterial',
+  genres: 'subject.attrGenres',
+  broadcaster: 'subject.attrBroadcaster',
+  'animation-production': 'subject.attrAnimationProduction',
+  producers: 'subject.attrProducers',
+  website: 'subject.attrWebsite',
+  'infobox:copyright': 'subject.attrCopyright',
 };
 
 const weekdayValueKeys: Record<string, MessageKey> = {

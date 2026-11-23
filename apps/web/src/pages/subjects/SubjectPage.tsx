@@ -17,6 +17,8 @@ import {
   PublicReviewsSection,
   SubjectDescriptionSection,
   SubjectMarkSection,
+  SubjectMetadataSection,
+  subjectAttributes,
   SubjectReviewSection,
   SubjectSectionNav,
   SubjectSidebar,
@@ -83,6 +85,7 @@ export function SubjectPage() {
   }
 
   const subject = detailQuery.data;
+  const metadata = subjectAttributes(subject);
   const finishedPrimaryCount = progress?.finished_count ?? 0;
   const totalPrimaryCount = progress?.total_episodes ?? subject.episode_count;
   const anchorScrollClass = 'scroll-mt-[calc(var(--ui-sticky-content-top)+3rem)]';
@@ -98,7 +101,7 @@ export function SubjectPage() {
         image={seoImageOf(subject)}
         path={routes.entity(subject.id)}
       />
-      <SubjectSectionNav />
+      <SubjectSectionNav showMetadata={metadata.length > 0} />
       <PageHeading
         actions={
           <Button
@@ -159,6 +162,10 @@ export function SubjectPage() {
             />
           </div>
 
+          <SubjectDescriptionSection className={anchorScrollClass} subject={subject} />
+
+          {metadata.length > 0 ? <SubjectMetadataSection attributes={metadata} className={anchorScrollClass} /> : null}
+
           <EpisodesSection
             key={subject.id}
             className={anchorScrollClass}
@@ -166,8 +173,6 @@ export function SubjectPage() {
             subject={subject}
             userSubjectExists={Boolean(userSubject)}
           />
-
-          <SubjectDescriptionSection className={anchorScrollClass} subject={subject} />
 
           <CharactersSection key={`characters:${subject.id}`} className={anchorScrollClass} subjectId={subject.id} />
 

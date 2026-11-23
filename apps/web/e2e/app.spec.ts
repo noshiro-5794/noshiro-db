@@ -31,6 +31,7 @@ const entityDetail = {
   ...entitySummary,
   names: [],
   descriptions: [],
+  display_fields: [{ key: 'format', label: 'Format', values: ['TV'], provider: 'bangumi' }],
   facts: [],
   external_links: [],
   content_ratings: [],
@@ -477,6 +478,30 @@ test('public home opens the catalog and renders API data', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(/20\d\d/u);
 });
 
+test('work details expose production credits beyond the former sidebar limit', async ({ page }) => {
+  const fields = Array.from({ length: 20 }, (_, index) => {
+    const number = String(index + 1);
+    return {
+      key: `infobox:credit-${number}`,
+      label: `Production role ${number}`,
+      values: [`Contributor ${number}`],
+      provider: 'bangumi',
+    };
+  });
+  await page.route(`**/api/v1/index/entities/${subjectId}/`, (route) =>
+    fulfillApi(route, { ...entityDetail, display_fields: fields }),
+  );
+  await page.setViewportSize({ height: 844, width: 390 });
+  await page.goto(`/entities/${subjectId}`);
+
+  await page.getByRole('link', { name: 'Details', exact: true }).click();
+  await expect(page).toHaveURL(/#work-metadata$/u);
+  const details = page.getByRole('region', { name: 'Details', exact: true });
+  await expect(details.getByRole('term')).toHaveCount(fields.length);
+  await expect(details.getByText('Contributor 20', { exact: true })).toBeVisible();
+  expect(await details.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+});
+
 test('protected routes preserve the destination while redirecting to login', async ({ page }) => {
   await page.goto('/library?keyword=noshiro');
 
@@ -634,7 +659,7 @@ test('authenticated workspace opens core views', async ({ page }) => {
   await page.goto(`/entities/${subjectId}`);
   await expect(page.locator('h1')).toHaveText(subjectTitle);
   await expect(page.getByRole('link', { name: 'My mark', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Details/u })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Details', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: /Staff/u })).toBeVisible();
 
   await page.getByRole('button', { name: 'Open navigation' }).click();
