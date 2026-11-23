@@ -138,7 +138,7 @@ async def _persist(
     }
     scorable = await fetch(
         session,
-        "SELECT id FROM entity WHERE id = ANY(:ids)"
+        "SELECT id FROM entity JOIN work ON work.entity_id = entity.id WHERE id = ANY(:ids)"
         " AND lifecycle = 'active' AND visibility = 'public'",
         {"ids": list(scores)},
     )

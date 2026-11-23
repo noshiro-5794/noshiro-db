@@ -1,5 +1,6 @@
 """Complete manual subject sync with committed leases and atomic graph projection."""
 
+import asyncio
 from typing import Any
 from uuid import UUID
 
@@ -7,8 +8,10 @@ from celery import current_task, shared_task
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.index.resolution import cluster_ids
+from api.contexts.ingestion import archive
 from api.db import fetch
 from api.integrations.providers.bangumi import BangumiClient
+from api.integrations.providers.capture import SourceResponse, capture_responses
 from api.worker import bangumi_sync, jobs
 from api.worker.importing import owns_job
 from api.worker.runtime import run
@@ -104,14 +107,35 @@ async def synchronize(
 
         client = BangumiClient()
         client.forbid_storage(forbidden=bool(policy and policy[0].storage_policy == "forbidden"))
+        captured: dict[str, UUID] = {}
+        loop = asyncio.get_running_loop()
+
+        async def persist(response: SourceResponse) -> None:
+            async with session_scope() as session:
+                await archive.store(session, response)
+            captured[response.endpoint] = response.id
+
+        def receive(response: SourceResponse) -> None:
+            # Every network operation in fetch_batch runs in a worker thread.
+            asyncio.run_coroutine_threadsafe(persist(response), loop).result()
+
         try:
-            batch = await bangumi_sync.fetch_batch(client, bangumi_id, progress=progress)
+            if policy and policy[0].storage_policy == "allowed":
+                with capture_responses(receive):
+                    batch = await bangumi_sync.fetch_batch(client, bangumi_id, progress=progress)
+            else:
+                batch = await bangumi_sync.fetch_batch(client, bangumi_id, progress=progress)
         finally:
             client.close()
         async with session_scope() as session:
             if job_id and not await owns_job(session, job_id, lease_owner):
                 raise JobLeaseLost("Subject sync job lease lost.")
-            result = await bangumi_sync.project_batch(session, bangumi_id, batch)
+            result = await bangumi_sync.project_batch(
+                session,
+                bangumi_id,
+                batch,
+                source_fetch_id=captured.get(f"/v0/subjects/{bangumi_id}"),
+            )
             total = 3 + result["character_count"] + result["staff_count"]
             await jobs.set_total(session, job_id=job_id, total_count=total)
             await jobs.advance(

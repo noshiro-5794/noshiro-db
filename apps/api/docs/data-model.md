@@ -29,6 +29,18 @@ Display projections select summaries, names, and artwork for the public API.
 Resolution uses redirects and preserves the underlying evidence. Entity and
 field visibility, audience, and spoiler rules govern presentation.
 
+## Source archive
+
+The manual Bangumi work sync archives eligible upstream response bodies before
+decoding. `ingest.source_document` deduplicates bodies per provider.
+`ingest.source_fetch` records each request and `ingest.revision_source` links
+the subject revision to the archived response. Earlier revisions and other
+import paths currently retain their parsed record payload.
+
+From the API directory, `uv run python -m scripts.replay_source SUBJECT_ID FETCH_ID`
+replays the captured subject without provider network access. The replay checks
+the endpoint and current revision before applying the mapper.
+
 ## Relationship sources
 
 Public relationship queries use eligible current observations. The application

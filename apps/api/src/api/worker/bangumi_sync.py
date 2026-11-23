@@ -4,6 +4,7 @@ import asyncio
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -68,10 +69,14 @@ async def fetch_batch(
 
 
 async def project_batch(
-    session: AsyncSession, subject_id: int, batch: SubjectBatch
+    session: AsyncSession,
+    subject_id: int,
+    batch: SubjectBatch,
+    *,
+    source_fetch_id: UUID | None = None,
 ) -> dict[str, Any]:
     async with session.begin_nested():
-        work_id = await import_subject(session, batch.subject)
+        work_id = await import_subject(session, batch.subject, source_fetch_id=source_fetch_id)
         await import_episodes(session, work_id, str(subject_id), batch.episodes)
         identifiers: RelatedIds = await import_relations(
             session,

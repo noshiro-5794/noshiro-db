@@ -1,11 +1,13 @@
 """Atomic Bangumi work projection with reviewed aliases and explicit-ID reconciliation."""
 
+import json
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.identity import vndb
-from api.contexts.ingestion import entities, facts, metrics, profiles, records
+from api.contexts.ingestion import archive, entities, facts, metrics, profiles, records
 from api.contexts.ingestion import metadata as presentation
 from api.contexts.ingestion import observations as ingestion
 from api.contexts.synchronization.terms import preferred_terms
@@ -146,7 +148,9 @@ async def project_subject(
     return await vndb.observe_bangumi(session, entity.entity_id, observation_id, data)
 
 
-async def import_subject(session: AsyncSession, data: dict[str, Any]) -> Any:
+async def import_subject(
+    session: AsyncSession, data: dict[str, Any], *, source_fetch_id: UUID | None = None
+) -> Any:
     """Persist a source payload and its complete work projection together."""
     async with session.begin_nested():
         written = await records.record_payload(
@@ -159,7 +163,37 @@ async def import_subject(session: AsyncSession, data: dict[str, Any]) -> Any:
             schema_version=SCHEMA_VERSION,
             canonical_url=f"https://bgm.tv/subject/{data['id']}",
         )
+        if source_fetch_id is not None:
+            await archive.link_revision(
+                session, revision_id=written.revision_id, fetch_id=source_fetch_id
+            )
         return await project_subject(session, written.record_id, data)
+
+
+async def replay_subject(session: AsyncSession, subject_id: int, fetch_id: UUID) -> Any:
+    """Replay an archived Bangumi subject through the current mapper."""
+    body = await archive.body_for_fetch(
+        session, fetch_id, provider=PROVIDER, endpoint=f"/v0/subjects/{subject_id}"
+    )
+    data = json.loads(body)
+    if not isinstance(data, dict) or data.get("id") != subject_id:
+        raise ValueError("The archived body does not identify the requested Bangumi subject.")
+    current = await fetch(
+        session,
+        """
+        SELECT record.latest_payload_hash
+        FROM provider_record AS record
+        JOIN provider_namespace AS namespace ON namespace.id = record.namespace_id
+        JOIN provider ON provider.id = namespace.provider_id
+        WHERE provider.slug = :provider AND namespace.slug = :namespace
+          AND record.external_id = :id
+        FOR UPDATE OF record
+        """,
+        {"provider": PROVIDER, "namespace": SUBJECT_NAMESPACE, "id": str(subject_id)},
+    )
+    if current and current[0].latest_payload_hash not in ("", records.payload_hash(data)):
+        raise ValueError("Replaying this response would replace a newer source revision.")
+    return await import_subject(session, data, source_fetch_id=fetch_id)
 
 
 async def provide_subject(session: AsyncSession, bangumi_id: str | int) -> Any:
