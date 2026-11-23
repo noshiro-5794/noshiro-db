@@ -22,7 +22,9 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.contexts.ingestion import archive
 from api.db import fetch
+from api.integrations.providers.capture import origins
 
 SLIM_NAMESPACES = frozenset(
     {
@@ -242,6 +244,13 @@ async def record_payload(
     if not revision:
         raise RecordConflict(f"Revision missing for {namespace_slug}:{external_id}.")
     revision_id = revision[0].id
+    for source in origins(payload):
+        await archive.link_revision(
+            session,
+            revision_id=revision_id,
+            fetch_id=source.fetch_id,
+            pointer=source.pointer,
+        )
     await fetch(
         session,
         """

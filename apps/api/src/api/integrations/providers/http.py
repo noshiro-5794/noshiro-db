@@ -13,7 +13,7 @@ from typing import Any
 
 import httpx
 
-from api.integrations.providers.capture import capture_response
+from api.integrations.providers.capture import decode_response
 from api.integrations.providers.errors import ProviderError, retry_after_seconds
 from api.shared.outbound import proxy_for, should_proxy
 
@@ -71,9 +71,8 @@ def send(
             f"{provider} {path} request failed: {error}",
             error_code="transport_error",
         ) from error
-    capture_response(provider, response)
     try:
-        return response.json()
+        return decode_response(provider, response)
     except (json.JSONDecodeError, ValueError) as error:
         raise ProviderError(
             f"{provider} {path} returned invalid JSON.",

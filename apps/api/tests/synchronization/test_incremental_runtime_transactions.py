@@ -150,7 +150,7 @@ async def test_state_replacement_during_fetch_prevents_late_projection(increment
 
     from api.contexts.synchronization.domain import LeaseLost
 
-    with patch.object(incremental_tasks.asyncio, "to_thread", threaded), pytest.raises(LeaseLost):
+    with patch.object(asyncio, "to_thread", threaded), pytest.raises(LeaseLost):
         await incremental_tasks.execute(
             task_name="incremental_subject", batch_size=1, job_id=None, owner="worker"
         )

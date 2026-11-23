@@ -19,6 +19,7 @@ from typing import Any
 
 import httpx
 
+from api.integrations.providers.capture import decode_response
 from api.integrations.providers.catalog import CatalogPage, DeltaPage
 from api.integrations.providers.errors import ProviderError
 from api.integrations.providers.http import client as build_client
@@ -178,7 +179,7 @@ class AniListClient:
             try:
                 response = self.http.post("", json={"query": graphql, "variables": variables})
                 response.raise_for_status()
-                payload = response.json()
+                payload = decode_response("anilist", response)
             except httpx.HTTPStatusError as error:
                 status = error.response.status_code
                 provider_error = ProviderError(

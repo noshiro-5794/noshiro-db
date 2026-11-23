@@ -1,6 +1,5 @@
 """Season listing capture with network requests outside database transactions."""
 
-import asyncio
 import os
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
@@ -16,6 +15,7 @@ from api.integrations.providers.bangumi import BangumiClient
 from api.integrations.providers.mal import MALClient, season_name_for_quarter
 from api.worker import calendar_sync, snapshot_retention
 from api.worker.session import session_scope
+from api.worker.source_fetches import fetch_archived
 
 
 def local_today() -> date:
@@ -27,7 +27,7 @@ async def prefetch_bangumi() -> dict[str, Any]:
     client = BangumiClient()
     client.forbid_storage(forbidden=forbidden)
     try:
-        data = await asyncio.to_thread(client.fetch_calendar)
+        data = await fetch_archived(session_scope, client.fetch_calendar)
     finally:
         client.close()
     if not isinstance(data, list):
@@ -125,10 +125,14 @@ async def sync_anilist(
         for number in range(1, max(1, max_pages) + 1):
             options: dict[str, Any] = {"cursor": str(number), "page_size": max(1, page_size)}
             if airing:
-                page = await asyncio.to_thread(client.fetch_airing_page, **options)
+                page = await fetch_archived(session_scope, client.fetch_airing_page, **options)
             else:
-                page = await asyncio.to_thread(
-                    client.fetch_season_page, season=season, season_year=current.year, **options
+                page = await fetch_archived(
+                    session_scope,
+                    client.fetch_season_page,
+                    season=season,
+                    season_year=current.year,
+                    **options,
                 )
             pages.append(page)
             for item in page.get("media") or []:
@@ -201,7 +205,8 @@ async def sync_mal(
     client.forbid_storage(forbidden=await storage_forbidden("mal"))
     try:
         for _ in range(max(1, max_pages)):
-            payload = await asyncio.to_thread(
+            payload = await fetch_archived(
+                session_scope,
                 client.fetch_season,
                 year=current.year,
                 season=season,

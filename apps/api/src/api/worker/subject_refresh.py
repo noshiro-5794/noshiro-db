@@ -12,13 +12,13 @@ different slice of the catalogue gets refreshed, every day, forever.
 
 from __future__ import annotations
 
-import asyncio
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.db import fetch
 from api.integrations.providers.errors import ProviderError
+from api.worker.source_fetches import SessionScope, fetch_archived
 from api.worker.subject_import import import_subject
 
 TASK_NAME = "bangumi_subject_refresh"
@@ -80,6 +80,7 @@ async def refresh(
     client: Any,
     *,
     limit: int,
+    scope: SessionScope,
     catalogue_only: bool = True,
 ) -> dict[str, Any]:
     """Re-fetch up to ``limit`` known subjects, legacy rows first."""
@@ -103,7 +104,7 @@ async def refresh(
             result["skipped"] += 1
             continue
         try:
-            data = await asyncio.to_thread(client.fetch_subject, external_id)
+            data = await fetch_archived(scope, client.fetch_subject, external_id)
         except ProviderError as error:
             if error.is_not_found:
                 # A direct 404 is authoritative: the subject is gone.

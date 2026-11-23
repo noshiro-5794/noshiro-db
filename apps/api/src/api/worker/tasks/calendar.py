@@ -15,6 +15,7 @@ from api.worker.calendar_images import CalendarImages
 from api.worker.importing import owns_job
 from api.worker.runtime import run
 from api.worker.session import session_scope
+from api.worker.source_fetches import archive_responses, fetch_archived
 from api.worker.subject_import import import_subject
 from api.worker.tasks.manual_sync import JobLeaseLost
 
@@ -90,7 +91,7 @@ async def synchronize(
                 session, "SELECT storage_policy FROM provider WHERE slug='bangumi'", {}
             )
         client.forbid_storage(forbidden=bool(policy and policy[0].storage_policy == "forbidden"))
-        data = await asyncio.to_thread(client.fetch_calendar)
+        data = await fetch_archived(session_scope, client.fetch_calendar)
         items = calendar_read.calendar_items(data)
         if not items:
             raise calendar_sync.CalendarError(
@@ -104,7 +105,7 @@ async def synchronize(
             subject_id = item["id"]
             await progress(f"Fetching calendar subject {subject_id}")
             try:
-                subject = await asyncio.to_thread(client.fetch_subject, subject_id)
+                subject = await fetch_archived(session_scope, client.fetch_subject, subject_id)
                 async with session_scope() as session:
                     if job_id and not await owns_job(session, job_id, lease_owner):
                         raise JobLeaseLost("Calendar sync job lease lost.")
@@ -141,9 +142,10 @@ async def synchronize(
             for subject_id in prepared:
                 await progress(f"Fetching calendar subject details {subject_id}")
                 try:
-                    batch = await bangumi_sync.fetch_batch(
-                        client, subject_id, progress=detail_progress
-                    )
+                    with archive_responses(session_scope):
+                        batch = await bangumi_sync.fetch_batch(
+                            client, subject_id, progress=detail_progress
+                        )
                     async with session_scope() as session:
                         if job_id and not await owns_job(session, job_id, lease_owner):
                             raise JobLeaseLost("Calendar sync job lease lost.")

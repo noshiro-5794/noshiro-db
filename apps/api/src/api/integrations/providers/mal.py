@@ -19,6 +19,7 @@ from typing import Any
 
 import httpx
 
+from api.integrations.providers.capture import decode_response
 from api.integrations.providers.errors import ProviderError, retry_after_seconds
 
 MAL_ANIME_FIELDS = (
@@ -94,7 +95,7 @@ class MALClient:
             try:
                 response = self.http.get(path, params=params)
                 response.raise_for_status()
-                return response.json()
+                return decode_response("mal", response)
             except httpx.HTTPStatusError as error:
                 response = error.response
                 status = response.status_code

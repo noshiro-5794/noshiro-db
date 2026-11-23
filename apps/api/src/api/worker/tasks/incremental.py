@@ -1,6 +1,5 @@
 """Incremental Bangumi imports with per-item source and cursor transactions."""
 
-import asyncio
 import logging
 import os
 from contextlib import suppress
@@ -18,6 +17,7 @@ from api.worker import bangumi_entities, bangumi_episodes, bangumi_relations, jo
 from api.worker.importing import owns_job
 from api.worker.runtime import run
 from api.worker.session import session_scope
+from api.worker.source_fetches import fetch_archived
 from api.worker.subject_import import import_subject, provide_subject
 
 logger = logging.getLogger(__name__)
@@ -125,7 +125,9 @@ async def sync_task(
             error: Exception | None = None
             if eligible:
                 try:
-                    payload = await asyncio.to_thread(fetch_source, client, config.part, identifier)
+                    payload = await fetch_archived(
+                        session_scope, fetch_source, client, config.part, identifier
+                    )
                     async with session_scope() as session:
                         await own_job(session, job_id, owner)
                         await incremental.owned(session, window)
