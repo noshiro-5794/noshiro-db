@@ -14,6 +14,15 @@ from .provenance import CURRENT, DESCRIPTION_CHARS, PROVENANCE_JOINS, current_ro
 async def profile(
     session: AsyncSession, *, entity_id: UUID, members: list[str], language: str
 ) -> Any | None:
+    locale = language.lower().split(";", 1)[0].strip()
+    primary = locale.split("-", 1)[0]
+    preferred = (
+        "zh-hant"
+        if locale in {"zh-tw", "zh-hk", "zh-mo", "zh-hant"}
+        else "zh-hans"
+        if primary == "zh"
+        else primary
+    )
     rows = await fetch(
         session,
         f"""
@@ -26,23 +35,32 @@ async def profile(
                 record="name.provider_record_id", observation="name.observation_id"
             )
         }
-        WHERE publication.entity_id = :entity AND publication.language = :language
+        WHERE publication.entity_id = :entity
+          AND lower(publication.language) IN (:locale, :preferred, :primary)
           AND profile.state = 'approved'
           AND name.entity_id = ANY(CAST(:members AS uuid[]))
           AND name.text = profile.title_text
           AND (NOT profile.is_machine_generated OR provider.ai_usage_policy = 'allowed')
           AND {CURRENT.format(record="name.provider_record_id", observation="name.observation_id")}
+        ORDER BY (lower(publication.language) = :locale) DESC,
+                 (lower(publication.language) = :preferred) DESC
+        LIMIT 1
         """,
-        {"entity": entity_id, "members": members, "language": language},
+        {
+            "entity": entity_id,
+            "members": members,
+            "locale": locale,
+            "preferred": preferred,
+            "primary": primary,
+        },
     )
     return rows[0] if rows else None
 
 
 async def description(
-    session: AsyncSession, *, entity_id: UUID, members: list[str], language: str
+    session: AsyncSession, *, members: list[str], current: Any
 ) -> dict[str, Any] | None:
-    current = await profile(session, entity_id=entity_id, members=members, language=language)
-    if current is None or not current.description_text:
+    if not current.description_text:
         return None
     rows = await fetch(
         session,

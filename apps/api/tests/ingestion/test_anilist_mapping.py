@@ -6,6 +6,7 @@ from api.contexts.identity.names import SourceName
 from api.worker.anilist_import import _fuzzy_date, fact_candidates, name_entries
 
 MEDIA = {
+    "countryOfOrigin": "JP",
     "id": 1,
     "idMal": 42,
     "title": {"romaji": "Romaji", "english": "English", "native": "日本語"},
@@ -44,7 +45,7 @@ def test_the_official_mal_id_becomes_a_fact() -> None:
 def test_facts_keep_numbers_as_numbers() -> None:
     facts = fact_candidates(MEDIA)
     assert facts["episode-count"] == (12, "number")
-    assert "anilist-format" not in facts
+    assert facts["anilist-format"] == ("TV", "string")
     assert "anilist-average-score" not in facts
     assert facts["release-date"] == ("2020-04-05", "date")
 

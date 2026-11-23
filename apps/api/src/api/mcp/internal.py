@@ -46,7 +46,7 @@ def create_server() -> MCPServer[Any]:
 
     @server.tool(annotations=read_only, structured_output=True)
     async def get_metadata_evidence(entity_id: UUID, language: str = "") -> dict[str, Any]:
-        """Read eligible evidence for the title, synopsis and cover of one work."""
+        """Read eligible evidence for the title, synopsis, cover and display fields of one work."""
         try:
             async with session_scope() as session:
                 return await metadata_harness.evidence(

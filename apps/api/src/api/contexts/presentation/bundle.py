@@ -19,8 +19,9 @@ from api.db import fetch
 
 from .provenance import DESCRIPTION_CHARS, current_rows
 from .summary import entity_summary
+from .work_fields import DETAILED_WORK_TYPES, candidates
 
-BUNDLE_VERSION = "v3"
+BUNDLE_VERSION = "v4"
 
 MAX_NAMES = 20
 MAX_DESCRIPTIONS = 3
@@ -135,12 +136,13 @@ async def build_bundle(
     cluster_ids: list[str],
     language: str = "",
     for_ai: bool = False,
+    version: str = BUNDLE_VERSION,
 ) -> dict[str, Any]:
     summary = await entity_summary(session, root=root, cluster_ids=cluster_ids, language=language)
     if for_ai and (summary["entity_type"] != "work" or summary["lifecycle"] != "active"):
         raise ValueError("Metadata model input requires an active work.")
     bundle: dict[str, Any] = {
-        "bundle_version": BUNDLE_VERSION,
+        "bundle_version": version,
         "language": language,
         "entity": {
             "id": summary["id"],
@@ -153,6 +155,12 @@ async def build_bundle(
         "media": await _media(session, cluster_ids, for_ai=for_ai),
         "ai_evidence": for_ai,
     }
+    if version == BUNDLE_VERSION and summary["work_type"] in DETAILED_WORK_TYPES:
+        options = await candidates(session, cluster_ids, for_ai=for_ai)
+        bundle["fields"] = [
+            {key: item[key] for key in ("id", "key", "label", "values", "provider")}
+            for item in options
+        ]
     canonical = json.dumps(bundle, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
     return {
         "bundle": bundle,

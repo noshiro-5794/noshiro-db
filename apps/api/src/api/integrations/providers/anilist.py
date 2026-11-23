@@ -47,7 +47,8 @@ MEDIA_QUERY = f"""
 query ($id: Int) {{
   Media(id: $id, type: ANIME) {{
     id idMal type format status description season seasonYear episodes duration source
-    averageScore popularity favourites trending isAdult genres synonyms
+    averageScore meanScore popularity favourites trending isAdult genres synonyms
+    countryOfOrigin hashtag
     bannerImage siteUrl updatedAt
     coverImage {{ extraLarge large medium color }}
     title {{ romaji english native userPreferred }}
@@ -55,11 +56,11 @@ query ($id: Int) {{
     endDate {{ year month day }}
     nextAiringEpisode {{ airingAt timeUntilAiring episode }}
     externalLinks {{ id url site type }}
-    studios {{ edges {{ isMain node {{ id name }} }} }}
+    studios {{ edges {{ isMain node {{ id name isAnimationStudio }} }} }}
     relations {{ edges {{
       relationType node {{ id type format title {{ romaji english native }} }}
     }} }}
-    tags {{ id name rank category isMediaSpoiler }}
+    tags {{ id name rank category isMediaSpoiler isGeneralSpoiler isAdult }}
     characters(page: 1, perPage: 25) {{ pageInfo {{ hasNextPage }} {CHARACTER_FIELDS} }}
     staff(page: 1, perPage: 25) {{ pageInfo {{ hasNextPage }} {STAFF_FIELDS} }}
     airingSchedule(page: 1, perPage: 50) {{ pageInfo {{ hasNextPage }} {AIRING_FIELDS} }}

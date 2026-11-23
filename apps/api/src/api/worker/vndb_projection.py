@@ -14,6 +14,8 @@ from api.db import fetch
 from api.shared.text import slugify
 from api.worker import vndb_mapping as mapping
 
+WORK_MAPPER_VERSION = "vndb-vn-v2"
+
 
 @dataclass(frozen=True, slots=True)
 class Projection:
@@ -215,7 +217,7 @@ async def project_work(session: AsyncSession, vndb_id: str, data: dict[str, Any]
         namespace="vn",
         resource_type="subject",
         mapper="vndb.vn",
-        mapper_version="vndb-vn-v1",
+        mapper_version=WORK_MAPPER_VERSION,
         schema_name="index.work",
         external_id=vndb_id,
     )

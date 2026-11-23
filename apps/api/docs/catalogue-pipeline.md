@@ -56,6 +56,7 @@ from sources remain available separately from the name chosen for publication.
 | --- | --- |
 | `entity_metadata_revision` | Candidate or approved title, synopsis, and cover per work and language. Stores the exact chosen title, references to the source name and asset, the evidence fingerprint, generator/model versions, and the reviewer. |
 | `entity_metadata_citation` | Ordered references to the source descriptions used by a revision, with a content digest for each excerpt. |
+| `entity_metadata_field_choice` | Reviewed labels and references to eligible work field evidence for animation and visual novels. |
 | `entity_metadata_publication` | One current revision per work and language. A composite foreign key enforces the publication scope. |
 | `agent_step` and `ai_run` | Generation status, model, usage, and outcome. Worker-generated revisions reference their generating step. |
 
@@ -69,7 +70,7 @@ value becomes ineligible.
 
 The internal MCP tools `get_metadata_evidence` and `submit_metadata_draft` use
 the same scope and validation as the campaign worker. Model inputs contain
-eligible names, source descriptions, and cover options for one work. The campaign
+eligible names, source descriptions, cover options, and display field evidence for one work. The campaign
 worker records proposals as drafts. Curators inspect proposals and publish an immutable draft revision. Publication
 verifies that its evidence fingerprint is still current.
 
@@ -79,7 +80,9 @@ uv run python -m scripts.work_metadata publish ENTITY_UUID REVISION_ID --languag
 ```
 
 Public API and MCP read the same publication. The model never receives third-party
-rating or popularity values, episodes, credits, characters, or related works.
+rating or popularity values, user tags, episode records, character records, or related works. Source infobox credit text can appear as a cited work field.
+
+[Work metadata fields and refresh coverage](work-metadata-fields.md)
 
 ## Ranking and migration
 

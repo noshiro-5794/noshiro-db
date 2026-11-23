@@ -8155,9 +8155,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Entity Api V1 Index Entities  Entity Id   Get"
+                  "$ref": "#/components/schemas/EntityDetailResponse"
                 }
               }
             }
@@ -8911,6 +8909,172 @@
         "type": "object",
         "title": "CommentUpdate"
       },
+      "DisplayField": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "values": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Values"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "values",
+          "provider"
+        ],
+        "title": "DisplayField"
+      },
+      "EntityDetailResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "entity_type": {
+            "type": "string",
+            "title": "Entity Type"
+          },
+          "lifecycle": {
+            "type": "string",
+            "title": "Lifecycle"
+          },
+          "audience": {
+            "type": "string",
+            "title": "Audience"
+          },
+          "work_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Work Type"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "collections": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Collections"
+          },
+          "media": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Media"
+          },
+          "names": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Names"
+          },
+          "original_title": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OriginalTitle"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "display_fields": {
+            "items": {
+              "$ref": "#/components/schemas/DisplayField"
+            },
+            "type": "array",
+            "title": "Display Fields"
+          },
+          "descriptions": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Descriptions"
+          },
+          "facts": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Facts"
+          },
+          "external_links": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "External Links"
+          },
+          "content_ratings": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Content Ratings"
+          },
+          "sources": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Sources"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "entity_type",
+          "lifecycle",
+          "audience",
+          "work_type",
+          "display_name",
+          "collections",
+          "media",
+          "names",
+          "original_title",
+          "display_fields",
+          "descriptions",
+          "facts",
+          "external_links",
+          "content_ratings",
+          "sources"
+        ],
+        "title": "EntityDetailResponse"
+      },
       "EpisodeProgressReplace": {
         "properties": {
           "finished_episode_ids": {
@@ -8941,6 +9105,37 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "OriginalTitle": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "language": {
+            "type": "string",
+            "title": "Language"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provenance"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "language",
+          "provenance"
+        ],
+        "title": "OriginalTitle"
       },
       "PasswordLogin": {
         "properties": {

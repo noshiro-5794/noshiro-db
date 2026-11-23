@@ -185,6 +185,7 @@ export type SubjectAttribute = {
   value: string;
   /** Which provider the value came from, for the small source hint. */
   provider: string;
+  label?: string;
 };
 
 const providerPrefix = /^(anilist|mal|bangumi|vndb|jikan)-/u;
@@ -214,6 +215,21 @@ const weekdayLabels: Record<string, string> = {
 };
 
 export function subjectAttributes(subject: SubjectDetail): SubjectAttribute[] {
+  if (subject.display_fields?.length) {
+    const fields = subject.display_fields.map(({ key, label, values, provider }) => ({
+      key,
+      label,
+      value: values.join('\n'),
+      provider,
+    }));
+    const titles = [...new Set(subject.names.map((name) => name.text))].filter(
+      (name) => name !== subject.display_name && name !== subject.original_title?.text,
+    );
+    if (titles.length) {
+      fields.push({ key: 'alternative-titles', label: '', value: titles.join('\n'), provider: '' });
+    }
+    return fields;
+  }
   const rows = getInfoboxRows(subject.infobox);
   const byKey = new Map<string, SubjectAttribute>();
 
@@ -251,6 +267,7 @@ function normaliseAttributeValue(key: string, value: string): string {
 /** Attribute key -> i18n label key. */
 export const attributeLabelKeys: Record<string, MessageKey> = {
   type: 'subject.attrType',
+  'alternative-titles': 'subject.alternativeTitles',
   format: 'subject.attrFormat',
   episodes: 'subject.attrEpisodes',
   'release-date': 'subject.attrReleaseDate',

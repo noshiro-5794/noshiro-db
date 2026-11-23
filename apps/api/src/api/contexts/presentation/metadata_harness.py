@@ -17,6 +17,7 @@ from api.worker.session import session_scope
 from .agent import propose_with_model
 from .bundle import build_bundle
 from .display import DisplayProposal, submit, validate
+from .work_fields import MAX_FIELDS, FieldChoice
 
 
 class MetadataDraft(BaseModel):
@@ -27,6 +28,7 @@ class MetadataDraft(BaseModel):
     description: str = Field(default="", max_length=2000)
     description_source_ids: list[int] = Field(default_factory=list, max_length=3)
     cover_asset_id: UUID | None = None
+    fields: list[FieldChoice] = Field(default_factory=list, max_length=MAX_FIELDS)
 
 
 async def evidence(session: AsyncSession, *, entity_id: UUID, language: str) -> dict[str, Any]:
@@ -56,6 +58,7 @@ async def submit_draft(session: AsyncSession, value: MetadataDraft) -> dict[str,
         description_source_ids=value.description_source_ids,
         cover_asset_id=str(value.cover_asset_id) if value.cover_asset_id else None,
         is_machine_generated=True,
+        fields=value.fields,
     )
     identifier, state = await submit(
         session,
@@ -63,7 +66,7 @@ async def submit_draft(session: AsyncSession, value: MetadataDraft) -> dict[str,
         proposal=proposal,
         input_hash=value.input_hash,
         model="",
-        prompt_version="metadata-mcp-v1",
+        prompt_version="metadata-mcp-v2",
     )
     return {"id": identifier, "state": state}
 
@@ -100,7 +103,7 @@ async def generate(
     inference = await start_run(
         payload=context,
         use_case="metadata_draft",
-        prompt_version="metadata-v1",
+        prompt_version="metadata-v2",
         metadata=context,
         agent_step_id=step_id,
     )
@@ -126,7 +129,7 @@ async def generate(
                 proposal=proposal,
                 input_hash=fingerprint,
                 model=settings.ai_model,
-                prompt_version="metadata-v1",
+                prompt_version="metadata-v2",
                 agent_step_id=step_id,
             )
             result = {"draft_id": draft_id, "state": state}

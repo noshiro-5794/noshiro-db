@@ -168,6 +168,42 @@ async def ensure_record(
     return rows[0].id
 
 
+async def lock_work_import(session: AsyncSession, provider: str, external_id: str) -> None:
+    await fetch(
+        session,
+        "SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))",
+        {"key": f"work-import:{provider}:{external_id}"},
+    )
+
+
+async def detailed_work_entity(
+    session: AsyncSession, provider: str, external_id: str, mapper_version: str
+) -> Any:
+    rows = await fetch(
+        session,
+        """
+        SELECT representation.entity_id
+        FROM provider_record AS record
+        JOIN provider_namespace AS namespace ON namespace.id = record.namespace_id
+        JOIN provider ON provider.id = namespace.provider_id
+        JOIN entity_representation AS representation
+          ON representation.provider_record_id = record.id
+          AND representation.is_active
+        JOIN provider_revision AS revision ON revision.id = record.latest_revision_id
+        WHERE provider.slug = :provider AND namespace.slug = 'anime' AND record.external_id = :id
+          AND record.status = 'active' AND (
+              revision.payload ? 'genres' OR EXISTS (
+                  SELECT 1 FROM mapping_run WHERE revision_id = revision.id
+                    AND mapper_version = :version AND status = 'succeeded'
+              )
+          )
+        ORDER BY representation.id LIMIT 1
+        """,
+        {"provider": provider, "id": external_id, "version": mapper_version},
+    )
+    return rows[0].entity_id if rows else None
+
+
 async def record_payload(
     session: AsyncSession,
     *,

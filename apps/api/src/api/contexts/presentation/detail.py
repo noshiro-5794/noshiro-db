@@ -9,10 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.db import fetch
 from api.shared.timestamps import isoformat
+from api.shared.title_language import title_language
 
 from . import published
 from .provenance import PROVENANCE, PROVENANCE_JOINS, current_rows, row_provenance, visible
 from .summary import entity_summary
+from .work_fields import DETAILED_WORK_TYPES, render
 
 
 async def _names(session: AsyncSession, cluster_ids: list[str]) -> list[dict[str, Any]]:
@@ -132,6 +134,7 @@ async def _facts(
     root: UUID,
     cluster_ids: list[str],
     content_allowed: bool,
+    has_display_fields: bool = False,
 ) -> list[dict[str, Any]]:
     rows = await fetch(
         session,
@@ -143,6 +146,8 @@ async def _facts(
         JOIN predicate ON predicate.id = fact.predicate_id
         WHERE fact.entity_id = ANY(CAST(:ids AS uuid[]))
           AND fact.status <> 'rejected'
+          AND predicate.slug <> 'provider-tags'
+          AND (NOT :has_display_fields OR predicate.slug <> 'provider-infobox')
           AND (
             NOT EXISTS (SELECT 1 FROM fact_evidence WHERE fact_id = fact.id)
             OR EXISTS (
@@ -167,7 +172,7 @@ async def _facts(
           )
         ORDER BY predicate.slug, fact.language, fact.id
         """,
-        {"ids": cluster_ids},
+        {"ids": cluster_ids, "has_display_fields": has_display_fields},
     )
     decisions = {
         (row.predicate_id, row.language): row.selected_fact_id
@@ -270,6 +275,30 @@ async def _sources(session: AsyncSession, cluster_ids: list[str]) -> list[dict[s
     ]
 
 
+def original_title(names: list[dict[str, Any]]) -> dict[str, Any] | None:
+    originals = [
+        item
+        for item in names
+        if (item["is_original"] or item["kind"] == "original") and not item["is_machine_generated"]
+    ]
+    if not originals:
+        return None
+    source = min(
+        originals,
+        key=lambda item: (
+            not (item["language"] or title_language(item["text"]) != "und"),
+            (item["provenance"] or {}).get("provider") != "bangumi",
+            not item["is_official"],
+        ),
+    )
+    language = source["language"] or title_language(source["text"])
+    if language == "und" and any(
+        item["language"].startswith("zh") and item["text"] == source["text"] for item in names
+    ):
+        language = "zh-Hans"
+    return {"text": source["text"], "language": language, "provenance": source["provenance"]}
+
+
 async def entity_detail(
     session: AsyncSession,
     *,
@@ -279,11 +308,16 @@ async def entity_detail(
 ) -> dict[str, Any]:
     summary = await entity_summary(session, root=root, cluster_ids=cluster_ids, language=language)
     content_allowed = summary["audience"] != "adult"
+    is_work = summary["entity_type"] == "work"
+    names = await _names(session, cluster_ids)
+    publication = (
+        await published.profile(session, entity_id=root, members=cluster_ids, language=language)
+        if is_work and content_allowed
+        else None
+    )
     descriptions = await _descriptions(session, cluster_ids, content_allowed=content_allowed)
-    if content_allowed:
-        synopsis = await published.description(
-            session, entity_id=root, members=cluster_ids, language=language
-        )
+    if publication is not None:
+        synopsis = await published.description(session, members=cluster_ids, current=publication)
         if synopsis is not None:
             descriptions = [synopsis] + [
                 row
@@ -292,10 +326,23 @@ async def entity_detail(
             ]
     return {
         **summary,
-        "names": await _names(session, cluster_ids),
+        "names": names,
+        "original_title": original_title(names) if is_work else None,
+        "display_fields": await render(
+            session,
+            cluster_ids,
+            publication.id if publication else None,
+            machine=bool(publication and publication.is_machine_generated),
+        )
+        if summary["work_type"] in DETAILED_WORK_TYPES and content_allowed
+        else [],
         "descriptions": descriptions,
         "facts": await _facts(
-            session, root=root, cluster_ids=cluster_ids, content_allowed=content_allowed
+            session,
+            root=root,
+            cluster_ids=cluster_ids,
+            content_allowed=content_allowed,
+            has_display_fields=summary["work_type"] in DETAILED_WORK_TYPES,
         ),
         "external_links": await _external_links(session, cluster_ids),
         "content_ratings": await _content_ratings(session, cluster_ids),

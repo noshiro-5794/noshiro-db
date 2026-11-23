@@ -13,16 +13,24 @@ from api.contexts.ingestion import metadata as presentation
 from api.contexts.ingestion import observations as ingestion
 from api.db import fetch
 from api.shared.text import slugify
+from api.shared.title_language import title_language
 
 PROVIDER = "anilist"
 NAMESPACE = "anime"
 RESOURCE_TYPE = "subject"
 MAPPER = "anilist.media"
-MAPPER_VERSION = "anilist-media-v2"
+MAPPER_VERSION = "anilist-media-v3"
 SCHEMA_VERSION = "anilist-graphql"
 
 FACT_POINTERS = {
     "anilist-status": "/status",
+    "anilist-format": "/format",
+    "anilist-genres": "/genres",
+    "anilist-country": "/countryOfOrigin",
+    "anilist-hashtag": "/hashtag",
+    "anilist-studios": "/studios",
+    "anilist-producers": "/studios",
+    "anilist-next-broadcast": "/nextAiringEpisode",
     "anilist-season": "/season",
     "anilist-season-year": "/seasonYear",
     "episode-count": "/episodes",
@@ -31,7 +39,6 @@ FACT_POINTERS = {
     "release-date": "/startDate",
     "end-date": "/endDate",
     "anilist-id-mal": "/idMal",
-    "anilist-trending": "/trending",
 }
 
 
@@ -59,6 +66,9 @@ def _fuzzy_date(block: Any) -> str | None:
 
 def name_entries(media: dict[str, Any]) -> list[SourceName]:
     title = media.get("title") or {}
+    native_language = {"JP": "ja", "CN": "zh-Hans", "TW": "zh-Hant", "KR": "ko"}.get(
+        str(media.get("countryOfOrigin") or ""), title_language(title.get("native") or "")
+    )
     entries = []
     for key, kind in (
         ("romaji", "romanized"),
@@ -67,14 +77,30 @@ def name_entries(media: dict[str, Any]) -> list[SourceName]:
         ("userPreferred", "official"),
     ):
         value = title.get(key)
+        if key == "userPreferred" and value in (
+            title.get("native"),
+            title.get("romaji"),
+            title.get("english"),
+        ):
+            continue
         if isinstance(value, str) and value:
             entries.append(
                 SourceName(
                     value[:256],
-                    "ja" if key in {"native", "romaji"} else "en",
+                    (
+                        native_language
+                        if key in {"native", "romaji"}
+                        else "en"
+                        if key == "english"
+                        else ""
+                    ),
                     kind,
                     is_official=True,
-                    script="Jpan" if key == "native" else "Latn",
+                    script={"ja": "Jpan", "ko": "Kore", "zh-Hans": "Hans", "zh-Hant": "Hant"}.get(
+                        native_language, ""
+                    )
+                    if key == "native"
+                    else "Latn",
                 )
             )
     entries.extend(
@@ -86,8 +112,26 @@ def name_entries(media: dict[str, Any]) -> list[SourceName]:
 
 
 def fact_candidates(media: dict[str, Any]) -> dict[str, tuple[Any, str]]:
+    studios: dict[str, list[str]] = {"studio": [], "producer": []}
+    for edge in (media.get("studios") or {}).get("edges") or []:
+        node = edge.get("node") or {}
+        if isinstance(node.get("name"), str):
+            kind = "studio" if node.get("isAnimationStudio", edge.get("isMain")) else "producer"
+            studios[kind].append(node["name"])
+    next_episode = media.get("nextAiringEpisode") or {}
+    episode = as_int(next_episode.get("episode"))
+    airing_at = as_int(next_episode.get("airingAt"))
     values = {
+        "anilist-genres": media.get("genres"),
+        "anilist-country": media.get("countryOfOrigin"),
+        "anilist-hashtag": media.get("hashtag"),
+        "anilist-studios": studios["studio"],
+        "anilist-producers": studios["producer"],
+        "anilist-next-broadcast": (
+            {"episode": episode, "airing_at": airing_at} if episode and airing_at else None
+        ),
         "anilist-status": media.get("status"),
+        "anilist-format": media.get("format"),
         "anilist-season": media.get("season"),
         "anilist-season-year": media.get("seasonYear"),
         "episode-count": as_int(media.get("episodes")),
@@ -96,17 +140,18 @@ def fact_candidates(media: dict[str, Any]) -> dict[str, tuple[Any, str]]:
         "release-date": _fuzzy_date(media.get("startDate")),
         "end-date": _fuzzy_date(media.get("endDate")),
         "anilist-id-mal": as_int(media.get("idMal")),
-        "anilist-trending": media.get("trending"),
     }
     result = {}
     for slug, value in values.items():
-        if value is None or value == "":
+        if value is None or value in ("", []):
             continue
         value_type = "date" if slug in {"release-date", "end-date"} else "string"
         if isinstance(value, bool):
             value_type = "boolean"
         elif isinstance(value, int | Decimal):
             value_type = "number"
+        elif isinstance(value, list | dict):
+            value_type = "json"
         result[slug] = (value, value_type)
     return result
 
@@ -128,7 +173,13 @@ async def import_saved_media(session: AsyncSession, anilist_id: int) -> Any:
     payload = rows[0].payload
     if not isinstance(payload, dict) or payload.get("id") != anilist_id:
         raise ValueError(f"AniList media {anilist_id} payload is inconsistent.")
-    return await import_media(session, payload)
+    await records.lock_work_import(session, PROVIDER, str(anilist_id))
+    detailed = await records.detailed_work_entity(
+        session, PROVIDER, str(anilist_id), MAPPER_VERSION
+    )
+    if detailed is not None:
+        return await resolution.resolve(session, detailed)
+    return await import_media(session, payload, mapper_version=MAPPER_VERSION + "-season")
 
 
 async def _retire_partial_mapper(session: AsyncSession, record_id: Any) -> None:
@@ -159,11 +210,14 @@ async def _retire_partial_mapper(session: AsyncSession, record_id: Any) -> None:
         )
 
 
-async def import_media(session: AsyncSession, media: dict[str, Any]) -> Any:
+async def import_media(
+    session: AsyncSession, media: dict[str, Any], *, mapper_version: str = MAPPER_VERSION
+) -> Any:
     from api.worker import anilist_airing, anilist_graph
 
     async with session.begin_nested():
         external_id = str(media["id"])
+        await records.lock_work_import(session, PROVIDER, external_id)
         upstream = media.get("updatedAt")
         written = await records.record_payload(
             session,
@@ -182,7 +236,7 @@ async def import_media(session: AsyncSession, media: dict[str, Any]) -> Any:
             session,
             provider_record_id=written.record_id,
             mapper=MAPPER,
-            mapper_version=MAPPER_VERSION,
+            mapper_version=mapper_version,
             normalized_data=media,
             schema_name="index.work",
             schema_version="1",
@@ -280,6 +334,7 @@ async def import_media(session: AsyncSession, media: dict[str, Any]) -> Any:
                 "favourites": media.get("favourites"),
                 "trending": media.get("trending"),
                 "score": media.get("averageScore"),
+                "mean-score": media.get("meanScore"),
             },
         )
         await presentation.ensure_membership(

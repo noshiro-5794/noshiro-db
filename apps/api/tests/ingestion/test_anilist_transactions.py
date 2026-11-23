@@ -12,6 +12,7 @@ from api.worker import anilist_airing, anilist_import, importing, jobs
 from api.worker.tasks import maintenance as tasks
 
 MEDIA = {
+    "countryOfOrigin": "JP",
     "id": 1,
     "idMal": 42,
     "type": "ANIME",
@@ -444,3 +445,32 @@ async def test_import_dispatch_failure_returns_503_and_preserves_failed_job(
     row = (await fetch(session, "SELECT status, error FROM sync_job", {}))[0]
     assert row.status == "failed"
     assert row.error == (str(failure) if failure is not None else "Task broker is not configured.")
+
+
+@pytest.mark.asyncio
+async def test_season_promotion_preserves_full_work_metadata(anilist_session):
+    session = anilist_session
+    full = {**MEDIA, "description": "Complete work details", "genres": ["Fantasy"]}
+    entity = await anilist_import.import_media(session, full)
+    await records.record_payload(
+        session,
+        provider_slug="anilist",
+        namespace_slug="season-item",
+        resource_type="subject",
+        external_id="1",
+        payload={"id": 1, "title": {"romaji": "Season preview"}},
+    )
+    assert await anilist_import.import_saved_media(session, 1) == entity
+    rows = await fetch(
+        session,
+        """
+        SELECT revision.payload
+        FROM provider_record AS record JOIN provider_namespace AS namespace
+          ON namespace.id = record.namespace_id
+        JOIN provider_revision AS revision ON revision.id = record.latest_revision_id
+        WHERE namespace.slug = 'anime' AND record.external_id = '1'
+        """,
+        {},
+    )
+    assert rows[0].payload["description"] == "Complete work details"
+    assert rows[0].payload["genres"] == ["Fantasy"]

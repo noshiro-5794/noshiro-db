@@ -12,13 +12,14 @@ from api.contexts.ingestion import metadata as presentation
 from api.contexts.ingestion import observations as ingestion
 from api.contexts.synchronization.terms import preferred_terms
 from api.db import fetch
+from api.shared.title_language import title_language
 from api.worker.subject_mapping import map_subject, work_facts
 
 PROVIDER = "bangumi"
 SUBJECT_NAMESPACE = "subject"
 RESOURCE_TYPE = "subject"
 MAPPER = "bangumi.subject"
-MAPPER_VERSION = "bangumi-subject-v2"
+MAPPER_VERSION = "bangumi-subject-v3"
 SCHEMA_VERSION = "bangumi-api-v0"
 
 
@@ -79,6 +80,21 @@ async def project_subject(
         observation_id=observation_id,
         original=mapped["title"],
         localized=mapped["title_cn"],
+    )
+    aliases = [
+        (alias, title_language(alias), "alias")
+        for entry in mapped["infobox"]
+        if entry["key"] in {"别名", "別名"}
+        for value in entry["value"]
+        for line in value.splitlines()
+        if (alias := line.strip()) and alias not in {mapped["title"], mapped["title_cn"]}
+    ]
+    await presentation.add_names(
+        session,
+        entity_id=entity.entity_id,
+        provider_record_id=record_id,
+        observation_id=observation_id,
+        entries=aliases,
     )
     await presentation.upsert_description(
         session,

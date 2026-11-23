@@ -32,12 +32,9 @@ export function SubjectSidebar({ subject }: { subject: SubjectDetail }) {
   const [staffPage, setStaffPage] = useState(1);
   const [infoboxOpen, setInfoboxOpen] = useState(false);
   const [staffOpen, setStaffOpen] = useState(false);
+  const [allFields, setAllFields] = useState(false);
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   const bangumiSubjectId = bangumiSubjectIdOf(subject);
-  const bangumiSnapshotQuery = useQuery({
-    ...subjectQueries.bangumiSnapshot(bangumiSubjectId ?? 0),
-    enabled: Boolean(bangumiSubjectId),
-  });
   const staffQuery = useQuery(
     subjectQueries.staff(subject.id, {
       page: staffPage,
@@ -53,8 +50,6 @@ export function SubjectSidebar({ subject }: { subject: SubjectDetail }) {
     ...(staffRolesQuery.data?.roles ?? []).map((role) => ({ label: role, value: role })),
   ];
   const staffTotalPages = Math.max(1, Math.ceil((staffQuery.data?.count ?? 0) / staffPageSize));
-  const bangumiSnapshot = bangumiSnapshotQuery.data;
-  const bangumiRank = bangumiSnapshot?.rating?.rank ?? bangumiSnapshot?.rank;
   const bangumiUrl = bangumiSubjectId ? `https://bangumi.tv/subject/${bangumiSubjectId}` : null;
   const staffLabels: StaffDetailLabels = {
     type: t('subject.type'),
@@ -95,24 +90,6 @@ export function SubjectSidebar({ subject }: { subject: SubjectDetail }) {
               </a>
             </Button>
           </div>
-          <div className="mt-4 grid grid-cols-3 gap-2">
-            {[
-              [t('subject.liveScore'), bangumiSnapshot?.rating?.score?.toFixed(1) ?? emptyText],
-              [t('subject.liveRank'), bangumiRank ? `#${bangumiRank}` : emptyText],
-              [t('subject.liveVotes'), bangumiSnapshot?.rating?.total ?? emptyText],
-            ].map(([label, value]) => (
-              <div className="rounded-[var(--ui-radius-control)] bg-[var(--ui-bg-subtle)] p-2.5" key={label}>
-                <p className="text-[11px] font-medium text-[var(--ui-text-subtle)]">{label}</p>
-                <p className="mt-1 text-base font-semibold text-[var(--ui-text)]">{value}</p>
-              </div>
-            ))}
-          </div>
-          {bangumiSnapshotQuery.isFetching ? (
-            <p className="mt-3 text-xs text-[var(--ui-text-muted)]">{t('subject.loadingExternalSource')}</p>
-          ) : null}
-          {bangumiSnapshotQuery.isError ? (
-            <p className="mt-3 text-xs text-[var(--ui-text-muted)]">{t('subject.externalSourceUnavailable')}</p>
-          ) : null}
         </section>
       ) : null}
 
@@ -136,10 +113,14 @@ export function SubjectSidebar({ subject }: { subject: SubjectDetail }) {
         </Collapsible.Trigger>
         <Collapsible.Panel className="h-[var(--collapsible-panel-height)] overflow-hidden transition-[height] duration-150 ease-out data-[ending-style]:h-0 data-[starting-style]:h-0 [&[hidden]:not([hidden='until-found'])]:hidden">
           <dl className="mt-3 divide-y divide-[var(--ui-border)] text-sm">
-            {attributes.slice(0, 14).map((item) => (
+            {attributes.slice(0, allFields ? undefined : 14).map((item) => (
               <div className="grid grid-cols-[88px_minmax(0,1fr)] gap-3 py-2.5" key={item.key}>
-                <dt className="text-[var(--ui-text-muted)]">{t(attributeLabelKeys[item.key] ?? 'subject.info')}</dt>
-                <dd className="min-w-0 break-words leading-6 text-[var(--ui-text)]">
+                <dt className="text-[var(--ui-text-muted)]">
+                  {item.label && !attributeLabelKeys[item.key]
+                    ? item.label
+                    : t(attributeLabelKeys[item.key] ?? 'subject.info')}
+                </dt>
+                <dd className="min-w-0 whitespace-pre-line break-words leading-6 text-[var(--ui-text)]">
                   {(() => {
                     const valueKey = attributeValueKey(item.key, item.value);
                     if (valueKey) return t(valueKey);
@@ -152,6 +133,18 @@ export function SubjectSidebar({ subject }: { subject: SubjectDetail }) {
               <div className="py-3 text-sm text-[var(--ui-text-muted)]">{emptyText}</div>
             ) : null}
           </dl>
+          {attributes.length > 14 ? (
+            <Button
+              size="sm"
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setAllFields((value) => !value);
+              }}
+            >
+              {allFields ? t('subject.showFewerFields') : t('subject.showAllFields')}
+            </Button>
+          ) : null}
         </Collapsible.Panel>
       </Collapsible.Root>
 

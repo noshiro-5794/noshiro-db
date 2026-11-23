@@ -116,9 +116,24 @@ export type EntitySummary = {
   media: EntityMedia[];
 };
 
+export type EntityDisplayField = {
+  key: string;
+  label: string;
+  values: string[];
+  provider: string;
+};
+
+export type EntityOriginalTitle = {
+  text: string;
+  language: string;
+  provenance: FieldProvenance | null;
+};
+
 export type EntityDetail = EntitySummary & {
   names: EntityName[];
   descriptions: EntityDescription[];
+  original_title?: EntityOriginalTitle | null;
+  display_fields?: EntityDisplayField[];
   facts: EntityFact[];
   external_links: EntityExternalLink[];
   content_ratings: EntityContentRating[];

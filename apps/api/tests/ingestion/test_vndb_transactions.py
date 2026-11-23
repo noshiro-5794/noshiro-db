@@ -87,7 +87,12 @@ async def test_work_projection_preserves_source_flags_safety_and_revision_metric
         "SELECT json_pointer FROM fact_evidence WHERE observation_id=:id ORDER BY json_pointer",
         {"id": projection.observation_id},
     )
-    assert [row.json_pointer for row in evidence] == ["/languages", "/released"]
+    assert [row.json_pointer for row in evidence] == [
+        "/devstatus",
+        "/languages",
+        "/olang",
+        "/released",
+    ]
     assert (await fetch(session, "SELECT count(*) AS n FROM provider_revision", {}))[0].n == 1
     tags = await fetch(
         session,

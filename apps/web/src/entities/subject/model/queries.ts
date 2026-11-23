@@ -24,7 +24,6 @@ const subjectQueryKeys = {
     [...subjectQueryKeys.detail(subjectId), 'relations', query ?? 'default'] as const,
   allEpisodes: (subjectId: UUID) => [...subjectQueryKeys.episodes(subjectId), 'all'] as const,
   allRelations: (subjectId: UUID) => [...subjectQueryKeys.relations(subjectId), 'all'] as const,
-  bangumiSnapshot: (bangumiSubjectId: number) => [...subjectQueryKeys.all, 'bangumi', bangumiSubjectId] as const,
   calendar: (weekday?: WeekdayEn) => ['calendar', weekday ?? 'all'] as const,
   calendarBoard: () => ['calendar', 'board'] as const,
 };
@@ -100,13 +99,6 @@ export const subjectQueries = {
           pageSize: defaultPageSize,
           signal,
         }),
-    }),
-
-  bangumiSnapshot: (bangumiSubjectId: number) =>
-    queryOptions({
-      queryKey: subjectQueryKeys.bangumiSnapshot(bangumiSubjectId),
-      queryFn: ({ signal }) => indexApi.getBangumiSubject(bangumiSubjectId, { signal }),
-      staleTime: 5 * 60 * 1000,
     }),
 
   calendar: (weekday?: WeekdayEn) =>

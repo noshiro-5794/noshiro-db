@@ -119,6 +119,12 @@ export function SubjectPage() {
         eyebrow={t('subject.title')}
         title={titleOf(subject, t('common.untitledSubject'))}
       />
+      {subject.original_title ? (
+        <p className="mb-5 mt-1 text-sm text-muted-foreground">
+          <span className="mr-2">{t('subject.originalTitle')}</span>
+          <span lang={subject.original_title.language}>{subject.original_title.text}</span>
+        </p>
+      ) : null}
       <div className="grid items-start gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
         {/* Artwork leads on a phone; the sections follow the cover. */}
         <div className="order-1 min-w-0 lg:order-1">

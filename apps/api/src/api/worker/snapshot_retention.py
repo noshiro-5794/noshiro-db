@@ -16,6 +16,7 @@ OBSERVATION_REFERENCES = (
     ("credit", "observation_id"),
     ("entity_description", "observation_id"),
     ("entity_media", "observation_id"),
+    ("entity_metadata_field_choice", "observation_id"),
     ("entity_name", "observation_id"),
     ("entity_relation_evidence", "observation_id"),
     ("entity_term", "observation_id"),

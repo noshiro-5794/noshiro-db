@@ -15,6 +15,7 @@ from api.contexts.identity.resolution import cluster_ids, resolve
 from api.db import fetch
 
 from .bundle import build_bundle
+from .work_fields import MAX_FIELDS, FieldChoice, save_choices
 
 MAX_DESCRIPTION_CHARS = 2000
 NUMBER = re.compile(r"\d+(?:[.,]\d+)?")
@@ -29,6 +30,7 @@ class DisplayProposal:
     cover_asset_id: str | None = None
     is_machine_generated: bool = False
     confidence: float | None = None
+    fields: list[FieldChoice] = field(default_factory=list)
 
 
 def _description_values(bundle: dict[str, Any], ids: list[int]) -> str:
@@ -57,6 +59,19 @@ def validate(bundle: dict[str, Any], proposal: DisplayProposal, *, language: str
         missing = sorted(set(NUMBER.findall(proposal.description_text)) - cited)
         if missing:
             errors.append(f"description states numbers no fact supports: {missing}")
+
+    if len(proposal.fields) > MAX_FIELDS:
+        errors.append("too many display fields")
+    fields = {item["id"]: item for item in bundle.get("fields", [])}
+    seen_keys = set()
+    for choice in proposal.fields:
+        source = fields.get(choice.evidence_id)
+        if source is None or not choice.label.strip():
+            errors.append("display field needs an eligible source and a label")
+        elif source["key"] in seen_keys:
+            errors.append(f"display field selected more than once: {source['key']}")
+        else:
+            seen_keys.add(source["key"])
 
     covers = {item["asset_id"] for item in bundle["media"]}
     if proposal.cover_asset_id is not None and proposal.cover_asset_id not in covers:
@@ -92,6 +107,7 @@ async def submit(
         list(dict.fromkeys(proposal.description_source_ids)) if proposal.description_text else []
     )
     values = asdict(proposal)
+    values["fields"] = [choice.model_dump() for choice in proposal.fields]
     values["description_source_ids"] = citations
     content = json.dumps([model, prompt_version, values], ensure_ascii=False, sort_keys=True)
     proposal_hash = sha256(content.encode("utf-8")).hexdigest()
@@ -164,6 +180,9 @@ async def submit(
                 "hashes": [sha256(texts[value].encode("utf-8")).hexdigest() for value in citations],
             },
         )
+    await save_choices(
+        session, row.id, proposal.fields, {item["id"]: item for item in bundle.get("fields", [])}
+    )
     return int(row.id), str(row.state)
 
 
@@ -182,7 +201,7 @@ async def activate(
     draft = await fetch(
         session,
         """
-        SELECT id, is_machine_generated, input_hash FROM entity_metadata_revision
+        SELECT id, is_machine_generated, input_hash, bundle_version FROM entity_metadata_revision
         WHERE entity_id = :entity AND language = :language AND id = :revision
           AND state = 'draft'
         FOR UPDATE
@@ -198,6 +217,7 @@ async def activate(
         cluster_ids=sorted(map(str, members)),
         language=language,
         for_ai=draft[0].is_machine_generated,
+        version=draft[0].bundle_version,
     )
     if current["input_hash"] != draft[0].input_hash:
         return None
