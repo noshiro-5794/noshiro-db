@@ -5,7 +5,9 @@ from unittest.mock import AsyncMock
 import pytest
 
 from api.contexts.index import resolution
-from api.contexts.knowledge import enrichment, normalization, web_evidence
+from api.contexts.knowledge import normalization
+from api.contexts.presentation import agent as metadata_agent
+from api.contexts.presentation import metadata_harness
 from api.contexts.synchronization import campaign_ai, campaigns, work_items
 from api.contexts.synchronization.domain import LeaseLost
 from api.db import fetch
@@ -19,21 +21,6 @@ NORMALIZED = {
     "preferred_term": "SF",
     "confidence": 0.8,
     "reason": "Preserve provider vocabulary",
-}
-ENRICHED = {
-    "strategy": "complete",
-    "proposals": [
-        {
-            "field": "title",
-            "language": "zh",
-            "script": "Hans",
-            "text": "标题",
-            "kind": "translated",
-            "confidence": 0.99,
-            "reason": "Supported",
-            "source": "model",
-        }
-    ],
 }
 
 
@@ -52,10 +39,9 @@ async def campaign_runtime(normalization_runtime, monkeypatch):
     await campaigns.claim_campaign(session, identifier, "worker")
     await session.commit()
     monkeypatch.setattr(campaign_ai, "session_scope", normalization.session_scope)
-    monkeypatch.setattr(enrichment, "session_scope", normalization.session_scope)
-    monkeypatch.setattr(web_evidence, "gather", AsyncMock(return_value=[]))
-    completion = AsyncMock(return_value=(ENRICHED, {}))
-    monkeypatch.setattr(enrichment, "complete_json", completion)
+    monkeypatch.setattr(metadata_harness, "session_scope", normalization.session_scope)
+    completion = AsyncMock(return_value=({}, {}))
+    monkeypatch.setattr(metadata_agent, "complete_json", completion)
     model.return_value = (NORMALIZED, {})
     return session, identifier, item.id, model, completion
 
@@ -152,6 +138,11 @@ async def test_cancelled_campaign_cannot_persist_post_model_claims(campaign_runt
 @pytest.mark.asyncio
 async def test_enrichment_phase_updates_item_and_campaign_counts_atomically(campaign_runtime):
     session, identifier, item_id, _, completion = campaign_runtime
+    await fetch(
+        session,
+        "UPDATE provider SET ai_usage_policy='allowed' WHERE slug='bangumi' RETURNING id",
+        {},
+    )
     await campaigns.transition(session, identifier, "normalizing", "reconciling")
     await campaigns.transition(session, identifier, "reconciling", "enriching")
     await fetch(
@@ -161,7 +152,6 @@ async def test_enrichment_phase_updates_item_and_campaign_counts_atomically(camp
             "id": identifier,
             "params": json.dumps(
                 {
-                    "enrich_apply": True,
                     "enrich_languages": ["zh"],
                 }
             ),
@@ -171,7 +161,7 @@ async def test_enrichment_phase_updates_item_and_campaign_counts_atomically(camp
     assert await campaign_ai.run_phase(identifier, "worker", "enriching", deadline=monotonic() + 60)
     completion.assert_awaited_once()
     row = await campaigns.get_campaign(session, identifier)
-    assert row.parameters["enrichment"] == {"claims": 1, "applied": 1, "abstained": 0, "skipped": 0}
+    assert row.parameters["enrichment"] == {"drafts": 1, "abstained": 0, "skipped": 0}
     assert (
         await fetch(
             session, "SELECT ai_enriched_at FROM sync_work_item WHERE id=:id", {"id": item_id}

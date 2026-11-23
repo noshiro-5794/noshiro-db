@@ -16,7 +16,7 @@ SQL execution. Mutable application state lives in PostgreSQL or Redis.
 | `contexts/ingestion` | Provider records, observations, facts, and projected metadata |
 | `contexts/synchronization` | Durable imports, campaigns, work items, and staff synchronization routes |
 | `contexts/matching` | Candidate review, model evaluation, proposals, and matching routes |
-| `contexts/knowledge` and `contexts/scheduling` | Evidence workflows, enrichment, and airing schedule policy |
+| `contexts/knowledge` and `contexts/scheduling` | Evidence workflows and airing schedule policy |
 | `integrations` | External provider clients and object storage |
 | `worker` | Celery registration, task adapters, scheduling, and provider import orchestration |
 | `mcp` | Internal proposal tools and authenticated public catalogue reads |

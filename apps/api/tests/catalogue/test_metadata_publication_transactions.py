@@ -46,11 +46,27 @@ async def test_model_draft_is_work_scoped_and_reads_through_publication(bangumi_
     assert await activate(session, entity_id=entity_id, language="en", input_hash="0" * 64) is None
     assert (await descriptions())[0] == "Published synopsis."
 
+    replacement = draft.model_copy(update={"description": "Updated synopsis."})
+    next_revision = await metadata_harness.submit_draft(session, replacement)
+    assert next_revision["id"] != saved["id"]
+    assert (await descriptions())[0] == "Published synopsis."
+    assert (
+        await activate(session, entity_id=entity_id, language="en", input_hash=draft.input_hash)
+        == (next_revision["id"])
+    )
+    assert (await descriptions())[0] == "Updated synopsis."
+    await fetch(
+        session,
+        "UPDATE entity_description SET text='New source wording.' WHERE id=:id RETURNING id",
+        {"id": draft.description_source_ids[0]},
+    )
+    assert await descriptions() == ["New source wording."]
+
     await fetch(
         session,
         "UPDATE provider SET ai_usage_policy='forbidden' WHERE slug='bangumi' RETURNING id",
         {},
     )
-    assert await descriptions() == ["Original description."]
+    assert await descriptions() == ["New source wording."]
     with pytest.raises(ValueError, match="evidence has changed"):
         await metadata_harness.submit_draft(session, draft)

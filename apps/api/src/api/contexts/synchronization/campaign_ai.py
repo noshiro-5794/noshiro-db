@@ -10,10 +10,10 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.index.resolution import cluster_ids
-from api.contexts.knowledge import agent_runs, enrichment, normalization
+from api.contexts.knowledge import agent_runs, normalization
 from api.contexts.knowledge.agent_runs import EvidenceContext, WriteGuard
-from api.contexts.knowledge.enrichment_models import CompletionInput
 from api.contexts.knowledge.normalization import NormalizationInput
+from api.contexts.presentation import metadata_harness
 from api.contexts.synchronization import campaigns
 from api.contexts.synchronization.discovery_step import positive_int
 from api.contexts.synchronization.domain import PROVIDER_NAMESPACES, LeaseLost
@@ -30,8 +30,6 @@ class SourceTarget:
     entity_id: UUID
     observation_id: UUID
     namespace: str
-    external_id: str
-    normalized: dict[str, Any]
     payload: dict[str, Any]
 
 
@@ -67,11 +65,11 @@ async def source_target(session: AsyncSession, campaign: Any, item: Any) -> Sour
     rows = await fetch(
         session,
         """
-        SELECT o.id AS observation_id,o.normalized_data,v.payload,ns.slug AS namespace,r.external_id
+        SELECT o.id AS observation_id,v.payload,ns.slug AS namespace
         FROM provider_record r JOIN provider_namespace ns ON ns.id=r.namespace_id
         JOIN provider p ON p.id=ns.provider_id
         JOIN LATERAL (
-          SELECT observation.id,observation.normalized_data,mapping.revision_id
+          SELECT observation.id,mapping.revision_id
           FROM provider_observation observation
           JOIN provider_current_observation current ON current.observation_id=observation.id
           LEFT JOIN mapping_run mapping ON mapping.id=observation.mapping_run_id
@@ -97,8 +95,6 @@ async def source_target(session: AsyncSession, campaign: Any, item: Any) -> Sour
         entity_id,
         row.observation_id,
         row.namespace,
-        row.external_id,
-        row.normalized_data or {},
         row.payload or {},
     )
 
@@ -191,73 +187,28 @@ async def normalize_item(campaign_id: UUID, item: Any, owner: str, deadline: flo
     return True
 
 
-async def enrich_item(campaign_id: UUID, item: Any, owner: str) -> dict[str, Any]:
+async def enrich_item(campaign_id: UUID, item: Any, owner: str) -> dict[str, int]:
     async with session_scope() as session:
         campaign = await campaigns.owned(session, campaign_id, owner, phase="enriching")
         target = await source_target(session, campaign, item)
         if target is None:
-            return {"claims": 0, "applied": 0, "abstained": 0, "skipped": 1}
-        members = await cluster_ids(session, target.entity_id)
-        rows = await fetch(
-            session,
-            "SELECT language,text FROM entity_name WHERE entity_id=ANY(:ids) ORDER BY id",
-            {"ids": list(members)},
-        )
-        names = {row.language: row.text for row in rows if row.language}
-        descriptions = await fetch(
-            session,
-            "SELECT DISTINCT language FROM entity_description WHERE entity_id=ANY(:ids)",
-            {"ids": list(members)},
-        )
-        existing_descriptions = {row.language for row in descriptions}
+            return {"skipped": 1}
         params = campaign.parameters or {}
-        languages = tuple(
-            params.get("enrich_languages")
-            or [
-                language.strip()
-                for language in os.environ.get("AI_ENRICH_LANGUAGES", "zh,ja,en").split(",")
-                if language.strip()
-            ]
+        languages = params.get("enrich_languages") or os.environ.get(
+            "AI_ENRICH_LANGUAGES", "zh-Hans,ja,en"
         )
-        missing = [f"title:{lang}" for lang in languages if lang not in names]
-        missing += [
-            f"description:{lang}" for lang in languages if lang not in existing_descriptions
-        ]
-        if not missing:
-            return {"claims": 0, "applied": 0, "abstained": 0, "strategy": "skipped"}
-        data = target.normalized
-        preferred = str(
-            data.get("title_cn") or data.get("name_cn") or next(iter(names.values()), "")
-        )
-        value = CompletionInput(
-            entity_id=str(target.entity_id),
-            provider=campaign.provider_slug,
-            external_id=target.external_id,
-            preferred_name=preferred,
-            original_name=str(data.get("title") or data.get("name") or ""),
-            source_language="",
-            release_date=str(data.get("date") or ""),
-            missing_fields=missing,
-            existing_names=names,
-        )
+        if isinstance(languages, str):
+            languages = languages.split(",")
         run_id = await ensure_run(session, campaign)
-        apply = bool(
-            params.get(
-                "enrich_apply",
-                os.environ.get("AI_ENRICH_APPLY", "false").lower() in {"1", "true", "yes", "on"},
+    guard = write_guard(campaign_id, owner, "enriching")
+    counts: dict[str, int] = {"drafts": 0, "skipped": 0, "abstained": 0}
+    for language in dict.fromkeys(str(item).strip()[:35] for item in languages):
+        if language:
+            outcome = await metadata_harness.generate(
+                entity_id=target.entity_id, language=language, run_id=run_id, before_write=guard
             )
-        )
-        confidence = float(
-            params.get("enrich_min_confidence", os.environ.get("AI_ENRICH_MIN_CONFIDENCE", "0.85"))
-        )
-    return await enrichment.complete(
-        value,
-        run_id=run_id,
-        observation_id=target.observation_id,
-        apply=apply,
-        min_confidence=confidence,
-        before_write=write_guard(campaign_id, owner, "enriching"),
-    )
+            counts[outcome] += 1
+    return counts
 
 
 async def run_phase(campaign_id: UUID, owner: str, phase: str, *, deadline: float) -> bool:
@@ -314,7 +265,7 @@ async def run_phase(campaign_id: UUID, owner: str, phase: str, *, deadline: floa
             if result is not None:
                 parameters = dict(campaign.parameters or {})
                 stats = dict(parameters.get("enrichment") or {})
-                for key in ("claims", "applied", "abstained", "skipped"):
+                for key in ("drafts", "abstained", "skipped"):
                     stats[key] = stats.get(key, 0) + int(result.get(key, 0))
                 parameters["enrichment"] = stats
                 await fetch(

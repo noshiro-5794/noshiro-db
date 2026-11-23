@@ -3,7 +3,9 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from api.contexts.knowledge import enrichment, normalization, web_evidence
+from api.contexts.knowledge import normalization
+from api.contexts.presentation import agent as metadata_agent
+from api.contexts.presentation import metadata_harness
 from api.contexts.synchronization import campaign_ai, campaigns, discovery_step
 from api.db import fetch
 from api.integrations.providers.catalog import CatalogPage
@@ -39,7 +41,7 @@ async def runtime(bangumi_session, monkeypatch):
             await session.rollback()
             raise
 
-    for module in [campaign_tasks, campaign_ai, enrichment, normalization, inference]:
+    for module in [campaign_tasks, campaign_ai, metadata_harness, normalization, inference]:
         monkeypatch.setattr(module, "session_scope", scope)
     discovery = AsyncMock(return_value=CatalogPage(("1",), None))
     monkeypatch.setattr(discovery_step, "discover_page", discovery)
@@ -49,7 +51,6 @@ async def runtime(bangumi_session, monkeypatch):
 
     importer = AsyncMock(side_effect=fetched)
     monkeypatch.setattr(campaign_imports, "fetch_source", importer)
-    monkeypatch.setattr(web_evidence, "gather", AsyncMock(return_value=[]))
     identifier = await campaigns.create_campaign(session, provider="bangumi", ai_mode="off")
     await session.commit()
     return session, identifier, discovery, importer
@@ -229,7 +230,12 @@ async def test_shadow_and_assisted_ai_phases_finish_one_durable_run(runtime, mon
         session,
         "UPDATE sync_campaign SET ai_mode='assisted',"
         "parameters='{}'::jsonb||CAST(:params AS jsonb) WHERE id=:id RETURNING id",
-        {"id": identifier, "params": '{"enrich_apply":true,"enrich_languages":["zh"]}'},
+        {"id": identifier, "params": '{"enrich_languages":["zh"]}'},
+    )
+    await fetch(
+        session,
+        "UPDATE provider SET ai_usage_policy='allowed' WHERE slug='bangumi' RETURNING id",
+        {},
     )
     await session.commit()
 
@@ -254,40 +260,20 @@ async def test_shadow_and_assisted_ai_phases_finish_one_durable_run(runtime, mon
             )
         ),
     )
-    monkeypatch.setattr(
-        enrichment,
-        "complete_json",
-        AsyncMock(
-            return_value=(
-                {
-                    "strategy": "complete",
-                    "proposals": [
-                        {
-                            "field": "title",
-                            "language": "zh",
-                            "script": "Hans",
-                            "text": "标题",
-                            "confidence": 0.99,
-                            "source": "model",
-                        }
-                    ],
-                },
-                {},
-            )
-        ),
-    )
+    monkeypatch.setattr(metadata_agent, "complete_json", AsyncMock(return_value=({}, {})))
     outcome = await campaign_tasks.execute(str(identifier), max_items=None, owner="worker")
     assert outcome.result["status"] == "completed"
     row = await campaigns.get_campaign(session, identifier)
-    assert row.parameters["enrichment"]["applied"] == 1
+    assert row.parameters["enrichment"]["drafts"] == 1
     assert row.quality_report["ai_claims_pending_review"] == 1
     assert (
         await fetch(session, "SELECT status FROM agent_run WHERE id=:id", {"id": row.agent_run_id})
     )[0].status == "succeeded"
     assert (await fetch(session, "SELECT count(*) AS n FROM ai_run", {}))[0].n == 2
-    assert (await fetch(session, "SELECT count(*) AS n FROM entity_name WHERE text='标题'", {}))[
+    assert (await fetch(session, "SELECT state FROM entity_metadata_revision", {}))[
         0
-    ].n == 1
+    ].state == "draft"
+    assert (await fetch(session, "SELECT count(*) AS n FROM entity_name", {}))[0].n == 1
 
 
 @pytest.mark.asyncio

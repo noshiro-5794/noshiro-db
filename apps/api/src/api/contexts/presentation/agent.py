@@ -1,10 +1,4 @@
-"""The model-backed generator.
-
-It chooses a title, rewrites the description and picks a cover. Everything else —
-the field choices — is copied from the bundle, because those are facts and the
-model is not asked to restate facts. Whatever it returns is still validated: a
-citation it invents is a rejected draft, not a page.
-"""
+"""Generate grounded work metadata from the permitted evidence bundle."""
 
 from __future__ import annotations
 
@@ -27,7 +21,7 @@ You decide what a catalogue page shows for one work. Reply with JSON only:
 Rules:
 - Cite only ids that appear in the bundle.
 - You may rewrite the description, but every number or date you state must appear
-  in a cited description or in the bundle's fields.
+  in a cited description.
 - Write in the requested language; if it is empty, write in the language of the
   descriptions you cite.
 - Do not invent facts. If the bundle does not support a detail, leave it out.
@@ -40,14 +34,6 @@ def _bundle_for_prompt(bundle: dict[str, Any]) -> dict[str, Any]:
         "entity": bundle["entity"],
         "names": bundle["names"],
         "descriptions": bundle["descriptions"],
-        "fields": [
-            {
-                "predicate": item["predicate"],
-                "value": item["value"],
-                "fact_id": item["fact_id"],
-            }
-            for item in bundle["fields"]
-        ],
         "media": bundle["media"],
     }
 
@@ -64,7 +50,6 @@ async def propose_with_model(
         description_text=str(result.get("description", "")),
         description_source_ids=[int(value) for value in result.get("description_source_ids", [])],
         cover_asset_id=(str(result["cover_asset_id"]) if result.get("cover_asset_id") else None),
-        field_choices=base.field_choices,
         is_machine_generated=True,
         confidence=None,
     )

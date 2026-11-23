@@ -29,14 +29,5 @@ def propose(bundle: dict[str, Any]) -> DisplayProposal:
         description_text=description["text"] if description else "",
         description_source_ids=[description["id"]] if description else [],
         cover_asset_id=cover,
-        field_choices=[
-            {
-                "field": item["predicate"],
-                "fact_id": item["fact_id"],
-                "chosen_value": item["value"],
-                "alternates": item["alternates"],
-            }
-            for item in bundle["fields"]
-        ],
         is_machine_generated=False,
     )

@@ -17,38 +17,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.db import fetch
 
-from .provenance import current_rows
+from .provenance import DESCRIPTION_CHARS, current_rows
 from .summary import entity_summary
 
-BUNDLE_VERSION = "v2"
+BUNDLE_VERSION = "v3"
 
 MAX_NAMES = 20
 MAX_DESCRIPTIONS = 3
 MAX_MEDIA = 6
-MAX_ALTERNATES = 2
-DESCRIPTION_CHARS = 1500
 AI_SOURCE = " AND (NOT :for_ai OR provider.ai_usage_policy = 'allowed')"
-FACT_POLICY = """
-    AND fact.safety NOT IN ('explicit', 'suggestive') AND fact.spoiler_level = 0
-    AND (
-        (NOT :for_ai AND NOT EXISTS (
-            SELECT 1 FROM fact_evidence AS evidence WHERE evidence.fact_id = fact.id
-        ))
-        OR EXISTS (
-            SELECT 1
-            FROM fact_evidence AS evidence
-            JOIN provider_observation AS observation ON observation.id = evidence.observation_id
-            JOIN provider_current_observation AS pointer ON pointer.observation_id = observation.id
-              AND pointer.provider_record_id = observation.provider_record_id
-            JOIN provider_record AS record ON record.id = observation.provider_record_id
-            JOIN provider_namespace AS namespace ON namespace.id = record.namespace_id
-            JOIN provider ON provider.id = namespace.provider_id
-            WHERE evidence.fact_id = fact.id AND record.status = 'active'
-              AND provider.redistribution_policy <> 'forbidden'
-              AND (NOT :for_ai OR provider.ai_usage_policy = 'allowed')
-        )
-    )
-"""
 
 
 async def _media(
@@ -151,71 +128,6 @@ async def _descriptions(
     ]
 
 
-async def _fields(session: AsyncSession, root: UUID, *, for_ai: bool) -> list[dict[str, Any]]:
-    decisions = await fetch(
-        session,
-        f"""
-        SELECT decision.predicate_id, decision.language, fact.id, fact.value,
-               fact.confidence, predicate.slug
-        FROM resolution_decision AS decision
-        JOIN fact ON fact.id = decision.selected_fact_id
-        JOIN predicate ON predicate.id = decision.predicate_id
-        WHERE decision.entity_id = CAST(:root AS uuid) AND decision.is_active
-          {FACT_POLICY}
-        ORDER BY predicate.slug, decision.language
-        """,
-        {"root": str(root), "for_ai": for_ai},
-    )
-    predicate_ids = [row.predicate_id for row in decisions]
-    alternates: dict[int, list[dict[str, Any]]] = {}
-    if predicate_ids:
-        rivals = await fetch(
-            session,
-            f"""
-            SELECT fact.id, fact.predicate_id, fact.value, fact.language,
-                   fact.confidence
-            FROM fact
-            WHERE fact.predicate_id = ANY(CAST(:pids AS bigint[]))
-              AND fact.entity_id = CAST(:root AS uuid)
-              AND fact.status <> 'rejected'
-              {FACT_POLICY}
-              AND NOT EXISTS (
-                SELECT 1 FROM resolution_decision AS decision
-                WHERE decision.entity_id = fact.entity_id
-                  AND decision.predicate_id = fact.predicate_id
-                  AND decision.language = fact.language
-                  AND decision.is_active
-                  AND decision.selected_fact_id = fact.id
-              )
-            ORDER BY fact.predicate_id, fact.confidence DESC, fact.id
-            """,
-            {"pids": predicate_ids, "root": str(root), "for_ai": for_ai},
-        )
-        for rival in rivals:
-            bucket = alternates.setdefault(rival.predicate_id, [])
-            if len(bucket) >= MAX_ALTERNATES:
-                continue
-            bucket.append(
-                {
-                    "fact_id": str(rival.id),
-                    "value": rival.value,
-                    "language": rival.language,
-                    "confidence": float(rival.confidence),
-                }
-            )
-    return [
-        {
-            "predicate": row.slug,
-            "language": row.language,
-            "fact_id": str(row.id),
-            "value": row.value,
-            "confidence": float(row.confidence),
-            "alternates": alternates.get(row.predicate_id, []),
-        }
-        for row in decisions
-    ]
-
-
 async def build_bundle(
     session: AsyncSession,
     *,
@@ -238,7 +150,6 @@ async def build_bundle(
         },
         "names": await _names(session, cluster_ids, for_ai=for_ai),
         "descriptions": await _descriptions(session, cluster_ids, language, for_ai=for_ai),
-        "fields": await _fields(session, root, for_ai=for_ai),
         "media": await _media(session, cluster_ids, for_ai=for_ai),
         "ai_evidence": for_ai,
     }

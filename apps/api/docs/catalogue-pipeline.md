@@ -42,30 +42,34 @@ Only the subject entity is in the metadata generation scope. Related episodes,
 credits, characters and works use deterministic catalogue read models. Names
 from sources remain available separately from the name chosen for publication.
 
-| Record | Suggested columns and constraints |
+| Record | Responsibility |
 | --- | --- |
-| Metadata revision | Stable revision ID, entity ID, language, title, short and full synopsis, cover asset ID, normalized field selections, evidence fingerprint, identity version, generator and policy versions, model and run ID, creation time |
-| Metadata evidence | Revision ID, field, citation position, and typed references to a name, description, fact, or media occurrence. Maintain links to its observation and apply field-level policy. |
-| Publication | Entity ID and language as the key, revision ID, published time and approving actor. Publish only revisions of the same entity and language. |
-| Generation run | Entity ID, language, evidence fingerprint, task and policy versions, status and budget. Capture validation, approvals, retries and costs through the existing harness audit. |
+| `entity_metadata_revision` | Candidate or approved title, synopsis, and cover per work and language. Stores the exact chosen title, references to the source name and asset, the evidence fingerprint, generator/model versions, and the reviewer. |
+| `entity_metadata_citation` | Ordered references to the source descriptions used by a revision, with a content digest for each excerpt. |
+| `entity_metadata_publication` | One current revision per work and language. A composite foreign key enforces the publication scope. |
+| `agent_step` and `ai_run` | Generation status, model, usage, and outcome. Worker-generated revisions reference their generating step. |
 
-The metadata revision deliberately preserves the text that was published.
-Facts, relationships and raw inputs retain their normal source identities.
-Rule-generated output uses the same validation and publication boundary.
-Publish atomically after rechecking current evidence and identity membership.
-If a source is withdrawn, replace or invalidate affected content before it is
-served again. Public API and MCP share the same read model.
+Approval checks the evidence fingerprint and current identity within the publication
+transaction. The previous approved revision remains available for review. Each
+public read rechecks current source evidence and policy before serving a revision.
+The site uses deterministic name, description, and cover selection when a published
+value becomes ineligible.
 
 ## Harness and tools
 
-Reuse the agent runtime for budgets, retries, transcripts and structured
-proposals. Provide narrowly scoped tools for reading an entity's permitted
-evidence, reading validation results, and submitting a draft. The worker and
-the internal MCP server share validation and draft persistence. The publication
-service owns approval and activation. Pass only current evidence permitted for
-AI use to a model and exclude provider engagement metrics and relationship
-collections from metadata inputs. Keep model service settings and task rollout
-separate from the production automatic matching pause.
+The internal MCP tools `get_metadata_evidence` and `submit_metadata_draft` use
+the same scope and validation as the campaign worker. Model inputs contain
+eligible names, source descriptions, and cover options for one work. The campaign
+worker records proposals as drafts. Curators inspect revisions and publish
+against the evidence fingerprint:
+
+```sh
+uv run python -m scripts.work_metadata show ENTITY_UUID --language en
+uv run python -m scripts.work_metadata publish ENTITY_UUID EVIDENCE_HASH --language en
+```
+
+Public API and MCP read the same publication. The model never receives third-party
+rating or popularity values, episodes, credits, characters, or related works.
 
 ## Ranking and migration
 
