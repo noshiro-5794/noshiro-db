@@ -10,7 +10,6 @@ from api.worker.subject_mapping import (
     normalize_key,
     subject_date,
     subject_type,
-    tag_names,
     work_facts,
 )
 
@@ -42,10 +41,6 @@ def test_a_malformed_date_is_absent_rather_than_wrong() -> None:
     assert subject_date({"date": "2020-13-01"}) is None
     assert subject_date({"date": ""}) is None
     assert subject_date({}) is None
-
-
-def test_tags_preserve_source_text_and_drop_empty_values() -> None:
-    assert tag_names({"meta_tags": ["  Sci-Fi ", "", "DRAMA"]}) == ["Sci-Fi", "DRAMA"]
 
 
 def test_infobox_values_are_flattened_from_both_shapes() -> None:
@@ -113,7 +108,7 @@ def test_facts_keep_their_declared_types() -> None:
     assert facts["platform"] == ("TV", "string")
     assert facts["series"] == (True, "boolean")
     assert facts["episode-count"] == (12, "number")
-    assert facts["provider-tags"] == (["SF"], "json")
+    assert "provider-tags" not in facts
 
 
 def test_absent_values_contribute_no_fact() -> None:

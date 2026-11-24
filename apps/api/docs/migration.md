@@ -28,5 +28,11 @@ recovery, including the ranking and metadata replacements.
 The remaining revisions describe their downgrade behavior in the migration
 source. Test recovery on a restored copy before using it on production data.
 
+Revisions `0020` and `0021` remove redundant data. The visual novel profile
+retirement verifies that source revisions still contain its stored values.
+Fact-decision compaction preserves real changes, including a return to a
+previous decision after a different value or a gap. Measure the compaction on
+a restored copy with production-scale history before scheduling the upgrade.
+
 The migration history includes the Django retirement, refresh-token table
 renames, and transitional view removal. [Historical migration records](history/README.md)

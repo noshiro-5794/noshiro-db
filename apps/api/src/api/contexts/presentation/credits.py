@@ -6,10 +6,11 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.contexts.identity.roles import role_key, role_label
 from api.db import fetch
 
 from .provenance import PROVENANCE, PROVENANCE_JOINS, row_provenance
-from .source_preference import priority, role_key
+from .source_preference import priority
 from .summary import public_summary
 
 CURRENT_CREDIT = """
@@ -67,7 +68,7 @@ async def entity_credits(
         seen.add(key)
         credits.append(
             {
-                "role": row.role,
+                "role": role_label(row.role, language),
                 "credited_as": row.credited_as,
                 "contributor": contributor,
                 "provenance": row_provenance(row),

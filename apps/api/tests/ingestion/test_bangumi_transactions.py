@@ -82,8 +82,17 @@ async def test_subject_metadata_names_facts_and_rating_history_match_source(bang
         {},
     )
     by_slug = {row.slug: (row.value, row.json_pointer) for row in values}
-    assert by_slug["provider-tags"] == (["Sci-Fi", "DRAMA"], "/meta_tags")
+    assert "provider-tags" not in by_slug
     assert by_slug["provider-infobox"] == ([{"key": "Alias", "value": ["Alternative"]}], "/infobox")
+    decisions = (
+        await fetch(
+            session,
+            "SELECT count(*) AS total, count(*) FILTER (WHERE is_active) AS active"
+            " FROM resolution_decision WHERE entity_id = :id",
+            {"id": entity_id},
+        )
+    )[0]
+    assert decisions.total == decisions.active > 0
 
 
 @pytest.mark.asyncio
@@ -106,25 +115,19 @@ async def test_missing_episode_count_clears_only_the_owned_profile_field(bangumi
 
 
 @pytest.mark.asyncio
-async def test_galgame_profile_is_created_and_preserves_existing_details(bangumi_session):
+async def test_bangumi_tags_classify_visual_novels_without_projecting_tag_facts(bangumi_session):
     session = bangumi_session
     payload = {"id": 1, "type": 4, "meta_tags": ["galgame"]}
     entity_id = await subject_import.import_subject(session, payload)
-    await fetch(
-        session,
-        "UPDATE galgame_profile SET playtime_minutes=1000, development_status='finished'"
-        " WHERE work_id=:id RETURNING work_id",
-        {"id": entity_id},
+    works = await fetch(
+        session, "SELECT work_type FROM work WHERE entity_id=:id", {"id": entity_id}
     )
-    await subject_import.import_subject(session, payload)
-    profile = (
-        await fetch(session, "SELECT * FROM galgame_profile WHERE work_id=:id", {"id": entity_id})
-    )[0]
-    assert (profile.playtime_minutes, profile.development_status) == (1000, "finished")
+    assert [row.work_type for row in works] == ["galgame"]
+    assert not await fetch(session, "SELECT id FROM predicate WHERE slug='provider-tags'", {})
 
 
 @pytest.mark.asyncio
-async def test_reviewed_aliases_are_applied_without_lowercasing_unmapped_terms(bangumi_session):
+async def test_global_aliases_do_not_rewrite_source_work_fields(bangumi_session):
     session = bangumi_session
     for source, preferred, reviewed in (
         ("\uff30\uff23", "Windows", True),
@@ -135,7 +138,7 @@ async def test_reviewed_aliases_are_applied_without_lowercasing_unmapped_terms(b
         await fetch(
             session,
             """
-            INSERT INTO index_term_alias
+            INSERT INTO taxonomy_alias
               (vocabulary, provider_namespace_id, source_text, normalized_key, preferred_term,
                language, script, confidence, is_reviewed, origin, term_id, created_at, updated_at)
             VALUES ('legacy', NULL, :source, :key, :preferred, '', '', 1, :reviewed,
@@ -154,9 +157,9 @@ async def test_reviewed_aliases_are_applied_without_lowercasing_unmapped_terms(b
         session, "SELECT p.slug, f.value FROM fact f JOIN predicate p ON p.id=f.predicate_id", {}
     )
     by_slug = {row.slug: row.value for row in values}
-    assert by_slug["platform"] == "Windows"
-    assert by_slug["provider-tags"] == ["Science Fiction", "DRAMA"]
-    assert by_slug["provider-infobox"] == [{"key": "别名", "value": ["Alternative"]}]
+    assert by_slug["platform"] == "\uff30\uff23"
+    assert "provider-tags" not in by_slug
+    assert by_slug["provider-infobox"] == [{"key": "Alias", "value": ["Alternative"]}]
 
 
 @pytest.mark.asyncio
@@ -263,7 +266,7 @@ async def test_refresh_entry_enforces_storage_policy_and_closes_transport(
 
 
 @pytest.mark.asyncio
-async def test_reviewed_alias_changes_create_a_new_observation_without_changing_the_raw_revision(
+async def test_global_alias_changes_do_not_create_new_source_observations(
     bangumi_session,
 ):
     session = bangumi_session
@@ -274,10 +277,10 @@ async def test_reviewed_alias_changes_create_a_new_observation_without_changing_
     await fetch(
         session,
         """
-        INSERT INTO index_term_alias
+        INSERT INTO taxonomy_alias
           (vocabulary, provider_namespace_id, source_text, normalized_key, preferred_term,
            language, script, confidence, is_reviewed, origin, term_id, created_at, updated_at)
-        VALUES ('legacy', NULL, 'Sci-Fi', 'sci-fi', 'Science Fiction', '', '', 1, true,
+        VALUES ('legacy', NULL, 'Alias', 'alias', '别名', '', '', 1, true,
                 'manual', NULL, now(), now()) RETURNING id
     """,
         {},
@@ -286,16 +289,16 @@ async def test_reviewed_alias_changes_create_a_new_observation_without_changing_
     current = (await fetch(session, "SELECT observation_id FROM provider_current_observation", {}))[
         0
     ].observation_id
-    assert current != first
+    assert current == first
     assert (await fetch(session, "SELECT count(*) AS n FROM provider_revision", {}))[0].n == 1
     selected = await fetch(
         session,
         """
         SELECT f.value FROM resolution_decision d JOIN predicate p ON p.id=d.predicate_id
         JOIN fact f ON f.id=d.selected_fact_id
-        WHERE d.is_active AND p.slug='provider-tags'
+        WHERE d.is_active AND p.slug='provider-infobox'
     """,
         {},
     )
-    assert [row.value for row in selected] == [["Science Fiction", "DRAMA"]]
-    assert (await fetch(session, "SELECT count(*) AS n FROM provider_observation", {}))[0].n == 2
+    assert [row.value for row in selected] == [[{"key": "Alias", "value": ["Alternative"]}]]
+    assert (await fetch(session, "SELECT count(*) AS n FROM provider_observation", {}))[0].n == 1

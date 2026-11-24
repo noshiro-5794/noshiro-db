@@ -98,10 +98,15 @@ export const indexApi = {
       .listSubjectEpisodes(subjectId, { page: 1, page_size: 100 }, context)
       .then((page) => page.results.find((episode) => episode.id === String(episodeId)) ?? null),
 
-  listSubjectStaff: (subjectId: UUID, query: SubjectStaffQuery = {}, context: ApiRequestContext = {}) =>
+  listSubjectStaff: (
+    subjectId: UUID,
+    query: SubjectStaffQuery = {},
+    context: ApiRequestContext & { language?: string } = {},
+  ) =>
     api
       .get<SubjectStaff[]>(`/api/v1/index/entities/${encodePath(subjectId)}/credits/`, {
-        ...context,
+        ...(context.signal === undefined ? {} : { signal: context.signal }),
+        ...(context.language ? { headers: { 'Accept-Language': context.language } } : {}),
         decode: (value) => {
           if (!Array.isArray(value)) throw new TypeError('Invalid entity credits response');
           return value.map(decodeSubjectStaff);
@@ -121,7 +126,7 @@ export const indexApi = {
         };
       }),
 
-  listSubjectStaffRoles: (subjectId: UUID, context: ApiRequestContext = {}) =>
+  listSubjectStaffRoles: (subjectId: UUID, context: ApiRequestContext & { language?: string } = {}) =>
     indexApi.listSubjectStaff(subjectId, { page: 1, page_size: 1_000 }, context).then((page) =>
       decodeSubjectStaffRoles({
         roles: [

@@ -84,6 +84,8 @@ Relations and credits use provider priority independently of the model.
 
 [Catalogue pipeline design](catalogue-pipeline.md)
 
+[Database dictionary](data-dictionary.md)
+
 ## AI and provider synchronization
 
 Workers can create structured proposals from source observations and artifacts.

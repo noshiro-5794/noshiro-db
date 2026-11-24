@@ -105,10 +105,6 @@ def _infobox_value(value: Any) -> list[str]:
     return []
 
 
-def tag_names(data: dict[str, Any]) -> list[str]:
-    return meta_tags(data)
-
-
 def map_subject(data: dict[str, Any]) -> dict[str, Any]:
     """The mapped shape the write primitives consume."""
     large, medium = image_urls(data)
@@ -129,7 +125,6 @@ def map_subject(data: dict[str, Any]) -> dict[str, Any]:
         if isinstance(data.get("total_episodes"), int)
         else None,
         "infobox": infobox_entries(data),
-        "tags": tag_names(data),
     }
 
 
@@ -143,7 +138,6 @@ __all__ = [
     "normalize_key",
     "subject_date",
     "subject_type",
-    "tag_names",
     "work_facts",
 ]
 
@@ -162,7 +156,6 @@ def work_facts(mapped: dict[str, Any]) -> dict[str, tuple[Any, str]]:
         "volumes": mapped.get("volumes"),
         "episode-count": mapped.get("total_episodes") or mapped.get("eps"),
         "provider-infobox": mapped.get("infobox") or None,
-        "provider-tags": mapped.get("tags") or None,
     }
     out: dict[str, tuple[Any, str]] = {}
     for slug, value in candidates.items():

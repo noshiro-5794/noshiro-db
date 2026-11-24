@@ -342,6 +342,7 @@ def _select(facts: list[Any]) -> tuple[Any, str]:
 
 
 async def _rebuild(session: AsyncSession, *, root: Any, predicate_id: Any, language: str) -> None:
+    await fetch(session, "SELECT id FROM entity WHERE id = :root FOR NO KEY UPDATE", {"root": root})
     ids = await cluster_ids(session, root)
     facts = [
         fact
@@ -350,12 +351,22 @@ async def _rebuild(session: AsyncSession, *, root: Any, predicate_id: Any, langu
     ]
     facts.sort(key=lambda item: (-item.confidence, item.id))
     selected, reason = _select(facts)
+    parameters = {
+        "root": root,
+        "predicate": predicate_id,
+        "language": language,
+        "selected": selected.id if selected is not None else None,
+        "policy": POLICY_VERSION,
+        "reason": reason,
+        "has_facts": bool(facts),
+    }
     await fetch(
         session,
         "UPDATE resolution_decision SET is_active = false, updated_at = now()"
         " WHERE entity_id = :root AND predicate_id = :predicate AND language = :language"
-        " AND is_active RETURNING id",
-        {"root": root, "predicate": predicate_id, "language": language},
+        " AND is_active AND (NOT :has_facts OR selected_fact_id IS DISTINCT FROM :selected"
+        " OR policy_version <> :policy OR reason <> :reason) RETURNING id",
+        parameters,
     )
     if not facts:
         return
@@ -363,16 +374,12 @@ async def _rebuild(session: AsyncSession, *, root: Any, predicate_id: Any, langu
         session,
         "INSERT INTO resolution_decision (entity_id, predicate_id, language,"
         " selected_fact_id, policy_version, reason, is_active, created_at, updated_at)"
-        " VALUES (:root, :predicate, :language, :selected, :policy, :reason, true,"
-        " now(), now()) RETURNING id",
-        {
-            "root": root,
-            "predicate": predicate_id,
-            "language": language,
-            "selected": selected.id if selected is not None else None,
-            "policy": POLICY_VERSION,
-            "reason": reason,
-        },
+        " SELECT CAST(:root AS uuid), CAST(:predicate AS bigint), CAST(:language AS varchar),"
+        " CAST(:selected AS uuid), CAST(:policy AS varchar), CAST(:reason AS text), true,"
+        " now(), now()"
+        " WHERE NOT EXISTS (SELECT 1 FROM resolution_decision WHERE entity_id = :root"
+        " AND predicate_id = :predicate AND language = :language AND is_active) RETURNING id",
+        parameters,
     )
 
 

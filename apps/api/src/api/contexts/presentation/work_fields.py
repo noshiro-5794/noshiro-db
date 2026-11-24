@@ -11,10 +11,9 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.contexts.identity.roles import ROLE_NAMES, role_key, role_label
 from api.db import fetch
 from api.integrations.providers.vndb_vocabulary import PLATFORM_LABELS
-
-from .source_preference import role_key
 
 MAX_FIELDS = 120
 DETAILED_WORK_TYPES = {"anime", "galgame"}
@@ -432,7 +431,12 @@ async def save_choices(
 
 
 async def render(
-    session: AsyncSession, members: list[str], revision_id: int | None, *, machine: bool
+    session: AsyncSession,
+    members: list[str],
+    revision_id: int | None,
+    *,
+    machine: bool,
+    language: str,
 ) -> list[dict[str, Any]]:
     options = await candidates(session, members, for_ai=False)
     by_id = {item["id"]: item for item in options}
@@ -453,8 +457,10 @@ async def render(
             ):
                 by_key[row.field_key] = {**item, "label": row.label}
     for item in options:
-        if not item["key"].startswith("infobox:") or item["label"] in RECOGNIZED_INFOBOX_LABELS:
+        if not item["key"].startswith("infobox:"):
             by_key.setdefault(item["key"], item)
+        elif item["label"] in RECOGNIZED_INFOBOX_LABELS or role_key(item["label"]) in ROLE_NAMES:
+            by_key.setdefault(item["key"], {**item, "label": role_label(item["label"], language)})
     return [
         {key: item[key] for key in ("key", "label", "values", "provider")}
         for item in list(by_key.values())[:MAX_FIELDS]

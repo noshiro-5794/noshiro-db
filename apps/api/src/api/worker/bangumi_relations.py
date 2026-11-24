@@ -9,7 +9,6 @@ from api.contexts.identity.relations import canonical_relation_type
 from api.contexts.ingestion import observations as ingestion
 from api.contexts.ingestion import records
 from api.contexts.ingestion import relations as graph
-from api.contexts.synchronization.terms import preferred_terms
 from api.db import fetch
 from api.worker.bangumi_entities import provide_entity
 from api.worker.subject_import import provide_subject
@@ -50,11 +49,6 @@ def related_ids(subjects: list[Any], staff: list[Any], characters: list[Any]) ->
     return RelatedIds(collect_ids(subjects), people, collect_ids(characters))
 
 
-def role_for(item: dict[str, Any], preferred: dict[str, str]) -> str:
-    raw = str(item.get("relation") or "").strip()
-    return preferred.get(raw, raw)
-
-
 async def collection(
     session: AsyncSession,
     subject_id: str,
@@ -62,7 +56,6 @@ async def collection(
     schema: str,
     path: str,
     items: list[Any],
-    preferred: dict[str, str],
 ) -> Any:
     payload = {"items": items}
     recorded = await records.record_payload(
@@ -79,12 +72,8 @@ async def collection(
         session,
         provider_record_id=recorded.record_id,
         mapper=f"bangumi.{namespace}",
-        mapper_version=f"bangumi-{namespace}-v2",
-        normalized_data={
-            "_projection_hash": ingestion.normalized_hash(
-                [role_for(item, preferred) for item in items if isinstance(item, dict)]
-            ),
-        },
+        mapper_version=f"bangumi-{namespace}-v3",
+        normalized_data=payload,
         schema_name=schema,
         schema_version="1",
     )
@@ -113,12 +102,6 @@ async def import_relations(
             identifier: await provide_entity(session, identifier, "character")
             for identifier in sorted(identifiers.characters, key=int)
         }
-        values = [
-            str(item.get("relation") or "")
-            for item in [*(subjects or []), *(staff or []), *(characters or [])]
-            if isinstance(item, dict)
-        ]
-        preferred = await preferred_terms(session, values)
         if subjects is not None:
             observation = await collection(
                 session,
@@ -127,7 +110,6 @@ async def import_relations(
                 "index.work.relations",
                 "relations",
                 subjects,
-                preferred,
             )
             for index, item in enumerate(subjects):
                 identifier = source_id(item)
@@ -142,7 +124,7 @@ async def import_relations(
                     work_id,
                     target,
                     observation,
-                    relation_type=canonical_relation_type(role_for(item, preferred)),
+                    relation_type=canonical_relation_type(raw),
                     json_pointer=f"/items/{index}",
                     raw_relation=raw,
                 )
@@ -154,7 +136,6 @@ async def import_relations(
                 "index.work.credits",
                 "staff",
                 staff,
-                preferred,
             )
             for item in staff:
                 identifier = source_id(item)
@@ -168,7 +149,7 @@ async def import_relations(
                     work_id,
                     person,
                     observation,
-                    role=role_for(item, preferred) or "staff",
+                    role=str(item.get("relation") or "").strip() or "staff",
                     credited_as=str(item.get("name") or "")[:512],
                 )
         if characters is not None:
@@ -179,7 +160,6 @@ async def import_relations(
                 "index.work.characters",
                 "characters",
                 characters,
-                preferred,
             )
             for item in characters:
                 identifier = source_id(item)
@@ -202,7 +182,7 @@ async def import_relations(
                         {
                             "work": work_id,
                             "character": character,
-                            "role": role_for(item, preferred),
+                            "role": str(item.get("relation") or "").strip(),
                             "observation": observation,
                         },
                     )

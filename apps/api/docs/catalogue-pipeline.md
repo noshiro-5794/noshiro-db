@@ -46,6 +46,14 @@ providers. Provider policy and current observation checks run before selection.
 A staff decision grouping two distinct works creates a same-season relation.
 Published collection slugs retain their existing navigation targets.
 
+Credit roles and relationship types have stable vocabulary keys. The credit
+read model localizes known roles in Chinese, Japanese, and English and retains
+the source wording for unknown roles. The Web app localizes relationship keys.
+Raw credits and relationship evidence remain available for replay and review.
+Scoped `taxonomy_alias` entries support reviewed AI vocabulary normalization.
+Model proposals enter the claim audit trail before review. The source mapper
+preserves platform text, original role text, and source field labels.
+
 ## Entity metadata and publication
 
 Only the subject entity is in the metadata generation scope. Related episodes,

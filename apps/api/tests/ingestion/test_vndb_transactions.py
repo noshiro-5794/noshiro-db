@@ -57,13 +57,13 @@ async def test_work_projection_preserves_source_flags_safety_and_revision_metric
             session, "SELECT audience FROM entity WHERE id=:id", {"id": projection.entity_id}
         )
     )[0].audience == "adult"
-    profile = (
-        await fetch(
-            session, "SELECT * FROM galgame_profile WHERE work_id=:id", {"id": projection.entity_id}
-        )
-    )[0]
-    assert profile.playtime_minutes == 0
-    assert profile.development_status == "finished"
+    statuses = await fetch(
+        session,
+        "SELECT f.value FROM fact f JOIN predicate p ON p.id=f.predicate_id"
+        " WHERE f.entity_id=:id AND p.slug='vndb-status'",
+        {"id": projection.entity_id},
+    )
+    assert [row.value for row in statuses] == ["finished"]
     link = (
         await fetch(
             session,
@@ -111,13 +111,6 @@ async def test_work_projection_preserves_source_flags_safety_and_revision_metric
     refreshed = await project_work(session, "v1", {"id": "v1"})
     assert refreshed.entity_id == projection.entity_id
     assert refreshed.observation_id != projection.observation_id
-    profile = (
-        await fetch(
-            session, "SELECT * FROM galgame_profile WHERE work_id=:id", {"id": projection.entity_id}
-        )
-    )[0]
-    assert profile.playtime_minutes is None
-    assert profile.development_status == ""
     assert (
         await fetch(
             session, "SELECT audience FROM entity WHERE id=:id", {"id": projection.entity_id}

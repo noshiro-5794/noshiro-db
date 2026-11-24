@@ -131,7 +131,7 @@ export function SubjectPage() {
       <div className="grid items-start gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
         {/* Artwork leads on a phone; the sections follow the cover. */}
         <div className="order-1 min-w-0 lg:order-1">
-          <SubjectSidebar key={subject.id} subject={subject} />
+          <SubjectSidebar key={`${subject.id}:${locale}`} subject={subject} />
         </div>
 
         <div className="order-2 grid gap-5 self-start lg:order-2">

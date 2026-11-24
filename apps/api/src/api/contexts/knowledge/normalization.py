@@ -72,7 +72,7 @@ async def reviewed_alias(
     rows = await fetch(
         session,
         """
-        SELECT a.*,t.slug AS term_slug FROM index_term_alias a
+        SELECT a.*,t.slug AS term_slug FROM taxonomy_alias a
         JOIN taxonomy_term t ON t.id=a.term_id
         LEFT JOIN provider_namespace ns ON ns.id=a.provider_namespace_id
         WHERE a.vocabulary=:vocabulary AND a.normalized_key=:key AND a.is_reviewed

@@ -67,16 +67,16 @@ export const subjectQueries = {
         }),
     }),
 
-  staff: (subjectId: UUID, query?: SubjectStaffQuery) =>
+  staff: (subjectId: UUID, language: string, query?: SubjectStaffQuery) =>
     queryOptions({
-      queryKey: subjectQueryKeys.staff(subjectId, query),
-      queryFn: ({ signal }) => indexApi.listSubjectStaff(subjectId, query, { signal }),
+      queryKey: [...subjectQueryKeys.staff(subjectId, query), language],
+      queryFn: ({ signal }) => indexApi.listSubjectStaff(subjectId, query, { signal, language }),
     }),
 
-  staffRoles: (subjectId: UUID) =>
+  staffRoles: (subjectId: UUID, language: string) =>
     queryOptions({
-      queryKey: subjectQueryKeys.staffRoles(subjectId),
-      queryFn: ({ signal }) => indexApi.listSubjectStaffRoles(subjectId, { signal }),
+      queryKey: [...subjectQueryKeys.staffRoles(subjectId), language],
+      queryFn: ({ signal }) => indexApi.listSubjectStaffRoles(subjectId, { signal, language }),
     }),
 
   characters: (subjectId: UUID, query?: { page?: number; page_size?: number }) =>

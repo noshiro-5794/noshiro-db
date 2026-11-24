@@ -7,6 +7,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.contexts.identity.relations import canonical_relation_type
 from api.contexts.identity.resolution import public_clusters
 from api.db import fetch
 
@@ -115,13 +116,14 @@ async def entity_relations(
         target = targets.get(row.to_entity_id)
         if target is None or target.root == root:
             continue
-        key = (row.relation_type, target.root)
+        relation_type = canonical_relation_type(row.relation_type)
+        key = (relation_type, target.root)
         if key in seen:
             continue
         seen.add(key)
         rendered.append(
             {
-                "relation_type": row.relation_type,
+                "relation_type": relation_type,
                 "target": await entity_summary(
                     session,
                     root=target.root,

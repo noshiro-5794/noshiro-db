@@ -1,4 +1,4 @@
-"""Atomic Bangumi work projection with reviewed aliases and explicit-ID reconciliation."""
+"""Atomic Bangumi work projection and explicit-ID reconciliation."""
 
 import json
 from typing import Any
@@ -10,7 +10,6 @@ from api.contexts.identity import vndb
 from api.contexts.ingestion import archive, entities, facts, metrics, profiles, records
 from api.contexts.ingestion import metadata as presentation
 from api.contexts.ingestion import observations as ingestion
-from api.contexts.synchronization.terms import preferred_terms
 from api.db import fetch
 from api.shared.title_language import title_language
 from api.worker.subject_mapping import map_subject, work_facts
@@ -19,19 +18,8 @@ PROVIDER = "bangumi"
 SUBJECT_NAMESPACE = "subject"
 RESOURCE_TYPE = "subject"
 MAPPER = "bangumi.subject"
-MAPPER_VERSION = "bangumi-subject-v3"
+MAPPER_VERSION = "bangumi-subject-v5"
 SCHEMA_VERSION = "bangumi-api-v0"
-
-
-async def normalize_subject(session: AsyncSession, mapped: dict[str, Any]) -> None:
-    values = [mapped["platform"], *mapped["tags"], *(entry["key"] for entry in mapped["infobox"])]
-    preferred = await preferred_terms(session, values)
-    mapped["platform"] = preferred.get(mapped["platform"], mapped["platform"])[:256]
-    tags = [preferred.get(tag, tag) for tag in mapped["tags"]]
-    mapped["tags"] = [tag for tag in tags if tag]
-    for entry in mapped["infobox"]:
-        entry["key"] = preferred.get(entry["key"], entry["key"])
-    mapped["infobox"] = [entry for entry in mapped["infobox"] if entry["key"] or entry["value"]]
 
 
 def fact_pointer(slug: str, mapped: dict[str, Any], data: dict[str, Any]) -> str:
@@ -45,7 +33,6 @@ def fact_pointer(slug: str, mapped: dict[str, Any], data: dict[str, Any]) -> str
         "series": "/series",
         "volumes": "/volumes",
         "provider-infobox": "/infobox",
-        "provider-tags": "/metatag" if data.get("meta_tags") is None else "/meta_tags",
     }[slug]
 
 
@@ -57,8 +44,6 @@ async def project_subject(
     mapper_version: str = MAPPER_VERSION,
 ) -> Any:
     mapped = map_subject(data)
-    await normalize_subject(session, mapped)
-    # Reviewed aliases can change while the source revision remains identical.
     observation_id = await ingestion.record_observation(
         session,
         provider_record_id=record_id,
@@ -118,16 +103,6 @@ async def project_subject(
             episode_count=mapped["total_episodes"] or mapped["eps"] or None,
             premiered_on=mapped["date"],
             replace_episode_count=True,
-        )
-    elif mapped["subject_type"] == "galgame":
-        await fetch(
-            session,
-            """
-            INSERT INTO galgame_profile
-              (work_id, playtime_minutes, development_status, created_at, updated_at)
-            VALUES (:work, NULL, '', now(), now()) ON CONFLICT DO NOTHING RETURNING work_id
-            """,
-            {"work": entity.work_id},
         )
     for slug, (value, value_type) in work_facts(mapped).items():
         await facts.record_fact(

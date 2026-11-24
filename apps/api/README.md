@@ -15,5 +15,6 @@ Pydantic v2, SQLAlchemy async sessions, Alembic, Celery, and MCP.
 - [Development](docs/development.md) covers local services, environment, and tests.
 - [Architecture](docs/architecture.md) explains package boundaries and conventions.
 - [Data model](docs/data-model.md) describes catalogue identity and source evidence.
+- [Database dictionary](docs/data-dictionary.md) describes every application table with examples.
 - [Migrations](docs/migration.md) covers fresh databases and existing deployments.
 - [Deployment](../../deploy/README.md) describes the production services.

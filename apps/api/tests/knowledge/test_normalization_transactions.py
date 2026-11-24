@@ -134,7 +134,7 @@ async def test_reviewed_namespace_alias_bypasses_model_and_keeps_evidence(normal
         await fetch(
             session,
             """
-            INSERT INTO index_term_alias
+            INSERT INTO taxonomy_alias
               (vocabulary,provider_namespace_id,source_text,normalized_key,preferred_term,
                language,script,confidence,is_reviewed,origin,term_id,created_at,updated_at)
             VALUES ('provider-tag',:namespace,'SF','sf',:preferred,:language,'Latn',0.99,:reviewed,

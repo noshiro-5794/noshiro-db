@@ -18,7 +18,7 @@ import { StaffDetail, type StaffDetailLabels } from './SubjectDetailPrimitives';
 const staffPageSize = 8;
 
 export function SubjectSidebar({ subject }: { subject: SubjectDetail }) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const emptyText = t('common.none');
   const [staffRole, setStaffRole] = useState('');
   const [staffPage, setStaffPage] = useState(1);
@@ -26,13 +26,13 @@ export function SubjectSidebar({ subject }: { subject: SubjectDetail }) {
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   const bangumiSubjectId = bangumiSubjectIdOf(subject);
   const staffQuery = useQuery(
-    subjectQueries.staff(subject.id, {
+    subjectQueries.staff(subject.id, locale, {
       page: staffPage,
       page_size: staffPageSize,
       ...(staffRole ? { role: staffRole } : {}),
     }),
   );
-  const staffRolesQuery = useQuery(subjectQueries.staffRoles(subject.id));
+  const staffRolesQuery = useQuery(subjectQueries.staffRoles(subject.id, locale));
   const staffGroups = groupStaffByRole(staffQuery.data?.results ?? []);
   const staffRoleOptions = [
     { label: t('subject.allRoles'), value: '' },

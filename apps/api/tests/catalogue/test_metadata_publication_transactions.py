@@ -115,7 +115,7 @@ async def test_extended_fields_select_source_evidence_without_rewriting_credits(
     evidence = await metadata_harness.evidence(session, entity_id=root, language="zh-Hans")
     bundle = evidence["bundle"]
     candidates = {item["key"]: item for item in bundle["fields"]}
-    assert candidates["infobox:分镜"]["values"] == [credit]
+    assert candidates["infobox:storyboard"]["values"] == [credit]
     assert candidates["broadcast-time"]["provider"] == "mal"
     assert not any(item["label"] in {"评分", "备注"} for item in candidates.values())
     draft = metadata_harness.MetadataDraft(
@@ -126,7 +126,7 @@ async def test_extended_fields_select_source_evidence_without_rewriting_credits(
         description="**芙莉莲**与同伴再度启程。\n\n他们仍在路上。",
         description_source_ids=[bundle["descriptions"][0]["id"]],
         fields=[
-            FieldChoice(evidence_id=candidates["infobox:分镜"]["id"], label="分镜"),
+            FieldChoice(evidence_id=candidates["infobox:storyboard"]["id"], label="分镜"),
             FieldChoice(evidence_id=candidates["broadcast-time"]["id"], label="播出时间"),
         ],
     )

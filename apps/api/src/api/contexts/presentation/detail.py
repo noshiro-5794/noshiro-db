@@ -146,7 +146,6 @@ async def _facts(
         JOIN predicate ON predicate.id = fact.predicate_id
         WHERE fact.entity_id = ANY(CAST(:ids AS uuid[]))
           AND fact.status <> 'rejected'
-          AND predicate.slug <> 'provider-tags'
           AND (NOT :has_display_fields OR predicate.slug <> 'provider-infobox')
           AND (
             NOT EXISTS (SELECT 1 FROM fact_evidence WHERE fact_id = fact.id)
@@ -333,6 +332,7 @@ async def entity_detail(
             cluster_ids,
             publication.id if publication else None,
             machine=bool(publication and publication.is_machine_generated),
+            language=language,
         )
         if summary["work_type"] in DETAILED_WORK_TYPES and content_allowed
         else [],

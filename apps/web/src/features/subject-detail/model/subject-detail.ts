@@ -358,6 +358,29 @@ export function relationTitle(relation: SubjectRelation, fallback = 'Untitled') 
   return relation.subject.display_title || relation.subject.title || relation.subject.title_cn || fallback;
 }
 
+const relationLabelKeys: Partial<Record<string, MessageKey>> = {
+  adaptation: 'subject.relationAdaptation',
+  'alternate-version': 'subject.relationAlternateVersion',
+  fandisc: 'subject.relationFandisc',
+  'full-story': 'subject.relationFullStory',
+  'original-version': 'subject.relationOriginalVersion',
+  'parent-story': 'subject.relationParentStory',
+  prequel: 'subject.relationPrequel',
+  related: 'subject.related',
+  'same-season': 'subject.relationSameSeason',
+  'same-series': 'subject.relationSameSeries',
+  'same-setting': 'subject.relationSameSetting',
+  sequel: 'subject.relationSequel',
+  'shares-characters': 'subject.relationSharedCharacters',
+  'side-story': 'subject.relationSideStory',
+  summary: 'subject.relationSummary',
+};
+
+export function relationLabel(type: string, t: (key: MessageKey) => string) {
+  const key = relationLabelKeys[type];
+  return key ? t(key) : type.trim() || t('subject.related');
+}
+
 export function groupRelationsForDisplay(relations: SubjectRelation[], fallback: string): RelationDisplayGroup[] {
   const groups = new Map<string, RelationDisplayGroup>();
 

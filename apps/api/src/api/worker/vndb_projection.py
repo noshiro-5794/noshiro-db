@@ -226,23 +226,6 @@ async def project_work(session: AsyncSession, vndb_id: str, data: dict[str, Any]
     )
     projection = Projection(entity_id, record_id, observation_id)
     await entities.ensure_work(session, entity_id=entity_id, work_type="galgame")
-    await fetch(
-        session,
-        """
-        INSERT INTO galgame_profile
-          (work_id, playtime_minutes, development_status, created_at, updated_at)
-        VALUES (:work, :minutes, :status, now(), now())
-        ON CONFLICT (work_id) DO UPDATE
-          SET playtime_minutes=EXCLUDED.playtime_minutes,
-              development_status=EXCLUDED.development_status, updated_at=now()
-        RETURNING work_id
-        """,
-        {
-            "work": entity_id,
-            "minutes": mapping.positive_int(data.get("length_minutes")),
-            "status": mapping.development_status(data.get("devstatus")),
-        },
-    )
     await write_names(session, projection, mapping.work_names(data))
     await write_description(session, projection, data)
     await write_media(session, projection, data.get("image") or {}, purpose="poster")
