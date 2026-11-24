@@ -153,13 +153,13 @@ async def test_reimport_does_not_downgrade_character_or_episode_audience(bangumi
 
 
 @pytest.mark.asyncio
-async def test_reviewed_relation_alias_replaces_current_role_and_retains_history(bangumi_session):
+async def test_global_aliases_do_not_rewrite_source_roles(bangumi_session):
     session = bangumi_session
     await bangumi_sync.project_batch(session, 1, batch())
     await fetch(
         session,
         """
-        INSERT INTO index_term_alias
+        INSERT INTO taxonomy_alias
           (vocabulary, provider_namespace_id, source_text, normalized_key, preferred_term,
            language, script, confidence, is_reviewed, origin, term_id, created_at, updated_at)
         VALUES ('legacy', NULL, '主角', '主角', '主演', '', '', 1, true,
@@ -175,5 +175,5 @@ async def test_reviewed_relation_alias_replaces_current_role_and_retains_history
         "ON c.observation_id=a.observation_id WHERE c.mapper='bangumi.subject-characters'",
         {},
     )
-    assert [row.role for row in roles] == ["主演"]
-    assert (await fetch(session, "SELECT count(*) AS n FROM appearance", {}))[0].n == 2
+    assert [row.role for row in roles] == ["主角"]
+    assert (await fetch(session, "SELECT count(*) AS n FROM appearance", {}))[0].n == 1

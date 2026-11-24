@@ -17,6 +17,8 @@ import {
   PublicReviewsSection,
   SubjectDescriptionSection,
   SubjectMarkSection,
+  SubjectMetadataSection,
+  subjectAttributes,
   SubjectReviewSection,
   SubjectSectionNav,
   SubjectSidebar,
@@ -34,7 +36,7 @@ import { PageHeading } from '@/shared/ui/PageHeading';
 const subjectRoute = getRouteApi('/entities/$subjectId');
 
 export function SubjectPage() {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const params = subjectRoute.useParams();
   const subjectId = parseUuid(params.subjectId);
   const location = useLocation();
@@ -43,7 +45,7 @@ export function SubjectPage() {
   const [isMarkDialogOpen, setIsMarkDialogOpen] = useState(false);
 
   const detailQuery = useQuery({
-    ...subjectQueries.detail(subjectId ?? ''),
+    ...subjectQueries.detail(subjectId ?? '', locale),
     enabled: Boolean(subjectId),
   });
   const contextQuery = useQuery({
@@ -83,6 +85,7 @@ export function SubjectPage() {
   }
 
   const subject = detailQuery.data;
+  const metadata = subjectAttributes(subject);
   const finishedPrimaryCount = progress?.finished_count ?? 0;
   const totalPrimaryCount = progress?.total_episodes ?? subject.episode_count;
   const anchorScrollClass = 'scroll-mt-[calc(var(--ui-sticky-content-top)+3rem)]';
@@ -98,7 +101,7 @@ export function SubjectPage() {
         image={seoImageOf(subject)}
         path={routes.entity(subject.id)}
       />
-      <SubjectSectionNav />
+      <SubjectSectionNav showMetadata={metadata.length > 0} />
       <PageHeading
         actions={
           <Button
@@ -119,10 +122,16 @@ export function SubjectPage() {
         eyebrow={t('subject.title')}
         title={titleOf(subject, t('common.untitledSubject'))}
       />
+      {subject.original_title ? (
+        <p className="mb-5 mt-1 text-sm text-muted-foreground">
+          <span className="mr-2">{t('subject.originalTitle')}</span>
+          <span lang={subject.original_title.language}>{subject.original_title.text}</span>
+        </p>
+      ) : null}
       <div className="grid items-start gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
         {/* Artwork leads on a phone; the sections follow the cover. */}
         <div className="order-1 min-w-0 lg:order-1">
-          <SubjectSidebar key={subject.id} subject={subject} />
+          <SubjectSidebar key={`${subject.id}:${locale}`} subject={subject} />
         </div>
 
         <div className="order-2 grid gap-5 self-start lg:order-2">
@@ -153,6 +162,10 @@ export function SubjectPage() {
             />
           </div>
 
+          <SubjectDescriptionSection className={anchorScrollClass} subject={subject} />
+
+          {metadata.length > 0 ? <SubjectMetadataSection attributes={metadata} className={anchorScrollClass} /> : null}
+
           <EpisodesSection
             key={subject.id}
             className={anchorScrollClass}
@@ -160,8 +173,6 @@ export function SubjectPage() {
             subject={subject}
             userSubjectExists={Boolean(userSubject)}
           />
-
-          <SubjectDescriptionSection className={anchorScrollClass} subject={subject} />
 
           <CharactersSection key={`characters:${subject.id}`} className={anchorScrollClass} subjectId={subject.id} />
 

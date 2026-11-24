@@ -1,6 +1,7 @@
 """Pure VNDB mappings for names, partial dates, media and source facts."""
 
 from calendar import monthrange
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date
 from typing import Any
@@ -16,6 +17,20 @@ class Fact:
     value_type: str
     json_pointer: str
     spoiler_level: int = 0
+
+
+VNDB_STAFF_LABELS = {
+    "scenario": "Scenario",
+    "director": "Director",
+    "chardesign": "Character design",
+    "art": "Artwork",
+    "music": "Music",
+    "songs": "Songs",
+    "translator": "Translation",
+    "editor": "Editing",
+    "qa": "Quality assurance",
+    "staff": "Production staff",
+}
 
 
 def simple_names(data: dict[str, Any]) -> list[SourceName]:
@@ -61,7 +76,11 @@ def work_names(data: dict[str, Any]) -> list[SourceName]:
         for alias in data.get("aliases") or []
         if isinstance(alias, str) and alias
     )
-    names.extend(simple_names(data))
+    names.extend(
+        name
+        for name in simple_names(data)
+        if not name.is_original or not any(original.is_original for original in names)
+    )
     return names
 
 
@@ -147,6 +166,42 @@ def _optional_fact(
     return [Fact(slug, name, value, value_type, f"/{field}")]
 
 
+def _credit_fields(data: dict[str, Any]) -> list[Fact]:
+    editions = {
+        item["eid"]: item["name"]
+        for item in data.get("editions") or []
+        if isinstance(item, dict)
+        and isinstance(item.get("eid"), int)
+        and isinstance(item.get("name"), str)
+        and item["name"].strip()
+    }
+    credits = defaultdict(list)
+    for item in data.get("staff") or []:
+        if not isinstance(item, dict):
+            continue
+        role = item.get("role")
+        name = item.get("original") or item.get("name")
+        if not isinstance(role, str) or not isinstance(name, str) or not role or not name:
+            continue
+        qualifiers = [
+            part
+            for part in (editions.get(item.get("eid")), item.get("note"))
+            if isinstance(part, str) and part.strip()
+        ]
+        qualifier = " · ".join(qualifiers)
+        credits[role].append(f"{name} ({qualifier})" if qualifier else name)
+    fields = [
+        {"key": VNDB_STAFF_LABELS[role], "value": list(dict.fromkeys(values))}
+        for role, values in credits.items()
+        if role in VNDB_STAFF_LABELS
+    ]
+    if editions:
+        fields.append({"key": "Translation editions", "value": list(editions.values())})
+    return (
+        [Fact("provider-infobox", "Provider infobox", fields, "json", "/staff")] if fields else []
+    )
+
+
 def work_facts(data: dict[str, Any]) -> list[Fact]:
     facts = []
     if data.get("released"):
@@ -168,9 +223,26 @@ def work_facts(data: dict[str, Any]) -> list[Fact]:
     for field, slug, name, value_type in (
         ("languages", "languages", "Languages", "json"),
         ("platforms", "platforms", "Platforms", "json"),
-        ("length_votes", "playtime-votes", "Playtime Votes", "number"),
     ):
         facts.extend(_optional_fact(data, field, slug, name, value_type))
+    for field, slug, label in (
+        ("olang", "vndb-original-language", "Original language"),
+        ("length", "vndb-length", "Estimated length"),
+    ):
+        facts.extend(
+            _optional_fact(data, field, slug, label, "string" if field == "olang" else "number")
+        )
+    if status := development_status(data.get("devstatus")):
+        facts.append(Fact("vndb-status", "Development status", status, "string", "/devstatus"))
+    for field, slug, label in (("developers", "vndb-developers", "Development"),):
+        names = [
+            item.get("original") or item.get("name")
+            for item in data.get(field) or []
+            if isinstance(item, dict) and not item.get("spoiler") and not item.get("lie")
+        ]
+        if names:
+            facts.append(Fact(slug, label, names, "json", "/" + field))
+    facts.extend(_credit_fields(data))
     return facts
 
 

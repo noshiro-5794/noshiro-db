@@ -16,6 +16,7 @@ import {
   groupRelationsForDisplay,
   isPrimaryRelation,
   paginateRelationGroups,
+  relationLabel,
   relationTitle,
 } from '../model/subject-detail';
 import { RelationItemContent } from './RelationItemContent';
@@ -44,6 +45,7 @@ export function RelationsSection({
   const visibleGroups = pages[currentPage - 1] ?? [];
   const rows = groups.flatMap((group) => group.items);
   const detailLinkState = routeBackState(location, subjectTitle);
+  const selectedRelationLabel = relation ? relationLabel(relation.relation, t) : '';
 
   return (
     <>
@@ -83,7 +85,7 @@ export function RelationsSection({
                 <section aria-labelledby={groupTitleId} className="grid gap-2.5" key={group.key}>
                   <div className="flex min-w-0 items-baseline justify-between gap-3">
                     <h3 className="m-0 truncate text-sm font-semibold text-foreground" id={groupTitleId}>
-                      {group.label}
+                      {relationLabel(group.label, t)}
                     </h3>
                     <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                       {group.items.length === group.totalCount
@@ -150,22 +152,18 @@ export function RelationsSection({
               <DialogHeader>
                 <DialogTitle>{relationTitle(relation, t('common.untitledSubject'))}</DialogTitle>
                 <DialogDescription>
-                  {[relation.subject.subject_type, relation.relation || t('subject.related')]
-                    .filter(Boolean)
-                    .join(' · ')}
+                  {[relation.subject.subject_type, selectedRelationLabel].filter(Boolean).join(' · ')}
                 </DialogDescription>
               </DialogHeader>
               <DetailShell
                 image={relation.subject.image_original || relation.subject.image_thumbnail}
                 title={relationTitle(relation, t('common.untitledSubject'))}
-                subtitle={[relation.relation || t('subject.related'), relation.subject.subject_type]
-                  .filter(Boolean)
-                  .join(' · ')}
+                subtitle={[selectedRelationLabel, relation.subject.subject_type].filter(Boolean).join(' · ')}
                 description={relation.subject.description}
                 emptyLabel={emptyText}
                 rows={detailRows([
                   [t('subject.type'), relation.subject.subject_type],
-                  [t('subject.relation'), relation.relation],
+                  [t('subject.relation'), selectedRelationLabel],
                   [t('subject.direction'), relation.direction],
                   [t('subject.date'), relation.subject.date],
                   [t('subject.platform'), relation.subject.platform],

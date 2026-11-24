@@ -19,9 +19,10 @@ def as_decimal(raw: Any) -> Decimal | None:
     if raw is None or raw == "" or isinstance(raw, bool):
         return None
     try:
-        return Decimal(str(raw))
+        value = Decimal(str(raw))
     except (InvalidOperation, TypeError, ValueError):
         return None
+    return value if value.is_finite() else None
 
 
 async def record_metrics(
@@ -32,7 +33,7 @@ async def record_metrics(
     observed_at: datetime,
     values: dict[str, Any],
 ) -> int:
-    """Upsert one row per metric, keyed by record, metric and observation time."""
+    """Upsert one row per metric, keyed by source record, entity, metric and time."""
     written = 0
     for metric, raw in values.items():
         value = as_decimal(raw)
@@ -41,10 +42,10 @@ async def record_metrics(
         await fetch(
             session,
             """
-            INSERT INTO metric_snapshot
+            INSERT INTO ranking.provider_metric
               (metric, value, sample_size, observed_at, entity_id, provider_record_id)
             VALUES (:metric, :value, NULL, :at, :entity, :record)
-            ON CONFLICT (provider_record_id, metric, observed_at)
+            ON CONFLICT (provider_record_id, entity_id, metric, observed_at)
             DO UPDATE SET value = EXCLUDED.value
             RETURNING id
             """,

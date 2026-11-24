@@ -6,6 +6,8 @@ from typing import Any
 
 from api.shared.timestamps import isoformat
 
+DESCRIPTION_CHARS = 1500
+
 PROVENANCE = """
     provider.slug AS provider_slug,
     namespace.slug AS namespace_slug,

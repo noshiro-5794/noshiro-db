@@ -24,6 +24,15 @@ PAYLOAD = {
     "broadcast": {"day_of_the_week": "thursday", "start_time": "00:30"},
     "start_season": {"year": 2026, "season": "winter"},
     "status": "currently_airing",
+    "source": "light_novel",
+    "rating": "pg_13",
+    "studios": [{"id": 1, "name": "Studio"}],
+    "genres": [
+        {"id": 8, "name": "Drama"},
+        {"id": 13, "name": "Historical"},
+        {"id": 67, "name": "Medical"},
+        {"id": 27, "name": "Shounen"},
+    ],
     "mean": 8.2,
     "rank": 100,
     "popularity": 1000,
@@ -59,10 +68,14 @@ async def test_mal_import_preserves_source_fields_metrics_and_replays_once(mal_s
         )
     )[0]
     assert membership.inclusion_reason == "MAL anime"
-    assert (await fetch(session, "SELECT count(*) AS n FROM metric_snapshot", {}))[0].n == 3
+    assert (await fetch(session, "SELECT count(*) AS n FROM ranking.provider_metric", {}))[0].n == 5
     assert (await fetch(session, "SELECT count(*) AS n FROM provider_revision", {}))[0].n == 1
     evidence = await fetch(session, "SELECT json_pointer FROM fact_evidence", {})
     assert {row.json_pointer for row in evidence} == set(mal_import.FACT_POINTERS.values())
+    projected = mal_import.fact_candidates(PAYLOAD)
+    assert projected["mal-genres"] == (["Drama"], "json")
+    assert projected["mal-themes"] == (["Historical", "Medical"], "json")
+    assert projected["mal-demographics"] == (["Shounen"], "json")
     await mal_import.import_anime(session, {"id": 1})
     profile = (
         await fetch(session, "SELECT * FROM anime_profile WHERE work_id=:id", {"id": entity_id})

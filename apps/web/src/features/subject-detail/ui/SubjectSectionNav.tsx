@@ -5,14 +5,15 @@ import { cn } from '@/shared/lib/cn';
 const sectionLinks = [
   ['#mark', 'subject.mark'],
   ['#reviews', 'reviews.title'],
-  ['#episodes', 'subject.episodes'],
   ['#description', 'subject.description'],
+  ['#work-metadata', 'subject.info'],
+  ['#episodes', 'subject.episodes'],
   ['#characters', 'subject.characters'],
   ['#relations', 'subject.relations'],
   ['#public-reviews', 'subject.publicReviews'],
 ] as const;
 
-export function SubjectSectionNav() {
+export function SubjectSectionNav({ showMetadata }: { showMetadata: boolean }) {
   const { t } = useI18n();
   const navRef = useRef<HTMLElement>(null);
   const [activeHref, setActiveHref] = useState<(typeof sectionLinks)[number][0]>('#mark');
@@ -52,7 +53,7 @@ export function SubjectSectionNav() {
       window.removeEventListener('resize', scheduleUpdate);
       window.removeEventListener('scroll', scheduleUpdate);
     };
-  }, []);
+  }, [showMetadata]);
 
   return (
     <nav
@@ -65,22 +66,24 @@ export function SubjectSectionNav() {
         className="flex max-w-full gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         data-slot="subject-section-links"
       >
-        {sectionLinks.map(([href, label]) => (
-          <a
-            aria-current={activeHref === href ? 'location' : undefined}
-            className={cn(
-              'inline-flex h-9 shrink-0 items-center border-b-2 border-transparent px-2.5 text-xs font-medium text-muted-foreground transition-[color,border-color,background-color] duration-[var(--ui-transition-fast)] hover:bg-muted hover:text-foreground',
-              activeHref === href && 'border-[var(--ui-accent)] text-foreground',
-            )}
-            href={href}
-            key={href}
-            onClick={() => {
-              setActiveHref(href);
-            }}
-          >
-            {t(label)}
-          </a>
-        ))}
+        {sectionLinks
+          .filter(([href]) => showMetadata || href !== '#work-metadata')
+          .map(([href, label]) => (
+            <a
+              aria-current={activeHref === href ? 'location' : undefined}
+              className={cn(
+                'inline-flex h-9 shrink-0 items-center border-b-2 border-transparent px-2.5 text-xs font-medium text-muted-foreground transition-[color,border-color,background-color] duration-[var(--ui-transition-fast)] hover:bg-muted hover:text-foreground',
+                activeHref === href && 'border-[var(--ui-accent)] text-foreground',
+              )}
+              href={href}
+              key={href}
+              onClick={() => {
+                setActiveHref(href);
+              }}
+            >
+              {t(label)}
+            </a>
+          ))}
       </div>
     </nav>
   );

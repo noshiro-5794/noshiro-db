@@ -41,7 +41,6 @@ async def test_embedded_reference_preserves_full_payload_and_promotes_stub(vndb_
     assert full.status == "active"
     assert full.raw_state == "raw"
     assert full.latest_revision_id == written.revision_id
-    assert full.latest_payload_hash
     assert full.canonical_url == "https://vndb.org/v1"
     assert full.first_seen_at == stub.first_seen_at
     repeated = await record_payload(

@@ -30,7 +30,6 @@ from .contexts.presentation.api.board import router as board_router
 from .contexts.presentation.api.calendar import router as calendar_router
 from .contexts.presentation.api.catalogue import router as catalogue_router
 from .contexts.presentation.api.entity import router as entity_router
-from .contexts.signal.api import router as signal_router
 from .contexts.synchronization.api.campaigns import router as campaign_router
 from .contexts.synchronization.api.import_jobs import router as import_jobs_router
 from .health import router as health_router
@@ -87,7 +86,6 @@ def create_app() -> FastAPI:
     app.include_router(import_jobs_router)
     app.include_router(matching_operations_router)
     app.include_router(entity_router)
-    app.include_router(signal_router)
     app.add_exception_handler(ProblemError, problem_handler)
     app.add_exception_handler(RequestValidationError, validation_handler)
     app.add_exception_handler(HTTPException, http_error_handler)

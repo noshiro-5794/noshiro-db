@@ -44,7 +44,6 @@ def test_work_names_preserve_official_original_and_romanized_flags():
         SourceName("Gendai", "ja", "romanized"),
         SourceName("Alias", "", "alias"),
         SourceName("Title", "ja", "official", False, True),
-        SourceName("原題", "ja", "original", True, False),
     ]
 
 

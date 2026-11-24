@@ -50,6 +50,8 @@ async def test_internal_mcp_tool_contract_reads_and_submits_audited_pending_prop
         "search_entities",
         "get_match_candidate",
         "submit_proposal",
+        "get_metadata_evidence",
+        "submit_metadata_draft",
     }
     result = await server.call_tool("get_match_candidate", {"candidate_id": str(identifier)})
     assert result.structured_content["id"] == str(identifier)
@@ -68,7 +70,9 @@ async def test_internal_mcp_tool_contract_reads_and_submits_audited_pending_prop
     run = (await fetch(session, "SELECT provider,input_metadata,status FROM ai_run", {}))[0]
     assert run.provider == "internal_mcp" and run.status == "succeeded"
     assert run.input_metadata == {"candidate_id": str(identifier), "transport": "stdio"}
-    assert (await fetch(session, "SELECT count(*) AS n FROM entity_redirect", {}))[0].n == 0
+    assert (await fetch(session, "SELECT count(*) AS n FROM entity_identity_membership", {}))[
+        0
+    ].n == 0
 
 
 @pytest.mark.asyncio

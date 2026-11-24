@@ -1,17 +1,7 @@
-"""The resolution engine behind the candidate decision.
-
-A `bind` is not a status update: it follows redirects, picks the canonical side,
-records a merge event and a redirect, marks the source merged, and then rebuilds every
-fact in the new cluster. The rebuild is why this file exists at all — without it a merge
-leaves the fact layer pointing at a cluster that no longer answers.
-
-Ported from `apps/index/services/resolution.py` and `fact_resolution.py`; the SQL is
-written by hand for the same reason the rest of this service is.
-"""
+"""Resolve identity memberships and rebuild derived fact selections."""
 
 from __future__ import annotations
 
-import hashlib
 import json
 from typing import Any
 
@@ -56,7 +46,7 @@ async def resolve(session: AsyncSession, entity_id: Any) -> Any:
         seen.add(current)
         rows = await fetch(
             session,
-            "SELECT target_entity_id FROM entity_redirect"
+            "SELECT target_entity_id FROM entity_identity_membership"
             " WHERE source_entity_id = :id AND is_active ORDER BY created_at LIMIT 1",
             {"id": current},
         )
@@ -74,7 +64,7 @@ async def cluster_ids(session: AsyncSession, entity_id: Any) -> set[Any]:
     for _ in range(MAX_CLUSTER_DEPTH):
         rows = await fetch(
             session,
-            "SELECT DISTINCT source_entity_id FROM entity_redirect"
+            "SELECT DISTINCT source_entity_id FROM entity_identity_membership"
             " WHERE target_entity_id = ANY(:frontier) AND is_active",
             {"frontier": list(frontier)},
         )
@@ -183,6 +173,16 @@ async def merge(
     target = await _entity(session, await resolve(session, target_id))
     if source.id == target.id:
         raise ResolutionError("Cannot merge an entity into itself.")
+    await fetch(
+        session,
+        "SELECT id FROM entity WHERE id=ANY(:ids) ORDER BY id FOR UPDATE",
+        {"ids": [source.id, target.id]},
+    )
+    if (
+        await resolve(session, source.id) != source.id
+        or await resolve(session, target.id) != target.id
+    ):
+        raise ResolutionError("Entity membership changed. Retry the decision.")
     if source.kind != target.kind:
         raise ResolutionError("Cannot merge entities of different kinds.")
     if safety_rank(source) > safety_rank(target):
@@ -215,18 +215,70 @@ async def merge(
     event_id = rows[0].id
     await fetch(
         session,
-        "INSERT INTO entity_redirect (source_entity_id, target_entity_id, merge_event_id,"
-        " is_active, created_at, updated_at)"
+        "INSERT INTO entity_identity_membership"
+        " (source_entity_id, target_entity_id, merge_event_id, is_active, created_at, updated_at)"
         " VALUES (:source, :target, :event, true, now(), now()) RETURNING id",
         {"source": source.id, "target": target.id, "event": event_id},
     )
     await fetch(
         session,
-        "UPDATE entity SET lifecycle = 'merged', updated_at = now() WHERE id = :id RETURNING id",
-        {"id": source.id},
+        "UPDATE resolution_decision SET is_active=false, updated_at=now()"
+        " WHERE entity_id=:source AND is_active RETURNING id",
+        {"source": source.id},
     )
     await rebuild_entity(session, target.id)
     return event_id
+
+
+async def split(session: AsyncSession, *, merge_event_id: Any, reason: str) -> Any:
+    """End one membership edge and keep both sides' source and user data."""
+    if not reason.strip():
+        raise ResolutionError("A split decision requires a reason.")
+    params = {"id": merge_event_id}
+    rows = await fetch(
+        session,
+        "SELECT source_entity_id, target_entity_id FROM entity_merge_event WHERE id=:id",
+        params,
+    )
+    if not rows:
+        raise ResolutionError("Identity match not found.")
+    source, target = rows[0].source_entity_id, rows[0].target_entity_id
+    await fetch(
+        session,
+        "SELECT id FROM entity WHERE id=ANY(:ids) ORDER BY id FOR UPDATE",
+        {"ids": [source, target]},
+    )
+    ended = await fetch(
+        session,
+        "UPDATE entity_identity_membership SET is_active = false, updated_at = now()"
+        " WHERE merge_event_id = :id AND is_active RETURNING id",
+        params,
+    )
+    if not ended:
+        raise ResolutionError("Identity match is already inactive.")
+    await fetch(
+        session,
+        "UPDATE entity_merge_event SET reversed_at = now(), updated_at = now()"
+        " WHERE id = :id RETURNING id",
+        params,
+    )
+    result = await fetch(
+        session,
+        """
+        INSERT INTO entity_split_event (
+            id, reason, restored_snapshot, performed_at, merge_event_id, created_at, updated_at
+        ) VALUES (gen_random_uuid(), :reason, CAST(:snapshot AS jsonb),
+                  now(), :id, now(), now()) RETURNING id
+        """,
+        {
+            "id": merge_event_id,
+            "reason": reason.strip(),
+            "snapshot": json.dumps({"member": str(source), "previous_target": str(target)}),
+        },
+    )
+    await rebuild_entity(session, source)
+    await rebuild_entity(session, target)
+    return result[0].id
 
 
 async def current_facts(session: AsyncSession, ids: set[Any]) -> list[Any]:
@@ -290,6 +342,7 @@ def _select(facts: list[Any]) -> tuple[Any, str]:
 
 
 async def _rebuild(session: AsyncSession, *, root: Any, predicate_id: Any, language: str) -> None:
+    await fetch(session, "SELECT id FROM entity WHERE id = :root FOR NO KEY UPDATE", {"root": root})
     ids = await cluster_ids(session, root)
     facts = [
         fact
@@ -298,41 +351,36 @@ async def _rebuild(session: AsyncSession, *, root: Any, predicate_id: Any, langu
     ]
     facts.sort(key=lambda item: (-item.confidence, item.id))
     selected, reason = _select(facts)
+    parameters = {
+        "root": root,
+        "predicate": predicate_id,
+        "language": language,
+        "selected": selected.id if selected is not None else None,
+        "policy": POLICY_VERSION,
+        "reason": reason,
+        "has_facts": bool(facts),
+    }
     await fetch(
         session,
         "UPDATE resolution_decision SET is_active = false, updated_at = now()"
         " WHERE entity_id = :root AND predicate_id = :predicate AND language = :language"
-        " AND is_active RETURNING id",
-        {"root": root, "predicate": predicate_id, "language": language},
+        " AND is_active AND (NOT :has_facts OR selected_fact_id IS DISTINCT FROM :selected"
+        " OR policy_version <> :policy OR reason <> :reason) RETURNING id",
+        parameters,
     )
+    if not facts:
+        return
     await fetch(
         session,
         "INSERT INTO resolution_decision (entity_id, predicate_id, language,"
         " selected_fact_id, policy_version, reason, is_active, created_at, updated_at)"
-        " VALUES (:root, :predicate, :language, :selected, :policy, :reason, true,"
-        " now(), now()) RETURNING id",
-        {
-            "root": root,
-            "predicate": predicate_id,
-            "language": language,
-            "selected": selected.id if selected is not None else None,
-            "policy": POLICY_VERSION,
-            "reason": reason,
-        },
+        " SELECT CAST(:root AS uuid), CAST(:predicate AS bigint), CAST(:language AS varchar),"
+        " CAST(:selected AS uuid), CAST(:policy AS varchar), CAST(:reason AS text), true,"
+        " now(), now()"
+        " WHERE NOT EXISTS (SELECT 1 FROM resolution_decision WHERE entity_id = :root"
+        " AND predicate_id = :predicate AND language = :language AND is_active) RETURNING id",
+        parameters,
     )
-    await fetch(
-        session,
-        "UPDATE fact SET status = 'candidate', updated_at = now()"
-        " WHERE entity_id = ANY(:ids) AND predicate_id = :predicate"
-        " AND language = :language AND status <> 'rejected' RETURNING id",
-        {"ids": list(ids), "predicate": predicate_id, "language": language},
-    )
-    if selected is not None:
-        await fetch(
-            session,
-            "UPDATE fact SET status = 'selected', updated_at = now() WHERE id = :id RETURNING id",
-            {"id": selected.id},
-        )
 
 
 async def rebuild_fact(
@@ -346,6 +394,12 @@ async def rebuild_entity(session: AsyncSession, entity_id: Any) -> int:
     root = await resolve(session, entity_id)
     ids = await cluster_ids(session, root)
     fields = {(fact.predicate_id, fact.language) for fact in await current_facts(session, ids)}
+    previous = await fetch(
+        session,
+        "SELECT predicate_id, language FROM resolution_decision WHERE entity_id=:id AND is_active",
+        {"id": root},
+    )
+    fields.update((row.predicate_id, row.language) for row in previous)
     for predicate_id, language in sorted(fields, key=lambda item: (str(item[0]), item[1])):
         await _rebuild(session, root=root, predicate_id=predicate_id, language=language)
     return len(fields)
@@ -412,7 +466,25 @@ async def decide(
                 }
             )
         elif outcome == "group":
-            data = json.dumps({"grouped_entities": True, "merged": False})
+            left = await _entity(session, await resolve(session, candidate.left_entity_id))
+            right = await _entity(session, await resolve(session, candidate.right_entity_id))
+            if left.id == right.id or left.kind != "work" or right.kind != "work":
+                raise ResolutionError("Grouping requires two distinct catalogue works.")
+            await fetch(
+                session,
+                """
+                INSERT INTO entity_relation
+                  (from_entity_id, to_entity_id, relation_type, qualifiers, created_at, updated_at)
+                VALUES (:left, :right, 'same-season',
+                        jsonb_build_object('reviewed', true), now(), now()),
+                       (:right, :left, 'same-season',
+                        jsonb_build_object('reviewed', true), now(), now())
+                ON CONFLICT (from_entity_id, to_entity_id, relation_type) DO NOTHING
+                RETURNING id
+                """,
+                {"left": left.id, "right": right.id},
+            )
+            data = json.dumps({"relation_type": "same-season", "merged": False})
         else:
             return
         await fetch(
@@ -420,69 +492,6 @@ async def decide(
             "UPDATE candidate_decision SET decision_data = CAST(:data AS jsonb),"
             " updated_at = now() WHERE id = :id RETURNING id",
             {"data": data, "id": decision_id},
-        )
-
-
-GROUP_PREFIX = "season-group-"
-
-
-async def _original_name(session: AsyncSession, entity_id: Any) -> str | None:
-    rows = await fetch(
-        session,
-        "SELECT text FROM entity_name WHERE entity_id = :id AND kind = 'original'"
-        " ORDER BY id LIMIT 1",
-        {"id": entity_id},
-    )
-    return rows[0].text if rows else None
-
-
-async def ensure_pair_group(
-    session: AsyncSession, *, left_id: Any, right_id: Any, reason: str
-) -> None:
-    """Create or reuse the collection that lists two granularity entries together."""
-    originals = [
-        text
-        for text in (
-            await _original_name(session, left_id),
-            await _original_name(session, right_id),
-        )
-        if text
-    ]
-    key = "|".join(sorted(originals)).lower().strip()
-    digest = hashlib.sha1(key.encode()).hexdigest()[:12]
-    slug = f"{GROUP_PREFIX}{digest}"
-    name = f"同季分组 {originals[0][:100]}" if originals else "同季分组"
-    rows = await fetch(
-        session,
-        "SELECT id FROM curated_collection WHERE slug = :slug",
-        {"slug": slug},
-    )
-    if rows:
-        collection_id = rows[0].id
-    else:
-        created = await fetch(
-            session,
-            "INSERT INTO curated_collection (slug, name, is_enabled, created_at,"
-            " updated_at) VALUES (:slug, :name, true, now(), now()) RETURNING id",
-            {"slug": slug, "name": name},
-        )
-        collection_id = created[0].id
-    for entity_id in (left_id, right_id):
-        exists = await fetch(
-            session,
-            "SELECT 1 FROM curated_membership WHERE collection_id = :collection"
-            " AND entity_id = :entity",
-            {"collection": collection_id, "entity": entity_id},
-        )
-        if exists:
-            continue
-        await fetch(
-            session,
-            "INSERT INTO curated_membership (listing_state, inclusion_reason,"
-            " collection_id, entity_id, created_at, updated_at)"
-            " VALUES ('listed', :reason, :collection, :entity, now(), now())"
-            " RETURNING id",
-            {"reason": reason, "collection": collection_id, "entity": entity_id},
         )
 
 
@@ -509,14 +518,3 @@ async def settle_proposal(
             "id": rows[0].id,
         },
     )
-
-
-async def candidate_entities(session: AsyncSession, candidate_id: Any) -> Any:
-    rows = await fetch(
-        session,
-        "SELECT left_entity_id, right_entity_id FROM match_candidate WHERE id = :id",
-        {"id": candidate_id},
-    )
-    if not rows:
-        raise CandidateNotFound(candidate_id)
-    return rows[0]

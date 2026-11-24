@@ -4,7 +4,7 @@ Run it against both services while they share a database:
 
     uv run python scripts/parity.py \
         --old http://127.0.0.1:8008 --new http://127.0.0.1:8010 \
-        --path /api/v1/index/entities/93509ec8-3194-41de-9353-64a9f5f85fbb/metrics/
+        --path /api/v1/index/entities/93509ec8-3194-41de-9353-64a9f5f85fbb/episodes/
 
 Exit code 1 means at least one endpoint differs, which is the gate for moving
 traffic. The diff is structural: dict keys are compared as sets, list order is

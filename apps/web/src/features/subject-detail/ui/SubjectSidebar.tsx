@@ -12,49 +12,33 @@ import { ErrorState } from '@/shared/ui/FeedbackState';
 import { FilterCombobox } from '@/shared/ui/FilterCombobox';
 import { Pagination } from '@/shared/ui/Pagination';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/Popover';
-import {
-  attributeLabelKeys,
-  attributeValueKey,
-  bangumiSubjectIdOf,
-  groupStaffByRole,
-  posterOf,
-  subjectAttributes,
-  titleOf,
-} from '../model/subject-detail';
+import { bangumiSubjectIdOf, groupStaffByRole, posterOf, titleOf } from '../model/subject-detail';
 import { StaffDetail, type StaffDetailLabels } from './SubjectDetailPrimitives';
 
 const staffPageSize = 8;
 
 export function SubjectSidebar({ subject }: { subject: SubjectDetail }) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const emptyText = t('common.none');
   const [staffRole, setStaffRole] = useState('');
   const [staffPage, setStaffPage] = useState(1);
-  const [infoboxOpen, setInfoboxOpen] = useState(false);
   const [staffOpen, setStaffOpen] = useState(false);
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   const bangumiSubjectId = bangumiSubjectIdOf(subject);
-  const bangumiSnapshotQuery = useQuery({
-    ...subjectQueries.bangumiSnapshot(bangumiSubjectId ?? 0),
-    enabled: Boolean(bangumiSubjectId),
-  });
   const staffQuery = useQuery(
-    subjectQueries.staff(subject.id, {
+    subjectQueries.staff(subject.id, locale, {
       page: staffPage,
       page_size: staffPageSize,
       ...(staffRole ? { role: staffRole } : {}),
     }),
   );
-  const staffRolesQuery = useQuery(subjectQueries.staffRoles(subject.id));
-  const attributes = subjectAttributes(subject);
+  const staffRolesQuery = useQuery(subjectQueries.staffRoles(subject.id, locale));
   const staffGroups = groupStaffByRole(staffQuery.data?.results ?? []);
   const staffRoleOptions = [
     { label: t('subject.allRoles'), value: '' },
     ...(staffRolesQuery.data?.roles ?? []).map((role) => ({ label: role, value: role })),
   ];
   const staffTotalPages = Math.max(1, Math.ceil((staffQuery.data?.count ?? 0) / staffPageSize));
-  const bangumiSnapshot = bangumiSnapshotQuery.data;
-  const bangumiRank = bangumiSnapshot?.rating?.rank ?? bangumiSnapshot?.rank;
   const bangumiUrl = bangumiSubjectId ? `https://bangumi.tv/subject/${bangumiSubjectId}` : null;
   const staffLabels: StaffDetailLabels = {
     type: t('subject.type'),
@@ -95,65 +79,8 @@ export function SubjectSidebar({ subject }: { subject: SubjectDetail }) {
               </a>
             </Button>
           </div>
-          <div className="mt-4 grid grid-cols-3 gap-2">
-            {[
-              [t('subject.liveScore'), bangumiSnapshot?.rating?.score?.toFixed(1) ?? emptyText],
-              [t('subject.liveRank'), bangumiRank ? `#${bangumiRank}` : emptyText],
-              [t('subject.liveVotes'), bangumiSnapshot?.rating?.total ?? emptyText],
-            ].map(([label, value]) => (
-              <div className="rounded-[var(--ui-radius-control)] bg-[var(--ui-bg-subtle)] p-2.5" key={label}>
-                <p className="text-[11px] font-medium text-[var(--ui-text-subtle)]">{label}</p>
-                <p className="mt-1 text-base font-semibold text-[var(--ui-text)]">{value}</p>
-              </div>
-            ))}
-          </div>
-          {bangumiSnapshotQuery.isFetching ? (
-            <p className="mt-3 text-xs text-[var(--ui-text-muted)]">{t('subject.loadingExternalSource')}</p>
-          ) : null}
-          {bangumiSnapshotQuery.isError ? (
-            <p className="mt-3 text-xs text-[var(--ui-text-muted)]">{t('subject.externalSourceUnavailable')}</p>
-          ) : null}
         </section>
       ) : null}
-
-      <Collapsible.Root
-        className="border-t border-[var(--ui-border)] pt-2 lg:pt-4"
-        open={isDesktop || infoboxOpen}
-        onOpenChange={setInfoboxOpen}
-      >
-        <div className="hidden items-center justify-between gap-3 lg:flex">
-          <h2 className="text-sm font-semibold text-[var(--ui-text)]">{t('subject.info')}</h2>
-          <span className="text-xs text-[var(--ui-text-subtle)]">
-            {attributes.length} {t('common.items')}
-          </span>
-        </div>
-        <Collapsible.Trigger className="group flex h-9 w-full items-center justify-between gap-3 rounded-[var(--ui-radius-control)] px-2 text-left text-sm font-semibold text-[var(--ui-text)] outline-none transition-colors hover:bg-[var(--ui-bg-subtle)] focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] lg:hidden">
-          <span>{t('subject.info')}</span>
-          <span className="flex items-center gap-2 text-xs font-normal text-[var(--ui-text-subtle)]">
-            {attributes.length} {t('common.items')}
-            <ChevronDown className="size-4 transition-transform group-data-[panel-open]:rotate-180" />
-          </span>
-        </Collapsible.Trigger>
-        <Collapsible.Panel className="h-[var(--collapsible-panel-height)] overflow-hidden transition-[height] duration-150 ease-out data-[ending-style]:h-0 data-[starting-style]:h-0 [&[hidden]:not([hidden='until-found'])]:hidden">
-          <dl className="mt-3 divide-y divide-[var(--ui-border)] text-sm">
-            {attributes.slice(0, 14).map((item) => (
-              <div className="grid grid-cols-[88px_minmax(0,1fr)] gap-3 py-2.5" key={item.key}>
-                <dt className="text-[var(--ui-text-muted)]">{t(attributeLabelKeys[item.key] ?? 'subject.info')}</dt>
-                <dd className="min-w-0 break-words leading-6 text-[var(--ui-text)]">
-                  {(() => {
-                    const valueKey = attributeValueKey(item.key, item.value);
-                    if (valueKey) return t(valueKey);
-                    return item.key === 'format' || item.key === 'type' ? item.value.toUpperCase() : item.value;
-                  })()}
-                </dd>
-              </div>
-            ))}
-            {attributes.length === 0 ? (
-              <div className="py-3 text-sm text-[var(--ui-text-muted)]">{emptyText}</div>
-            ) : null}
-          </dl>
-        </Collapsible.Panel>
-      </Collapsible.Root>
 
       <Collapsible.Root
         className="border-t border-[var(--ui-border)] pt-2 lg:pt-4"

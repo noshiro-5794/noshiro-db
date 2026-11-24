@@ -1,6 +1,5 @@
 """VNDB import task with committed leases and durable failure reporting."""
 
-import asyncio
 from datetime import UTC, date, datetime
 from typing import Any
 
@@ -14,6 +13,7 @@ from api.worker import jobs
 from api.worker.importing import import_record
 from api.worker.runtime import run
 from api.worker.session import session_scope
+from api.worker.source_fetches import fetch_archived
 from api.worker.vndb_import import import_batch
 
 
@@ -26,8 +26,8 @@ async def import_work(
         client = VNDBClient()
         client.forbid_storage(forbidden=forbidden)
         try:
-            return await asyncio.to_thread(
-                client.fetch_import_batch, vndb_id, include_related=include_related
+            return await fetch_archived(
+                session_scope, client.fetch_import_batch, vndb_id, include_related=include_related
             )
         finally:
             client.close()

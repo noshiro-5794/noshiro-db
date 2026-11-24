@@ -19,6 +19,8 @@ async def test_internal_mcp_process_initializes_lists_tools_and_validates_argume
             "search_entities",
             "get_match_candidate",
             "submit_proposal",
+            "get_metadata_evidence",
+            "submit_metadata_draft",
         }
         result = await client.call_tool("get_match_candidate", {"candidate_id": "invalid-uuid"})
         assert result.is_error

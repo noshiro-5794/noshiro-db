@@ -22,14 +22,15 @@ from api.integrations.providers.http import send
 
 VN_FIELDS = (
     "id,title,alttitle,aliases,released,languages,platforms,olang,description,"
-    "length_minutes,length_votes,devstatus,popularity,rating,votecount,titles.lang,"
+    "length,length_minutes,length_votes,devstatus,popularity,rating,votecount,titles.lang,"
     "titles.title,titles.latin,titles.official,titles.main,image.url,image.sexual,"
     "image.violence,screenshots.url,screenshots.sexual,screenshots.violence,"
     "screenshots.release.id,developers.id,developers.name,developers.original,"
     "developers.type,developers.extlinks.url,developers.extlinks.label,tags.id,tags.name,"
     "tags.rating,tags.spoiler,tags.lie,relations.id,relations.title,relations.alttitle,"
     "relations.olang,relations.relation,relations.relation_official,staff.id,staff.aid,"
-    "staff.name,staff.original,staff.lang,staff.role,staff.note,va.staff.id,va.staff.aid,"
+    "staff.name,staff.original,staff.lang,staff.role,staff.note,staff.eid,"
+    "editions.eid,editions.lang,editions.name,editions.official,va.staff.id,va.staff.aid,"
     "va.staff.name,va.staff.original,va.staff.lang,va.character.id,va.character.name,"
     "va.character.original,va.note,extlinks.url,extlinks.label"
 )

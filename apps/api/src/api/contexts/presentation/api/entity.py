@@ -2,6 +2,7 @@ from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Header, Request
+from pydantic import BaseModel
 
 from api.contexts.identity.resolution import cluster_ids, is_active, is_public, resolve
 from api.contexts.presentation.catalogue import entity_page
@@ -23,6 +24,38 @@ from api.shared.problems import ProblemError
 router = APIRouter(prefix="/api/v1/index", tags=["catalogue"])
 
 NOT_FOUND = "Entity not found."
+
+
+class OriginalTitle(BaseModel):
+    text: str
+    language: str
+    provenance: dict[str, Any] | None
+
+
+class DisplayField(BaseModel):
+    key: str
+    label: str
+    values: list[str]
+    provider: str
+
+
+class EntityDetailResponse(BaseModel):
+    id: str
+    entity_type: str
+    lifecycle: str
+    audience: str
+    work_type: str | None
+    display_name: str
+    collections: list[str]
+    media: list[dict[str, Any]]
+    names: list[dict[str, Any]]
+    original_title: OriginalTitle | None
+    display_fields: list[DisplayField]
+    descriptions: list[dict[str, Any]]
+    facts: list[dict[str, Any]]
+    external_links: list[dict[str, Any]]
+    content_ratings: list[dict[str, Any]]
+    sources: list[dict[str, Any]]
 
 
 def _parse_entity_id(raw: str) -> UUID:
@@ -71,7 +104,7 @@ async def catalogue(
     return page_payload(request, count=total, results=results, page=page, page_size=page_size)
 
 
-@router.get("/entities/{entity_id}/")
+@router.get("/entities/{entity_id}/", response_model=EntityDetailResponse)
 async def entity(
     entity_id: str,
     session: SessionDep,

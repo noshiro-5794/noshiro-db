@@ -82,6 +82,21 @@ function isEntityDetail(value: unknown): value is EntityDetail {
     isEntitySummary(value) &&
     Array.isArray(value['names']) &&
     Array.isArray(value['descriptions']) &&
+    (value['original_title'] == null ||
+      (isRecord(value['original_title']) &&
+        typeof value['original_title']['text'] === 'string' &&
+        typeof value['original_title']['language'] === 'string')) &&
+    (value['display_fields'] === undefined ||
+      (Array.isArray(value['display_fields']) &&
+        value['display_fields'].every(
+          (field) =>
+            isRecord(field) &&
+            typeof field['key'] === 'string' &&
+            typeof field['label'] === 'string' &&
+            typeof field['provider'] === 'string' &&
+            Array.isArray(field['values']) &&
+            field['values'].every((item) => typeof item === 'string'),
+        ))) &&
     Array.isArray(value['facts']) &&
     Array.isArray(value['external_links']) &&
     Array.isArray(value['content_ratings']) &&
@@ -149,14 +164,24 @@ function preferredName(names: Array<{ text: string; language: string; kind: stri
 
 function buildSubjectDetail(value: EntityDetail): SubjectDetail {
   const summary = buildSubjectSummary(value);
-  const descriptions = value.descriptions.map((description) => ({ ...description, text: plainText(description.text) }));
-  const firstDescription = descriptions.find((description) => description.is_official) ?? descriptions[0];
+  const descriptions = value.descriptions.map((description) => ({
+    ...description,
+    text: description.is_machine_generated && description.is_reviewed ? description.text : plainText(description.text),
+  }));
+  const firstDescription =
+    descriptions.find((description) => description.is_machine_generated && description.is_reviewed) ??
+    descriptions.find((description) => description.is_official) ??
+    descriptions[0];
   const descriptionText = firstDescription?.text;
   const titleCn = preferredName(value.names);
 
   return {
     ...summary,
     names: value.names,
+    ...(value.original_title
+      ? { original_title: value.original_title, title_original: value.original_title.text }
+      : {}),
+    ...(value.display_fields ? { display_fields: value.display_fields } : {}),
     descriptions,
     facts: value.facts,
     external_links: value.external_links,
@@ -166,7 +191,7 @@ function buildSubjectDetail(value: EntityDetail): SubjectDetail {
     ...(descriptionText ? { summary: descriptionText } : {}),
     ...(descriptionText ? { description: descriptionText } : {}),
     ...(descriptionText ? { description_excerpt: descriptionText.slice(0, 240) } : {}),
-    episode_count: 0,
+    episode_count: Number(value.display_fields?.find((field) => field.key === 'episodes')?.values[0] ?? 0) || 0,
     staff_count: 0,
     character_count: 0,
     infobox: value.facts.map((fact) => ({ key: fact.predicate, value: fact.value })),
@@ -267,7 +292,6 @@ function calendarEventToItem(value: CalendarEvent): CalendarSubjectItem {
     platform: work?.platform ?? (value.region || value.timezone),
     nsfw: work?.nsfw ?? false,
     weekday_en: weekday ?? 'Mon',
-    doing: value.collection_doing,
   };
 }
 
@@ -286,7 +310,6 @@ function decodeCalendarEvents(value: unknown): CalendarEvent[] {
         (item['weekday'] === null || (isInteger(item['weekday']) && item['weekday'] >= 1 && item['weekday'] <= 7)) &&
         typeof item['precision'] === 'string' &&
         typeof item['raw_value'] === 'string' &&
-        (item['collection_doing'] === undefined || isInteger(item['collection_doing'], 0)) &&
         (item['work'] === undefined || item['work'] === null || isEntitySummary(item['work'])),
     )
   ) {

@@ -32,16 +32,7 @@ def bundle() -> dict[str, Any]:
         "descriptions": [
             {"id": 10, "language": "ja", "text": "26話のアニメ。", "is_official": True},
         ],
-        "fields": [
-            {
-                "predicate": "episode-count",
-                "language": "",
-                "fact_id": "f-1",
-                "value": 26,
-                "confidence": 0.9,
-                "alternates": [],
-            },
-        ],
+        "fields": [],
         "credits": [],
         "relations": [],
         "media": [

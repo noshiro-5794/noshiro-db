@@ -1,34 +1,25 @@
-"""Atomic Bangumi work projection with reviewed aliases and explicit-ID reconciliation."""
+"""Atomic Bangumi work projection and explicit-ID reconciliation."""
 
+import json
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.identity import vndb
-from api.contexts.ingestion import entities, facts, metrics, profiles, records
+from api.contexts.ingestion import archive, entities, facts, metrics, profiles, records
 from api.contexts.ingestion import metadata as presentation
 from api.contexts.ingestion import observations as ingestion
-from api.contexts.synchronization.terms import preferred_terms
 from api.db import fetch
+from api.shared.title_language import title_language
 from api.worker.subject_mapping import map_subject, work_facts
 
 PROVIDER = "bangumi"
 SUBJECT_NAMESPACE = "subject"
 RESOURCE_TYPE = "subject"
 MAPPER = "bangumi.subject"
-MAPPER_VERSION = "bangumi-subject-v2"
+MAPPER_VERSION = "bangumi-subject-v5"
 SCHEMA_VERSION = "bangumi-api-v0"
-
-
-async def normalize_subject(session: AsyncSession, mapped: dict[str, Any]) -> None:
-    values = [mapped["platform"], *mapped["tags"], *(entry["key"] for entry in mapped["infobox"])]
-    preferred = await preferred_terms(session, values)
-    mapped["platform"] = preferred.get(mapped["platform"], mapped["platform"])[:256]
-    tags = [preferred.get(tag, tag) for tag in mapped["tags"]]
-    mapped["tags"] = [tag for tag in tags if tag]
-    for entry in mapped["infobox"]:
-        entry["key"] = preferred.get(entry["key"], entry["key"])
-    mapped["infobox"] = [entry for entry in mapped["infobox"] if entry["key"] or entry["value"]]
 
 
 def fact_pointer(slug: str, mapped: dict[str, Any], data: dict[str, Any]) -> str:
@@ -42,7 +33,6 @@ def fact_pointer(slug: str, mapped: dict[str, Any], data: dict[str, Any]) -> str
         "series": "/series",
         "volumes": "/volumes",
         "provider-infobox": "/infobox",
-        "provider-tags": "/metatag" if data.get("meta_tags") is None else "/meta_tags",
     }[slug]
 
 
@@ -54,14 +44,12 @@ async def project_subject(
     mapper_version: str = MAPPER_VERSION,
 ) -> Any:
     mapped = map_subject(data)
-    await normalize_subject(session, mapped)
-    # Reviewed aliases can change while the source revision remains identical.
     observation_id = await ingestion.record_observation(
         session,
         provider_record_id=record_id,
         mapper=MAPPER,
         mapper_version=mapper_version,
-        normalized_data={**data, "_projection_hash": ingestion.normalized_hash(mapped)},
+        normalized_data={"_projection_hash": ingestion.normalized_hash(mapped)},
         schema_name="index.work",
         schema_version="1",
     )
@@ -77,6 +65,21 @@ async def project_subject(
         observation_id=observation_id,
         original=mapped["title"],
         localized=mapped["title_cn"],
+    )
+    aliases = [
+        (alias, title_language(alias), "alias")
+        for entry in mapped["infobox"]
+        if entry["key"] in {"别名", "別名"}
+        for value in entry["value"]
+        for line in value.splitlines()
+        if (alias := line.strip()) and alias not in {mapped["title"], mapped["title_cn"]}
+    ]
+    await presentation.add_names(
+        session,
+        entity_id=entity.entity_id,
+        provider_record_id=record_id,
+        observation_id=observation_id,
+        entries=aliases,
     )
     await presentation.upsert_description(
         session,
@@ -100,16 +103,6 @@ async def project_subject(
             episode_count=mapped["total_episodes"] or mapped["eps"] or None,
             premiered_on=mapped["date"],
             replace_episode_count=True,
-        )
-    elif mapped["subject_type"] == "galgame":
-        await fetch(
-            session,
-            """
-            INSERT INTO galgame_profile
-              (work_id, playtime_minutes, development_status, created_at, updated_at)
-            VALUES (:work, NULL, '', now(), now()) ON CONFLICT DO NOTHING RETURNING work_id
-            """,
-            {"work": entity.work_id},
         )
     for slug, (value, value_type) in work_facts(mapped).items():
         await facts.record_fact(
@@ -146,7 +139,9 @@ async def project_subject(
     return await vndb.observe_bangumi(session, entity.entity_id, observation_id, data)
 
 
-async def import_subject(session: AsyncSession, data: dict[str, Any]) -> Any:
+async def import_subject(
+    session: AsyncSession, data: dict[str, Any], *, source_fetch_id: UUID | None = None
+) -> Any:
     """Persist a source payload and its complete work projection together."""
     async with session.begin_nested():
         written = await records.record_payload(
@@ -159,7 +154,41 @@ async def import_subject(session: AsyncSession, data: dict[str, Any]) -> Any:
             schema_version=SCHEMA_VERSION,
             canonical_url=f"https://bgm.tv/subject/{data['id']}",
         )
+        if source_fetch_id is not None:
+            await archive.link_revision(
+                session, revision_id=written.revision_id, fetch_id=source_fetch_id
+            )
         return await project_subject(session, written.record_id, data)
+
+
+async def replay_subject(session: AsyncSession, subject_id: int, fetch_id: UUID) -> Any:
+    """Replay an archived Bangumi subject through the current mapper."""
+    body = await archive.body_for_fetch(
+        session, fetch_id, provider=PROVIDER, endpoint=f"/v0/subjects/{subject_id}"
+    )
+    data = json.loads(body)
+    if not isinstance(data, dict) or data.get("id") != subject_id:
+        raise ValueError("The archived body does not identify the requested Bangumi subject.")
+    current = await fetch(
+        session,
+        """
+        SELECT revision.payload_hash, record.status
+        FROM provider_record AS record
+        JOIN provider_namespace AS namespace ON namespace.id = record.namespace_id
+        JOIN provider ON provider.id = namespace.provider_id
+        LEFT JOIN provider_revision AS revision ON revision.id = record.latest_revision_id
+        WHERE provider.slug = :provider AND namespace.slug = :namespace
+          AND record.external_id = :id
+        FOR UPDATE OF record
+        """,
+        {"provider": PROVIDER, "namespace": SUBJECT_NAMESPACE, "id": str(subject_id)},
+    )
+    if current and (
+        current[0].status != "active"
+        or current[0].payload_hash not in (None, records.payload_hash(data))
+    ):
+        raise ValueError("Replaying this response would replace a newer source revision.")
+    return await import_subject(session, data, source_fetch_id=fetch_id)
 
 
 async def provide_subject(session: AsyncSession, bangumi_id: str | int) -> Any:

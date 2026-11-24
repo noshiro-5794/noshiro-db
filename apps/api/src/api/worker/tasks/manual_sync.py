@@ -13,6 +13,7 @@ from api.worker import bangumi_sync, jobs
 from api.worker.importing import owns_job
 from api.worker.runtime import run
 from api.worker.session import session_scope
+from api.worker.source_fetches import archive_catalogue
 
 
 class SubjectNotFound(LookupError):
@@ -105,7 +106,8 @@ async def synchronize(
         client = BangumiClient()
         client.forbid_storage(forbidden=bool(policy and policy[0].storage_policy == "forbidden"))
         try:
-            batch = await bangumi_sync.fetch_batch(client, bangumi_id, progress=progress)
+            async with archive_catalogue("bangumi", str(bangumi_id), scope=session_scope):
+                batch = await bangumi_sync.fetch_batch(client, bangumi_id, progress=progress)
         finally:
             client.close()
         async with session_scope() as session:

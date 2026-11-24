@@ -6,9 +6,11 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.contexts.identity.roles import role_key, role_label
 from api.db import fetch
 
 from .provenance import PROVENANCE, PROVENANCE_JOINS, row_provenance
+from .source_preference import priority
 from .summary import public_summary
 
 CURRENT_CREDIT = """
@@ -50,13 +52,23 @@ async def entity_credits(
         {"ids": cluster},
     )
     credits: list[dict[str, Any]] = []
-    for row in rows:
+    provider_by_role: dict[str, str | None] = {}
+    seen: set[tuple[str, str]] = set()
+    for row in sorted(rows, key=lambda item: priority("credits", item.provider_slug)):
+        role = role_key(row.role)
+        if role in provider_by_role and provider_by_role[role] != row.provider_slug:
+            continue
         contributor = await public_summary(session, entity_id=row.contributor_id, language=language)
         if contributor is None:
             continue
+        provider_by_role[role] = row.provider_slug
+        key = (role, contributor["id"])
+        if key in seen:
+            continue
+        seen.add(key)
         credits.append(
             {
-                "role": row.role,
+                "role": role_label(row.role, language),
                 "credited_as": row.credited_as,
                 "contributor": contributor,
                 "provenance": row_provenance(row),

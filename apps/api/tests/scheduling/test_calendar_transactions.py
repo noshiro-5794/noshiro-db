@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 
 import pytest
 
+from api.contexts.presentation.calendar import calendar_events
 from api.db import fetch
 from api.integrations.providers.errors import ProviderError
 from api.worker import calendar_sync
@@ -23,7 +24,8 @@ async def calendar_runtime(manual_runtime, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_calendar_task_imports_unknown_base_subject_before_building_events(calendar_runtime):
-    session, job_id, http, requests, _ = calendar_runtime
+    session, job_id, http, requests, responses = calendar_runtime
+    responses["/v0/subjects/1"] = {**responses["/v0/subjects/1"], "nsfw": False}
     result = await calendar_tasks.synchronize(
         sync_subject_details=False, job_id=job_id, lease_owner="worker"
     )
@@ -32,8 +34,13 @@ async def test_calendar_task_imports_unknown_base_subject_before_building_events
     assert result["added_subject_ids"] == [1]
     assert result["detail_synced_count"] == 0
     assert result["board"]["item_count"] == 1
-    events = await fetch(session, "SELECT weekday,collection_doing FROM airing_event", {})
-    assert [tuple(row) for row in events] == [(1, 12)]
+    events = await calendar_events(session, start=None, end=None, timezone="", include_work=True)
+    assert [event["weekday"] for event in events] == [1]
+    assert "collection_doing" not in events[0]
+    signals = await fetch(
+        session, "SELECT value FROM ranking.provider_metric WHERE metric='calendar-watching'", {}
+    )
+    assert [row.value for row in signals] == [12]
     assert len(requests) == 2
     assert http.is_closed
     row = (await fetch(session, "SELECT * FROM sync_job WHERE id=:id", {"id": job_id}))[0]

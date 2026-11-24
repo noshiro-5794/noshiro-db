@@ -22,6 +22,13 @@ async def import_schedule(session: AsyncSession, work_id: Any, media: dict[str, 
         if airing_at is None:
             return
         nodes = [{"episode": as_int(next_episode.get("episode")), "airingAt": airing_at}]
+    planned = as_int(media.get("episodes"))
+    numbers = {as_int(item.get("episode")) for item in nodes if isinstance(item, dict)}
+    complete = (
+        planned is not None
+        and planned > 0
+        and sum(number is not None and 1 <= number <= planned for number in numbers) == planned
+    )
     payload = {"media": media, "schedule": nodes}
     calendar = await records.record_payload(
         session,
@@ -37,8 +44,8 @@ async def import_schedule(session: AsyncSession, work_id: Any, media: dict[str, 
         session,
         provider_record_id=calendar.record_id,
         mapper="anilist.airing",
-        mapper_version="anilist-airing-v2",
-        normalized_data=payload,
+        mapper_version="anilist-airing-v3",
+        normalized_data={"complete": complete},
         schema_name="index.schedule",
         schema_version="1",
     )
@@ -57,9 +64,9 @@ async def import_schedule(session: AsyncSession, work_id: Any, media: dict[str, 
             """
             INSERT INTO airing_event
               (work_id, episode_entity_id, starts_at, timezone, region, weekday, precision,
-               raw_value, observation_id, collection_doing, created_at, updated_at)
+               raw_value, observation_id, created_at, updated_at)
             VALUES (:work, :episode, :starts, 'UTC', '', :weekday, 'minute', :raw,
-                    :observation, 0, now(), now()) ON CONFLICT DO NOTHING RETURNING id
+                    :observation, now(), now()) ON CONFLICT DO NOTHING RETURNING id
             """,
             {
                 "work": work_id,

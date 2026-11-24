@@ -14,6 +14,8 @@ from api.db import fetch
 from api.shared.text import slugify
 from api.worker import vndb_mapping as mapping
 
+WORK_MAPPER_VERSION = "vndb-vn-v2"
+
 
 @dataclass(frozen=True, slots=True)
 class Projection:
@@ -215,7 +217,7 @@ async def project_work(session: AsyncSession, vndb_id: str, data: dict[str, Any]
         namespace="vn",
         resource_type="subject",
         mapper="vndb.vn",
-        mapper_version="vndb-vn-v1",
+        mapper_version=WORK_MAPPER_VERSION,
         schema_name="index.work",
         external_id=vndb_id,
     )
@@ -224,23 +226,6 @@ async def project_work(session: AsyncSession, vndb_id: str, data: dict[str, Any]
     )
     projection = Projection(entity_id, record_id, observation_id)
     await entities.ensure_work(session, entity_id=entity_id, work_type="galgame")
-    await fetch(
-        session,
-        """
-        INSERT INTO galgame_profile
-          (work_id, playtime_minutes, development_status, created_at, updated_at)
-        VALUES (:work, :minutes, :status, now(), now())
-        ON CONFLICT (work_id) DO UPDATE
-          SET playtime_minutes=EXCLUDED.playtime_minutes,
-              development_status=EXCLUDED.development_status, updated_at=now()
-        RETURNING work_id
-        """,
-        {
-            "work": entity_id,
-            "minutes": mapping.positive_int(data.get("length_minutes")),
-            "status": mapping.development_status(data.get("devstatus")),
-        },
-    )
     await write_names(session, projection, mapping.work_names(data))
     await write_description(session, projection, data)
     await write_media(session, projection, data.get("image") or {}, purpose="poster")
@@ -258,7 +243,12 @@ async def project_work(session: AsyncSession, vndb_id: str, data: dict[str, Any]
         entity_id=entity_id,
         provider_record_id=record_id,
         observed_at=revision[0].fetched_at,
-        values={"score": data.get("rating"), "votes": data.get("votecount")},
+        values={
+            "score": data.get("rating"),
+            "votes": data.get("votecount"),
+            "popularity": data.get("popularity"),
+            "playtime-votes": data.get("length_votes"),
+        },
     )
     await write_facts(session, projection, mapping.work_facts(data))
     await write_tags(session, projection, data)

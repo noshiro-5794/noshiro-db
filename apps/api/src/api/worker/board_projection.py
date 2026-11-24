@@ -81,7 +81,7 @@ async def candidates(
         "provider_current_observation c WHERE c.observation_id=o.id)))) OR "
         "(event.precision='minute' AND event.starts_at>=:start AND event.starts_at<:end "
         "AND w.work_type='anime' AND p.slug='anilist' AND ns.slug='calendar') "
-        "ORDER BY event.starts_at,event.weekday,event.collection_doing DESC,event.id",
+        "ORDER BY event.starts_at,event.weekday,event.id",
         {"observation": board.observation_id, "start": start, "end": end},
     )
     roots = {root_of(row.work_id, redirects) for row in events}
@@ -131,7 +131,9 @@ async def candidates(
     seasons = {board.season_key, rules.next_season_key(board.season_key)}
     for observation in await fetch(
         session,
-        "SELECT DISTINCT o.id,o.normalized_data FROM provider_observation o "
+        "SELECT DISTINCT o.id,COALESCE(o.normalized_data,v.payload) AS normalized_data "
+        "FROM provider_observation o LEFT JOIN mapping_run m ON m.id=o.mapping_run_id "
+        "LEFT JOIN provider_revision v ON v.id=m.revision_id "
         "JOIN provider_current_observation c ON c.observation_id=o.id "
         "JOIN provider_record r ON r.id=c.provider_record_id "
         "JOIN provider_namespace ns ON ns.id=r.namespace_id "

@@ -28,7 +28,7 @@ PRIMARY_SIGNALS = (
 async def _redirect_map(session: AsyncSession) -> dict[Any, Any]:
     rows = await fetch(
         session,
-        "SELECT source_entity_id, target_entity_id FROM entity_redirect WHERE is_active",
+        "SELECT source_entity_id, target_entity_id FROM entity_identity_membership WHERE is_active",
         {},
     )
     return {row.source_entity_id: row.target_entity_id for row in rows}
@@ -54,7 +54,7 @@ async def _rank(session: AsyncSession, *, work_type: str, source: str, metric: s
         session,
         """
         SELECT DISTINCT ON (m.entity_id) m.entity_id, m.value
-        FROM metric_snapshot AS m
+        FROM ranking.provider_metric AS m
         JOIN provider_record AS r ON r.id = m.provider_record_id
         JOIN provider_namespace AS ns ON ns.id = r.namespace_id
         JOIN provider AS p ON p.id = ns.provider_id
@@ -95,13 +95,15 @@ async def score_map(session: AsyncSession) -> dict[Any, Decimal]:
     scores: dict[Any, Decimal] = {}
     for signal in PRIMARY_SIGNALS:
         scores.update(standings(await _series(session, redirects, signal)))
+    for entity_id, score in standings(
+        await _series(session, redirects, ("anime", "bangumi", "calendar-watching"))
+    ).items():
+        scores.setdefault(entity_id, score)
     return scores
 
 
 async def refresh(session: AsyncSession, *, now: datetime) -> int:
     scores = await score_map(session)
-    if not scores:
-        return 0
     return await _persist(session, scores, now=now)
 
 
@@ -140,29 +142,28 @@ async def _persist(
     }
     scorable = await fetch(
         session,
-        "SELECT id FROM entity WHERE id = ANY(:ids)"
+        "SELECT id FROM entity JOIN work ON work.entity_id = entity.id WHERE id = ANY(:ids)"
         " AND lifecycle = 'active' AND visibility = 'public'",
         {"ids": list(scores)},
     )
     scorable_ids = {row.id for row in scorable}
-    if not scorable_ids:
-        return 0
     payload = json.dumps(
         [{"entity_id": str(key), "score": str(scores[key])} for key in scorable_ids]
     )
     await fetch(
         session,
-        "UPDATE work SET popularity = v.score, popularity_refreshed_at = :now"
-        " FROM jsonb_to_recordset(CAST(:rows AS jsonb))"
-        "   AS v(entity_id uuid, score numeric)"
-        " WHERE work.entity_id = v.entity_id RETURNING work.entity_id",
+        "INSERT INTO ranking.entity_rank (entity_id, score, refreshed_at)"
+        " SELECT v.entity_id, v.score, :now FROM jsonb_to_recordset(CAST(:rows AS jsonb))"
+        " AS v(entity_id uuid, score numeric)"
+        " ON CONFLICT (entity_id) DO UPDATE SET score = EXCLUDED.score,"
+        " refreshed_at = EXCLUDED.refreshed_at"
+        " WHERE entity_rank.refreshed_at <= EXCLUDED.refreshed_at RETURNING entity_id",
         {"rows": payload, "now": now},
     )
     # Anything this run did not touch keeps a stale score, so it is cleared.
     await fetch(
         session,
-        "UPDATE work SET popularity = 0, popularity_refreshed_at = :now"
-        " WHERE popularity_refreshed_at < :now RETURNING entity_id",
+        "DELETE FROM ranking.entity_rank WHERE refreshed_at < :now RETURNING entity_id",
         {"now": now},
     )
     return len(scorable_ids)

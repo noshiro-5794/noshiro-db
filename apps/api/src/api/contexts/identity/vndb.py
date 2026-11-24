@@ -58,13 +58,6 @@ async def bind_pair(
         and left.work_type in {"galgame", "game"}
         and right.work_type == "galgame"
     )
-    if compatible:
-        await fetch(
-            session,
-            "UPDATE work SET work_type='galgame', updated_at=now()"
-            " WHERE entity_id=:id RETURNING entity_id",
-            {"id": bangumi_root},
-        )
     a, b = sorted((bangumi_root, vndb_root), key=str)
     candidate = (
         await fetch(

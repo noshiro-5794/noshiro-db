@@ -7,7 +7,7 @@ from uuid import UUID, uuid5
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.contexts.ingestion import entities, facts, records
+from api.contexts.ingestion import entities, facts, metrics, records
 from api.contexts.ingestion import metadata as presentation
 from api.contexts.ingestion import observations as ingestion
 from api.contexts.ingestion import relations as graph
@@ -51,14 +51,11 @@ def episode_facts(data: dict[str, Any]) -> list[tuple[str, Any, str]]:
         ),
         ("air-date", air_date, "/airdate"),
         ("disc", data.get("disc"), "/disc"),
-        ("comment-count", data.get("comment"), "/comment"),
         ("raw-duration", clean_string(data.get("duration"), max_length=64) or None, "/duration"),
     ]
     result = []
     for slug, value, pointer in values:
-        if slug in {"disc", "comment-count"} and (
-            not isinstance(value, int) or isinstance(value, bool) or value < 0
-        ):
+        if slug == "disc" and (not isinstance(value, int) or isinstance(value, bool) or value < 0):
             continue
         if value is None:
             continue
@@ -105,7 +102,12 @@ async def episode_identity(
 
 
 async def import_episodes(
-    session: AsyncSession, work_id: Any, subject_id: str, items: list[Any]
+    session: AsyncSession,
+    work_id: Any,
+    subject_id: str,
+    items: list[Any],
+    *,
+    complete: bool | None = None,
 ) -> None:
     async with session.begin_nested():
         payload = {"items": items}
@@ -123,8 +125,8 @@ async def import_episodes(
             session,
             provider_record_id=collection.record_id,
             mapper="bangumi.subject-episodes",
-            mapper_version="bangumi-subject-episodes-v1",
-            normalized_data=payload,
+            mapper_version="bangumi-subject-episodes-v2",
+            normalized_data={"complete": complete},
             schema_name="index.work.episodes",
             schema_version="1",
         )
@@ -189,6 +191,13 @@ async def import_episodes(
                     value_type=value_type,
                     json_pointer=pointer,
                 )
+            await metrics.record_metrics(
+                session,
+                entity_id=entity_id,
+                provider_record_id=recorded.record_id,
+                observed_at=await ingestion.observed_at(session, observation),
+                values={"comment-count": item.get("comment")},
+            )
             await graph.relation(
                 session,
                 work_id,

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import os
 from datetime import UTC, datetime
@@ -14,6 +13,7 @@ from api.db import fetch
 from api.worker import jobs
 from api.worker.runtime import run
 from api.worker.session import session_scope
+from api.worker.source_fetches import fetch_archived
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +120,7 @@ async def _import_mal_media(mal_id: int, job_id: str | None, lease_owner: str) -
         client = MALClient()
         client.forbid_storage(forbidden=forbidden)
         try:
-            return await asyncio.to_thread(client.fetch_anime, mal_id)
+            return await fetch_archived(session_scope, client.fetch_anime, mal_id)
         finally:
             client.close()
 
@@ -182,7 +182,7 @@ async def _refresh_bangumi_subjects(limit: int) -> dict[str, Any]:
         client = BangumiClient()
         client.forbid_storage(forbidden=bool(policy and policy[0].storage_policy == "forbidden"))
         try:
-            return await subject_refresh.refresh(session, client, limit=limit)
+            return await subject_refresh.refresh(session, client, limit=limit, scope=session_scope)
         finally:
             client.close()
 
@@ -217,7 +217,7 @@ async def _import_anilist_media(
         client = AniListClient()
         client.forbid_storage(forbidden=forbidden)
         try:
-            return await asyncio.to_thread(client.fetch_media, anilist_id)
+            return await fetch_archived(session_scope, client.fetch_media, anilist_id)
         finally:
             client.close()
 
@@ -265,13 +265,13 @@ async def _run_airing_daily(
     bangumi = BangumiClient()
 
     async def fetch_anime(external_id: int) -> dict[str, Any]:
-        return await asyncio.to_thread(mal.fetch_anime, external_id)
+        return await fetch_archived(session_scope, mal.fetch_anime, external_id)
 
     async def fetch_media(external_id: int) -> dict[str, Any]:
-        return await asyncio.to_thread(anilist.fetch_media, external_id)
+        return await fetch_archived(session_scope, anilist.fetch_media, external_id)
 
     async def fetch_subject(external_id: int) -> dict[str, Any]:
-        return await asyncio.to_thread(bangumi.fetch_subject, external_id)
+        return await fetch_archived(session_scope, bangumi.fetch_subject, external_id)
 
     async def import_anime(session: Any, media: dict[str, Any]) -> None:
         await mal_import.import_anime(session, media)

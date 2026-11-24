@@ -60,7 +60,7 @@ async def board_entries(session: AsyncSession, *, include_work: bool) -> list[di
                entry.timezone, entry.region, entry.weekday, entry.precision,
                entry.status, entry.decision, entry.confidence, entry.source_refs
         FROM airing_board_entry AS entry
-        WHERE entry.board_id = CAST(:board AS uuid)
+        WHERE entry.board_id = CAST(:board AS uuid) AND entry.decision <> 'ai'
         ORDER BY entry.weekday, entry.starts_at, entry.work_id
         """,
         {"board": str(board[0].id)},

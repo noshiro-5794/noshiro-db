@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.contexts.presentation.summary import preferred_name
 from api.db import fetch
 from api.integrations.providers.bangumi import BangumiClient
+from api.integrations.providers.capture import SourceArray, origins
 from api.worker.bangumi_entities import import_entity
 from api.worker.bangumi_episodes import import_episodes
 from api.worker.bangumi_relations import RelatedIds, import_relations, related_ids
@@ -25,6 +26,7 @@ class SubjectBatch:
     characters: list[Any]
     people_details: dict[str, dict[str, Any]]
     character_details: dict[str, dict[str, Any]]
+    episodes_complete: bool | None = None
 
 
 async def fetch_batch(
@@ -35,17 +37,21 @@ async def fetch_batch(
 ) -> SubjectBatch:
     subject = await asyncio.to_thread(client.fetch_subject, subject_id)
     await progress(f"Fetched subject {subject_id}", None)
-    episodes = []
+    pages = []
     offset = 0
+    expected = 0
     while True:
         page = await asyncio.to_thread(
             client.fetch_subject_episodes, subject_id=subject_id, limit=100, offset=offset
         )
-        episodes.extend(page["data"])
+        pages.append(page["data"])
+        if isinstance(page.get("total"), int):
+            expected = max(expected, page["total"])
         await progress(f"Fetched episodes for {subject_id}", None)
         if len(page["data"]) < 100:
             break
         offset += 100
+    episodes = SourceArray([item for page in pages for item in page], origins(pages))
     subjects = await asyncio.to_thread(client.fetch_subject_subjects, subject_id)
     staff = await asyncio.to_thread(client.fetch_subject_persons, subject_id)
     characters = await asyncio.to_thread(client.fetch_subject_characters, subject_id)
@@ -63,7 +69,14 @@ async def fetch_batch(
         people_details[identifier] = await asyncio.to_thread(client.fetch_person, int(identifier))
         await progress(f"Fetched staff {identifier}", total)
     return SubjectBatch(
-        subject, episodes, subjects, staff, characters, people_details, character_details
+        subject,
+        episodes,
+        subjects,
+        staff,
+        characters,
+        people_details,
+        character_details,
+        len(episodes) >= expected,
     )
 
 
@@ -72,7 +85,9 @@ async def project_batch(
 ) -> dict[str, Any]:
     async with session.begin_nested():
         work_id = await import_subject(session, batch.subject)
-        await import_episodes(session, work_id, str(subject_id), batch.episodes)
+        await import_episodes(
+            session, work_id, str(subject_id), batch.episodes, complete=batch.episodes_complete
+        )
         identifiers: RelatedIds = await import_relations(
             session,
             work_id,

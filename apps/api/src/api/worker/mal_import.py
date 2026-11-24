@@ -13,12 +13,13 @@ from api.contexts.index import resolution
 from api.contexts.ingestion import entities, facts, metrics, profiles, records
 from api.contexts.ingestion import metadata as presentation
 from api.db import fetch
+from api.integrations.providers.mal_vocabulary import MAL_CLASSIFICATIONS
 
 PROVIDER = "mal"
 NAMESPACE = "anime"
 RESOURCE_TYPE = "subject"
 MAPPER = "mal.anime"
-MAPPER_VERSION = "mal-anime-v3"
+MAPPER_VERSION = "mal-anime-v4"
 SCHEMA_VERSION = "mal-api-v2"
 
 ROMANIZED = "romanized"
@@ -51,6 +52,14 @@ def _as_dict(value: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
+def names_in(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [
+        row["name"] for row in value if isinstance(row, dict) and isinstance(row.get("name"), str)
+    ]
+
+
 def fact_candidates(item: dict[str, Any]) -> dict[str, tuple[Any, str]]:
     """Facts a MAL payload supports, as ``slug -> (value, value_type)``."""
     broadcast = _as_dict(item.get("broadcast"))
@@ -61,15 +70,24 @@ def fact_candidates(item: dict[str, Any]) -> dict[str, tuple[Any, str]]:
         if isinstance(duration, int) and not isinstance(duration, bool) and duration > 0
         else None
     )
+    categories: dict[str, list[str]] = {}
+    for name, identifiers in MAL_CLASSIFICATIONS.items():
+        categories[f"mal-{name}"] = [
+            category["name"]
+            for category in item.get("genres") or []
+            if isinstance(category, dict)
+            and category.get("id") in identifiers
+            and isinstance(category.get("name"), str)
+        ]
     raw: dict[str, Any] = {
         "mal-status": item.get("status"),
+        "mal-source": item.get("source"),
+        "mal-rating": item.get("rating"),
+        **categories,
+        "mal-studios": names_in(item.get("studios")),
         "mal-type": item.get("media_type"),
         "mal-season": season.get("season"),
         "mal-year": season.get("year"),
-        "mal-score": item.get("mean"),
-        "mal-rank": item.get("rank"),
-        "mal-popularity": item.get("popularity"),
-        "mal-members": item.get("num_list_users"),
         "episode-count": item.get("num_episodes"),
         "duration-minutes": minutes,
         "broadcast-day": broadcast.get("day_of_the_week"),
@@ -78,12 +96,14 @@ def fact_candidates(item: dict[str, Any]) -> dict[str, tuple[Any, str]]:
     }
     out: dict[str, tuple[Any, str]] = {}
     for slug, value in raw.items():
-        if value is None or value == "":
+        if value is None or value in ("", []):
             continue
         if isinstance(value, bool):
             value_type = "boolean"
         elif isinstance(value, int | float | Decimal):
             value_type = "number"
+        elif isinstance(value, list):
+            value_type = "json"
         else:
             value_type = "string"
         out[slug] = (value, value_type)
@@ -98,13 +118,15 @@ def fact_candidates(item: dict[str, Any]) -> dict[str, tuple[Any, str]]:
 
 FACT_POINTERS = {
     "mal-status": "/status",
+    "mal-source": "/source",
+    "mal-rating": "/rating",
+    "mal-genres": "/genres",
+    "mal-themes": "/genres",
+    "mal-demographics": "/genres",
+    "mal-studios": "/studios",
     "mal-type": "/media_type",
     "mal-season": "/start_season/season",
     "mal-year": "/start_season/year",
-    "mal-score": "/mean",
-    "mal-rank": "/rank",
-    "mal-popularity": "/popularity",
-    "mal-members": "/num_list_users",
     "episode-count": "/num_episodes",
     "duration-minutes": "/average_episode_duration",
     "broadcast-day": "/broadcast/day_of_the_week",
@@ -135,10 +157,12 @@ def parse_date(value: Any) -> date | None:
     return parsed.date()
 
 
-async def import_anime(session: AsyncSession, item: dict[str, Any]) -> Any:
+async def import_anime(
+    session: AsyncSession, item: dict[str, Any], *, mapper_version: str = MAPPER_VERSION
+) -> Any:
     """Persist an anime atomically and return its resolved canonical identity."""
     async with session.begin_nested():
-        return await _project_anime(session, item)
+        return await _project_anime(session, item, mapper_version=mapper_version)
 
 
 async def import_saved_anime(session: AsyncSession, mal_id: int) -> Any:
@@ -160,12 +184,19 @@ async def import_saved_anime(session: AsyncSession, mal_id: int) -> Any:
     payload = rows[0].payload
     if not isinstance(payload, dict) or payload.get("id") != mal_id:
         raise ValueError(f"MAL anime {mal_id} payload is inconsistent.")
-    return await import_anime(session, payload)
+    await records.lock_work_import(session, PROVIDER, str(mal_id))
+    detailed = await records.detailed_work_entity(session, PROVIDER, str(mal_id), MAPPER_VERSION)
+    if detailed is not None:
+        return await resolution.resolve(session, detailed)
+    return await import_anime(session, payload, mapper_version=MAPPER_VERSION + "-season")
 
 
-async def _project_anime(session: AsyncSession, item: dict[str, Any]) -> Any:
+async def _project_anime(
+    session: AsyncSession, item: dict[str, Any], *, mapper_version: str
+) -> Any:
     """Write one MAL anime, returning the canonical entity id."""
     external_id = str(item["id"])
+    await records.lock_work_import(session, PROVIDER, external_id)
     written = await records.record_payload(
         session,
         provider_slug=PROVIDER,
@@ -180,7 +211,7 @@ async def _project_anime(session: AsyncSession, item: dict[str, Any]) -> Any:
         session,
         provider_record_id=written.record_id,
         mapper=MAPPER,
-        mapper_version=MAPPER_VERSION,
+        mapper_version=mapper_version,
         normalized_data=item,
         schema_name="index.work",
         schema_version="1",
@@ -225,6 +256,7 @@ async def _project_anime(session: AsyncSession, item: dict[str, Any]) -> Any:
         work_entity_id=mapped.work_id,
         media_format=item["media_type"].upper() if isinstance(item.get("media_type"), str) else "",
         episode_count=as_int(item.get("num_episodes")),
+        source_material=item["source"] if isinstance(item.get("source"), str) else "",
         replace_metadata=True,
         premiered_on=parse_date(item.get("start_date")),
         ended_on=parse_date(item.get("end_date")),
@@ -245,8 +277,11 @@ async def _project_anime(session: AsyncSession, item: dict[str, Any]) -> Any:
         observed_at=await ingestion_module.observed_at(session, observation_id),
         values={
             "members": item.get("num_list_users"),
+            "rank": item.get("rank"),
+            "popularity": item.get("popularity"),
             "scoring-users": item.get("num_scoring_users"),
             "score": item.get("mean"),
+            "favourites": item.get("num_favorites"),
         },
     )
     for slug, (value, value_type) in fact_candidates(item).items():

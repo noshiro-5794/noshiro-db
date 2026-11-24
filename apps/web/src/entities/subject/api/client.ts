@@ -58,168 +58,6 @@ export type SubjectEpisodeQuery = PageQuery & {
   type?: string;
 };
 
-type BangumiSubjectSnapshot = {
-  id: number;
-  name?: string;
-  name_cn?: string;
-  rank?: number | null;
-  rating?: {
-    rank?: number | null;
-    total?: number;
-    score?: number;
-    count?: Record<string, number>;
-  };
-  collection?: {
-    doing?: number;
-    collect?: number;
-    wish?: number;
-    on_hold?: number;
-    dropped?: number;
-  };
-};
-
-class BangumiApiError extends Error {
-  readonly kind: 'invalid-request' | 'network' | 'timeout' | 'http' | 'invalid-response';
-  readonly status: number | null;
-
-  constructor(
-    message: string,
-    options: {
-      kind: BangumiApiError['kind'];
-      status?: number;
-      cause?: unknown;
-    },
-  ) {
-    super(message, options.cause === undefined ? undefined : { cause: options.cause });
-    this.name = 'BangumiApiError';
-    this.kind = options.kind;
-    this.status = options.status ?? null;
-  }
-}
-
-const BANGUMI_REQUEST_TIMEOUT_MS = 8_000;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isFiniteNumber(value: unknown) {
-  return typeof value === 'number' && Number.isFinite(value);
-}
-
-function hasOptionalFiniteNumber(record: Record<string, unknown>, key: string, nullable = false) {
-  const value = record[key];
-  return value === undefined || (nullable && value === null) || isFiniteNumber(value);
-}
-
-function hasOptionalString(record: Record<string, unknown>, key: string) {
-  const value = record[key];
-  return value === undefined || typeof value === 'string';
-}
-
-function isNumberMap(value: unknown) {
-  return isRecord(value) && Object.values(value).every(isFiniteNumber);
-}
-
-function isBangumiRating(value: unknown) {
-  if (value === undefined) return true;
-  if (!isRecord(value)) return false;
-
-  return (
-    hasOptionalFiniteNumber(value, 'rank', true) &&
-    hasOptionalFiniteNumber(value, 'total') &&
-    hasOptionalFiniteNumber(value, 'score') &&
-    (value['count'] === undefined || isNumberMap(value['count']))
-  );
-}
-
-function isBangumiCollection(value: unknown) {
-  if (value === undefined) return true;
-  if (!isRecord(value)) return false;
-
-  return ['doing', 'collect', 'wish', 'on_hold', 'dropped'].every((key) => hasOptionalFiniteNumber(value, key));
-}
-
-function isBangumiSubjectSnapshot(value: unknown, expectedId: number): value is BangumiSubjectSnapshot {
-  return (
-    isRecord(value) &&
-    Number.isSafeInteger(value['id']) &&
-    value['id'] === expectedId &&
-    hasOptionalString(value, 'name') &&
-    hasOptionalString(value, 'name_cn') &&
-    hasOptionalFiniteNumber(value, 'rank', true) &&
-    isBangumiRating(value['rating']) &&
-    isBangumiCollection(value['collection'])
-  );
-}
-
-function parseBangumiSubjectSnapshot(value: unknown, expectedId: number): BangumiSubjectSnapshot {
-  if (!isBangumiSubjectSnapshot(value, expectedId)) {
-    throw new BangumiApiError('Bangumi returned an invalid subject response', {
-      kind: 'invalid-response',
-    });
-  }
-
-  return value;
-}
-
-async function getBangumiSubject(subjectId: number, context: ApiRequestContext = {}) {
-  if (!Number.isSafeInteger(subjectId) || subjectId <= 0) {
-    throw new BangumiApiError('Bangumi subject ID must be a positive safe integer', {
-      kind: 'invalid-request',
-    });
-  }
-
-  const timeoutSignal = AbortSignal.timeout(BANGUMI_REQUEST_TIMEOUT_MS);
-  const signal = context.signal ? AbortSignal.any([context.signal, timeoutSignal]) : timeoutSignal;
-  let response: Response;
-
-  try {
-    response = await fetch(`https://api.bgm.tv/v0/entities/${encodeURIComponent(String(subjectId))}`, {
-      headers: {
-        Accept: 'application/json',
-      },
-      referrerPolicy: 'no-referrer',
-      signal,
-    });
-  } catch (error) {
-    if (context.signal?.aborted) {
-      throw error;
-    }
-
-    if (timeoutSignal.aborted) {
-      throw new BangumiApiError('Bangumi request timed out', {
-        kind: 'timeout',
-        cause: error,
-      });
-    }
-
-    throw new BangumiApiError('Bangumi request failed', {
-      kind: 'network',
-      cause: error,
-    });
-  }
-
-  if (!response.ok) {
-    throw new BangumiApiError(`Bangumi request failed with status ${response.status}`, {
-      kind: 'http',
-      status: response.status,
-    });
-  }
-
-  let payload: unknown;
-  try {
-    payload = JSON.parse(await response.text());
-  } catch (error) {
-    throw new BangumiApiError('Bangumi returned malformed JSON', {
-      kind: 'invalid-response',
-      cause: error,
-    });
-  }
-
-  return parseBangumiSubjectSnapshot(payload, subjectId);
-}
-
 export const indexApi = {
   listSubjects: (query: SubjectListQuery = {}, context: ApiRequestContext = {}) =>
     api.get<ApiPage<SubjectSummary>>('/api/v1/index/entities/', {
@@ -237,9 +75,10 @@ export const indexApi = {
       },
     }),
 
-  getSubject: (subjectId: UUID, context: ApiRequestContext = {}) =>
+  getSubject: (subjectId: UUID, language: string, context: ApiRequestContext = {}) =>
     api.get<SubjectDetail>(`/api/v1/index/entities/${encodePath(subjectId)}/`, {
       ...context,
+      headers: { 'Accept-Language': language },
       decode: decodeSubjectDetail,
     }),
 
@@ -259,10 +98,15 @@ export const indexApi = {
       .listSubjectEpisodes(subjectId, { page: 1, page_size: 100 }, context)
       .then((page) => page.results.find((episode) => episode.id === String(episodeId)) ?? null),
 
-  listSubjectStaff: (subjectId: UUID, query: SubjectStaffQuery = {}, context: ApiRequestContext = {}) =>
+  listSubjectStaff: (
+    subjectId: UUID,
+    query: SubjectStaffQuery = {},
+    context: ApiRequestContext & { language?: string } = {},
+  ) =>
     api
       .get<SubjectStaff[]>(`/api/v1/index/entities/${encodePath(subjectId)}/credits/`, {
-        ...context,
+        ...(context.signal === undefined ? {} : { signal: context.signal }),
+        ...(context.language ? { headers: { 'Accept-Language': context.language } } : {}),
         decode: (value) => {
           if (!Array.isArray(value)) throw new TypeError('Invalid entity credits response');
           return value.map(decodeSubjectStaff);
@@ -282,7 +126,7 @@ export const indexApi = {
         };
       }),
 
-  listSubjectStaffRoles: (subjectId: UUID, context: ApiRequestContext = {}) =>
+  listSubjectStaffRoles: (subjectId: UUID, context: ApiRequestContext & { language?: string } = {}) =>
     indexApi.listSubjectStaff(subjectId, { page: 1, page_size: 1_000 }, context).then((page) =>
       decodeSubjectStaffRoles({
         roles: [
@@ -337,6 +181,4 @@ export const indexApi = {
       decode: decodeCalendarBoardEntries,
       query: { include_work: true },
     }),
-
-  getBangumiSubject,
 };

@@ -40,8 +40,8 @@ async def library_client(integration_session):
         )
         await fetch(
             session,
-            "INSERT INTO work(entity_id,work_type,popularity,created_at,updated_at) "
-            "VALUES (:id,:kind,0,now(),now()) RETURNING entity_id",
+            "INSERT INTO work(entity_id,work_type,created_at,updated_at) "
+            "VALUES (:id,:kind,now(),now()) RETURNING entity_id",
             {"id": entity_id, "kind": work_type},
         )
         row = (

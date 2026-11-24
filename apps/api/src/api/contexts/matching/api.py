@@ -62,14 +62,6 @@ async def decide_candidate(
             outcome=str(outcome),
             reason=reason,
         )
-        if outcome == "group":
-            candidate = await resolution.candidate_entities(session, candidate_id)
-            await resolution.ensure_pair_group(
-                session,
-                left_id=candidate.left_entity_id,
-                right_id=candidate.right_entity_id,
-                reason=reason or "admin-group",
-            )
         await resolution.settle_proposal(
             session,
             candidate_id=candidate_id,

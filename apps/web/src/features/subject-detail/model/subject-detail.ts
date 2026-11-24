@@ -185,6 +185,7 @@ export type SubjectAttribute = {
   value: string;
   /** Which provider the value came from, for the small source hint. */
   provider: string;
+  label?: string;
 };
 
 const providerPrefix = /^(anilist|mal|bangumi|vndb|jikan)-/u;
@@ -214,6 +215,21 @@ const weekdayLabels: Record<string, string> = {
 };
 
 export function subjectAttributes(subject: SubjectDetail): SubjectAttribute[] {
+  if (subject.display_fields?.length) {
+    const fields = subject.display_fields.map(({ key, label, values, provider }) => ({
+      key,
+      label,
+      value: values.join('\n'),
+      provider,
+    }));
+    const titles = [...new Set(subject.names.map((name) => name.text))].filter(
+      (name) => name !== subject.display_name && name !== subject.original_title?.text,
+    );
+    if (titles.length) {
+      fields.push({ key: 'alternative-titles', label: '', value: titles.join('\n'), provider: '' });
+    }
+    return fields;
+  }
   const rows = getInfoboxRows(subject.infobox);
   const byKey = new Map<string, SubjectAttribute>();
 
@@ -251,6 +267,7 @@ function normaliseAttributeValue(key: string, value: string): string {
 /** Attribute key -> i18n label key. */
 export const attributeLabelKeys: Record<string, MessageKey> = {
   type: 'subject.attrType',
+  'alternative-titles': 'subject.alternativeTitles',
   format: 'subject.attrFormat',
   episodes: 'subject.attrEpisodes',
   'release-date': 'subject.attrReleaseDate',
@@ -259,7 +276,16 @@ export const attributeLabelKeys: Record<string, MessageKey> = {
   'broadcast-time': 'subject.attrBroadcastTime',
   'broadcast-timezone': 'subject.attrBroadcastTimezone',
   season: 'subject.attrSeason',
+  'season-year': 'subject.attrSeasonYear',
   status: 'subject.attrStatus',
+  'duration-minutes': 'subject.attrDurationMinutes',
+  'source-material': 'subject.attrSourceMaterial',
+  genres: 'subject.attrGenres',
+  broadcaster: 'subject.attrBroadcaster',
+  'animation-production': 'subject.attrAnimationProduction',
+  producers: 'subject.attrProducers',
+  website: 'subject.attrWebsite',
+  'infobox:copyright': 'subject.attrCopyright',
 };
 
 const weekdayValueKeys: Record<string, MessageKey> = {
@@ -330,6 +356,29 @@ export function isPrimaryRelation(relation: SubjectRelation) {
 
 export function relationTitle(relation: SubjectRelation, fallback = 'Untitled') {
   return relation.subject.display_title || relation.subject.title || relation.subject.title_cn || fallback;
+}
+
+const relationLabelKeys: Partial<Record<string, MessageKey>> = {
+  adaptation: 'subject.relationAdaptation',
+  'alternate-version': 'subject.relationAlternateVersion',
+  fandisc: 'subject.relationFandisc',
+  'full-story': 'subject.relationFullStory',
+  'original-version': 'subject.relationOriginalVersion',
+  'parent-story': 'subject.relationParentStory',
+  prequel: 'subject.relationPrequel',
+  related: 'subject.related',
+  'same-season': 'subject.relationSameSeason',
+  'same-series': 'subject.relationSameSeries',
+  'same-setting': 'subject.relationSameSetting',
+  sequel: 'subject.relationSequel',
+  'shares-characters': 'subject.relationSharedCharacters',
+  'side-story': 'subject.relationSideStory',
+  summary: 'subject.relationSummary',
+};
+
+export function relationLabel(type: string, t: (key: MessageKey) => string) {
+  const key = relationLabelKeys[type];
+  return key ? t(key) : type.trim() || t('subject.related');
 }
 
 export function groupRelationsForDisplay(relations: SubjectRelation[], fallback: string): RelationDisplayGroup[] {

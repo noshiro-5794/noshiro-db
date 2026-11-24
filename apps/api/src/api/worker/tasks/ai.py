@@ -9,9 +9,8 @@ from celery import shared_task
 from celery.exceptions import Ignore
 
 from api.config import settings
-from api.contexts.knowledge.service import classify_entity, extract_evidence
+from api.contexts.knowledge.service import classify_entity
 from api.contexts.matching.service import evaluate
-from api.contexts.scheduling.service import run as complete_schedule
 from api.db import fetch
 from api.shared.ai import AIError
 from api.shared.ai_availability import provider_available
@@ -94,37 +93,3 @@ def classify_entity_task(self: Any, entity_id: str) -> str:
         return result
     except AIError as error:
         retry_provider(self, error)
-
-
-@shared_task(  # type: ignore[untyped-decorator]
-    name="apps.ai.tasks.extract_observation_evidence_task",
-    queue="ai",
-    bind=True,
-    max_retries=3,
-    soft_time_limit=180,
-    time_limit=210,
-)
-def extract_observation_evidence_task(self: Any, observation_id: str, entity_id: str) -> str:
-    try:
-        result: str = run(extract_evidence(observation_id, entity_id))
-        return result
-    except AIError as error:
-        retry_provider(self, error)
-
-
-@shared_task(  # type: ignore[untyped-decorator]
-    name="apps.ai.tasks.complete_missing_schedule_slots_task",
-    queue="ai",
-    bind=True,
-    max_retries=2,
-    soft_time_limit=600,
-    time_limit=700,
-)
-def complete_missing_schedule_slots_task(
-    self: Any, *, limit: int | None = None, apply: bool = True
-) -> dict[str, Any]:
-    try:
-        result: dict[str, Any] = run(complete_schedule(limit=limit, apply=apply))
-        return result
-    except AIError as error:
-        retry_provider(self, error, max_retries=2)

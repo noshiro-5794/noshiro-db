@@ -24,7 +24,6 @@ const subjectQueryKeys = {
     [...subjectQueryKeys.detail(subjectId), 'relations', query ?? 'default'] as const,
   allEpisodes: (subjectId: UUID) => [...subjectQueryKeys.episodes(subjectId), 'all'] as const,
   allRelations: (subjectId: UUID) => [...subjectQueryKeys.relations(subjectId), 'all'] as const,
-  bangumiSnapshot: (bangumiSubjectId: number) => [...subjectQueryKeys.all, 'bangumi', bangumiSubjectId] as const,
   calendar: (weekday?: WeekdayEn) => ['calendar', weekday ?? 'all'] as const,
   calendarBoard: () => ['calendar', 'board'] as const,
 };
@@ -36,10 +35,10 @@ export const subjectQueries = {
       queryFn: ({ signal }) => indexApi.listSubjects(query, { signal }),
     }),
 
-  detail: (subjectId: UUID) =>
+  detail: (subjectId: UUID, language: string) =>
     queryOptions({
-      queryKey: subjectQueryKeys.detail(subjectId),
-      queryFn: ({ signal }) => indexApi.getSubject(subjectId, { signal }),
+      queryKey: [...subjectQueryKeys.detail(subjectId), language],
+      queryFn: ({ signal }) => indexApi.getSubject(subjectId, language, { signal }),
     }),
 
   episodes: (subjectId: UUID, query?: SubjectEpisodeQuery) =>
@@ -68,16 +67,16 @@ export const subjectQueries = {
         }),
     }),
 
-  staff: (subjectId: UUID, query?: SubjectStaffQuery) =>
+  staff: (subjectId: UUID, language: string, query?: SubjectStaffQuery) =>
     queryOptions({
-      queryKey: subjectQueryKeys.staff(subjectId, query),
-      queryFn: ({ signal }) => indexApi.listSubjectStaff(subjectId, query, { signal }),
+      queryKey: [...subjectQueryKeys.staff(subjectId, query), language],
+      queryFn: ({ signal }) => indexApi.listSubjectStaff(subjectId, query, { signal, language }),
     }),
 
-  staffRoles: (subjectId: UUID) =>
+  staffRoles: (subjectId: UUID, language: string) =>
     queryOptions({
-      queryKey: subjectQueryKeys.staffRoles(subjectId),
-      queryFn: ({ signal }) => indexApi.listSubjectStaffRoles(subjectId, { signal }),
+      queryKey: [...subjectQueryKeys.staffRoles(subjectId), language],
+      queryFn: ({ signal }) => indexApi.listSubjectStaffRoles(subjectId, { signal, language }),
     }),
 
   characters: (subjectId: UUID, query?: { page?: number; page_size?: number }) =>
@@ -100,13 +99,6 @@ export const subjectQueries = {
           pageSize: defaultPageSize,
           signal,
         }),
-    }),
-
-  bangumiSnapshot: (bangumiSubjectId: number) =>
-    queryOptions({
-      queryKey: subjectQueryKeys.bangumiSnapshot(bangumiSubjectId),
-      queryFn: ({ signal }) => indexApi.getBangumiSubject(bangumiSubjectId, { signal }),
-      staleTime: 5 * 60 * 1000,
     }),
 
   calendar: (weekday?: WeekdayEn) =>

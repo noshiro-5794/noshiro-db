@@ -354,7 +354,7 @@ async def main() -> int:
                     WHERE work_id = :entity) AS profiles,
                   (SELECT count(*) FROM external_link
                     WHERE entity_id = :entity) AS links,
-                  (SELECT count(*) FROM metric_snapshot
+                  (SELECT count(*) FROM ranking.provider_metric
                     WHERE entity_id = :entity) AS metrics,
                   (SELECT count(*) FROM fact
                     WHERE entity_id = :entity) AS facts

@@ -19,13 +19,14 @@ from typing import Any
 
 import httpx
 
+from api.integrations.providers.capture import decode_response
 from api.integrations.providers.errors import ProviderError, retry_after_seconds
 
 MAL_ANIME_FIELDS = (
     "id,title,main_picture,alternative_titles,start_date,end_date,synopsis,"
-    "mean,rank,popularity,num_list_users,num_scoring_users,nsfw,media_type,"
+    "mean,rank,popularity,num_list_users,num_scoring_users,num_favorites,nsfw,media_type,"
     "status,num_episodes,start_season,broadcast,source,"
-    "average_episode_duration,rating,studios,genres,my_list_status"
+    "average_episode_duration,rating,studios,genres"
 )
 
 MAL_SEASON_BY_QUARTER = {1: "winter", 2: "spring", 3: "summer", 4: "fall"}
@@ -94,7 +95,7 @@ class MALClient:
             try:
                 response = self.http.get(path, params=params)
                 response.raise_for_status()
-                return response.json()
+                return decode_response("mal", response)
             except httpx.HTTPStatusError as error:
                 response = error.response
                 status = response.status_code

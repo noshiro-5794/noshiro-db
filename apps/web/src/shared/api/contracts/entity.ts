@@ -116,9 +116,24 @@ export type EntitySummary = {
   media: EntityMedia[];
 };
 
+export type EntityDisplayField = {
+  key: string;
+  label: string;
+  values: string[];
+  provider: string;
+};
+
+export type EntityOriginalTitle = {
+  text: string;
+  language: string;
+  provenance: FieldProvenance | null;
+};
+
 export type EntityDetail = EntitySummary & {
   names: EntityName[];
   descriptions: EntityDescription[];
+  original_title?: EntityOriginalTitle | null;
+  display_fields?: EntityDisplayField[];
   facts: EntityFact[];
   external_links: EntityExternalLink[];
   content_ratings: EntityContentRating[];
@@ -150,7 +165,6 @@ export type EntityEpisode = {
   duration: string | null;
   raw_duration: string;
   air_date: string | null;
-  comment_count: number | null;
   description: string;
   provenance: FieldProvenance | null;
 };
@@ -174,14 +188,6 @@ export type EntityRelease = {
   evidence: FactEvidence[];
 };
 
-export type EntityMetric = {
-  metric: string;
-  value: string;
-  sample_size: number;
-  observed_at: ISODateString;
-  provider: string;
-};
-
 export type EntityEvidence = {
   provider: string;
   namespace: string;
@@ -200,7 +206,6 @@ export type CalendarEvent = {
   weekday: number | null;
   precision: string;
   raw_value: string;
-  collection_doing: number;
   work?: EntitySummary | null;
   provenance: FieldProvenance | null;
 };

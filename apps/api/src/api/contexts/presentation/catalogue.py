@@ -25,12 +25,12 @@ POPULAR_ORDERING = "popular"
 # single redirect, not the chain.
 COLLAPSE_ONE_LEVEL = """
     SELECT redirect.target_entity_id AS id
-    FROM entity_redirect AS redirect
+    FROM entity_identity_membership AS redirect
     WHERE redirect.is_active AND redirect.source_entity_id IN ({source})
     UNION
     SELECT seed.id FROM ({source}) AS seed
     WHERE seed.id NOT IN (
-        SELECT source_entity_id FROM entity_redirect
+        SELECT source_entity_id FROM entity_identity_membership
         WHERE is_active AND source_entity_id IN ({source})
     )
 """
@@ -42,13 +42,13 @@ COLLAPSE_TO_ROOT = """
         SELECT seed.id FROM ({source}) AS seed
         UNION
         SELECT redirect.target_entity_id
-        FROM entity_redirect AS redirect
+        FROM entity_identity_membership AS redirect
         JOIN chain ON redirect.source_entity_id = chain.id
         WHERE redirect.is_active
     )
     SELECT DISTINCT chain.id FROM chain
     WHERE chain.id NOT IN (
-        SELECT source_entity_id FROM entity_redirect WHERE is_active
+        SELECT source_entity_id FROM entity_identity_membership WHERE is_active
     )
 """
 
@@ -97,13 +97,16 @@ def _clauses(
     clauses = [
         "entity.lifecycle = 'active'",
         "entity.visibility = 'public'",
+        "NOT EXISTS (SELECT 1 FROM entity_identity_membership AS identity"
+        " WHERE identity.source_entity_id = entity.id AND identity.is_active)",
     ]
     if use_collection:
         clauses.append(f"entity.id IN ({COLLAPSE_ONE_LEVEL.format(source=MEMBERS)})")
     if use_keyword:
         clauses.append(f"entity.id IN ({COLLAPSE_TO_ROOT.format(source=MATCHES)})")
     if subject_type:
-        clauses.append("entity.id IN (SELECT entity_id FROM work WHERE work_type = :subject_type)")
+        typed_members = "SELECT entity_id AS id FROM work WHERE work_type = :subject_type"
+        clauses.append(f"entity.id IN ({COLLAPSE_TO_ROOT.format(source=typed_members)})")
     if safe_only:
         clauses.append("entity.audience <> 'adult'")
     return clauses
@@ -111,7 +114,7 @@ def _clauses(
 
 def _order(ordering: str) -> str:
     if ordering == POPULAR_ORDERING:
-        return "work.popularity DESC NULLS LAST, entity.updated_at DESC, entity.id"
+        return "rank.score DESC NULLS LAST, entity.updated_at DESC, entity.id"
     return "entity.updated_at DESC, entity.id"
 
 
@@ -160,7 +163,7 @@ async def entity_page(
         f"""
         SELECT entity.id
         FROM entity
-        LEFT JOIN work ON work.entity_id = entity.id
+        LEFT JOIN ranking.entity_rank AS rank ON rank.entity_id = entity.id
         WHERE {where}
         ORDER BY {_order(ordering)}
         LIMIT :limit OFFSET :offset
@@ -191,7 +194,7 @@ async def _clusters(session: AsyncSession, roots: list[UUID]) -> dict[UUID, set[
             SELECT seed.id, seed.id FROM unnest(CAST(:roots AS uuid[])) AS seed(id)
             UNION
             SELECT cluster.root, redirect.source_entity_id
-            FROM entity_redirect AS redirect
+            FROM entity_identity_membership AS redirect
             JOIN cluster ON redirect.target_entity_id = cluster.id
             WHERE redirect.is_active
         )

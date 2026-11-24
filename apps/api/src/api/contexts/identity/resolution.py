@@ -2,12 +2,60 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from uuid import UUID
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.db import fetch
+
 MAX_REDIRECT_DEPTH = 32
+
+
+@dataclass(frozen=True, slots=True)
+class PublicCluster:
+    root: UUID
+    members: list[UUID]
+    content_allowed: bool
+
+
+async def public_clusters(session: AsyncSession, ids: list[UUID]) -> dict[UUID, PublicCluster]:
+    """Resolve a batch and exclude clusters containing any non-public entity."""
+    if not ids:
+        return {}
+    rows = await fetch(
+        session,
+        """
+        WITH RECURSIVE chain(original, member, depth) AS (
+            SELECT id, id, 0 FROM unnest(CAST(:ids AS uuid[])) AS id
+            UNION ALL
+            SELECT chain.original, membership.target_entity_id, chain.depth + 1
+            FROM chain JOIN entity_identity_membership AS membership
+              ON membership.source_entity_id = chain.member AND membership.is_active
+            WHERE chain.depth < :max_depth
+        ), roots AS (
+            SELECT DISTINCT ON (original) original, member AS root
+            FROM chain ORDER BY original, depth DESC
+        ), members(root, member) AS (
+            SELECT DISTINCT root, root FROM roots
+            UNION
+            SELECT members.root, membership.source_entity_id
+            FROM members JOIN entity_identity_membership AS membership
+              ON membership.target_entity_id = members.member AND membership.is_active
+        ), public AS (
+            SELECT members.root, array_agg(entity.id ORDER BY entity.id) AS ids,
+                   bool_and(entity.audience <> 'adult') AS content_allowed
+            FROM members JOIN entity ON entity.id = members.member
+            GROUP BY members.root HAVING bool_and(entity.visibility = 'public')
+        )
+        SELECT roots.original, roots.root, public.ids, public.content_allowed
+        FROM roots JOIN public ON public.root = roots.root
+        JOIN entity AS root ON root.id = roots.root AND root.lifecycle = 'active'
+        """,
+        {"ids": ids, "max_depth": MAX_REDIRECT_DEPTH},
+    )
+    return {row.original: PublicCluster(row.root, row.ids, row.content_allowed) for row in rows}
 
 
 async def resolve(session: AsyncSession, entity_id: UUID) -> UUID | None:
@@ -20,7 +68,7 @@ async def resolve(session: AsyncSession, entity_id: UUID) -> UUID | None:
                     SELECT CAST(:entity_id AS uuid), 0
                     UNION ALL
                     SELECT redirect.target_entity_id, chain.depth + 1
-                    FROM entity_redirect AS redirect
+                    FROM entity_identity_membership AS redirect
                     JOIN chain ON redirect.source_entity_id = chain.id
                     WHERE redirect.is_active AND chain.depth < :max_depth
                 )
@@ -43,7 +91,7 @@ async def cluster_ids(session: AsyncSession, root_id: UUID) -> set[UUID]:
                     SELECT CAST(:root_id AS uuid)
                     UNION
                     SELECT redirect.source_entity_id
-                    FROM entity_redirect AS redirect
+                    FROM entity_identity_membership AS redirect
                     JOIN cluster ON redirect.target_entity_id = cluster.id
                     WHERE redirect.is_active
                 )

@@ -7,10 +7,12 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.contexts.identity.resolution import cluster_ids, is_active, is_public, resolve
+from api.contexts.identity.relations import canonical_relation_type
+from api.contexts.identity.resolution import public_clusters
 from api.db import fetch
 
 from .provenance import PROVENANCE, PROVENANCE_JOINS, row_provenance
+from .source_preference import priority
 from .summary import entity_summary
 
 CURRENT_RELATION = """
@@ -84,6 +86,7 @@ async def entity_relations(
     root: UUID,
     cluster: list[str],
     language: str,
+    limit: int | None = None,
 ) -> list[dict[str, Any]]:
     rows = await fetch(
         session,
@@ -92,36 +95,45 @@ async def entity_relations(
                relation.qualifiers
         FROM entity_relation AS relation
         WHERE relation.from_entity_id = ANY(CAST(:ids AS uuid[]))
+          AND relation.relation_type <> 'has-episode'
           AND {CURRENT_RELATION}
         ORDER BY relation.id
         """,
         {"ids": cluster},
     )
     evidence = await _evidence(session, [row.id for row in rows])
+    targets = await public_clusters(session, list({row.to_entity_id for row in rows}))
+    for sources in evidence.values():
+        sources.sort(key=lambda source: priority("relations", source["provider"]))
+
+    def relation_priority(row: Any) -> tuple[int, str]:
+        sources = evidence.get(row.id, [])
+        return priority("relations", sources[0]["provider"] if sources else None)
+
     rendered: list[dict[str, Any]] = []
     seen: set[tuple[str, UUID]] = set()
-    for row in rows:
-        target = await resolve(session, row.to_entity_id)
-        if target is None or not await is_active(session, target):
+    for row in sorted(rows, key=relation_priority):
+        target = targets.get(row.to_entity_id)
+        if target is None or target.root == root:
             continue
-        target_cluster = await cluster_ids(session, target)
-        if not await is_public(session, target_cluster):
-            continue
-        key = (row.relation_type, target)
+        relation_type = canonical_relation_type(row.relation_type)
+        key = (relation_type, target.root)
         if key in seen:
             continue
         seen.add(key)
         rendered.append(
             {
-                "relation_type": row.relation_type,
+                "relation_type": relation_type,
                 "target": await entity_summary(
                     session,
-                    root=target,
-                    cluster_ids=[str(value) for value in target_cluster],
+                    root=target.root,
+                    cluster_ids=list(map(str, target.members)),
                     language=language,
                 ),
                 "qualifiers": row.qualifiers,
                 "evidence": evidence.get(row.id, []),
             }
         )
+        if limit is not None and len(rendered) >= limit:
+            break
     return rendered

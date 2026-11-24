@@ -79,8 +79,10 @@ async def previous_calendar_item_ids(session: AsyncSession) -> set[int]:
     rows = await fetch(
         session,
         """
-        SELECT o.normalized_data AS data
+        SELECT COALESCE(o.normalized_data, revision.payload) AS data
         FROM provider_observation AS o
+        LEFT JOIN mapping_run AS mapping ON mapping.id = o.mapping_run_id
+        LEFT JOIN provider_revision AS revision ON revision.id = mapping.revision_id
         JOIN provider_record AS r ON r.id = o.provider_record_id
         JOIN provider_namespace AS ns ON ns.id = r.namespace_id
         JOIN provider AS p ON p.id = ns.provider_id

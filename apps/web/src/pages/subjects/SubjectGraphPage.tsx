@@ -29,14 +29,15 @@ function subjectTitle(subject: SubjectDetail | undefined, fallback: string) {
 }
 
 export function SubjectGraphPage() {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const params = entityGraphRoute.useParams();
   const subjectId = parseUuid(params.subjectId) ?? '';
   const [mode, setMode] = useState<GraphMode>('balanced');
   const [sections, setSections] = useState<GraphSections>(defaultGraphSections);
-  const subjectQuery = useQuery({ ...subjectQueries.detail(subjectId), enabled: Boolean(subjectId) });
+  const detailOptions = subjectQueries.detail(subjectId, locale);
+  const subjectQuery = useQuery({ ...detailOptions, enabled: Boolean(subjectId) });
   const graphPayloadQuery = useQuery({
-    queryKey: [...subjectQueries.detail(subjectId).queryKey, 'graph-payload', mode, sections],
+    queryKey: [...detailOptions.queryKey, 'graph-payload', mode, sections],
     queryFn: ({ signal }) => loadGraphPayload(subjectId, mode, sections, signal),
     enabled: Boolean(subjectId),
   });

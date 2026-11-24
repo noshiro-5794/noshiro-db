@@ -44,7 +44,7 @@ class Discovery:
 async def redirect_map(session: AsyncSession) -> dict[Any, Any]:
     rows = await fetch(
         session,
-        "SELECT source_entity_id, target_entity_id FROM entity_redirect WHERE is_active",
+        "SELECT source_entity_id, target_entity_id FROM entity_identity_membership WHERE is_active",
         {},
     )
     return {row.source_entity_id: row.target_entity_id for row in rows}

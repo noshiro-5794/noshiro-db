@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, Mock
 
@@ -97,7 +98,7 @@ async def test_job_cancelled_during_fetch_cannot_write_catalogue(task_runtime, m
         await session.commit()
         return client.fetch_import_batch.return_value
 
-    monkeypatch.setattr(vndb_tasks.asyncio, "to_thread", cancel_during_fetch)
+    monkeypatch.setattr(asyncio, "to_thread", cancel_during_fetch)
     assert await vndb_tasks.import_work(
         "v1", include_related=True, job_id=job_id, lease_owner="worker"
     ) == {"skipped": True, "reason": "job lease lost"}

@@ -88,7 +88,9 @@ async def test_recall_creates_pending_candidate_evidence_and_replay_is_free(reca
         "reason": "Same work",
         "policy_version": "mal-agent-recall-v1",
     }
-    assert (await fetch(session, "SELECT count(*) AS n FROM entity_redirect", {}))[0].n == 0
+    assert (await fetch(session, "SELECT count(*) AS n FROM entity_identity_membership", {}))[
+        0
+    ].n == 0
     again = await mal_recall.recall_one(root)
     assert again["outcome"] == "skipped_existing"
     assert model.await_count == 2

@@ -9,8 +9,8 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.contexts.ingestion import metrics, records
 from api.contexts.ingestion import observations as ingestion
-from api.contexts.ingestion import records
 from api.worker import calendar as calendar_read
 from api.worker import calendar_lookup, calendar_write
 
@@ -64,6 +64,7 @@ async def apply_calendar(
         if works is None:
             works = await calendar_lookup.work_entities_for_subjects(session, subject_ids)
         events: list[dict[str, Any]] = []
+        watching: dict[Any, int] = {}
         for group in data:
             if not isinstance(group, dict):
                 continue
@@ -78,9 +79,10 @@ async def apply_calendar(
                 work_id = works.get(item["id"])
                 if work_id is None:
                     continue
-                events.append(
-                    calendar_read.build_event(work_id=work_id, weekday=weekday, item=item)
-                )
+                events.append(calendar_read.build_event(work_id=work_id, weekday=weekday))
+                count = calendar_read.watching_count(item)
+                if count is not None:
+                    watching[work_id] = max(watching.get(work_id, 0), count)
         if not events:
             # Every item was unknown to the catalogue, or the payload was malformed. Keeping
             # the current board is the safe answer; the old service refuses here too.
@@ -90,7 +92,7 @@ async def apply_calendar(
 
         previous = await calendar_lookup.previous_calendar_item_ids(session)
         added, removed = calendar_read.diff_ids(set(subject_ids), previous)
-        observation_id = await record_calendar(session, data, moment)
+        observation_id = await record_calendar(session, data, moment, watching)
         metadata = calendar_read.board_metadata(
             fetched_at=moment.isoformat(),
             events=[_Weekday(event) for event in events],
@@ -129,7 +131,12 @@ class _Weekday:
         self.weekday = event.get("weekday")
 
 
-async def record_calendar(session: AsyncSession, data: list[Any], moment: datetime) -> Any:
+async def record_calendar(
+    session: AsyncSession,
+    data: list[Any],
+    moment: datetime,
+    watching: dict[Any, int] | None = None,
+) -> Any:
     written = await records.record_payload(
         session,
         provider_slug=PROVIDER,
@@ -141,6 +148,14 @@ async def record_calendar(session: AsyncSession, data: list[Any], moment: dateti
         schema_version="bangumi-api-v0",
         fetched_at=moment,
     )
+    for entity_id, count in (watching or {}).items():
+        await metrics.record_metrics(
+            session,
+            entity_id=entity_id,
+            provider_record_id=written.record_id,
+            observed_at=moment,
+            values={"calendar-watching": count},
+        )
     return await ingestion.record_observation(
         session,
         provider_record_id=written.record_id,

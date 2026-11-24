@@ -75,9 +75,11 @@ async def test_explicit_current_identifier_binds_once_and_keeps_source_represent
     )
     decisions = await fetch(session, "SELECT outcome, decided_by FROM candidate_decision", {})
     assert [tuple(row) for row in decisions] == [("bind", "official_external_id")]
-    assert (await fetch(session, "SELECT count(*) AS n FROM entity_redirect WHERE is_active", {}))[
-        0
-    ].n == 1
+    assert (
+        await fetch(
+            session, "SELECT count(*) AS n FROM entity_identity_membership WHERE is_active", {}
+        )
+    )[0].n == 1
     assert (
         await fetch(session, "SELECT count(*) AS n FROM entity_representation WHERE is_active", {})
     )[0].n == 2

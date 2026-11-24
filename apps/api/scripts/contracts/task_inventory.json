@@ -1,9 +1,7 @@
 [
   "apps.ai.tasks.classify_entity_task",
-  "apps.ai.tasks.complete_missing_schedule_slots_task",
   "apps.ai.tasks.evaluate_match_candidate_task",
   "apps.ai.tasks.evaluate_pending_candidates_task",
-  "apps.ai.tasks.extract_observation_evidence_task",
   "apps.index.tasks.popularity.refresh_popularity_task",
   "apps.sync.tasks.airing.run_airing_daily_task",
   "apps.sync.tasks.anilist.import_anilist_media_task",
