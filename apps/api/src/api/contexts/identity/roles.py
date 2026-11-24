@@ -1,5 +1,6 @@
 """Credit role terminology shared by the credit and work-metadata readers."""
 
+import re
 from unicodedata import normalize
 
 # Keys are stable across locales. The source credit retains its original text.
@@ -47,6 +48,13 @@ def role_key(role: str) -> str:
 
 
 def role_label(role: str, language: str) -> str:
-    labels = ROLE_NAMES.get(role_key(role))
     index = LANGUAGE_INDEX.get(language.split(";", 1)[0].strip().lower().split("-", 1)[0])
-    return labels[index] if labels is not None and index is not None else role
+    if index is None:
+        return role
+    labels = ROLE_NAMES.get(role_key(role))
+    if labels is not None:
+        return labels[index]
+    qualified = re.fullmatch(r"(.+?)(\s*[(\uff08].*)", role)
+    if qualified and (labels := ROLE_NAMES.get(role_key(qualified[1]))):
+        return labels[index] + qualified[2]
+    return role

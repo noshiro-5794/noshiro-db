@@ -32,4 +32,6 @@ def test_credit_and_relation_terminology_is_language_independent():
         "監督",
         "Director",
     ]
+    assert role_label("Animation Director (OP, ep 1)", "ja-JP") == "作画監督 (OP, ep 1)"
+    assert role_label("ADR Director (English)", "zh-CN") == "ADR Director (English)"
     assert {canonical_relation_type(role) for role in ("续作", "続編", "SEQUEL")} == {"sequel"}
