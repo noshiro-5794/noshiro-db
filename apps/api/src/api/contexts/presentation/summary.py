@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.contexts.identity.resolution import cluster_ids, is_public, resolve
 from api.db import fetch
+from api.shared.title_language import title_language
 
 from . import published
 from .provenance import current_rows, row_provenance, visible
@@ -17,19 +18,21 @@ from .provenance import current_rows, row_provenance, visible
 def choose_name(names: list[Any], language: str) -> str:
     if not names:
         return "Untitled"
-    wanted = language or ""
-    candidates = [
-        name
-        for name in names
-        if name.language and wanted and name.language.lower() == wanted.lower()
-    ]
+    wanted = language.split(";", 1)[0].strip().lower()
+    primary = wanted.split("-", 1)[0]
+    originals = [name for name in names if name.is_original or name.kind == "original"]
+    native = []
+    if primary == "ja":
+        native = [
+            name
+            for name in originals
+            if name.kind != "romanized"
+            and (name.language.lower().split("-", 1)[0] or title_language(name.text)) == "ja"
+        ]
+    candidates = native or [name for name in names if wanted and name.language.lower() == wanted]
     if not candidates and wanted:
-        primary = wanted.split("-")[0].lower()
-        candidates = [name for name in names if name.language.lower().split("-")[0] == primary]
-    candidates = candidates or [
-        name for name in names if name.is_original or name.kind == "original"
-    ]
-    candidates = candidates or names
+        candidates = [name for name in names if name.language.lower().split("-", 1)[0] == primary]
+    candidates = candidates or originals or names
     chosen = sorted(candidates, key=lambda item: (not item.is_official, item.id))[0]
     return str(chosen.text)
 
