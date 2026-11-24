@@ -75,9 +75,10 @@ export const indexApi = {
       },
     }),
 
-  getSubject: (subjectId: UUID, context: ApiRequestContext = {}) =>
+  getSubject: (subjectId: UUID, language: string, context: ApiRequestContext = {}) =>
     api.get<SubjectDetail>(`/api/v1/index/entities/${encodePath(subjectId)}/`, {
       ...context,
+      headers: { 'Accept-Language': language },
       decode: decodeSubjectDetail,
     }),
 

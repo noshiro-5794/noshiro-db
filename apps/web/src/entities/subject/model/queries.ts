@@ -35,10 +35,10 @@ export const subjectQueries = {
       queryFn: ({ signal }) => indexApi.listSubjects(query, { signal }),
     }),
 
-  detail: (subjectId: UUID) =>
+  detail: (subjectId: UUID, language: string) =>
     queryOptions({
-      queryKey: subjectQueryKeys.detail(subjectId),
-      queryFn: ({ signal }) => indexApi.getSubject(subjectId, { signal }),
+      queryKey: [...subjectQueryKeys.detail(subjectId), language],
+      queryFn: ({ signal }) => indexApi.getSubject(subjectId, language, { signal }),
     }),
 
   episodes: (subjectId: UUID, query?: SubjectEpisodeQuery) =>

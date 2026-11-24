@@ -502,6 +502,37 @@ test('work details expose production credits beyond the former sidebar limit', a
   expect(await details.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 });
 
+test('work details load the published synopsis for the current interface language', async ({ page }) => {
+  await page.route(`**/api/v1/index/entities/${subjectId}/`, (route) => {
+    const isChinese = route.request().headers()['accept-language'] === 'zh-CN';
+    return fulfillApi(route, {
+      ...entityDetail,
+      descriptions: [
+        {
+          text: isChinese ? '**旅程继续。**\n\n同伴们向北出发。' : '**The journey continues.**',
+          language: isChinese ? 'zh-Hans' : 'en',
+          is_official: false,
+          is_machine_generated: true,
+          is_reviewed: true,
+          spoiler_level: 0,
+          safety: 'safe',
+          provenance: null,
+        },
+      ],
+    });
+  });
+  await page.goto(`/entities/${subjectId}`);
+  await expect(page.locator('#description strong')).toHaveText('The journey continues.');
+
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'languages', { configurable: true, value: ['zh-CN'] });
+    window.dispatchEvent(new Event('languagechange'));
+  });
+
+  await expect(page.locator('#description strong')).toHaveText('旅程继续。');
+  await expect(page.locator('#description p')).toHaveText(['旅程继续。', '同伴们向北出发。']);
+});
+
 test('protected routes preserve the destination while redirecting to login', async ({ page }) => {
   await page.goto('/library?keyword=noshiro');
 

@@ -38,7 +38,7 @@ function parseReviewId(value?: string) {
 }
 
 function ReviewEditorPage({ onCreated, reviewId: reviewIdParam, subjectIdParam }: ReviewEditorPageProps) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const auth = useAuth();
   const location = useLocation();
   const queryClient = useQueryClient();
@@ -51,7 +51,7 @@ function ReviewEditorPage({ onCreated, reviewId: reviewIdParam, subjectIdParam }
     enabled: isEditing,
   });
   const subjectQuery = useQuery({
-    ...subjectQueries.detail(subjectId),
+    ...subjectQueries.detail(subjectId, locale),
     enabled: !isEditing && Boolean(subjectId),
   });
 

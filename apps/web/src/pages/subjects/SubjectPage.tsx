@@ -36,7 +36,7 @@ import { PageHeading } from '@/shared/ui/PageHeading';
 const subjectRoute = getRouteApi('/entities/$subjectId');
 
 export function SubjectPage() {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const params = subjectRoute.useParams();
   const subjectId = parseUuid(params.subjectId);
   const location = useLocation();
@@ -45,7 +45,7 @@ export function SubjectPage() {
   const [isMarkDialogOpen, setIsMarkDialogOpen] = useState(false);
 
   const detailQuery = useQuery({
-    ...subjectQueries.detail(subjectId ?? ''),
+    ...subjectQueries.detail(subjectId ?? '', locale),
     enabled: Boolean(subjectId),
   });
   const contextQuery = useQuery({
