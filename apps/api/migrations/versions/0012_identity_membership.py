@@ -23,7 +23,16 @@ def upgrade() -> None:
         "ALTER INDEX uq_active_entity_redirect_source "
         "RENAME TO uq_active_identity_membership_source"
     )
-    op.execute("UPDATE fact SET status='candidate' WHERE status='selected'")
+    # A table rewrite rebuilds the indexes once. Historical installations have
+    # selected status on most rows, making an indexed UPDATE far more expensive.
+    op.execute("SET CONSTRAINTS ALL IMMEDIATE")
+    op.execute(
+        """
+        ALTER TABLE fact ALTER COLUMN status TYPE varchar(16)
+        USING (CASE WHEN status = 'selected' THEN 'candidate' ELSE status END)
+        """
+    )
+    op.execute("SET CONSTRAINTS ALL DEFERRED")
 
 
 def downgrade() -> None:
